@@ -97,19 +97,14 @@ def export_actor_onnx(
     with torch.no_grad():
         ref_output = actor_cpu(dummy)
 
-    # Attempt scripted export first for correct loop handling
-    scripted = _trace_actor(actor_cpu)
-
     dynamic_axes = {
         "observation": {0: "batch_size"},
         "action_probs": {0: "batch_size"},
     }
 
-    export_target = scripted if scripted is not None else actor_cpu
-
     try:
         torch.onnx.export(
-            export_target,
+            actor_cpu,
             (dummy,),
             output_path,
             input_names=["observation"],
