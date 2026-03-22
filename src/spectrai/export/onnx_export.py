@@ -57,7 +57,7 @@ def export_actor_onnx(
     output_path: Union[str, Path],
     sequence_length: int = 16,
     input_dim: int = 30,
-    opset_version: int = 17,
+    opset_version: int = 18,
     batch_size: int = 1,
     validate: bool = True,
     atol: float = 1e-5,
