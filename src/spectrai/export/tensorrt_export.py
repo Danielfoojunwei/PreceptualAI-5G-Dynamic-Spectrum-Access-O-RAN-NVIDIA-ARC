@@ -255,6 +255,8 @@ def benchmark_tensorrt(
     # Warmup
     for _ in range(warmup):
         cuda.memcpy_htod_async(d_input, h_input, stream)
+        context.set_tensor_address("observation", int(d_input))
+        context.set_tensor_address("action_probs", int(d_output))
         context.execute_async_v3(stream_handle=stream.handle)
         cuda.memcpy_dtoh_async(h_output, d_output, stream)
         stream.synchronize()
@@ -266,6 +268,8 @@ def benchmark_tensorrt(
     start_event.record(stream)
     for _ in range(num_iterations):
         cuda.memcpy_htod_async(d_input, h_input, stream)
+        context.set_tensor_address("observation", int(d_input))
+        context.set_tensor_address("action_probs", int(d_output))
         context.execute_async_v3(stream_handle=stream.handle)
         cuda.memcpy_dtoh_async(h_output, d_output, stream)
     end_event.record(stream)

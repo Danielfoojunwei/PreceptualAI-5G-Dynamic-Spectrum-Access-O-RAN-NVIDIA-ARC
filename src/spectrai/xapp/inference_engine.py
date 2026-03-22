@@ -77,11 +77,20 @@ class InferenceEngine:
         suffix = self._model_path.suffix.lower()
 
         if suffix in (".trt", ".engine"):
-            self._try_tensorrt()
+            if not self._try_tensorrt():
+                raise InferenceEngineError(
+                    f"Failed to load TensorRT engine from {self._model_path}"
+                )
         elif suffix == ".onnx":
-            self._try_onnx()
+            if not self._try_onnx():
+                raise InferenceEngineError(
+                    f"Failed to load ONNX model from {self._model_path}"
+                )
         elif suffix in (".pt", ".pth"):
-            self._try_pytorch()
+            if not self._try_pytorch():
+                raise InferenceEngineError(
+                    f"Failed to load PyTorch model from {self._model_path}"
+                )
         else:
             # Unknown extension — try all
             if not self._try_tensorrt():

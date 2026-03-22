@@ -149,18 +149,18 @@ class FederatedSACLTCClient:
             state = next_state
             episode_reward += reward
 
+            # Apply FedProx proximal gradient correction BEFORE optimizer
+            # steps so the regularization term affects the update direction.
+            if (
+                self.config.aggregation_method == "fedprox"
+                and self._global_snapshot is not None
+            ):
+                self._apply_fedprox_correction()
+
             # SAC update
             update_info = self.agent.update()
 
             if update_info:
-                # Optional FedProx proximal penalty (applied conceptually —
-                # the actual gradient penalty is added to the critic params)
-                if (
-                    self.config.aggregation_method == "fedprox"
-                    and self._global_snapshot is not None
-                ):
-                    self._apply_fedprox_correction()
-
                 if "critic1_loss" in update_info:
                     critic_losses.append(
                         (update_info["critic1_loss"] + update_info["critic2_loss"]) / 2
