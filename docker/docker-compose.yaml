@@ -1,0 +1,119 @@
+# SpectrAI Local Development Stack
+# ---------------------------------------------------------------------------
+# Brings up the full development environment:
+#   - spectrai-server:  gRPC inference server
+#   - spectrai-dev:     Development shell (optional)
+#   - prometheus:       Metrics collection
+#   - grafana:          Dashboards
+#
+# Usage:
+#   docker compose -f docker/docker-compose.yaml up -d
+#   docker compose -f docker/docker-compose.yaml exec dev bash
+#   docker compose -f docker/docker-compose.yaml down
+# ---------------------------------------------------------------------------
+
+services:
+  # -------------------------------------------------------------------------
+  # SpectrAI gRPC inference server
+  # -------------------------------------------------------------------------
+  server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: spectrai:latest
+    container_name: spectrai-server
+    ports:
+      - "50051:50051"   # gRPC
+      - "9090:9090"     # Prometheus metrics
+    volumes:
+      - ../models:/app/models:ro
+      - ./config.yaml:/app/config.yaml:ro
+    environment:
+      - SPECTRAI_LOG_LEVEL=INFO
+      - SPECTRAI_LOG_FORMAT=json
+      - RMR_SEED_RT=/app/routes.rt
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+        "import grpc; ch=grpc.insecure_channel('localhost:50051'); grpc.channel_ready_future(ch).result(timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - spectrai-net
+
+  # -------------------------------------------------------------------------
+  # Development shell
+  # -------------------------------------------------------------------------
+  dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    image: spectrai-dev:latest
+    container_name: spectrai-dev
+    stdin_open: true
+    tty: true
+    volumes:
+      - ..:/app
+    ports:
+      - "8888:8888"     # Jupyter (optional)
+    environment:
+      - SPECTRAI_LOG_LEVEL=DEBUG
+      - SPECTRAI_LOG_FORMAT=console
+    depends_on:
+      - server
+    networks:
+      - spectrai-net
+    profiles:
+      - dev
+
+  # -------------------------------------------------------------------------
+  # Prometheus
+  # -------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: spectrai-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.enable-lifecycle"
+    restart: unless-stopped
+    networks:
+      - spectrai-net
+
+  # -------------------------------------------------------------------------
+  # Grafana
+  # -------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: spectrai-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=spectrai
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - spectrai-net
+
+# ---------------------------------------------------------------------------
+# Shared resources
+# ---------------------------------------------------------------------------
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  spectrai-net:
+    driver: bridge

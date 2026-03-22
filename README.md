@@ -1,79 +1,85 @@
-# SAC-LTC: Soft Actor-Critic with Liquid Time-Constant Networks for Dynamic Spectrum Access
+# SpectrAI — AI-Native Dynamic Spectrum Management for O-RAN
 
-> **SAC-LTC** is a novel reinforcement learning framework that combines the off-policy sample efficiency of Soft Actor-Critic (SAC) with the adaptive temporal dynamics of Liquid Time-Constant (LTC) networks for Dynamic Spectrum Access (DSA) in cognitive radio networks.
-
----
-
-## Abstract
-
-Dynamic Spectrum Access requires agents to make real-time channel selection decisions under non-stationary primary user (PU) occupancy patterns governed by hidden Markov dynamics. Existing approaches either rely on recurrent architectures (LSTM) that process temporal patterns with fixed time-scale dynamics, or on attention-based models (LFM) that lack explicit continuous-time modelling. We identify a fundamental gap: **DSA channel dynamics are governed by continuous-time Markov processes with heterogeneous time constants, yet no existing RL framework explicitly models input-dependent temporal adaptation at the encoder level.**
-
-We propose **SAC-LTC**, which integrates Liquid Time-Constant cells -- a biologically-inspired neural ODE architecture with input-dependent time constants -- into the SAC framework. The LTC encoder discretises the continuous-time dynamics:
-
-```
-tau(x_t) * dh/dt = -h + f(x_t, h),    tau(x_t) = tau_base + softplus(W_tau * x_t + b_tau)
-```
-
-This allows the agent to **adaptively control how fast it integrates new spectrum observations**, matching the network's temporal dynamics to the underlying PU process.
-
-Empirical evaluation on a 10-channel DSA environment with Markov on/off PU dynamics demonstrates:
-
-- **Highest success rate** (63.37% vs 62.73% LFM, 62.51% LSTM, 62.62% PPO-LSTM)
-- **Lowest collision rate** (36.63% vs 37.27% LFM, 37.49% LSTM, 37.38% PPO-LSTM)
-- **Best spectral efficiency** (0.634 bits/slot vs 0.627 LFM, 0.625 LSTM, 0.626 PPO-LSTM)
-- **Real-time capable** inference at 1.58ms per decision (2.6x faster than PPO-LSTM)
+[![CI](https://github.com/spectrai-project/spectrai/actions/workflows/ci.yaml/badge.svg)](https://github.com/spectrai-project/spectrai/actions/workflows/ci.yaml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue.svg)](https://ghcr.io)
 
 ---
 
-## Research Gap & Novel Contribution
+## Overview
 
-### The Gap
+**SpectrAI** is a production-grade O-RAN xApp that performs real-time Dynamic
+Spectrum Access (DSA) using a novel reinforcement learning architecture:
+**SAC-LTC** — Soft Actor-Critic with Liquid Time-Constant network encoders.
 
-Prior work on RL for DSA has explored two families of sequence encoders:
-
-1. **Recurrent models (LSTM/GRU)**: Process temporal sequences through gated hidden state updates with *fixed* forget/update dynamics. While effective, they treat all input timesteps with the same temporal resolution regardless of the underlying channel dynamics.
-
-2. **Attention-based models (Transformers, LFM)**: Provide parallel processing and long-range dependencies but operate in *discrete* time without explicit continuous-time modelling. The Liquid Foundation Model (LFM) adds adaptive gating (`y = (Ax+B) * sigma(Cx)`) but does not model time-varying integration speeds.
-
-**Neither architecture explicitly adapts its temporal integration speed based on the current spectrum observations.** This is a critical limitation because:
-
-- PU channel occupancy follows continuous-time Markov chains with **heterogeneous transition rates** across channels
-- The optimal observation integration window varies with the current channel state -- rapid changes demand fast integration, stable periods benefit from longer memory
-- Fixed-timescale models must compromise between responsiveness and stability
-
-### Our Contribution: SAC-LTC
-
-We bridge this gap by introducing **Liquid Time-Constant (LTC) cells** as the encoder backbone for SAC. The key innovation is **input-dependent time constants**:
+Traditional DSA agents use fixed-timescale recurrent networks (LSTM) or
+attention-based models (Transformers) to process spectrum observations. Neither
+adapts its temporal integration speed to the current radio environment. SpectrAI
+solves this with **Liquid Time-Constant (LTC) cells** — biologically-inspired
+neural ODE modules whose time constants are *input-dependent*:
 
 ```
 tau(x) = tau_base + softplus(W_tau * x + b_tau)
 ```
 
-where `tau(x)` dynamically adjusts how quickly the hidden state evolves based on the current spectrum observation `x`. This provides:
+When channel dynamics change rapidly (frequent PU transitions, high
+interference), `tau` decreases and the agent integrates new observations faster.
+During stable periods, `tau` increases, retaining longer-term memory. This
+continuous-time ODE formulation directly matches the Markov process structure of
+real-world PU occupancy.
 
-1. **Automatic temporal adaptation**: When channel dynamics change rapidly (high SNR variance, frequent PU transitions), `tau` decreases, enabling faster integration of new observations.
+### Key Results
 
-2. **Selective memory retention**: During stable periods, `tau` increases, maintaining longer-term memory of reliable channel patterns.
+| Metric | SAC-LTC | SAC-LSTM | SAC-LFM | PPO-LSTM |
+|---|---|---|---|---|
+| **Success Rate** | **63.37%** | 62.51% | 62.73% | 62.62% |
+| **Collision Rate** | **36.63%** | 37.49% | 37.27% | 37.38% |
+| **Spectral Efficiency** | **0.634** | 0.625 | 0.627 | 0.626 |
+| **Inference Latency** | 1.58 ms | 0.83 ms | 1.28 ms | 4.11 ms |
 
-3. **Principled continuous-time modelling**: Unlike the heuristic gating of LSTM (sigmoid forget gates) or LFM (adaptive linear operators), LTC cells derive from a well-defined neural ODE with rigorous dynamical systems interpretation.
-
-4. **Computational efficiency**: The Euler-discretised LTC cell (`h' = h + (dt/tau) * (-h + f)`) adds negligible overhead over standard RNNs while providing continuous-time expressiveness.
+Full benchmark methodology and per-seed breakdowns are available in
+[`benchmarks/`](benchmarks/).
 
 ---
 
 ## Architecture
 
-### SAC-LTC Pipeline
+```mermaid
+graph LR
+    subgraph Environment
+        RIC[O-RAN RIC / Simulator]
+    end
 
-```
-Spectrum Observations         LTC Encoder              SAC Algorithm
+    subgraph SpectrAI xApp
+        OBS["Spectrum Observations<br/>(B, T, C*F)"]
+        ENC["LTC Encoder<br/>Multi-layer Neural ODE"]
+        ACT["Actor Head<br/>softmax policy"]
+        CRI["Twin Critics<br/>Q1, Q2"]
+        BUF["Replay Buffer"]
+        ALP["Entropy Tuning<br/>alpha (auto)"]
+    end
 
-(B, T=16, F=30)    -->  [LTC Layer 1]          -->  Actor:  pi(a|s)
-  per-channel:           [LayerNorm ]               Critic: Q1(s,a), Q2(s,a)
-  - SNR                  [LTC Layer 2]               Target Critics (Polyak)
-  - Interference         [LayerNorm ]               Entropy: alpha (auto-tuned)
-  - Occupancy            [Final h_T ]
-  noisy history      --> (B, latent_dim=64)     -->  Discrete action: channel 0..9
+    subgraph Deployment
+        ONNX["ONNX Export"]
+        TRT["TensorRT / ARC"]
+        GRPC["gRPC Service"]
+    end
+
+    RIC -->|E2 Indication| OBS
+    OBS --> ENC
+    ENC --> ACT
+    ENC --> CRI
+    ACT -->|channel selection| RIC
+    ACT --> BUF
+    CRI --> BUF
+    BUF --> CRI
+    ALP --> ACT
+
+    ACT -->|export| ONNX
+    ONNX --> TRT
+    TRT --> GRPC
+    GRPC -->|inference| RIC
 ```
 
 ### LTC Cell (Core Module)
@@ -81,106 +87,204 @@ Spectrum Observations         LTC Encoder              SAC Algorithm
 Each LTC cell implements a single discretised ODE step:
 
 ```python
-# State transition: f(x, h)
-f = tanh(W_h * h + W_x * x_t + b)
-
-# Input-dependent time constant (always positive)
-tau = tau_base + softplus(W_tau * x_t + b_tau)
-
-# Euler ODE step
-h_new = h + (dt / tau) * (-h + f)
+f = tanh(W_h * h + W_x * x + b)          # nonlinear target
+tau = tau_base + softplus(W_tau * x)       # input-dependent time constant
+h_new = h + (dt / tau) * (-h + f)         # Euler ODE step
 ```
 
-**Key properties:**
-- `tau_base` (learnable): provides a floor on the time constant, preventing collapse
-- `softplus(W_tau * x)`: smooth, non-negative, input-dependent modulation
-- The ratio `dt/tau` controls integration speed: small tau = fast adaptation, large tau = long memory
-- `-h + f` implements a stable linear attractor with nonlinear target `f`
-
-### Comparison with Baselines
-
-| Property | SAC-LTC (Ours) | SAC-LFM | SAC-LSTM | PPO-LSTM |
-|---|---|---|---|---|
-| **Time modelling** | Continuous-time ODE | Discrete attention | Discrete gates | Discrete gates |
-| **Temporal adaptation** | Input-dependent tau | Gated linear op | Fixed sigmoid gates | Fixed sigmoid gates |
-| **Parallelism** | Sequential (RNN) | Parallel (attention) | Sequential (RNN) | Sequential (RNN) |
-| **Theoretical basis** | Neural ODE | Analytic ODE approx. | Empirical gating | Empirical gating |
-| **Policy optimisation** | SAC (off-policy) | SAC (off-policy) | SAC (off-policy) | PPO (on-policy) |
+The multi-layer LTC encoder processes spectrum observation sequences step by
+step, producing a fixed-dimensional latent representation `z` that feeds both
+the actor (policy) and twin critic (Q-value) heads of the SAC algorithm.
 
 ---
-
-## Empirical Results
-
-### Setup
-- **Environment**: 10-channel DSA with Markov on/off PU dynamics
-- **PU transitions**: P(off->on) = 0.3, P(on->off) = 0.5
-- **Observation**: 16-step noisy history window (SNR, interference, occupancy per channel)
-- **Training**: 5,000 steps, 3 seeds, matched hyperparameters across all agents
-- **Evaluation**: 50 deterministic episodes per seed
-
-### Summary Table
-
-| Metric | **SAC-LTC (Ours)** | SAC-LFM | SAC-LSTM | PPO-LSTM |
-|---|---|---|---|---|
-| **Mean Reward** | 38.33 +/- 2.18 | 35.85 +/- 2.37 | 50.03 +/- 1.88 | 49.51 +/- 1.33 |
-| **Success Rate** | **63.37% +/- 0.44%** | 62.73% +/- 0.56% | 62.51% +/- 0.47% | 62.62% +/- 0.55% |
-| **Collision Rate** | **36.63% +/- 0.44%** | 37.27% +/- 0.56% | 37.49% +/- 0.47% | 37.38% +/- 0.55% |
-| **Spectral Efficiency** | **0.634 +/- 0.004** | 0.627 +/- 0.006 | 0.625 +/- 0.005 | 0.626 +/- 0.005 |
-| **Jain's Fairness** | 0.996 +/- 0.001 | **0.996 +/- 0.000** | 0.995 +/- 0.001 | 0.995 +/- 0.000 |
-| **Inference Latency** | 1.58ms +/- 0.03 | 1.28ms +/- 0.05 | **0.83ms +/- 0.02** | 4.11ms +/- 0.06 |
-
-### Key Observations
-
-1. **SAC-LTC achieves the best DSA-critical metrics.** On the metrics that directly determine DSA quality of service -- success rate, collision avoidance, and spectral efficiency -- SAC-LTC leads all baselines. The +0.86pp improvement in success rate over SAC-LSTM and +0.64pp over SAC-LFM translates to measurably fewer dropped transmissions in deployment.
-
-2. **The success-reward gap reveals the value of temporal adaptation.** SAC-LSTM achieves higher cumulative reward but lower success rate. This discrepancy arises because SAC-LSTM's higher reward comes from exploiting short-term reward patterns (avoiding switching costs), while SAC-LTC's input-dependent time constants allow it to prioritise collision avoidance -- the more safety-critical objective.
-
-3. **Lowest cross-seed variance.** SAC-LTC's standard deviation on success rate (0.44%) is the smallest among all agents, indicating that the LTC encoder learns robust temporal representations that generalise across random seeds. This reliability is essential for real-world deployment.
-
-4. **Practical inference latency.** At 1.58ms, SAC-LTC is well within the 10ms real-time DSA decision budget and 2.6x faster than PPO-LSTM (4.11ms). The slight overhead vs SAC-LSTM (0.83ms) is justified by the superior DSA performance.
-
-5. **LTC outperforms LFM despite sequential processing.** The LFM's parallel attention mechanism provides a latency advantage, but the LTC's explicit continuous-time ODE dynamics capture the PU Markov process more faithfully, resulting in better channel decisions.
-
----
-
-## Repository Structure
-
-```
-SAC-LFM/
-|-- sac_ltc_agent.py          # SAC-LTC agent (proposed method)
-|-- sac_agent.py              # SAC-LFM baseline
-|-- sac_lstm_agent.py         # SAC-LSTM baseline
-|-- ppo_lstm_agent.py         # PPO-LSTM baseline
-|-- lfm_module.py             # Liquid Foundation Model encoder
-|-- dsa_env.py                # DSA Gymnasium environment
-|-- benchmark.py              # Multi-seed benchmarking harness
-|-- benchmark_config.yaml     # Full benchmark configuration
-|-- train.py                  # Single-agent training script
-|-- evaluate.py               # Single-agent evaluation
-|-- visualize.py              # Publication-quality visualisation
-|-- run_full_benchmark.py     # 4-agent benchmark runner
-+-- requirements.txt          # Dependencies
-```
 
 ## Quick Start
 
+### Installation
+
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# From source
+git clone https://github.com/spectrai-project/spectrai.git
+cd spectrai
+pip install -e ".[dev]"
 
-# Train SAC-LTC
-python train.py --agent sac_ltc --num_steps 50000
-
-# Run full benchmark (4 agents x 5 seeds)
-python benchmark.py --config benchmark_config.yaml
-
-# Generate figures
-python visualize.py --results_dir benchmark_results --format pdf
+# Verify installation
+pytest tests/ -v
 ```
 
-## Citation
+### Train
 
-If you use this codebase in your research, please cite:
+```bash
+# Train SAC-LTC on the simulated DSA environment
+python scripts/train.py --num_steps 50000 --seed 42
+
+# Custom configuration
+python scripts/train.py \
+    --num_channels 20 \
+    --hidden_dim 128 \
+    --latent_dim 128 \
+    --num_layers 2 \
+    --batch_size 256 \
+    --output_dir results/run1
+```
+
+### Export to ONNX
+
+```python
+from spectrai.export import export_actor_to_onnx
+
+export_actor_to_onnx(
+    actor=agent.actor,
+    input_shape=(16, 30),          # (sequence_length, num_channels * num_features)
+    output_path="models/actor.onnx",
+)
+```
+
+### Serve via gRPC
+
+```bash
+# Start the inference server (requires ONNX model)
+python -m spectrai.xapp.server --model models/actor.onnx --port 50051
+```
+
+---
+
+## Deployment
+
+### Docker
+
+```bash
+# Build
+docker build -f docker/Dockerfile -t spectrai:latest .
+
+# Run training
+docker run --rm spectrai:latest python scripts/train.py --num_steps 100000
+
+# Run inference server
+docker run --rm -p 50051:50051 spectrai:latest \
+    python -m spectrai.xapp.server --model /app/models/actor.onnx
+```
+
+### O-RAN RIC
+
+SpectrAI is designed to run as an xApp on O-RAN-compliant near-RT RICs:
+
+1. **Register** the xApp with the RIC platform via `ricxappframe`.
+2. **Subscribe** to E2 indications carrying spectrum measurements.
+3. **Infer** channel selections using the exported ONNX/TensorRT model.
+4. **Control** via E2 control messages back to the E2 node.
+
+See [`src/spectrai/xapp/`](src/spectrai/xapp/) for the xApp integration layer.
+
+### NVIDIA ARC
+
+For GPU-accelerated inference on NVIDIA Aerial RAN CoProcessors:
+
+1. Export the actor to ONNX (`export_actor_to_onnx`).
+2. Convert to TensorRT using `trtexec`.
+3. Deploy the TensorRT engine behind the gRPC server.
+
+Install GPU dependencies: `pip install spectrai[gpu]`
+
+---
+
+## Configuration
+
+SpectrAI uses a Pydantic-validated configuration schema. Key options:
+
+| Section | Parameter | Default | Description |
+|---|---|---|---|
+| `environment` | `num_channels` | 10 | Number of radio channels |
+| `environment` | `sequence_length` | 16 | Observation history window |
+| `environment` | `num_features` | 3 | Features per channel (SNR, interference, occupancy) |
+| `encoder` | `hidden_dim` | 128 | LTC cell hidden state dimension |
+| `encoder` | `latent_dim` | 128 | Encoder output dimension |
+| `encoder` | `num_layers` | 2 | Number of stacked LTC layers |
+| `encoder` | `dt` | 1.0 | ODE discretisation step size |
+| `agent` | `lr` | 3e-4 | Learning rate for all optimizers |
+| `agent` | `gamma` | 0.99 | Discount factor |
+| `agent` | `tau` | 0.005 | Polyak averaging coefficient |
+| `agent` | `buffer_size` | 1,000,000 | Replay buffer capacity |
+| `agent` | `batch_size` | 256 | Mini-batch size |
+
+Load from YAML:
+
+```python
+from spectrai.config import SpectralConfig
+
+cfg = SpectralConfig.from_yaml_file("config.yaml")
+```
+
+---
+
+## Benchmarks
+
+Full benchmark results comparing SAC-LTC against SAC-LSTM, SAC-LFM, and
+PPO-LSTM are in [`benchmarks/`](benchmarks/). Summary:
+
+| Metric | SAC-LTC | SAC-LFM | SAC-LSTM | PPO-LSTM |
+|---|---|---|---|---|
+| Mean Reward | 38.33 +/- 2.18 | 35.85 +/- 2.37 | 50.03 +/- 1.88 | 49.51 +/- 1.33 |
+| Success Rate | **63.37% +/- 0.44%** | 62.73% +/- 0.56% | 62.51% +/- 0.47% | 62.62% +/- 0.55% |
+| Collision Rate | **36.63% +/- 0.44%** | 37.27% +/- 0.56% | 37.49% +/- 0.47% | 37.38% +/- 0.55% |
+| Spectral Efficiency | **0.634 +/- 0.004** | 0.627 +/- 0.006 | 0.625 +/- 0.005 | 0.626 +/- 0.005 |
+| Jain's Fairness | 0.996 +/- 0.001 | 0.996 +/- 0.000 | 0.995 +/- 0.001 | 0.995 +/- 0.000 |
+| Inference Latency | 1.58 ms | 1.28 ms | 0.83 ms | 4.11 ms |
+
+Reproduce with:
+
+```bash
+pip install -e ".[benchmarks]"
+python benchmarks/run_full_benchmark.py --config benchmarks/benchmark_config.yaml
+python benchmarks/visualize.py --results_dir benchmarks/results
+```
+
+---
+
+## API
+
+SpectrAI exposes a gRPC service for real-time inference:
+
+```protobuf
+service SpectrAI {
+    // Single-shot channel selection
+    rpc SelectChannel (SpectrumObservation) returns (ChannelDecision);
+
+    // Streaming spectrum observations
+    rpc StreamDecisions (stream SpectrumObservation) returns (stream ChannelDecision);
+
+    // Health check
+    rpc GetStatus (Empty) returns (ServiceStatus);
+}
+```
+
+See [`proto/`](proto/) for the full service definition.
+
+---
+
+## Project Structure
+
+```
+SAC-LTC/
+├── src/spectrai/
+│   ├── core/           # LTC cell, encoder, actor, critic, replay buffer
+│   ├── agent/          # SAC-LTC agent
+│   ├── env/            # Gymnasium environments (sim, O-RAN, AODT)
+│   ├── export/         # ONNX / TensorRT export
+│   ├── xapp/           # O-RAN xApp integration
+│   ├── config.py       # Pydantic configuration schema
+│   └── monitoring/     # Prometheus metrics
+├── tests/              # pytest test suite
+├── scripts/            # Training and evaluation scripts
+├── benchmarks/         # Reproducible benchmark suite
+├── proto/              # gRPC / Protobuf definitions
+├── docker/             # Dockerfile for deployment
+└── pyproject.toml      # Package configuration
+```
+
+---
+
+## Citation
 
 ```bibtex
 @inproceedings{sac-ltc-dsa,
@@ -197,3 +301,7 @@ If you use this codebase in your research, please cite:
 - Hasani, R., Lechner, M., Amini, A., et al. "Liquid Time-constant Networks." *AAAI*, 2021.
 - Christodoulou, P. "Soft Actor-Critic for Discrete Action Settings." *arXiv:1910.07207*, 2019.
 - Haarnoja, T., Zhou, A., Abbeel, P., Levine, S. "Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning." *ICML*, 2018.
+
+## License
+
+Apache 2.0 — see [LICENSE](LICENSE) for details.

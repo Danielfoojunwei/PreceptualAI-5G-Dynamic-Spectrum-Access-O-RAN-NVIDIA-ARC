@@ -1,12 +1,9 @@
 """
-Training loop for SAC-LTC / SAC-LFM Dynamic Spectrum Access agents.
-
-Supports training SAC-LTC (proposed) and SAC-LFM (baseline) agents
-on the DSA environment with configurable encoder selection.
+Training loop for SpectrAI SAC-LTC agent on spectrum environments.
 
 Usage:
-    python train.py [--agent sac_ltc] [--num_steps 50000] [--seed 42]
-    python train.py --agent sac_lfm [--num_steps 50000]
+    python scripts/train.py [--num_steps 50000] [--seed 42]
+    python scripts/train.py --env sim --num_channels 20
 """
 
 import argparse
@@ -18,31 +15,26 @@ from collections import deque
 import numpy as np
 import torch
 
-from dsa_env import DSAEnv
-from sac_agent import SACAgent
+from spectrai.agent.sac_ltc import SACLTCAgent
+from spectrai.env.sim import SimulatedDSAEnv
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Train SAC-LTC/SAC-LFM on DSA environment")
-
-    # Agent selection
-    p.add_argument("--agent", type=str, default="sac_ltc",
-                   choices=["sac_ltc", "sac_lfm"],
-                   help="Agent type: sac_ltc (proposed) or sac_lfm (baseline)")
+    p = argparse.ArgumentParser(description="Train SpectrAI SAC-LTC agent")
 
     # Environment
+    p.add_argument("--env", type=str, default="sim",
+                   choices=["sim", "oran", "aodt"],
+                   help="Environment type")
     p.add_argument("--num_channels", type=int, default=10)
     p.add_argument("--sequence_length", type=int, default=16)
     p.add_argument("--num_features", type=int, default=3)
     p.add_argument("--max_episode_steps", type=int, default=200)
 
-    # Encoder (LTC uses hidden_dim/num_layers; LFM uses model_dim/num_blocks/num_heads)
-    p.add_argument("--hidden_dim", type=int, default=128, help="LTC hidden dim")
+    # LTC Encoder
+    p.add_argument("--hidden_dim", type=int, default=128)
     p.add_argument("--latent_dim", type=int, default=128)
-    p.add_argument("--num_layers", type=int, default=2, help="LTC num layers")
-    p.add_argument("--model_dim", type=int, default=128, help="LFM model dim")
-    p.add_argument("--num_blocks", type=int, default=3, help="LFM num blocks")
-    p.add_argument("--num_heads", type=int, default=4, help="LFM num heads")
+    p.add_argument("--num_layers", type=int, default=2)
 
     # SAC
     p.add_argument("--lr", type=float, default=3e-4)
@@ -73,7 +65,7 @@ def set_seed(seed: int):
         torch.cuda.manual_seed_all(seed)
 
 
-def evaluate_policy(env: DSAEnv, agent: SACAgent, num_episodes: int = 10):
+def evaluate_policy(env, agent, num_episodes: int = 10):
     """Run deterministic evaluation episodes and return metrics."""
     total_rewards = []
     total_successes = 0
@@ -91,8 +83,8 @@ def evaluate_policy(env: DSAEnv, agent: SACAgent, num_episodes: int = 10):
             done = terminated or truncated
 
             episode_reward += reward
-            total_successes += int(info["success"])
-            total_collisions += int(info["collision"])
+            total_successes += int(info.get("success", False))
+            total_collisions += int(info.get("collision", False))
             total_steps += 1
             state = next_state
 
@@ -110,75 +102,57 @@ def main():
     args = parse_args()
     set_seed(args.seed)
 
-    # Device
     if args.device == "auto":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
         device = torch.device(args.device)
     print(f"Using device: {device}")
 
-    # Output directory
     os.makedirs(args.output_dir, exist_ok=True)
 
     # Environment
-    env = DSAEnv(
-        num_channels=args.num_channels,
-        sequence_length=args.sequence_length,
-        num_features=args.num_features,
-        max_steps=args.max_episode_steps,
-    )
+    if args.env == "sim":
+        env = SimulatedDSAEnv(
+            num_channels=args.num_channels,
+            sequence_length=args.sequence_length,
+            num_features=args.num_features,
+            max_steps=args.max_episode_steps,
+        )
+    else:
+        raise NotImplementedError(
+            f"Environment '{args.env}' requires deployment infrastructure. "
+            "Use Docker for oran/aodt environments."
+        )
+
     input_dim = args.num_channels * args.num_features
     state_shape = (args.sequence_length, input_dim)
 
-    # Agent
-    if args.agent == "sac_ltc":
-        from sac_ltc_agent import SACLTCAgent
-        agent = SACLTCAgent(
-            state_shape=state_shape,
-            num_actions=args.num_channels,
-            input_dim=input_dim,
-            device=device,
-            hidden_dim=args.hidden_dim,
-            latent_dim=args.latent_dim,
-            num_layers=args.num_layers,
-            lr=args.lr,
-            gamma=args.gamma,
-            tau=args.tau,
-            buffer_size=args.buffer_size,
-            batch_size=args.batch_size,
-            learning_starts=args.learning_starts,
-        )
-    else:
-        agent = SACAgent(
-            state_shape=state_shape,
-            num_actions=args.num_channels,
-            input_dim=input_dim,
-            device=device,
-            model_dim=args.model_dim,
-            latent_dim=args.latent_dim,
-            num_blocks=args.num_blocks,
-            num_heads=args.num_heads,
-            max_seq_len=args.sequence_length,
-            lr=args.lr,
-            gamma=args.gamma,
-            tau=args.tau,
-            buffer_size=args.buffer_size,
-            batch_size=args.batch_size,
-            learning_starts=args.learning_starts,
-        )
-    print(f"Agent: {args.agent}")
+    agent = SACLTCAgent(
+        state_shape=state_shape,
+        num_actions=args.num_channels,
+        input_dim=input_dim,
+        device=device,
+        hidden_dim=args.hidden_dim,
+        latent_dim=args.latent_dim,
+        num_layers=args.num_layers,
+        lr=args.lr,
+        gamma=args.gamma,
+        tau=args.tau,
+        buffer_size=args.buffer_size,
+        batch_size=args.batch_size,
+        learning_starts=args.learning_starts,
+    )
+    print("Agent: SAC-LTC (SpectrAI)")
 
-    # Save hyperparameters
     with open(os.path.join(args.output_dir, "config.json"), "w") as f:
         json.dump(vars(args), f, indent=2)
 
-    # ---- Training loop ----
+    # Training loop
     state, _ = env.reset()
     episode_reward = 0.0
     episode_count = 0
     recent_rewards = deque(maxlen=20)
 
-    # Logging lists
     log_steps = []
     log_rewards = []
     log_eval_rewards = []
@@ -188,7 +162,6 @@ def main():
     start_time = time.time()
 
     for step in range(1, args.num_steps + 1):
-        # Select action (random during warmup, policy after)
         if step < args.learning_starts:
             action = env.action_space.sample()
         else:
@@ -197,7 +170,6 @@ def main():
         next_state, reward, terminated, truncated, info = env.step(action)
         done = terminated or truncated
 
-        # Store transition
         agent.replay_buffer.push(state, action, reward, next_state, terminated)
         state = next_state
         episode_reward += reward
@@ -208,10 +180,8 @@ def main():
             state, _ = env.reset()
             episode_reward = 0.0
 
-        # Gradient step
         losses = agent.update()
 
-        # ---- Logging ----
         if step % args.log_interval == 0 and losses:
             elapsed = time.time() - start_time
             mean_r = np.mean(recent_rewards) if recent_rewards else 0.0
@@ -228,7 +198,6 @@ def main():
             for key in log_losses:
                 log_losses[key].append(losses.get(f"{key}_loss", 0.0))
 
-        # ---- Evaluation ----
         if step % args.eval_interval == 0:
             eval_metrics = evaluate_policy(env, agent, num_episodes=10)
             print(
@@ -240,18 +209,15 @@ def main():
             log_eval_steps.append(step)
             log_eval_rewards.append(eval_metrics["mean_reward"])
 
-        # ---- Save checkpoint ----
         if step % args.save_interval == 0:
             ckpt_path = os.path.join(args.output_dir, f"checkpoint_{step}.pt")
             agent.save(ckpt_path)
             print(f"  Saved checkpoint → {ckpt_path}")
 
-    # Final save
     final_path = os.path.join(args.output_dir, "checkpoint_final.pt")
     agent.save(final_path)
     print(f"Training complete. Final checkpoint → {final_path}")
 
-    # Save training curves
     curves = {
         "steps": log_steps,
         "rewards": log_rewards,

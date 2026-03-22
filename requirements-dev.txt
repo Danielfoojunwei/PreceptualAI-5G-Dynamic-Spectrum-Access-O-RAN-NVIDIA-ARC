@@ -1,0 +1,10 @@
+# SpectrAI Development Dependencies
+-r requirements.txt
+pytest>=7.4
+pytest-cov>=4.1
+ruff>=0.1
+mypy>=1.7
+pre-commit>=3.6
+stable-baselines3>=2.2.1
+sb3-contrib>=2.2.1
+matplotlib>=3.8.0

@@ -1,0 +1,28 @@
+environment:
+  type: simulated
+  num_channels: 10
+  num_features: 3
+  sequence_length: 16
+  max_steps: 200
+
+model:
+  hidden_dim: 128
+  latent_dim: 128
+  num_layers: 2
+  dt: 1.0
+
+inference:
+  model_path: /app/models/actor.onnx
+  backend: auto
+  precision: fp16
+  device: cpu
+
+grpc:
+  host: "0.0.0.0"
+  port: 50051
+  reflection: true
+
+monitoring:
+  prometheus_port: 9090
+  log_level: INFO
+  log_format: json

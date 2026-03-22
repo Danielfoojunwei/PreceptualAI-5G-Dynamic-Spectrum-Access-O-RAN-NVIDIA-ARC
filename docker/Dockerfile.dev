@@ -1,0 +1,101 @@
+# SpectrAI Development Container
+# ---------------------------------------------------------------------------
+# Includes all dev/test dependencies, linters, and a full build toolchain.
+# Mounts the source directory for live editing.
+#
+# Build:
+#   docker build -t spectrai-dev:latest -f docker/Dockerfile.dev .
+#
+# Run:
+#   docker run -it --rm \
+#     -v "$(pwd)":/app \
+#     -p 50051:50051 -p 9090:9090 \
+#     spectrai-dev:latest bash
+# ---------------------------------------------------------------------------
+
+FROM python:3.11-slim-bookworm
+
+LABEL maintainer="spectrai@example.com"
+LABEL org.opencontainers.image.description="SpectrAI development environment"
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+# ---------------------------------------------------------------------------
+# System dependencies
+# ---------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        curl \
+        git \
+        vim \
+        less \
+        jq \
+        libsctp-dev \
+        lksctp-tools \
+        ca-certificates \
+        protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------------------------------------------------------
+# RMR (best-effort)
+# ---------------------------------------------------------------------------
+ARG RMR_VERSION=4.9.4
+RUN git clone --depth 1 --branch ${RMR_VERSION} \
+        https://gerrit.o-ran-sc.org/r/ric-plt/lib/rmr /tmp/rmr 2>/dev/null && \
+    cd /tmp/rmr && mkdir build && cd build && \
+    cmake -DDEV_PKG=1 .. && make -j"$(nproc)" install && ldconfig && \
+    rm -rf /tmp/rmr \
+    || true
+
+# ---------------------------------------------------------------------------
+# Python dependencies (all extras)
+# ---------------------------------------------------------------------------
+WORKDIR /app
+
+COPY requirements.txt requirements-dev.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
+
+# Install benchmarks extras
+COPY pyproject.toml /app/pyproject.toml
+COPY src/ /app/src/
+COPY proto/ /app/proto/
+COPY benchmarks/ /app/benchmarks/
+COPY tests/ /app/tests/
+COPY scripts/ /app/scripts/
+
+RUN pip install --no-cache-dir -e ".[dev,benchmarks]"
+
+# Generate proto stubs
+RUN mkdir -p /app/src/spectrai/proto && \
+    touch /app/src/spectrai/proto/__init__.py && \
+    python -m grpc_tools.protoc \
+        -Iproto \
+        --python_out=src/spectrai/proto \
+        --grpc_python_out=src/spectrai/proto \
+        proto/spectrai.proto \
+    || true
+
+# ---------------------------------------------------------------------------
+# Pre-commit hooks
+# ---------------------------------------------------------------------------
+COPY .pre-commit-config.yaml /app/.pre-commit-config.yaml 2>/dev/null || true
+RUN if [ -f /app/.pre-commit-config.yaml ]; then \
+        pip install --no-cache-dir pre-commit && \
+        pre-commit install-hooks 2>/dev/null || true; \
+    fi
+
+# ---------------------------------------------------------------------------
+# Runtime
+# ---------------------------------------------------------------------------
+EXPOSE 50051
+EXPOSE 9090
+EXPOSE 8888
+
+ENV RMR_SEED_RT=/app/routes.rt
+RUN echo "newrt | start\nnewrt | end" > /app/routes.rt
+
+# Default shell for interactive use
+CMD ["bash"]

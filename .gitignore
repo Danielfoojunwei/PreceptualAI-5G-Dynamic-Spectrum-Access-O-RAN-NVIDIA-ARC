@@ -1,10 +1,42 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# Training outputs
 results/
-benchmark_results/
 *.pt
 *.zip
+*.onnx
+*.trt
+*.engine
+models/
+
+# Benchmarks (results are tracked separately)
+benchmark_results/
+
+# Virtual environments
 venv/
+.venv/
+
+# Logging
 .wandb/
 wandb/
+
+# gRPC generated
+proto/*_pb2*.py
+proto/*_pb2*.pyi
+
+# OS
+.DS_Store
+
+# Docker
+.docker/
