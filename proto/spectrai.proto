@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package spectrai;
+
+option go_package = "github.com/spectrai/proto";
+
+// SpectrAI inference and management service.
+service SpectrAI {
+  // Single-shot action prediction from a spectrum observation.
+  rpc Predict (PredictRequest) returns (PredictResponse);
+
+  // Server-streaming prediction for continuous observation feeds.
+  rpc PredictStream (stream PredictRequest) returns (stream PredictResponse);
+
+  // Health check endpoint (liveness / readiness).
+  rpc GetHealth (HealthRequest) returns (HealthStatus);
+
+  // Prometheus-style metrics snapshot.
+  rpc GetMetrics (MetricsRequest) returns (MetricsResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Predict
+// ---------------------------------------------------------------------------
+
+message PredictRequest {
+  // Flattened observation tensor of shape (sequence_length, input_dim).
+  // Row-major order: [t0_f0, t0_f1, ..., t0_fD, t1_f0, ...].
+  repeated float observation = 1;
+
+  // Observation dimensions (for reshaping).
+  int32 sequence_length = 2;
+  int32 input_dim = 3;
+
+  // Optional request identifier for tracing.
+  string request_id = 4;
+}
+
+message PredictResponse {
+  // Selected action (channel index).
+  int32 action = 1;
+
+  // Action probability distribution over channels.
+  repeated float action_probs = 2;
+
+  // Server-side inference latency in milliseconds.
+  float latency_ms = 3;
+
+  // Echo back the request identifier.
+  string request_id = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Health
+// ---------------------------------------------------------------------------
+
+message HealthRequest {}
+
+message HealthStatus {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    STARTING = 3;
+  }
+
+  ServingStatus status = 1;
+
+  // Model information.
+  string model_path = 2;
+  string backend = 3;
+  string version = 4;
+
+  // Uptime in seconds.
+  double uptime_seconds = 5;
+}
+
+// ---------------------------------------------------------------------------
+// Metrics
+// ---------------------------------------------------------------------------
+
+message MetricsRequest {}
+
+message MetricsResponse {
+  // Counters.
+  int64 predictions_total = 1;
+  int64 collisions_total = 2;
+  int64 successes_total = 3;
+
+  // Latency statistics (milliseconds).
+  double inference_latency_mean_ms = 4;
+  double inference_latency_p50_ms = 5;
+  double inference_latency_p99_ms = 6;
+
+  // Gauges.
+  string model_version = 7;
+  int32 channels_monitored = 8;
+
+  // Raw Prometheus text exposition (optional).
+  string prometheus_text = 9;
+}

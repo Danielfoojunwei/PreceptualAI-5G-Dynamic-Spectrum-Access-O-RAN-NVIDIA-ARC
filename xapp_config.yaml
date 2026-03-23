@@ -1,0 +1,28 @@
+# SpectrAI xApp Configuration
+# Matches demo_output/checkpoint.pt dimensions (trained on real 5G data)
+
+environment:
+  num_channels: 10
+  num_features: 5  # RSRP, RSRQ, SNR, CQI, RSSI
+  sequence_length: 16
+
+model:
+  hidden_dim: 64
+  latent_dim: 64
+  num_layers: 2
+  dt: 1.0
+
+inference:
+  model_path: "demo_output/checkpoint.pt"
+  backend: "pytorch"
+  device: "cpu"
+
+grpc:
+  host: "0.0.0.0"
+  port: 50051
+  reflection: true
+
+monitoring:
+  prometheus_port: 9090
+  log_level: "INFO"
+  log_format: "console"

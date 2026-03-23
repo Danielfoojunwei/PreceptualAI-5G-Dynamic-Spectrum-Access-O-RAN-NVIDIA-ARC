@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spectrai"
+version = "0.1.0"
+description = "SpectrAI — AI-Native Dynamic Spectrum Management xApp for O-RAN on NVIDIA ARC"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.1.0",
+    "numpy>=1.24.3",
+    "gymnasium>=0.29.1",
+    "pydantic>=2.0",
+    "onnx>=1.14",
+    "onnxruntime>=1.16",
+    "onnxscript>=0.6",
+    "grpcio>=1.60",
+    "grpcio-tools>=1.60",
+    "protobuf>=4.25",
+    "structlog>=23.0",
+    "prometheus-client>=0.19",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.1",
+    "mypy>=1.7",
+    "pre-commit>=3.6",
+    "types-PyYAML>=6.0",
+]
+gpu = [
+    "onnxruntime-gpu>=1.16",
+]
+oran = [
+    "ricxappframe>=3.0",
+    "mdclogpy>=1.1",
+]
+benchmarks = [
+    "stable-baselines3>=2.2.1",
+    "sb3-contrib>=2.2.1",
+    "matplotlib>=3.8.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/spectrai/proto/*_pb2*.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disable_error_code = ["import-untyped"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"

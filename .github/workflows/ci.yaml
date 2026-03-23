@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/*"]
+  pull_request:
+    branches: [main, "claude/*"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # -------------------------------------------------------------------
+  # Lint — fast feedback on style / import ordering
+  # -------------------------------------------------------------------
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run ruff
+        run: ruff check src/ tests/ scripts/ benchmarks/
+
+  # -------------------------------------------------------------------
+  # Type-check — static analysis with mypy
+  # -------------------------------------------------------------------
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run mypy
+        run: mypy src/spectrai/ --ignore-missing-imports
+
+  # -------------------------------------------------------------------
+  # Test — pytest with coverage
+  # -------------------------------------------------------------------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: |
+          pytest tests/ \
+            --cov=spectrai \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            -v --tb=short
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
