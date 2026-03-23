@@ -334,12 +334,12 @@ class SpectrAIxApp:
     def get_observation(self) -> np.ndarray:
         """Thread-safe observation retrieval."""
         with self._lock:
-            return self._history.copy()
+            return np.array(self._history, copy=True)  # type: ignore[arg-type]
 
     def get_channel_states(self) -> np.ndarray:
         """Thread-safe channel state retrieval."""
         with self._lock:
-            return self._channel_states.copy()
+            return np.array(self._channel_states, copy=True)  # type: ignore[arg-type]
 
     @start_function
     def start(self) -> None:
@@ -386,7 +386,7 @@ class ORANEnv(SpectrumEnv):
 
     def _get_channel_states(self) -> np.ndarray:
         """Fetch the latest channel states from the xApp."""
-        return self._xapp.get_channel_states()
+        return np.asarray(self._xapp.get_channel_states())
 
     def _build_features(self) -> np.ndarray:
         """
@@ -394,11 +394,11 @@ class ORANEnv(SpectrumEnv):
         Return the latest row from the xApp's history buffer.
         """
         obs = self._xapp.get_observation()
-        return obs[-1]
+        return np.asarray(obs[-1])
 
     def _get_observation(self) -> np.ndarray:
         """Return the full observation buffer from the xApp."""
-        return self._xapp.get_observation()
+        return np.asarray(self._xapp.get_observation())
 
     def reset(
         self,

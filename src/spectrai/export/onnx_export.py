@@ -48,7 +48,7 @@ def _trace_actor(actor: torch.nn.Module) -> torch.jit.ScriptModule:
             "torch.jit.script failed (%s); falling back to trace-based export.",
             exc,
         )
-        return None
+        return None  # type: ignore[return-value]
 
 
 def export_actor_onnx(
@@ -86,7 +86,7 @@ def export_actor_onnx(
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
     # Extract actor and move to CPU for export
-    actor: torch.nn.Module = getattr(agent, "actor", agent)
+    actor: torch.nn.Module = getattr(agent, "actor", agent)  # type: ignore[arg-type]
     actor_cpu = actor.cpu().eval()
     device = torch.device("cpu")
 

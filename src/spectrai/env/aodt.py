@@ -199,7 +199,7 @@ class ChannelModelBackend:
         """Rayleigh fading fallback: i.i.d. complex Gaussian."""
         real = rng.standard_normal((num_channels, num_prbs, num_ofdm_symbols))
         imag = rng.standard_normal((num_channels, num_prbs, num_ofdm_symbols))
-        return (real + 1j * imag).astype(np.complex64) / np.sqrt(2.0)
+        return np.asarray((real + 1j * imag).astype(np.complex64) / np.sqrt(2.0))
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +262,7 @@ class ChannelEstimatorBackend:
             cp.random.randn(*h_gpu.shape) + 1j * cp.random.randn(*h_gpu.shape)
         ) / cp.sqrt(2.0)
         h_est = self._estimator(rx_signal)
-        return cp.asnumpy(h_est)
+        return np.asarray(cp.asnumpy(h_est))
 
     @staticmethod
     def _estimate_ls(h_freq: np.ndarray, noise_power: float) -> np.ndarray:
@@ -270,7 +270,7 @@ class ChannelEstimatorBackend:
         noise = np.sqrt(noise_power) * (
             np.random.randn(*h_freq.shape) + 1j * np.random.randn(*h_freq.shape)
         ).astype(np.complex64) / np.sqrt(2.0)
-        return h_freq + noise
+        return np.asarray(h_freq + noise)
 
 
 # ---------------------------------------------------------------------------

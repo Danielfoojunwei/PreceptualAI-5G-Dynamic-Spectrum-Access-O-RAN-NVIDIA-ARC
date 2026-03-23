@@ -145,7 +145,7 @@ class Real5GEnv(gym.Env):
         features = np.tile(row, (self.num_channels, 1))  # (C, F)
         noise = self._rng.randn(self.num_channels, self.num_features).astype(np.float32) * 0.3
         features = features + noise
-        return features.reshape(-1)  # (C*F,)
+        return np.asarray(features.reshape(-1))  # (C*F,)
 
     def _get_channel_quality(self) -> np.ndarray:
         """Derive channel occupancy from real SNR values."""
@@ -157,7 +157,7 @@ class Real5GEnv(gym.Env):
         channel_snr = base_snr + self._rng.randn(self.num_channels).astype(np.float32) * 3.0
         # Channels with SNR < 5 dB are "occupied" (poor quality)
         occupied = (channel_snr < 5.0).astype(np.float32)
-        return occupied
+        return np.asarray(occupied)
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)

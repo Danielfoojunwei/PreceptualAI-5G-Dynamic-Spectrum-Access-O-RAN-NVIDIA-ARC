@@ -15,4 +15,4 @@ class LTCCritic(nn.Module):
         self.head = nn.Linear(encoder.latent_dim, num_actions)
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
-        return self.head(self.encoder(state))
+        return self.head(self.encoder(state))  # type: ignore[no-any-return]

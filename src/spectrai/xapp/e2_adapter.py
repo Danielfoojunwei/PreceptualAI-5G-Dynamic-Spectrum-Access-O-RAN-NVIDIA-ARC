@@ -300,10 +300,11 @@ class E2Adapter:
         with self._lock:
             if self._latest_metrics is None:
                 return np.zeros(self._num_channels, dtype=np.float32)
-            return self._latest_metrics.metrics.get(
+            result: np.ndarray = self._latest_metrics.metrics.get(
                 metric_name,
                 np.zeros(self._num_channels, dtype=np.float32),
             ).copy()
+            return result
 
     # ------------------------------------------------------------------
     # RC Control

@@ -338,7 +338,7 @@ def experiment_convergence(
 
     # --- Federated ---
     print("Training federated agents...")
-    fl_config = FLConfig(
+    fl_config = FLConfig(  # type: ignore[call-arg]
         num_rounds=num_rounds,
         local_steps_per_round=local_steps,
         min_devices_per_round=1,
@@ -386,7 +386,7 @@ def experiment_cold_start(
     """Test cold-start device performance with global model vs random init."""
     print("\n=== Experiment 2: Cold-start Elimination ===")
 
-    fl_config = FLConfig(aggregation_method="hybrid_ltc", tau_mix_ratio=0.3)
+    fl_config = FLConfig(aggregation_method="hybrid_ltc", tau_mix_ratio=0.3)  # type: ignore[call-arg]
 
     # Device 6 with holdout traces
     env = make_env(data_dir, holdout_traces, num_channels=num_channels)
@@ -430,7 +430,7 @@ def experiment_flywheel(
     """Show that adding devices improves existing devices."""
     print("\n=== Experiment 3: Flywheel Effect ===")
 
-    fl_config = FLConfig(
+    fl_config = FLConfig(  # type: ignore[call-arg]
         num_rounds=num_rounds_phase1 + num_rounds_phase2,
         local_steps_per_round=local_steps,
         min_devices_per_round=1,

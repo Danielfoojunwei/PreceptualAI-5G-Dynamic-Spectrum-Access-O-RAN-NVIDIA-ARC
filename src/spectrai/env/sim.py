@@ -190,7 +190,7 @@ class SimulatedDSAEnv(SpectrumEnv):
     def _get_observation(self) -> np.ndarray:
         """Return observation with configurable Gaussian noise."""
         assert self._history is not None
-        obs = self._history.copy()
+        obs = np.array(self._history, copy=True)
         if self._sim_cfg.observation_noise_std > 0.0:
             obs += (
                 self.np_random.standard_normal(obs.shape).astype(np.float32)

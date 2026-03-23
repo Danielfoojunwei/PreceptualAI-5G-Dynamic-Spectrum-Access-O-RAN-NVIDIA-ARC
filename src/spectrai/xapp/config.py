@@ -139,13 +139,13 @@ class SpectralConfig(BaseModel):
     Supports construction from a YAML file via ``SpectralConfig.from_yaml()``.
     """
 
-    environment: EnvironmentConfig = Field(default_factory=EnvironmentConfig)
-    model: ModelConfig = Field(default_factory=ModelConfig)
-    training: TrainingConfig = Field(default_factory=TrainingConfig)
-    inference: InferenceConfig = Field(default_factory=InferenceConfig)
-    xapp: XAppConfig = Field(default_factory=XAppConfig)
-    grpc: GrpcConfig = Field(default_factory=GrpcConfig)
-    monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
+    environment: EnvironmentConfig = Field(default_factory=EnvironmentConfig)  # type: ignore[arg-type]
+    model: ModelConfig = Field(default_factory=ModelConfig)  # type: ignore[arg-type]
+    training: TrainingConfig = Field(default_factory=TrainingConfig)  # type: ignore[arg-type]
+    inference: InferenceConfig = Field(default_factory=InferenceConfig)  # type: ignore[arg-type]
+    xapp: XAppConfig = Field(default_factory=XAppConfig)  # type: ignore[arg-type]
+    grpc: GrpcConfig = Field(default_factory=GrpcConfig)  # type: ignore[arg-type]
+    monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)  # type: ignore[arg-type]
 
     model_config = {"extra": "forbid"}
 

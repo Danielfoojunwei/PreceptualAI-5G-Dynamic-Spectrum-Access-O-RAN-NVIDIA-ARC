@@ -53,6 +53,7 @@ def configure_logging(
         structlog.processors.UnicodeDecoder(),
     ]
 
+    renderer: object
     if fmt == "json":
         renderer = structlog.processors.JSONRenderer()
     else:
@@ -63,7 +64,7 @@ def configure_logging(
         processors=[
             *shared_processors,
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
-        ],
+        ],  # type: ignore[list-item]
         logger_factory=structlog.stdlib.LoggerFactory(),
         wrapper_class=structlog.stdlib.BoundLogger,
         cache_logger_on_first_use=True,
@@ -75,7 +76,7 @@ def configure_logging(
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
             renderer,
         ],
-        foreign_pre_chain=shared_processors,
+        foreign_pre_chain=shared_processors,  # type: ignore[arg-type]
     )
 
     # Console handler
@@ -119,4 +120,4 @@ def get_logger(
     logger = structlog.get_logger(name)
     if initial_context:
         logger = logger.bind(**initial_context)
-    return logger
+    return logger  # type: ignore[return-value]

@@ -41,7 +41,7 @@ def export_actor_to_onnx(
 
     torch.onnx.export(
         actor,
-        dummy,
+        (dummy,),
         str(path),
         input_names=["state"],
         output_names=["action_probs"],

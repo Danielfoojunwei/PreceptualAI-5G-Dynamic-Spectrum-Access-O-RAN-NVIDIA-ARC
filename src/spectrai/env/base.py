@@ -119,7 +119,7 @@ class SpectrumEnv(gym.Env, ABC):
         Shape: (sequence_length, num_channels * num_features).
         """
         assert self._history is not None
-        return self._history.copy()
+        return np.array(self._history, copy=True)
 
     def _init_history(self) -> np.ndarray:
         """Allocate a zeroed history buffer."""
@@ -128,6 +128,7 @@ class SpectrumEnv(gym.Env, ABC):
 
     def _append_to_history(self, features: np.ndarray) -> None:
         """Shift history left by one step and append new features."""
+        assert self._history is not None
         self._history = np.roll(self._history, shift=-1, axis=0)
         self._history[-1] = features
 

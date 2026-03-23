@@ -226,7 +226,7 @@ class InferenceEngine:
             Array of action indices, shape ``(batch,)``.
         """
         probs = self._infer(observations)
-        return np.argmax(probs, axis=-1)
+        return np.asarray(np.argmax(probs, axis=-1))
 
     def _infer(self, observations: np.ndarray) -> np.ndarray:
         """Run inference through the active backend, tracking latency."""
@@ -250,7 +250,7 @@ class InferenceEngine:
     def _infer_onnx(self, obs: np.ndarray) -> np.ndarray:
         """Run inference via ONNX Runtime."""
         outputs = self._session.run(None, {"observation": obs})  # type: ignore[attr-defined]
-        return outputs[0]
+        return np.asarray(outputs[0])
 
     def _infer_pytorch(self, obs: np.ndarray) -> np.ndarray:
         """Run inference via PyTorch."""
@@ -259,7 +259,7 @@ class InferenceEngine:
         with torch.no_grad():
             tensor = torch.from_numpy(obs).to(self._torch_device)
             probs = self._torch_model(tensor)  # type: ignore[operator]
-            return probs.cpu().numpy()
+            return np.asarray(probs.cpu().numpy())
 
     def _infer_tensorrt(self, obs: np.ndarray) -> np.ndarray:
         """Run inference via TensorRT."""

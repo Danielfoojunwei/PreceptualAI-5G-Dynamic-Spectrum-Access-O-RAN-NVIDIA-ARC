@@ -59,10 +59,10 @@ class SpectralConfig(BaseModel):
     Aggregates all sub-configs and supports loading from YAML.
     """
 
-    environment: EnvironmentConfig = Field(default_factory=EnvironmentConfig)
-    encoder: EncoderConfig = Field(default_factory=EncoderConfig)
-    agent: AgentConfig = Field(default_factory=AgentConfig)
-    export: ExportConfig = Field(default_factory=ExportConfig)
+    environment: EnvironmentConfig = Field(default_factory=EnvironmentConfig)  # type: ignore[arg-type]
+    encoder: EncoderConfig = Field(default_factory=EncoderConfig)  # type: ignore[arg-type]
+    agent: AgentConfig = Field(default_factory=AgentConfig)  # type: ignore[arg-type]
+    export: ExportConfig = Field(default_factory=ExportConfig)  # type: ignore[arg-type]
 
     device: str = Field("auto", description="Device: 'cpu', 'cuda', or 'auto'")
     seed: int = Field(42, ge=0)

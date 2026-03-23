@@ -159,9 +159,9 @@ def update_collision_rate() -> None:
     total_preds = 0.0
     total_colls = 0.0
     # Sum across all label combinations for predictions
-    for sample in predictions_total.collect()[0].samples:
+    for sample in list(predictions_total.collect())[0].samples:
         total_preds += sample.value
-    for sample in collisions_total.collect()[0].samples:
+    for sample in list(collisions_total.collect())[0].samples:
         total_colls += sample.value
     if total_preds > 0:
         collision_rate.set(total_colls / total_preds)
