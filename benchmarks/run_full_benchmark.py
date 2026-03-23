@@ -10,14 +10,13 @@ import time
 
 import numpy as np
 import torch
-import yaml
 
 # Force unbuffered output
 os.environ["PYTHONUNBUFFERED"] = "1"
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from benchmark import make_agent, evaluate_agent, train_off_policy, train_ppo
+from benchmark import evaluate_agent, make_agent, train_off_policy, train_ppo
 from dsa_env import DSAEnv
 
 CONFIG = {
@@ -193,7 +192,6 @@ def main():
                 if k in metrics:
                     all_results[agent_name][k].append(metrics[k])
 
-            eval_time = time.time() - t_start - train_time
             print(
                 f"  Result: R={metrics['mean_reward']:.2f}±{metrics['std_reward']:.2f} | "
                 f"Success={metrics['success_rate']:.2%} | "
@@ -221,7 +219,8 @@ def main():
 
     # ---- Print Table ----
     print(f"\n{'='*96}", flush=True)
-    print(f"  EMPIRICAL PERFORMANCE BENCHMARK  (3 seeds x {CONFIG['training_steps']} steps)", flush=True)
+    steps = CONFIG['training_steps']
+    print(f"  EMPIRICAL PERFORMANCE BENCHMARK  (3 seeds x {steps} steps)", flush=True)
     print(f"{'='*96}", flush=True)
     print(f"{'Agent':<12} {'Reward':>16} {'Success%':>12} {'Collision%':>12} "
           f"{'Spec.Eff':>10} {'Jain':>10} {'Infer(ms)':>12}", flush=True)

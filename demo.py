@@ -23,9 +23,10 @@ import os
 import time
 from collections import deque
 
+import matplotlib
 import numpy as np
 import torch
-import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -359,7 +360,7 @@ def visualize_results(train_metrics, eval_metrics, eval_rewards, actions,
         summary += f"  {backend}: {res['mean_ms']:.2f}ms\n"
     summary += (
         f"\nNear-RT RIC Budget: 10ms\n"
-        f"Status: {'PASS' if any(r['p99_ms'] < 10 for r in inference_results.values()) else 'CHECK'}"
+        f"Status: {'PASS' if any(r['p99_ms'] < 10 for r in inference_results.values()) else 'CHECK'}"  # noqa: E501
     )
     ax.text(0.1, 0.5, summary, transform=ax.transAxes,
             fontfamily="monospace", fontsize=11, verticalalignment="center",
@@ -392,7 +393,7 @@ def main():
 
     # Create environment
     if args.data_dir and os.path.exists(args.data_dir):
-        print(f"  Mode: REAL 5G DATA")
+        print("  Mode: REAL 5G DATA")
         print(f"  Dataset: {args.data_dir}")
         env = Real5GEnv(
             data_dir=args.data_dir,
@@ -401,7 +402,7 @@ def main():
         )
         num_features = env.num_features
     else:
-        print(f"  Mode: SIMULATED (Markov DSA)")
+        print("  Mode: SIMULATED (Markov DSA)")
         num_features = 3
         env = SimulatedDSAEnv(
             num_channels=args.num_channels,
@@ -449,7 +450,7 @@ def main():
     inference_results = benchmark_inference(model_path, env, agent)
 
     # Phase 5: Visualize
-    plot_path = visualize_results(
+    visualize_results(
         train_metrics, eval_metrics, eval_rewards, actions,
         inference_results, args.output_dir, args.num_channels,
     )
@@ -466,10 +467,10 @@ def main():
 
     banner("DEMO COMPLETE")
     print(f"  Output directory: {args.output_dir}/")
-    print(f"  - checkpoint.pt      (trained model)")
-    print(f"  - spectrai_actor.onnx (ONNX export)")
-    print(f"  - demo_results.png   (visualization)")
-    print(f"  - demo_metrics.json  (all metrics)")
+    print("  - checkpoint.pt      (trained model)")
+    print("  - spectrai_actor.onnx (ONNX export)")
+    print("  - demo_results.png   (visualization)")
+    print("  - demo_metrics.json  (all metrics)")
     print()
     print(f"  Success Rate:   {eval_metrics['success_rate']:.1%}")
     print(f"  Collision Rate: {eval_metrics['collision_rate']:.1%}")

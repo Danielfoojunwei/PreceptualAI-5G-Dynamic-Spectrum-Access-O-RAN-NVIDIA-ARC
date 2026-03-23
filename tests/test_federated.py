@@ -11,7 +11,6 @@ from collections import OrderedDict
 
 import pytest
 import torch
-import torch.nn as nn
 
 from spectrai.agent.sac_ltc import SACLTCAgent
 from spectrai.federated.aggregator import (
@@ -21,7 +20,6 @@ from spectrai.federated.aggregator import (
 )
 from spectrai.federated.client import FederatedSACLTCClient
 from spectrai.federated.config import FLConfig
-
 
 # ======================================================================
 # Fixtures
@@ -34,7 +32,7 @@ def _make_fake_state_dict(seed: int = 0, hidden: int = 8) -> OrderedDict:
     Contains both structural (W_h, W_x, head, layer_norm) and tau
     (W_tau, tau_base) parameters, as in the real LTCEncoder.
     """
-    rng = torch.manual_seed(seed)
+    torch.manual_seed(seed)
     sd = OrderedDict()
     # Encoder layer 0
     sd["encoder.cells.0.W_h.weight"] = torch.randn(hidden, hidden)

@@ -14,13 +14,11 @@ which can be viewed as an analytic solution to a gated linear ODE
 evaluated in a single step (no iterative ODE solver).
 """
 
-import math
 from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 
 # ======================================================================
 # A. Adaptive Linear Operator

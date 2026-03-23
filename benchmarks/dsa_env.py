@@ -108,7 +108,10 @@ class DSAEnv(gym.Env):
         snr = np.where(occupancy == 0, 1.0, 0.2) + np.random.randn(self.num_channels) * 0.05
 
         # Interference power: high when occupied
-        interference = np.where(occupancy == 1, 0.8, 0.1) + np.random.randn(self.num_channels) * 0.05
+        interference = (
+            np.where(occupancy == 1, 0.8, 0.1)
+            + np.random.randn(self.num_channels) * 0.05
+        )
 
         # Stack features: (num_channels * 3,)
         features = np.stack([snr, interference, occupancy], axis=-1).reshape(-1)

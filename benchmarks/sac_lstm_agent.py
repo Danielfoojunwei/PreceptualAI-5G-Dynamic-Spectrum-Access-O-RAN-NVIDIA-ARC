@@ -14,10 +14,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.optim import Adam
-
 from sac_agent import ReplayBuffer
-
+from torch.optim import Adam
 
 # ======================================================================
 # LSTM Encoder (drop-in replacement for LFMEncoder)

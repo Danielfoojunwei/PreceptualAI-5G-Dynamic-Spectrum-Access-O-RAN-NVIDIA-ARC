@@ -69,10 +69,10 @@ class SpectrAIServicer:
 
     async def Predict(self, request: object, context: grpc.aio.ServicerContext) -> object:
         """Single-shot prediction."""
-        seq_len = request.sequence_length or self._config.environment.sequence_length
-        input_dim = request.input_dim or self._config.input_dim
+        seq_len = request.sequence_length or self._config.environment.sequence_length  # type: ignore[attr-defined]
+        input_dim = request.input_dim or self._config.input_dim  # type: ignore[attr-defined]
 
-        obs = np.array(request.observation, dtype=np.float32).reshape(
+        obs = np.array(request.observation, dtype=np.float32).reshape(  # type: ignore[attr-defined]
             seq_len, input_dim
         )
 
@@ -84,11 +84,11 @@ class SpectrAIServicer:
         obs_batch = obs[np.newaxis, ...]
         probs = self._engine._infer(obs_batch)[0].tolist()
 
-        return spectrai_pb2.PredictResponse(
+        return spectrai_pb2.PredictResponse(  # type: ignore[attr-defined]
             action=action,
             action_probs=probs,
             latency_ms=latency,
-            request_id=request.request_id,
+            request_id=request.request_id,  # type: ignore[attr-defined]
         )
 
     # ------------------------------------------------------------------
@@ -116,11 +116,11 @@ class SpectrAIServicer:
             obs_batch = obs[np.newaxis, ...]
             probs = self._engine._infer(obs_batch)[0].tolist()
 
-            yield spectrai_pb2.PredictResponse(
+            yield spectrai_pb2.PredictResponse(  # type: ignore[attr-defined]
                 action=action,
                 action_probs=probs,
                 latency_ms=latency,
-                request_id=request.request_id,
+                request_id=request.request_id,  # type: ignore[attr-defined]
             )
 
     # ------------------------------------------------------------------
@@ -130,9 +130,9 @@ class SpectrAIServicer:
     async def GetHealth(self, request: object, context: grpc.aio.ServicerContext) -> object:
         """Return current serving status."""
         uptime = time.monotonic() - self._start_time
-        status = spectrai_pb2.HealthStatus.ServingStatus.SERVING
+        status = spectrai_pb2.HealthStatus.ServingStatus.SERVING  # type: ignore[attr-defined]
 
-        return spectrai_pb2.HealthStatus(
+        return spectrai_pb2.HealthStatus(  # type: ignore[attr-defined]
             status=status,
             model_path=str(self._config.inference.model_path),
             backend=self._engine.backend or "unknown",
@@ -168,7 +168,7 @@ class SpectrAIServicer:
         except ImportError:
             pass
 
-        return spectrai_pb2.MetricsResponse(
+        return spectrai_pb2.MetricsResponse(  # type: ignore[attr-defined]
             predictions_total=self._predictions_total,
             collisions_total=self._collisions_total,
             successes_total=self._successes_total,

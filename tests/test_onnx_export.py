@@ -11,7 +11,6 @@ from spectrai.core.actor import LTCActor
 from spectrai.core.ltc_encoder import LTCEncoder
 from spectrai.export.onnx_export import export_actor_onnx
 
-
 INPUT_DIM = 12
 HIDDEN_DIM = 32
 LATENT_DIM = 32

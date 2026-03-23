@@ -20,9 +20,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
 
-from spectrai.core.ltc_encoder import LTCEncoder
 from spectrai.core.actor import LTCActor
 from spectrai.core.critic import LTCCritic
+from spectrai.core.ltc_encoder import LTCEncoder
 from spectrai.core.replay_buffer import ReplayBuffer
 
 
@@ -96,7 +96,7 @@ class SACLTCAgent:
     def select_action(self, state: np.ndarray, deterministic: bool = False) -> int:
         state_t = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
         action, _ = self.actor.get_action(state_t, deterministic=deterministic)
-        return action
+        return int(action)
 
     def update(self) -> Dict[str, float]:
         if len(self.replay_buffer) < self.learning_starts:

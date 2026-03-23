@@ -5,7 +5,6 @@ Provides validated, typed configuration for all system components:
 environment, LTC encoder, SAC agent, export, and deployment.
 """
 
-from typing import Optional
 
 import yaml
 from pydantic import BaseModel, Field, field_validator

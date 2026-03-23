@@ -17,17 +17,14 @@ Key components:
 """
 
 import copy
-from collections import deque
 from typing import Dict, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.optim import Adam
-
 from lfm_module import LFMEncoder
-
+from torch.optim import Adam
 
 # ======================================================================
 # Replay Buffer
@@ -316,7 +313,8 @@ class SACAgent:
             min_q_pi = torch.min(q1_pi, q2_pi)
 
         # Actor loss:  E[ Σ_a π(a|s)(α log π(a|s) - Q(s,a)) ]
-        actor_loss = (action_probs * (self.alpha.detach() * log_probs - min_q_pi)).sum(dim=-1).mean()
+        weighted = action_probs * (self.alpha.detach() * log_probs - min_q_pi)
+        actor_loss = weighted.sum(dim=-1).mean()
 
         self.actor_optimizer.zero_grad()
         actor_loss.backward()

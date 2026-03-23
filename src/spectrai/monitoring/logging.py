@@ -13,7 +13,6 @@ from typing import Optional
 
 import structlog
 
-
 _CONFIGURED = False
 
 
@@ -89,7 +88,7 @@ def configure_logging(
     if log_file:
         file_handler = logging.FileHandler(log_file, encoding="utf-8")
         file_handler.setFormatter(formatter)
-        handlers.append(file_handler)
+        handlers.append(file_handler)  # type: ignore[arg-type]
 
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
@@ -102,7 +101,9 @@ def configure_logging(
         logging.getLogger(name).setLevel(logging.WARNING)
 
 
-def get_logger(name: Optional[str] = None, **initial_context: object) -> structlog.stdlib.BoundLogger:
+def get_logger(
+    name: Optional[str] = None, **initial_context: object
+) -> structlog.stdlib.BoundLogger:
     """
     Return a structured logger bound to the given name.
 

@@ -105,8 +105,8 @@ class InferenceEngine:
         try:
             import tensorrt as trt
             try:
-                import pycuda.driver as cuda
-                import pycuda.autoinit
+                import pycuda.autoinit  # noqa: F401
+                import pycuda.driver as cuda  # noqa: F401
             except ImportError:
                 logger.debug("pycuda not available — skipping TensorRT.")
                 return False
@@ -158,8 +158,9 @@ class InferenceEngine:
         """Attempt to load as a PyTorch checkpoint."""
         try:
             import torch
-            from spectrai.core.ltc_encoder import LTCEncoder
+
             from spectrai.core.actor import LTCActor
+            from spectrai.core.ltc_encoder import LTCEncoder
 
             encoder = LTCEncoder(
                 input_dim=self._input_dim,
@@ -248,7 +249,7 @@ class InferenceEngine:
 
     def _infer_onnx(self, obs: np.ndarray) -> np.ndarray:
         """Run inference via ONNX Runtime."""
-        outputs = self._session.run(None, {"observation": obs})
+        outputs = self._session.run(None, {"observation": obs})  # type: ignore[attr-defined]
         return outputs[0]
 
     def _infer_pytorch(self, obs: np.ndarray) -> np.ndarray:
@@ -257,7 +258,7 @@ class InferenceEngine:
 
         with torch.no_grad():
             tensor = torch.from_numpy(obs).to(self._torch_device)
-            probs = self._torch_model(tensor)
+            probs = self._torch_model(tensor)  # type: ignore[operator]
             return probs.cpu().numpy()
 
     def _infer_tensorrt(self, obs: np.ndarray) -> np.ndarray:

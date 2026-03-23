@@ -101,7 +101,7 @@ def compile_tensorrt(
         for i in range(parser.num_errors):
             errors.append(str(parser.get_error(i)))
         raise TensorRTCompileError(
-            f"Failed to parse ONNX model:\n" + "\n".join(errors)
+            "Failed to parse ONNX model:\n" + "\n".join(errors)
         )
 
     logger.info(
@@ -229,8 +229,8 @@ def benchmark_tensorrt(
     import numpy as np
 
     try:
-        import pycuda.driver as cuda
-        import pycuda.autoinit
+        import pycuda.autoinit  # noqa: F401
+        import pycuda.driver as cuda  # noqa: F401
     except ImportError:
         raise TensorRTCompileError(
             "pycuda is required for TensorRT benchmarking. "
@@ -238,12 +238,13 @@ def benchmark_tensorrt(
         )
 
     engine = load_engine(engine_path)
-    context = engine.create_execution_context()
+    context = engine.create_execution_context()  # type: ignore[attr-defined]
 
     # Allocate host and device buffers
     input_shape = (batch_size, sequence_length, input_dim)
     h_input = np.random.randn(*input_shape).astype(np.float32)
-    h_output = np.empty((batch_size, engine.get_tensor_shape("action_probs")[-1]), dtype=np.float32)
+    output_size = engine.get_tensor_shape("action_probs")[-1]  # type: ignore[attr-defined]
+    h_output = np.empty((batch_size, output_size), dtype=np.float32)
 
     d_input = cuda.mem_alloc(h_input.nbytes)
     d_output = cuda.mem_alloc(h_output.nbytes)
@@ -283,4 +284,4 @@ def benchmark_tensorrt(
         mean_ms,
         num_iterations,
     )
-    return mean_ms
+    return float(mean_ms)

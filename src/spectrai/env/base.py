@@ -118,6 +118,7 @@ class SpectrumEnv(gym.Env, ABC):
 
         Shape: (sequence_length, num_channels * num_features).
         """
+        assert self._history is not None
         return self._history.copy()
 
     def _init_history(self) -> np.ndarray:
@@ -152,6 +153,7 @@ class SpectrumEnv(gym.Env, ABC):
             self._history[t] = self._build_features()
 
         obs = self._get_observation()
+        assert self._channel_states is not None
         info: Dict[str, Any] = {"channel_states": self._channel_states.copy()}
         return obs, info
 

@@ -6,9 +6,12 @@ optionally compiles a TensorRT engine, and runs validation
 plus latency benchmarking.
 
 Usage:
-    python scripts/export_model.py --checkpoint models/sac_ltc.pt --output models/actor.onnx
-    python scripts/export_model.py --checkpoint models/sac_ltc.pt --output models/actor.onnx --tensorrt
-    python scripts/export_model.py --checkpoint models/sac_ltc.pt --output models/actor.onnx --tensorrt --precision int8
+    python scripts/export_model.py --checkpoint models/sac_ltc.pt \
+        --output models/actor.onnx
+    python scripts/export_model.py --checkpoint models/sac_ltc.pt \
+        --output models/actor.onnx --tensorrt
+    python scripts/export_model.py --checkpoint models/sac_ltc.pt \
+        --output models/actor.onnx --tensorrt --precision int8
 """
 
 from __future__ import annotations
@@ -16,9 +19,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-import time
 
-import numpy as np
 import torch
 
 logging.basicConfig(

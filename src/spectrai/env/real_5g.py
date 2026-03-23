@@ -14,6 +14,7 @@ Features extracted from real data:
 
 import glob
 import os
+from typing import Dict
 
 import gymnasium as gym
 import numpy as np
@@ -61,10 +62,12 @@ class Real5GEnv(gym.Env):
             dtype=np.float32,
         )
 
-        self._history = None
-        self._channel_quality = None
-        self._prev_action = None
-        self._step_count = 0
+        self._history: np.ndarray = np.zeros(
+            (sequence_length, num_channels * self.num_features), dtype=np.float32
+        )
+        self._channel_quality: np.ndarray = np.zeros(num_channels, dtype=np.float32)
+        self._prev_action: int | None = None
+        self._step_count: int = 0
 
         # Pre-generate per-channel noise seeds for reproducibility
         self._rng = np.random.RandomState(42)
@@ -78,7 +81,7 @@ class Real5GEnv(gym.Env):
             raise FileNotFoundError(f"No CSV files found in {data_dir}")
 
         # First pass: collect all values for normalization
-        all_values = {col: [] for col in self.FEATURE_COLS}
+        all_values: Dict[str, list] = {col: [] for col in self.FEATURE_COLS}
         raw_traces = []
 
         for f in csv_files:
@@ -185,7 +188,7 @@ class Real5GEnv(gym.Env):
         }
         return self._history.copy(), info
 
-    def step(self, action: int):
+    def step(self, action: int):  # type: ignore[override]
         assert self.action_space.contains(action)
         self._step_count += 1
 

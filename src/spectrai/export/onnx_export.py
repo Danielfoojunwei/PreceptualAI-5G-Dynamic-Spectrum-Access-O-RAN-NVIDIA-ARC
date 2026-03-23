@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import logging
 import os
-import tempfile
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import torch
@@ -144,7 +143,7 @@ def _validate_onnx_output(
     """
     try:
         import onnxruntime as ort
-    except ImportError as exc:
+    except ImportError:
         logger.warning("onnxruntime not installed — skipping validation.")
         return
 

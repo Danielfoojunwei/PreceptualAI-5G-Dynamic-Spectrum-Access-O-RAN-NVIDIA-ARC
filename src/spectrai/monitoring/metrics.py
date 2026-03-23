@@ -16,7 +16,6 @@ from prometheus_client import (
     generate_latest,
 )
 
-
 # ---------------------------------------------------------------------------
 # Default registry (singleton metrics)
 # ---------------------------------------------------------------------------
@@ -184,4 +183,4 @@ def set_model_info(version: str, backend: str, path: str) -> None:
 
 def get_metrics_text() -> str:
     """Generate Prometheus text exposition from the custom registry."""
-    return generate_latest(REGISTRY).decode("utf-8")
+    return str(generate_latest(REGISTRY).decode("utf-8"))

@@ -135,12 +135,12 @@ class SimulatedDSAEnv(SpectrumEnv):
         """Advance each channel's ON/OFF Markov process by one step."""
         rand = self.np_random.random(self.num_channels)
         for ch in range(self.num_channels):
-            if self._channel_states[ch] == 0.0:
+            if self._channel_states[ch] == 0.0:  # type: ignore[index]
                 if rand[ch] < self._pu_on_probs[ch]:
-                    self._channel_states[ch] = 1.0
+                    self._channel_states[ch] = 1.0  # type: ignore[index]
             else:
                 if rand[ch] < self._pu_off_probs[ch]:
-                    self._channel_states[ch] = 0.0
+                    self._channel_states[ch] = 0.0  # type: ignore[index]
 
     # ------------------------------------------------------------------
     # Abstract interface implementation
@@ -162,6 +162,7 @@ class SimulatedDSAEnv(SpectrumEnv):
             np.ndarray of shape ``(num_channels * num_features,)``.
         """
         cfg = self._sim_cfg
+        assert self._channel_states is not None
         occupancy = self._channel_states.copy()
 
         noise_snr = (
@@ -188,6 +189,7 @@ class SimulatedDSAEnv(SpectrumEnv):
 
     def _get_observation(self) -> np.ndarray:
         """Return observation with configurable Gaussian noise."""
+        assert self._history is not None
         obs = self._history.copy()
         if self._sim_cfg.observation_noise_std > 0.0:
             obs += (
@@ -217,5 +219,6 @@ class SimulatedDSAEnv(SpectrumEnv):
             self._history[t] = self._build_features()
 
         obs = self._get_observation()
+        assert self._channel_states is not None
         info: Dict[str, Any] = {"channel_states": self._channel_states.copy()}
         return obs, info

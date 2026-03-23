@@ -6,7 +6,6 @@ loop.  Handles weight extraction, global weight application, local training,
 and evaluation.
 """
 
-import copy
 from collections import OrderedDict
 from typing import Any, Dict, Optional
 

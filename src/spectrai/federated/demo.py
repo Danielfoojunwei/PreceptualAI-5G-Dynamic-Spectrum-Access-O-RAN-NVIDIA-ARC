@@ -22,27 +22,25 @@ Usage:
 """
 
 import argparse
-import copy
 import glob
 import os
-import sys
 import time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib
+
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
 from spectrai.agent.sac_ltc import SACLTCAgent
 from spectrai.env.real_5g import Real5GEnv
-from spectrai.federated.aggregator import HybridFederatedAggregator, _is_tau_weight
+from spectrai.federated.aggregator import HybridFederatedAggregator
 from spectrai.federated.client import FederatedSACLTCClient
 from spectrai.federated.config import FLConfig
-
 
 # ======================================================================
 # Trace splitting (non-IID)
@@ -593,8 +591,8 @@ def plot_results(
     ax3 = fig.add_subplot(gs[0, 2])
     random_sr = exp2["random_metrics"]["success_rate"]
     global_sr = exp2["global_metrics"]["success_rate"]
-    random_rw = exp2["random_metrics"]["mean_reward"]
-    global_rw = exp2["global_metrics"]["mean_reward"]
+    _random_rw = exp2["random_metrics"]["mean_reward"]
+    _global_rw = exp2["global_metrics"]["mean_reward"]
 
     x_pos = [0, 1]
     bars_sr = ax3.bar(x_pos, [random_sr, global_sr], width=0.4, color=["gray", "green"],
@@ -779,7 +777,7 @@ def main() -> None:
         args.data_dir, num_devices=5, holdout_device=True
     )
 
-    print(f"\nTrace distribution:")
+    print("\nTrace distribution:")
     for i, traces in enumerate(device_traces):
         print(f"  Device {i}: {len(traces)} traces")
     if holdout_traces:

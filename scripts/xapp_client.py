@@ -70,7 +70,7 @@ def run_predictions(stub, num_requests, sequence_length, num_channels, num_featu
     latencies = np.array(latencies)
     actions = np.array(actions)
 
-    print(f"\n  --- Latency Stats ---")
+    print("\n  --- Latency Stats ---")
     print(f"  Mean:   {latencies.mean():.2f}ms")
     print(f"  P50:    {np.percentile(latencies, 50):.2f}ms")
     print(f"  P95:    {np.percentile(latencies, 95):.2f}ms")
@@ -79,7 +79,7 @@ def run_predictions(stub, num_requests, sequence_length, num_channels, num_featu
     print(f"  Max:    {latencies.max():.2f}ms")
 
     channel_counts = np.bincount(actions, minlength=num_channels)
-    print(f"\n  --- Channel Distribution ---")
+    print("\n  --- Channel Distribution ---")
     for ch, count in enumerate(channel_counts):
         bar = "#" * int(count / num_requests * 50)
         print(f"  Ch {ch}: {count:>4d} ({count/num_requests*100:>5.1f}%) {bar}")
@@ -89,7 +89,7 @@ def run_predictions(stub, num_requests, sequence_length, num_channels, num_featu
 
 def run_metrics(stub):
     """Get xApp metrics."""
-    print(f"\n=== Metrics ===")
+    print("\n=== Metrics ===")
     request = spectrai_pb2.MetricsRequest()
     response = stub.GetMetrics(request)
     print(f"  Predictions:  {response.predictions_total}")
@@ -129,15 +129,15 @@ def main():
     )
 
     # 3. Metrics
-    metrics = run_metrics(stub)
+    run_metrics(stub)
 
-    print(f"\n=== Summary ===")
-    print(f"  xApp Status:        SERVING")
+    print("\n=== Summary ===")
+    print("  xApp Status:        SERVING")
     print(f"  Backend:            {health.backend}")
     print(f"  Requests Sent:      {args.num_requests}")
     print(f"  Mean Latency:       {latencies.mean():.2f}ms")
     print(f"  P99 Latency:        {np.percentile(latencies, 99):.2f}ms")
-    print(f"  Near-RT RIC Budget: 10ms")
+    print("  Near-RT RIC Budget: 10ms")
     print(f"  Status:             {'PASS' if np.percentile(latencies, 99) < 10 else 'REVIEW'}")
 
     channel.close()

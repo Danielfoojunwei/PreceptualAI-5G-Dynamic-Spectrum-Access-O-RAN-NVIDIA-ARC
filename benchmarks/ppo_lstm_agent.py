@@ -11,13 +11,11 @@ timestep's features as a 1-D observation vector, letting the LSTM
 accumulate history across steps.
 """
 
-from typing import Dict, Optional, Tuple
 
 import gymnasium as gym
 import numpy as np
-from gymnasium import spaces
-
 from dsa_env import DSAEnv
+from gymnasium import spaces
 
 try:
     from sb3_contrib import RecurrentPPO

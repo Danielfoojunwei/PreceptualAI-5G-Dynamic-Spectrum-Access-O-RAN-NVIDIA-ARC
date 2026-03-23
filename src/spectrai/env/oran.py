@@ -23,8 +23,8 @@ from spectrai.env.base import SpectrumEnv, SpectrumEnvConfig
 # Optional imports — ricxappframe may not be installed in all environments
 # ---------------------------------------------------------------------------
 try:
-    from ricxappframe.xapp_frame import RMRXapp
     from ricxappframe.e2ap.asn1 import IndicationMsg
+    from ricxappframe.xapp_frame import RMRXapp
 
     _HAS_RIC = True
 except ImportError:
@@ -165,7 +165,7 @@ class SpectrAIxApp:
         cfg = self.config
 
         # Parse the indication header and message
-        hdr = ind_msg.indication_header
+        _hdr = ind_msg.indication_header
         msg = ind_msg.indication_message
 
         # E2SM-KPM Format 1: measInfoList contains metric definitions,
@@ -202,7 +202,7 @@ class SpectrAIxApp:
         sinr = metrics.get("L1M.RS-SINR", np.zeros(nc, dtype=np.float32))
         prb_used = metrics.get("RRU.PrbUsedDl", np.zeros(nc, dtype=np.float32))
         prb_avail = metrics.get("RRU.PrbAvailDl", np.ones(nc, dtype=np.float32))
-        thp_dl = metrics.get("DRB.UEThpDl", np.zeros(nc, dtype=np.float32))
+        _thp_dl = metrics.get("DRB.UEThpDl", np.zeros(nc, dtype=np.float32))
 
         # Derive occupancy from SINR and PRB usage
         prb_ratio = np.where(prb_avail > 0, prb_used / prb_avail, 1.0)
@@ -239,8 +239,6 @@ class SpectrAIxApp:
         The control message instructs the gNB to allocate the selected
         channel (PRB group) to the secondary user.
         """
-        cfg = self.config
-
         # Build RC control header
         rc_header = {
             "controlActionId": 1,
@@ -320,7 +318,7 @@ class SpectrAIxApp:
         }
 
         response = self._xapp.subscription_create(sub_params)
-        sub_id = response.get("subscriptionId", "unknown")
+        sub_id: str = response.get("subscriptionId", "unknown")
         return sub_id
 
     def _unsubscribe_kpm(self) -> None:

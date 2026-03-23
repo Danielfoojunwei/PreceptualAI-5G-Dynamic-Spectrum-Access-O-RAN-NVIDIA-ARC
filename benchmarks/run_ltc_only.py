@@ -11,7 +11,7 @@ import torch
 os.environ["PYTHONUNBUFFERED"] = "1"
 sys.path.insert(0, os.path.dirname(__file__))
 
-from benchmark import make_agent, evaluate_agent, train_off_policy
+from benchmark import evaluate_agent, make_agent, train_off_policy
 from dsa_env import DSAEnv
 
 ENV_CFG = {
@@ -54,7 +54,7 @@ def main():
     }
 
     print(f"\n{'='*60}", flush=True)
-    print(f"AGENT: sac_ltc (Liquid Time-Constant)", flush=True)
+    print("AGENT: sac_ltc (Liquid Time-Constant)", flush=True)
     print(f"{'='*60}", flush=True)
 
     for i, seed in enumerate(SEEDS):

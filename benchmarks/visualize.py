@@ -16,10 +16,11 @@ import argparse
 import json
 import os
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict
 
-import numpy as np
 import matplotlib
+import numpy as np
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator

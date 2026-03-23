@@ -11,7 +11,6 @@ import torch
 from spectrai.agent.sac_ltc import SACLTCAgent
 from spectrai.env.sim import SimulatedDSAEnv
 
-
 # ---------------------------------------------------------------------------
 # Device
 # ---------------------------------------------------------------------------

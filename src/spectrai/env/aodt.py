@@ -15,7 +15,7 @@ Requires:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 from pydantic import Field
@@ -36,9 +36,9 @@ except ImportError:
     _HAS_CUPY = False
 
 try:
-    from aerial.phy5g.ldpc import LDPCEncoder, LDPCDecoder
-    from aerial.phy5g.ofdm import OFDMModulator, OFDMDemodulator
     from aerial.phy5g.chest import ChannelEstimator as PyAerialChannelEstimateGenerator
+    from aerial.phy5g.ldpc import LDPCDecoder, LDPCEncoder  # noqa: F401
+    from aerial.phy5g.ofdm import OFDMDemodulator, OFDMModulator  # noqa: F401
 
     _HAS_PYAERIAL = True
 except ImportError:
@@ -46,9 +46,9 @@ except ImportError:
     _HAS_PYAERIAL = False
 
 try:
-    import sionna
-    from sionna.channel.tr38901 import UMa as SionnaUMa
+    import sionna  # noqa: F401
     from sionna.channel import OFDMChannel
+    from sionna.channel.tr38901 import UMa as SionnaUMa
 
     _HAS_SIONNA = True
 except ImportError:
@@ -327,6 +327,7 @@ class AODTEnv(SpectrumEnv):
 
     def _step_pu_states(self) -> None:
         """Advance PU Markov chains."""
+        assert self._pu_states is not None
         rand = self.np_random.random(self.num_channels)
         for ch in range(self.num_channels):
             if self._pu_states[ch] == 0.0:
@@ -359,9 +360,10 @@ class AODTEnv(SpectrumEnv):
         )
 
         # Compute per-channel signal power from channel gain
-        signal_power = np.mean(np.abs(h_freq) ** 2, axis=(1, 2))  # (num_channels,)
+        _signal_power = np.mean(np.abs(h_freq) ** 2, axis=(1, 2))  # (num_channels,)
 
         # PU interference: occupied channels add interference
+        assert self._pu_states is not None
         pu_interference = self._pu_states * 0.5  # interference from active PUs
         noise_power_base = 0.01  # thermal noise floor (linear)
         total_noise = noise_power_base + pu_interference
@@ -403,6 +405,10 @@ class AODTEnv(SpectrumEnv):
         """
         cfg = self._aodt_cfg
         snr_min, snr_max = cfg.snr_range_db
+
+        assert self._snr_linear is not None
+        assert self._interference_linear is not None
+        assert self._channel_states is not None
 
         # Normalise SNR to [0, 1]
         snr_norm = np.clip(
@@ -451,6 +457,7 @@ class AODTEnv(SpectrumEnv):
             self._history[t] = self._build_features()
 
         obs = self._get_observation()
+        assert self._channel_states is not None
         info: Dict[str, Any] = {
             "channel_states": self._channel_states.copy(),
             "snr_db": self._snr_linear.copy() if self._snr_linear is not None else None,

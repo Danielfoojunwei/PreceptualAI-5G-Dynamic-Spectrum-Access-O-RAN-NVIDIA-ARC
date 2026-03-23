@@ -330,8 +330,8 @@ class HybridFederatedAggregator:
             for k in global_tau_comp:
                 g = global_tau_comp[k]
                 if k in local_tau_comp:
-                    l = local_tau_comp[k]
-                    merged[k] = ratio * g + (1.0 - ratio) * l
+                    local_val = local_tau_comp[k]
+                    merged[k] = ratio * g + (1.0 - ratio) * local_val
                 else:
                     merged[k] = g  # fallback to global if key missing locally
 
