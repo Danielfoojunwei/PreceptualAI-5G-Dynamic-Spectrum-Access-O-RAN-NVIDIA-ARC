@@ -14,7 +14,7 @@ Features extracted from real data:
 
 import glob
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 import gymnasium as gym
 import numpy as np
@@ -66,7 +66,7 @@ class Real5GEnv(gym.Env):
             (sequence_length, num_channels * self.num_features), dtype=np.float32
         )
         self._channel_quality: np.ndarray = np.zeros(num_channels, dtype=np.float32)
-        self._prev_action: int | None = None
+        self._prev_action: Optional[int] = None
         self._step_count: int = 0
 
         # Pre-generate per-channel noise seeds for reproducibility
