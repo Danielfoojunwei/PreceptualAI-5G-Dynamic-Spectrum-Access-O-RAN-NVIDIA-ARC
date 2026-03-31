@@ -50,7 +50,7 @@ Trained and validated on 188,000 real 5G measurements from 83 operator traces (U
 
 Three forces are converging to create a market window that did not exist 18 months ago:
 
-| Catalyst | What Changed | SpectrAI Advantage |
+| Catalyst | What Changed | Preceptual.ai Advantage |
 |---|---|---|
 | **NVIDIA Aerial SDK open-sourced** | GPU-accelerated RAN is now accessible to startups, not just Nokia/Ericsson | First xApp optimized for ARC-Compact (L4) and ARC-Pro (Blackwell RTX PRO) |
 | **O-RAN R2/R3 maturity** | Near-RT RIC interfaces are standardized; xApp marketplace is real | Production gRPC server with < 4ms P99, fits inside 10ms RIC budget |
