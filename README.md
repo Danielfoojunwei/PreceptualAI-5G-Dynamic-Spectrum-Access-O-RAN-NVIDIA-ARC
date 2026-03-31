@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">SpectrAI</h1>
+  <h1 align="center">Preceptual.ai</h1>
   <p align="center"><strong>The Intelligent Spectrum Engine for 6G-Ready Networks</strong></p>
   <p align="center">
     AI-native dynamic spectrum management that learns the physics of your RF environment — <br/>
