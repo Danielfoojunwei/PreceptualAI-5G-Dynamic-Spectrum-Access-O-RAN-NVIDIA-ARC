@@ -29,7 +29,7 @@
 
 ---
 
-## Why SpectrAI?
+## Why Preceptual.ai?
 
 The $37B AI-RAN market is building spectrum management on architectures designed for image classification. Fixed-timestep LSTMs and attention models treat RF environments as sequences of tokens. They are not. Radio spectrum is a continuous-time dynamical system — and SpectrAI is the first xApp that treats it as one.
 
