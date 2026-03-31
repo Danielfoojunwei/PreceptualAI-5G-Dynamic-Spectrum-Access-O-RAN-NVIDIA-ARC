@@ -112,7 +112,7 @@ The SAC-LTC agent uses Soft Actor-Critic with automatic entropy tuning. The LTC 
 
 ## Federated Learning Flywheel
 
-SpectrAI's federated protocol is not standard FedAvg. It is a **hybrid aggregation** designed specifically for LTC networks:
+Preceptual.ai's federated protocol is not standard FedAvg. It is a **hybrid aggregation** designed specifically for LTC networks:
 
 ```mermaid
 graph TB
@@ -339,7 +339,7 @@ Full protobuf definitions: [`proto/spectrai.proto`](proto/spectrai.proto) | [`pr
 
 ## Configuration
 
-SpectrAI uses a Pydantic-validated configuration schema:
+Preceptual.ai uses a Pydantic-validated configuration schema:
 
 | Section | Parameter | Default | Description |
 |---|---|---|---|
@@ -366,7 +366,7 @@ cfg = SpectralConfig.from_yaml_file("config.yaml")
 
 ## Pricing
 
-SpectrAI follows an **open-core model** designed for land-and-expand within telecom operators:
+Preceptual.ai follows an **open-core model** designed for land-and-expand within telecom operators:
 
 | Tier | What's Included | Price |
 |---|---|---|
