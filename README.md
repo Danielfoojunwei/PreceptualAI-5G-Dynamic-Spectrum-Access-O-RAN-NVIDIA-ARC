@@ -31,15 +31,15 @@
 
 ## Why Preceptual.ai?
 
-The $37B AI-RAN market is building spectrum management on architectures designed for image classification. Fixed-timestep LSTMs and attention models treat RF environments as sequences of tokens. They are not. Radio spectrum is a continuous-time dynamical system — and SpectrAI is the first xApp that treats it as one.
+The $37B AI-RAN market is building spectrum management on architectures designed for image classification. Fixed-timestep LSTMs and attention models treat RF environments as sequences of tokens. They are not. Radio spectrum is a continuous-time dynamical system — and Preceptual.ai is the first xApp that treats it as one.
 
 ### Three Structural Moats
 
 **1. Continuous-Time LTC Encoder**
-SpectrAI's core is a Liquid Time-Constant neural ODE whose time constants are *input-dependent*. When PU activity spikes, the network integrates observations faster. During quiet periods, it retains longer memory. No other production xApp adapts its temporal resolution to the RF environment in real time.
+Preceptual.ai's core is a Liquid Time-Constant neural ODE whose time constants are *input-dependent*. When PU activity spikes, the network integrates observations faster. During quiet periods, it retains longer memory. No other production xApp adapts its temporal resolution to the RF environment in real time.
 
 **2. Hybrid Federated Aggregation**
-Operators will never ship raw spectrum data to a cloud. SpectrAI's federated learning protocol splits model weights into two classes: structural weights (globally averaged across all sites) and tau weights (personalized per deployment). Every new operator makes the global model smarter without exposing a single IQ sample.
+Operators will never ship raw spectrum data to a cloud. Preceptual.ai's federated learning protocol splits model weights into two classes: structural weights (globally averaged across all sites) and tau weights (personalized per deployment). Every new operator makes the global model smarter without exposing a single IQ sample.
 
 **3. Real-Data Flywheel**
 Trained and validated on 188,000 real 5G measurements from 83 operator traces (UCC MISL dataset, Irish mobile network). Every federated participant adds real-world diversity. Synthetic-only competitors cannot replicate this distributional coverage.
@@ -64,7 +64,7 @@ The RIC platform market is growing from $0.67B (2025) to $7.09B (2030) at 60% CA
 
 ### The LTC Cell
 
-At the heart of SpectrAI is a biologically-inspired neural ODE cell. Unlike LSTMs with fixed gate timescales, each LTC cell computes an input-dependent time constant that controls how fast the hidden state evolves:
+At the heart of Preceptual.ai is a biologically-inspired neural ODE cell. Unlike LSTMs with fixed gate timescales, each LTC cell computes an input-dependent time constant that controls how fast the hidden state evolves:
 
 ```
 f(x, h)  = tanh(W_h * h + W_x * x + b)            # nonlinear activation target
