@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/spectrai-project/spectrai/actions/workflows/ci.yaml"><img src="https://github.com/spectrai-project/spectrai/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/preceptualai-project/preceptualai/actions/workflows/ci.yaml"><img src="https://github.com/preceptualai-project/preceptualai/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python 3.10+"></a>
   <a href="https://ghcr.io"><img src="https://img.shields.io/badge/docker-ghcr.io-blue.svg" alt="Docker"></a>
@@ -56,7 +56,7 @@ Three forces are converging to create a market window that did not exist 18 mont
 | **O-RAN R2/R3 maturity** | Near-RT RIC interfaces are standardized; xApp marketplace is real | Production gRPC server with < 4ms P99, fits inside 10ms RIC budget |
 | **Spectrum crisis at scale** | 5G mid-band exhaustion, CBRS congestion, 6G upper-mid-band planning | Continuous-time ODE formulation generalizes across band plans without retraining |
 
-The RIC platform market is growing from $0.67B (2025) to $7.09B (2030) at 60% CAGR. SpectrAI is positioned at the intersection of the two fastest-growing segments: AI-RAN software and O-RAN xApp ecosystems.
+The RIC platform market is growing from $0.67B (2025) to $7.09B (2030) at 60% CAGR. PreceptualAI is positioned at the intersection of the two fastest-growing segments: AI-RAN software and O-RAN xApp ecosystems.
 
 ---
 
@@ -81,7 +81,7 @@ h_new    = h + (dt / tau(x)) * (-h + f(x, h))      # Euler step of the neural OD
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    SpectrAI xApp                        │
+│                    PreceptualAI xApp                        │
 │                                                         │
 │  ┌──────────────┐    ┌──────────────┐                   │
 │  │   Spectrum    │    │  Multi-Layer │    ┌───────────┐  │
@@ -168,7 +168,7 @@ graph TB
 
 ```bash
 # 1. Install
-git clone https://github.com/spectrai-project/spectrai.git && cd spectrai
+git clone https://github.com/preceptualai-project/preceptualai.git && cd preceptualai
 pip install -e ".[dev]"
 
 # 2. Verify (74 tests)
@@ -178,10 +178,10 @@ pytest tests/ -v
 python scripts/train.py --num_steps 50000 --seed 42
 
 # 4. Export
-python -c "from spectrai.export import export_actor_to_onnx; print('Export ready')"
+python -c "from preceptualai.export import export_actor_to_onnx; print('Export ready')"
 
 # 5. Serve
-python -m spectrai.xapp.server --model models/actor.onnx --port 50051
+python -m preceptualai.xapp.server --model models/actor.onnx --port 50051
 ```
 
 For custom training configurations:
@@ -208,9 +208,9 @@ graph LR
         E3[Site N<br/>NVIDIA ARC-Pro]
     end
 
-    subgraph SpectrAI Cloud
-        GRPC[gRPC Gateway<br/>spectrai.proto]
-        FL[FL Aggregator<br/>spectrai_fl.proto]
+    subgraph PreceptualAI Cloud
+        GRPC[gRPC Gateway<br/>preceptualai.proto]
+        FL[FL Aggregator<br/>preceptualai_fl.proto]
         PROM[Prometheus<br/>Metrics]
         GLOB[Global Model<br/>Registry]
     end
@@ -268,18 +268,18 @@ python benchmarks/visualize.py --results_dir benchmarks/results
 
 ```bash
 # Build the image
-docker build -f docker/Dockerfile -t spectrai:latest .
+docker build -f docker/Dockerfile -t preceptualai:latest .
 
 # Run training
-docker run --rm spectrai:latest python scripts/train.py --num_steps 100000
+docker run --rm preceptualai:latest python scripts/train.py --num_steps 100000
 
 # Run inference server
-docker run --rm -p 50051:50051 -p 9090:9090 spectrai:latest \
-    python -m spectrai.xapp.server --model /app/models/actor.onnx
+docker run --rm -p 50051:50051 -p 9090:9090 preceptualai:latest \
+    python -m preceptualai.xapp.server --model /app/models/actor.onnx
 
 # Run with GPU (NVIDIA ARC)
-docker run --rm --gpus all -p 50051:50051 spectrai:latest \
-    python -m spectrai.xapp.server --model /app/models/actor.onnx --backend tensorrt
+docker run --rm --gpus all -p 50051:50051 preceptualai:latest \
+    python -m preceptualai.xapp.server --model /app/models/actor.onnx --backend tensorrt
 ```
 
 ### NVIDIA ARC Hardware Support
@@ -292,13 +292,13 @@ docker run --rm --gpus all -p 50051:50051 spectrai:latest \
 
 ```bash
 # Install GPU dependencies
-pip install spectrai[gpu]
+pip install preceptualai[gpu]
 
 # Export to TensorRT
-python -m spectrai.export.tensorrt --onnx models/actor.onnx --output models/actor.trt
+python -m preceptualai.export.tensorrt --onnx models/actor.onnx --output models/actor.trt
 
 # Verify on ARC hardware
-python -m spectrai.xapp.server --model models/actor.trt --backend tensorrt --port 50051
+python -m preceptualai.xapp.server --model models/actor.trt --backend tensorrt --port 50051
 ```
 
 ### O-RAN RIC Integration
@@ -308,13 +308,13 @@ python -m spectrai.xapp.server --model models/actor.trt --backend tensorrt --por
 3. **Infer** channel selections using the exported ONNX/TensorRT model
 4. **Control** via E2 control messages back to the E2 node
 
-See [`src/spectrai/xapp/`](src/spectrai/xapp/) for the full integration layer.
+See [`src/preceptualai/xapp/`](src/preceptualai/xapp/) for the full integration layer.
 
 ---
 
 ## gRPC API
 
-### Inference Service (`spectrai.proto`)
+### Inference Service (`preceptualai.proto`)
 
 | Method | Type | Description |
 |---|---|---|
@@ -323,7 +323,7 @@ See [`src/spectrai/xapp/`](src/spectrai/xapp/) for the full integration layer.
 | `GetHealth` | Unary | Liveness/readiness probe with model metadata |
 | `GetMetrics` | Unary | Prometheus-compatible metrics snapshot |
 
-### Federated Learning Service (`spectrai_fl.proto`)
+### Federated Learning Service (`preceptualai_fl.proto`)
 
 | Method | Type | Description |
 |---|---|---|
@@ -333,7 +333,7 @@ See [`src/spectrai/xapp/`](src/spectrai/xapp/) for the full integration layer.
 | `GetFLStatus` | Unary | Federation status, round history, device health |
 | `StreamTrainingMetrics` | Server streaming | Real-time per-round aggregation metrics |
 
-Full protobuf definitions: [`proto/spectrai.proto`](proto/spectrai.proto) | [`proto/spectrai_fl.proto`](proto/spectrai_fl.proto)
+Full protobuf definitions: [`proto/preceptualai.proto`](proto/preceptualai.proto) | [`proto/preceptualai_fl.proto`](proto/preceptualai_fl.proto)
 
 ---
 
@@ -357,7 +357,7 @@ Preceptual.ai uses a Pydantic-validated configuration schema:
 | `agent` | `batch_size` | 256 | Mini-batch size |
 
 ```python
-from spectrai.config import SpectralConfig
+from preceptualai.config import SpectralConfig
 
 cfg = SpectralConfig.from_yaml_file("config.yaml")
 ```
@@ -393,7 +393,7 @@ The Community tier is a complete, production-grade xApp — not a crippled demo.
 
 ```
 SAC-LTC/
-├── src/spectrai/
+├── src/preceptualai/
 │   ├── core/           # LTC cell, encoder, actor, critic, replay buffer
 │   ├── agent/          # SAC-LTC agent
 │   ├── env/            # Gymnasium environments (sim, O-RAN, AODT)
@@ -428,14 +428,14 @@ Please read our contribution guidelines and ensure all tests pass before submitt
 ## Citation
 
 ```bibtex
-@inproceedings{spectrai2026,
-  title     = {SpectrAI: Soft Actor-Critic with Liquid Time-Constant Networks
+@inproceedings{preceptualai2026,
+  title     = {PreceptualAI: Soft Actor-Critic with Liquid Time-Constant Networks
                for AI-Native Dynamic Spectrum Access in O-RAN},
-  author    = {SpectrAI Contributors},
+  author    = {PreceptualAI Contributors},
   year      = {2026},
   note      = {Continuous-time neural ODE encoder with hybrid federated
                aggregation for real-time spectrum management on NVIDIA ARC},
-  url       = {https://github.com/spectrai-project/spectrai}
+  url       = {https://github.com/preceptualai-project/preceptualai}
 }
 ```
 
@@ -453,5 +453,5 @@ Apache 2.0 — see [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-  <strong>SpectrAI</strong> — Because spectrum is a continuous-time problem, and your xApp should be too.
+  <strong>PreceptualAI</strong> — Because spectrum is a continuous-time problem, and your xApp should be too.
 </p>

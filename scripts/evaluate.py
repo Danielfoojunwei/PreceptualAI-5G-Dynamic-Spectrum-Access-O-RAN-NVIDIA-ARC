@@ -1,5 +1,5 @@
 """
-Evaluation for trained SpectrAI SAC-LTC agents.
+Evaluation for trained PreceptualAI SAC-LTC agents.
 
 Usage:
     python scripts/evaluate.py --checkpoint results/checkpoint_final.pt
@@ -16,12 +16,12 @@ import torch
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from spectrai.agent.sac_ltc import SACLTCAgent
-from spectrai.env.sim import SimulatedDSAEnv
+from preceptualai.agent.sac_ltc import SACLTCAgent
+from preceptualai.env.sim import SimulatedDSAEnv
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Evaluate SpectrAI SAC-LTC agent")
+    p = argparse.ArgumentParser(description="Evaluate PreceptualAI SAC-LTC agent")
     p.add_argument("--checkpoint", type=str, required=True, help="Path to .pt checkpoint")
     p.add_argument("--curves", type=str, default=None,
                    help="Path to training_curves.json (auto-detected if omitted)")
@@ -103,7 +103,7 @@ def plot_eval_metrics(metrics: dict, output_path: str):
                label=f"Mean = {metrics['mean_reward']:.1f}")
     ax.set_xlabel("Episode Reward")
     ax.set_ylabel("Count")
-    ax.set_title("SpectrAI Evaluation Reward Distribution")
+    ax.set_title("PreceptualAI Evaluation Reward Distribution")
     ax.legend()
 
     ax = axes[1]
@@ -163,7 +163,7 @@ def main():
     metrics = run_evaluation(env, agent, args.num_episodes)
 
     print("\n" + "=" * 50)
-    print("SPECTRAI EVALUATION RESULTS")
+    print("PRECEPTUALAI EVALUATION RESULTS")
     print("=" * 50)
     print(f"  Episodes          : {args.num_episodes}")
     print(f"  Mean Reward       : {metrics['mean_reward']:.2f} ± {metrics['std_reward']:.2f}")

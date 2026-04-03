@@ -1,12 +1,12 @@
-# SpectrAI Pricing Model
+# PreceptualAI Pricing Model
 
 ---
 
 ## Pricing Philosophy
 
-SpectrAI follows an **open-core** model. The complete SAC-LTC agent, training pipeline, ONNX export, gRPC inference server, and Prometheus monitoring are free and open source under the Apache 2.0 license. This is not a crippled demo — it is a production-grade xApp that can run on a single cell site or in a lab environment with zero cost.
+PreceptualAI follows an **open-core** model. The complete SAC-LTC agent, training pipeline, ONNX export, gRPC inference server, and Prometheus monitoring are free and open source under the Apache 2.0 license. This is not a crippled demo — it is a production-grade xApp that can run on a single cell site or in a lab environment with zero cost.
 
-Paid tiers add the capabilities that matter at fleet scale: federated learning across thousands of cell sites, per-site model personalization, enterprise support, and NVIDIA ARC optimization. The pricing is designed so that the free tier gets operators to evaluate and validate SpectrAI, and the paid tiers unlock the compounding value that comes from multi-site deployment.
+Paid tiers add the capabilities that matter at fleet scale: federated learning across thousands of cell sites, per-site model personalization, enterprise support, and NVIDIA ARC optimization. The pricing is designed so that the free tier gets operators to evaluate and validate PreceptualAI, and the paid tiers unlock the compounding value that comes from multi-site deployment.
 
 **Guiding principles:**
 1. The free tier must be genuinely useful, not a marketing ploy
@@ -20,7 +20,7 @@ Paid tiers add the capabilities that matter at fleet scale: federated learning a
 
 ### Community Edition — Free (Apache 2.0)
 
-**For:** Researchers, individual developers, operators evaluating SpectrAI, small private 5G deployments.
+**For:** Researchers, individual developers, operators evaluating PreceptualAI, small private 5G deployments.
 
 | Capability | Included |
 |---|---|
@@ -41,7 +41,7 @@ Paid tiers add the capabilities that matter at fleet scale: federated learning a
 
 ### Pro — $120 / cell site / year
 
-**For:** Operators running SpectrAI at 100-10,000 cell sites who need production support and GPU optimization but can manage their own FL infrastructure.
+**For:** Operators running PreceptualAI at 100-10,000 cell sites who need production support and GPU optimization but can manage their own FL infrastructure.
 
 | Capability | Included |
 |---|---|
@@ -71,7 +71,7 @@ Paid tiers add the capabilities that matter at fleet scale: federated learning a
 
 ### Enterprise — $300 / cell site / year
 
-**For:** Tier-1 and Tier-2 operators deploying SpectrAI across 10,000+ cell sites who need federated learning, per-site personalization, and dedicated support.
+**For:** Tier-1 and Tier-2 operators deploying PreceptualAI across 10,000+ cell sites who need federated learning, per-site personalization, and dedicated support.
 
 | Capability | Included |
 |---|---|
@@ -138,7 +138,7 @@ At scale, the cost per site decreases because FL aggregation compute, support in
 | Number of cell sites | 10,000 | 25,000 | 50,000 |
 | Spectrum asset value (per site) | $100,000 | $100,000 | $100,000 |
 | Spectral efficiency improvement | 0.5% | 1.0% | 1.4% |
-| SpectrAI tier | Pro | Enterprise | Enterprise |
+| PreceptualAI tier | Pro | Enterprise | Enterprise |
 | Per-site price (with volume discount) | $108 | $210 | $200 |
 
 ### Calculations
@@ -149,7 +149,7 @@ At scale, the cost per site decreases because FL aggregation compute, support in
 |---|---|
 | Annual spectrum value at risk | $1.0B (10K sites x $100K/site) |
 | Value of 0.5% improvement | $5.0M/year |
-| SpectrAI cost | $1.08M/year (10K x $108) |
+| PreceptualAI cost | $1.08M/year (10K x $108) |
 | **Net annual value** | **$3.92M** |
 | **ROI** | **363%** |
 | **Payback period** | **2.6 months** |
@@ -160,7 +160,7 @@ At scale, the cost per site decreases because FL aggregation compute, support in
 |---|---|
 | Annual spectrum value at risk | $2.5B |
 | Value of 1.0% improvement | $25.0M/year |
-| SpectrAI cost | $5.25M/year (25K x $210) |
+| PreceptualAI cost | $5.25M/year (25K x $210) |
 | **Net annual value** | **$19.75M** |
 | **ROI** | **376%** |
 | **Payback period** | **2.5 months** |
@@ -171,7 +171,7 @@ At scale, the cost per site decreases because FL aggregation compute, support in
 |---|---|
 | Annual spectrum value at risk | $5.0B |
 | Value of 1.4% improvement | $70.0M/year |
-| SpectrAI cost | $10.0M/year (50K x $200) |
+| PreceptualAI cost | $10.0M/year (50K x $200) |
 | **Net annual value** | **$60.0M** |
 | **ROI** | **600%** |
 | **Payback period** | **1.7 months** |
@@ -187,16 +187,16 @@ How ROI varies with efficiency improvement and deployment size:
 | 1.00% | 617% | 826% | 852% | 1350% |
 | 1.40% | 898% | 1196% | 1233% | 1950% |
 
-**Breakeven efficiency improvement** (where SpectrAI cost equals the value delivered):
+**Breakeven efficiency improvement** (where PreceptualAI cost equals the value delivered):
 
-| Deployment | SpectrAI Cost | Breakeven Improvement |
+| Deployment | PreceptualAI Cost | Breakeven Improvement |
 |---|---|---|
 | 5K sites, Pro | $540K | 0.11% |
 | 10K sites, Pro | $960K | 0.10% |
 | 25K sites, Enterprise | $5.25M | 0.21% |
 | 50K sites, Enterprise | $10.0M | 0.20% |
 
-SpectrAI's measured improvement of 1.4% is 7-14x the breakeven threshold, providing substantial margin of safety.
+PreceptualAI's measured improvement of 1.4% is 7-14x the breakeven threshold, providing substantial margin of safety.
 
 ---
 
@@ -204,7 +204,7 @@ SpectrAI's measured improvement of 1.4% is 7-14x the breakeven threshold, provid
 
 ### Build In-House
 
-| Factor | Build In-House | Buy SpectrAI (Enterprise) |
+| Factor | Build In-House | Buy PreceptualAI (Enterprise) |
 |---|---|---|
 | Initial investment | $2-5M (team of 5-8 engineers, 18-24 months) | $0 (evaluate Community free) |
 | Time to first deployment | 18-24 months | 4-8 weeks (with POC support) |
@@ -219,7 +219,7 @@ SpectrAI's measured improvement of 1.4% is 7-14x the breakeven threshold, provid
 
 ### Legacy SON (AirHopAI, Nokia MantaRay)
 
-| Factor | Legacy SON | SpectrAI Enterprise |
+| Factor | Legacy SON | PreceptualAI Enterprise |
 |---|---|---|
 | Architecture | Statistical ML, batch optimization | Continuous-time neural ODE, real-time RL |
 | Optimization interval | Minutes to hours | Milliseconds (3.14ms) |
@@ -231,11 +231,11 @@ SpectrAI's measured improvement of 1.4% is 7-14x the breakeven threshold, provid
 | Vendor lock-in | High (proprietary platform) | Low (open standards, portable) |
 | Estimated cost | $200-500/site/year | $200-300/site/year |
 
-**Verdict:** SpectrAI is architecturally superior and competitively priced compared to legacy SON solutions. The migration risk is mitigated by the open-source evaluation path.
+**Verdict:** PreceptualAI is architecturally superior and competitively priced compared to legacy SON solutions. The migration risk is mitigated by the open-source evaluation path.
 
 ### SD-RAN Platform (ONF, Mavenir)
 
-| Factor | SD-RAN Platform | SpectrAI Enterprise |
+| Factor | SD-RAN Platform | PreceptualAI Enterprise |
 |---|---|---|
 | Scope | Full RIC + multiple xApps | Spectrum management xApp only |
 | Cost | $500K-2M/year (platform license) | $2.4-10M/year (depends on site count) |
@@ -244,17 +244,17 @@ SpectrAI's measured improvement of 1.4% is 7-14x the breakeven threshold, provid
 | Open source | Partially (ONF) | Yes (Apache 2.0) |
 | Deployment complexity | High (full platform) | Low (single xApp on existing RIC) |
 
-**Verdict:** Not directly comparable. SD-RAN is a platform; SpectrAI is a specialized xApp. SpectrAI can run on top of SD-RAN platforms, complementing rather than replacing them.
+**Verdict:** Not directly comparable. SD-RAN is a platform; PreceptualAI is a specialized xApp. PreceptualAI can run on top of SD-RAN platforms, complementing rather than replacing them.
 
 ---
 
 ## Pricing FAQ
 
 **Q: Why per-cell-site pricing instead of per-CPU/GPU?**
-Per-site pricing aligns SpectrAI's revenue with the operator's value. An operator with 50,000 cell sites gets 50,000x the value of an operator with one site, so they should pay proportionally. Infrastructure-based pricing (per-CPU) would penalize efficient deployments and misalign incentives.
+Per-site pricing aligns PreceptualAI's revenue with the operator's value. An operator with 50,000 cell sites gets 50,000x the value of an operator with one site, so they should pay proportionally. Infrastructure-based pricing (per-CPU) would penalize efficient deployments and misalign incentives.
 
 **Q: What counts as a "cell site"?**
-A cell site is a unique gNodeB or eNodeB that SpectrAI manages. If a physical tower has three sectors, it counts as one cell site. Small cells and DAS (Distributed Antenna Systems) each count as one site. Private 5G deployments count each base station.
+A cell site is a unique gNodeB or eNodeB that PreceptualAI manages. If a physical tower has three sectors, it counts as one cell site. Small cells and DAS (Distributed Antenna Systems) each count as one site. Private 5G deployments count each base station.
 
 **Q: Is there a free trial for Pro/Enterprise?**
 Yes. We offer a 90-day free POC for operators evaluating Pro or Enterprise. The POC includes full feature access, onboarding support, and a dedicated Slack channel. No credit card required.
@@ -275,7 +275,7 @@ Yes. 2-year commitments receive an additional 5% discount. 3-year commitments re
 Government and defense customers receive custom pricing based on mission requirements. Contact sales for GSA schedule or SEWP pricing.
 
 **Q: Do you offer a managed service?**
-Not currently. SpectrAI is deployed on-premise within the operator's infrastructure. A managed cloud option for smaller operators is on the roadmap for 2028.
+Not currently. PreceptualAI is deployed on-premise within the operator's infrastructure. A managed cloud option for smaller operators is on the roadmap for 2028.
 
 **Q: What happens if we reduce cell sites?**
 Enterprise contracts are based on committed site counts. If your deployment shrinks below the committed count, the per-site rate remains the same for the remainder of the contract term. Expansion above the committed count is billed at the same rate or better (if the new total qualifies for a higher volume tier).
@@ -292,4 +292,4 @@ Enterprise contracts are based on committed site counts. If your deployment shri
 
 Volume discounts: 10% at 5K+ sites, 20% at 20K+, 30% at 50K+. Multi-year discounts: 5% for 2-year, 10% for 3-year.
 
-For custom pricing, enterprise POCs, or government contracts: **sales@spectrai.ai**
+For custom pricing, enterprise POCs, or government contracts: **sales@preceptualai.ai**

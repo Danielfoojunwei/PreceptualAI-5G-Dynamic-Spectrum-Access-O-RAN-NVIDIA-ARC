@@ -1,4 +1,4 @@
-# SAC-LTC Benchmarks — Research Documentation
+# Preceptual.ai Benchmarks — Research Documentation
 
 > Reproducible benchmark suite comparing **SAC-LTC** against SAC-LSTM, SAC-LFM,
 > and PPO-LSTM baselines on dynamic spectrum access tasks.

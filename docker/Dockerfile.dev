@@ -1,22 +1,22 @@
-# SpectrAI Development Container
+# PreceptualAI Development Container
 # ---------------------------------------------------------------------------
 # Includes all dev/test dependencies, linters, and a full build toolchain.
 # Mounts the source directory for live editing.
 #
 # Build:
-#   docker build -t spectrai-dev:latest -f docker/Dockerfile.dev .
+#   docker build -t preceptualai-dev:latest -f docker/Dockerfile.dev .
 #
 # Run:
 #   docker run -it --rm \
 #     -v "$(pwd)":/app \
 #     -p 50051:50051 -p 9090:9090 \
-#     spectrai-dev:latest bash
+#     preceptualai-dev:latest bash
 # ---------------------------------------------------------------------------
 
 FROM python:3.11-slim-bookworm
 
-LABEL maintainer="spectrai@example.com"
-LABEL org.opencontainers.image.description="SpectrAI development environment"
+LABEL maintainer="preceptualai@example.com"
+LABEL org.opencontainers.image.description="PreceptualAI development environment"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -69,13 +69,13 @@ COPY scripts/ /app/scripts/
 RUN pip install --no-cache-dir -e ".[dev,benchmarks]"
 
 # Generate proto stubs
-RUN mkdir -p /app/src/spectrai/proto && \
-    touch /app/src/spectrai/proto/__init__.py && \
+RUN mkdir -p /app/src/preceptualai/proto && \
+    touch /app/src/preceptualai/proto/__init__.py && \
     python -m grpc_tools.protoc \
         -Iproto \
-        --python_out=src/spectrai/proto \
-        --grpc_python_out=src/spectrai/proto \
-        proto/spectrai.proto \
+        --python_out=src/preceptualai/proto \
+        --grpc_python_out=src/preceptualai/proto \
+        proto/preceptualai.proto \
     || true
 
 # ---------------------------------------------------------------------------

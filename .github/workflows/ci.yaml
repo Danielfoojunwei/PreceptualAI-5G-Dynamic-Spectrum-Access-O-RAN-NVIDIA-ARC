@@ -52,7 +52,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run mypy
-        run: mypy src/spectrai/ --ignore-missing-imports
+        run: mypy src/preceptualai/ --ignore-missing-imports
 
   # -------------------------------------------------------------------
   # Test — pytest with coverage
@@ -74,7 +74,7 @@ jobs:
       - name: Run tests
         run: |
           pytest tests/ \
-            --cov=spectrai \
+            --cov=preceptualai \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
             -v --tb=short

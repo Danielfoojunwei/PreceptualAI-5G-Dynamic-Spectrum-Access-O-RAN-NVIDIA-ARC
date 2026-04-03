@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SpectrAI End-to-End Demo
+PreceptualAI End-to-End Demo
 ========================
 
 Demonstrates the full production pipeline:
@@ -30,13 +30,13 @@ import torch
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from spectrai.agent.sac_ltc import SACLTCAgent
-from spectrai.env.real_5g import Real5GEnv
-from spectrai.env.sim import SimulatedDSAEnv
+from preceptualai.agent.sac_ltc import SACLTCAgent
+from preceptualai.env.real_5g import Real5GEnv
+from preceptualai.env.sim import SimulatedDSAEnv
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="SpectrAI End-to-End Demo")
+    p = argparse.ArgumentParser(description="PreceptualAI End-to-End Demo")
     p.add_argument("--data_dir", type=str, default=None,
                    help="Path to 5G-production-dataset directory (real data mode)")
     p.add_argument("--num_steps", type=int, default=10000)
@@ -196,10 +196,10 @@ def export_onnx(agent, output_dir, sequence_length, input_dim):
     """Export trained actor to ONNX format."""
     banner("PHASE 3: Exporting model to ONNX")
 
-    onnx_path = os.path.join(output_dir, "spectrai_actor.onnx")
+    onnx_path = os.path.join(output_dir, "preceptualai_actor.onnx")
 
     try:
-        from spectrai.export.onnx import export_actor_to_onnx
+        from preceptualai.export.onnx import export_actor_to_onnx
         export_actor_to_onnx(
             agent.actor,
             input_shape=(1, sequence_length, input_dim),
@@ -212,7 +212,7 @@ def export_onnx(agent, output_dir, sequence_length, input_dim):
     except Exception as e:
         print(f"  ONNX export failed: {e}")
         # Fallback: save PyTorch checkpoint
-        pt_path = os.path.join(output_dir, "spectrai_actor.pt")
+        pt_path = os.path.join(output_dir, "preceptualai_actor.pt")
         agent.save(pt_path)
         print(f"  Saved PyTorch checkpoint instead: {pt_path}")
         return pt_path
@@ -283,7 +283,7 @@ def visualize_results(train_metrics, eval_metrics, eval_rewards, actions,
     banner("PHASE 5: Generating visualizations")
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-    fig.suptitle("SpectrAI — End-to-End Demo Results", fontsize=16, fontweight="bold")
+    fig.suptitle("PreceptualAI — End-to-End Demo Results", fontsize=16, fontweight="bold")
 
     # 1. Training curve
     ax = axes[0, 0]
@@ -347,7 +347,7 @@ def visualize_results(train_metrics, eval_metrics, eval_rewards, actions,
     ax = axes[1, 2]
     ax.axis("off")
     summary = (
-        "SpectrAI Demo Summary\n"
+        "PreceptualAI Demo Summary\n"
         "─────────────────────\n"
         f"Success Rate:    {eval_metrics['success_rate']:.1%}\n"
         f"Collision Rate:  {eval_metrics['collision_rate']:.1%}\n"
@@ -387,7 +387,7 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    banner("SpectrAI — AI-Native Dynamic Spectrum Management")
+    banner("PreceptualAI — AI-Native Dynamic Spectrum Management")
     print(f"  Device: {device}")
     print(f"  Seed: {args.seed}")
 
@@ -468,7 +468,7 @@ def main():
     banner("DEMO COMPLETE")
     print(f"  Output directory: {args.output_dir}/")
     print("  - checkpoint.pt      (trained model)")
-    print("  - spectrai_actor.onnx (ONNX export)")
+    print("  - preceptualai_actor.onnx (ONNX export)")
     print("  - demo_results.png   (visualization)")
     print("  - demo_metrics.json  (all metrics)")
     print()

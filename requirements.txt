@@ -1,4 +1,6 @@
-# SpectrAI Runtime Dependencies
+# PreceptualAI Runtime Dependencies
+# Note: UHCI requirements (torch-geometric, torch-scatter, torch-sparse) are optional.
+# Install via: pip install -e ".[uhci]"
 torch>=2.1.0
 numpy>=1.24.3
 gymnasium>=0.29.1

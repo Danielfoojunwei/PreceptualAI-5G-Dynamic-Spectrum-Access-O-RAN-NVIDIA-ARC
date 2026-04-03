@@ -1,21 +1,21 @@
-# SpectrAI Production xApp Container
+# PreceptualAI Production xApp Container
 # ---------------------------------------------------------------------------
 # Runs the gRPC inference server with ONNX Runtime (or TensorRT if available).
 # Includes the RMR C library required by ricxappframe for O-RAN messaging.
 #
 # Build:
-#   docker build -t spectrai:latest -f docker/Dockerfile .
+#   docker build -t preceptualai:latest -f docker/Dockerfile .
 #
 # Run:
 #   docker run -p 50051:50051 -p 9090:9090 \
 #     -v ./models:/app/models \
-#     spectrai:latest --config /app/config.yaml
+#     preceptualai:latest --config /app/config.yaml
 # ---------------------------------------------------------------------------
 
 FROM python:3.11-slim-bookworm AS base
 
-LABEL maintainer="spectrai@example.com"
-LABEL org.opencontainers.image.description="SpectrAI xApp — AI-native spectrum management"
+LABEL maintainer="preceptualai@example.com"
+LABEL org.opencontainers.image.description="PreceptualAI xApp — AI-native spectrum management"
 
 # Prevent Python from buffering stdout/stderr
 ENV PYTHONUNBUFFERED=1 \
@@ -72,20 +72,20 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ---------------------------------------------------------------------------
-# Install SpectrAI package
+# Install PreceptualAI package
 # ---------------------------------------------------------------------------
 COPY pyproject.toml /app/pyproject.toml
 COPY src/ /app/src/
 COPY proto/ /app/proto/
 
 # Generate protobuf stubs (best-effort — may already be vendored)
-RUN mkdir -p /app/src/spectrai/proto && \
-    touch /app/src/spectrai/proto/__init__.py && \
+RUN mkdir -p /app/src/preceptualai/proto && \
+    touch /app/src/preceptualai/proto/__init__.py && \
     python -m grpc_tools.protoc \
         -Iproto \
-        --python_out=src/spectrai/proto \
-        --grpc_python_out=src/spectrai/proto \
-        proto/spectrai.proto \
+        --python_out=src/preceptualai/proto \
+        --grpc_python_out=src/preceptualai/proto \
+        proto/preceptualai.proto \
     || true
 
 RUN pip install --no-cache-dir -e .
@@ -104,5 +104,5 @@ RUN echo "newrt | start\nnewrt | end" > /app/routes.rt
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD python -c "import grpc; ch=grpc.insecure_channel('localhost:50051'); grpc.channel_ready_future(ch).result(timeout=3)" || exit 1
 
-ENTRYPOINT ["python", "-m", "spectrai.xapp.server"]
+ENTRYPOINT ["python", "-m", "preceptualai.xapp.server"]
 CMD ["--config", "/app/config.yaml"]

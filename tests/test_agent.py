@@ -65,7 +65,7 @@ class TestSaveLoadRoundtrip:
             assert os.path.isfile(path)
 
             # Create a fresh agent with same architecture
-            from spectrai.agent.sac_ltc import SACLTCAgent
+            from preceptualai.agent.sac_ltc import SACLTCAgent
 
             fresh = SACLTCAgent(
                 state_shape=(seq_len, input_dim),

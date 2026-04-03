@@ -1,6 +1,6 @@
-# SpectrAI User Guide
+# PreceptualAI User Guide
 
-Complete documentation for installing, training, deploying, and operating SpectrAI.
+Complete documentation for installing, training, deploying, and operating PreceptualAI.
 
 ---
 
@@ -47,20 +47,20 @@ pip install -e ".[dev]"
 ### Option 2: pip
 
 ```bash
-pip install spectrai
+pip install preceptualai
 ```
 
 ### Option 3: Docker
 
 ```bash
-docker pull ghcr.io/spectrai/spectrai:latest
-docker run --gpus all -p 50051:50051 -p 9090:9090 ghcr.io/spectrai/spectrai:latest
+docker pull ghcr.io/preceptualai/preceptualai:latest
+docker run --gpus all -p 50051:50051 -p 9090:9090 ghcr.io/preceptualai/preceptualai:latest
 ```
 
 ### Verify Installation
 
 ```bash
-python -c "import spectrai; print(spectrai.__version__)"
+python -c "import preceptualai; print(preceptualai.__version__)"
 pytest tests/ -v  # 76 tests should pass
 ```
 
@@ -81,7 +81,7 @@ python scripts/train.py --num_steps 5000
 python scripts/export_model.py --checkpoint results/checkpoint.pt
 
 # 4. Start the gRPC inference server
-python -m spectrai.xapp.server --config xapp_config.yaml
+python -m preceptualai.xapp.server --config xapp_config.yaml
 
 # 5. Run inference
 python scripts/xapp_client.py --num_requests 10
@@ -133,7 +133,7 @@ The real 5G environment expects CSVs from the UCC MISL dataset (83 traces, 188K 
 Create a `Real5GEnv` with your own CSV files:
 
 ```python
-from spectrai.env.real5g import Real5GEnvironment
+from preceptualai.env.real5g import Real5GEnvironment
 
 env = Real5GEnvironment(
     data_dir="/path/to/your/csvs",
@@ -141,6 +141,46 @@ env = Real5GEnvironment(
     sequence_length=16,
 )
 ```
+
+---
+
+## UHCI Training (v0.2)
+
+### Universal Heterogeneous Connectivity Intelligence
+
+Train the UHCI agent across all connectivity providers:
+
+```bash
+# Default (FR1 + FR3 + LEO, CfC temporal backend)
+python scripts/train_uhci.py
+
+# Full 8-provider training with all innovations
+python scripts/train_uhci.py \
+    --num-steps 50000 \
+    --providers LEO MEO GEO HAPS FR1 FR3 ISAC WIFI7 \
+    --temporal-backend cfc \
+    --use-diffusion \
+    --use-fno \
+    --use-world-model \
+    --use-smooth-power \
+    --device cuda
+
+# Real data from HuggingFace (no local CSVs needed)
+python scripts/train_uhci.py --telecomts-only --num-steps 20000
+```
+
+### UHCI Feature Flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `--providers` | All 8 | Provider types to include |
+| `--temporal-backend` | cfc | Temporal encoder: cfc, ltc, or mamba |
+| `--use-diffusion` / `--no-diffusion` | ON | DDPM spectrum augmentation |
+| `--use-fno` / `--no-fno` | ON | FNO channel surrogate |
+| `--use-world-model` | OFF | Dyna imagined rollouts |
+| `--use-smooth-power` | OFF | SmODE 3GPP power control |
+| `--use-real-data` | OFF | Use UCC MISL + Colosseum + TelecomTS |
+| `--telecomts-only` | OFF | Use only TelecomTS from HuggingFace |
 
 ---
 
@@ -210,7 +250,7 @@ monitoring:
 ### Starting the Server
 
 ```bash
-python -m spectrai.xapp.server --config xapp_config.yaml
+python -m preceptualai.xapp.server --config xapp_config.yaml
 ```
 
 The server starts with:
@@ -221,7 +261,7 @@ The server starts with:
 ### Health Check
 
 ```bash
-grpcurl -plaintext localhost:50051 spectrai.InferenceService/GetHealth
+grpcurl -plaintext localhost:50051 preceptualai.InferenceService/GetHealth
 ```
 
 ---
@@ -266,7 +306,7 @@ python scripts/xapp_client.py --num_requests 500 --host localhost --port 50051
 
 ### Concept
 
-SpectrAI's federated learning uses a hybrid aggregation strategy:
+PreceptualAI's federated learning uses a hybrid aggregation strategy:
 - **Structural weights** (encoder, critics): globally averaged across all sites
 - **Time-constant (tau) weights**: partially personalized per site via `tau_mix_ratio`
 - **Privacy**: raw spectrum data never leaves the edge device
@@ -274,7 +314,7 @@ SpectrAI's federated learning uses a hybrid aggregation strategy:
 ### Running the FL Demo
 
 ```bash
-python -m spectrai.federated.demo \
+python -m preceptualai.federated.demo \
     --data_dir /path/to/5g_traces \
     --num_rounds 10 \
     --num_clients 5 \
@@ -317,7 +357,7 @@ docker compose up
 ```
 
 Services:
-- `spectrai-server`: gRPC inference on :50051
+- `preceptualai-server`: gRPC inference on :50051
 - `prometheus`: Metrics on :9090
 
 ### Federated Learning Stack
@@ -331,19 +371,19 @@ docker compose -f docker/docker-compose.fl.yaml up
 For NVIDIA ARC-Compact (L4) or ARC-Pro (Blackwell RTX PRO):
 
 ```bash
-docker build -f docker/Dockerfile.aerial -t spectrai-aerial .
+docker build -f docker/Dockerfile.aerial -t preceptualai-aerial .
 docker run --gpus all --runtime=nvidia \
     -p 50051:50051 -p 9090:9090 \
-    spectrai-aerial
+    preceptualai-aerial
 ```
 
 ### Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `SPECTRAI_CONFIG` | `xapp_config.yaml` | Config file path |
-| `SPECTRAI_LOG_LEVEL` | `INFO` | Logging level |
-| `SPECTRAI_DEVICE` | `cuda` | Compute device |
+| `PRECEPTUALAI_CONFIG` | `xapp_config.yaml` | Config file path |
+| `PRECEPTUALAI_LOG_LEVEL` | `INFO` | Logging level |
+| `PRECEPTUALAI_DEVICE` | `cuda` | Compute device |
 | `CUDA_VISIBLE_DEVICES` | `0` | GPU selection |
 
 ---
@@ -352,32 +392,32 @@ docker run --gpus all --runtime=nvidia \
 
 ### Prometheus Metrics
 
-SpectrAI exposes the following metrics on the Prometheus port (default 9090):
+PreceptualAI exposes the following metrics on the Prometheus port (default 9090):
 
 **Counters:**
 | Metric | Description |
 |---|---|
-| `spectrai_predictions_total` | Total predictions served |
-| `spectrai_errors_total` | Total inference errors |
+| `preceptualai_predictions_total` | Total predictions served |
+| `preceptualai_errors_total` | Total inference errors |
 
 **Histograms:**
 | Metric | Description |
 |---|---|
-| `spectrai_inference_latency_seconds` | Per-inference latency |
-| `spectrai_grpc_request_duration_seconds` | gRPC request duration |
+| `preceptualai_inference_latency_seconds` | Per-inference latency |
+| `preceptualai_grpc_request_duration_seconds` | gRPC request duration |
 
 **Gauges:**
 | Metric | Description |
 |---|---|
-| `spectrai_model_loaded` | 1 if model is loaded, 0 otherwise |
-| `spectrai_active_backend` | Current backend (trt=3, onnx=2, pytorch=1) |
-| `spectrai_collision_rate` | Current spectrum collision rate |
-| `spectrai_success_rate` | Current channel access success rate |
+| `preceptualai_model_loaded` | 1 if model is loaded, 0 otherwise |
+| `preceptualai_active_backend` | Current backend (trt=3, onnx=2, pytorch=1) |
+| `preceptualai_collision_rate` | Current spectrum collision rate |
+| `preceptualai_success_rate` | Current channel access success rate |
 
 ### Grafana Setup
 
 1. Add Prometheus data source: `http://prometheus:9090`
-2. Import the dashboard from `docker/grafana/dashboards/spectrai.json`
+2. Import the dashboard from `docker/grafana/dashboards/preceptualai.json`
 
 ---
 
@@ -484,17 +524,17 @@ pip install -e ".[dev]"
 
 ## FAQ
 
-**Q: What spectrum bands does SpectrAI support?**
-A: SpectrAI is band-agnostic. It works with any spectrum data that can be represented as channel occupancy features. It has been validated on sub-6 GHz 5G data from the UCC MISL dataset.
+**Q: What spectrum bands does PreceptualAI support?**
+A: PreceptualAI is band-agnostic. It works with any spectrum data that can be represented as channel occupancy features. It has been validated on sub-6 GHz 5G data from the UCC MISL dataset.
 
-**Q: Can I use SpectrAI without an NVIDIA GPU?**
+**Q: Can I use PreceptualAI without an NVIDIA GPU?**
 A: Yes. The PyTorch backend runs on CPU. GPU acceleration (via TensorRT or ONNX Runtime) is recommended for production latency targets.
 
 **Q: How much training data do I need?**
 A: The simulated environment requires no external data. For real 5G deployment, we recommend at least 10,000 measurements per cell site. With federated learning, new sites benefit immediately from the global model.
 
-**Q: Does SpectrAI comply with O-RAN specifications?**
-A: Yes. SpectrAI implements E2SM-KPM for metrics collection and E2SM-RC for control actions, compatible with the O-RAN Near-RT RIC architecture.
+**Q: Does PreceptualAI comply with O-RAN specifications?**
+A: Yes. PreceptualAI implements E2SM-KPM for metrics collection and E2SM-RC for control actions, compatible with the O-RAN Near-RT RIC architecture.
 
 **Q: What is the inference latency?**
 A: Mean 3.14ms, P99 3.96ms on NVIDIA L4 GPU — well within the O-RAN Near-RT RIC 10ms budget.

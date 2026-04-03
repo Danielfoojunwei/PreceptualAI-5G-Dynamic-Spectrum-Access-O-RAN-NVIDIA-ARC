@@ -1,4 +1,4 @@
-# Prometheus configuration for SpectrAI Federated Learning monitoring.
+# Prometheus configuration for PreceptualAI Federated Learning monitoring.
 #
 # Scrapes metrics from the aggregation server and all edge devices.
 
@@ -7,13 +7,13 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: "spectrai-fl-aggregator"
+  - job_name: "preceptualai-fl-aggregator"
     static_configs:
       - targets: ["aggregator:8080"]
         labels:
           role: "aggregator"
 
-  - job_name: "spectrai-fl-edge-devices"
+  - job_name: "preceptualai-fl-edge-devices"
     static_configs:
       - targets:
           - "edge-device-1:8080"

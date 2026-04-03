@@ -1,8 +1,8 @@
-# SpectrAI Local Development Stack
+# PreceptualAI Local Development Stack
 # ---------------------------------------------------------------------------
 # Brings up the full development environment:
-#   - spectrai-server:  gRPC inference server
-#   - spectrai-dev:     Development shell (optional)
+#   - preceptualai-server:  gRPC inference server
+#   - preceptualai-dev:     Development shell (optional)
 #   - prometheus:       Metrics collection
 #   - grafana:          Dashboards
 #
@@ -14,14 +14,14 @@
 
 services:
   # -------------------------------------------------------------------------
-  # SpectrAI gRPC inference server
+  # PreceptualAI gRPC inference server
   # -------------------------------------------------------------------------
   server:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: spectrai:latest
-    container_name: spectrai-server
+    image: preceptualai:latest
+    container_name: preceptualai-server
     ports:
       - "50051:50051"   # gRPC
       - "9090:9090"     # Prometheus metrics
@@ -29,8 +29,8 @@ services:
       - ../models:/app/models:ro
       - ./config.yaml:/app/config.yaml:ro
     environment:
-      - SPECTRAI_LOG_LEVEL=INFO
-      - SPECTRAI_LOG_FORMAT=json
+      - PRECEPTUALAI_LOG_LEVEL=INFO
+      - PRECEPTUALAI_LOG_FORMAT=json
       - RMR_SEED_RT=/app/routes.rt
     restart: unless-stopped
     healthcheck:
@@ -41,7 +41,7 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - spectrai-net
+      - preceptualai-net
 
   # -------------------------------------------------------------------------
   # Development shell
@@ -50,8 +50,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.dev
-    image: spectrai-dev:latest
-    container_name: spectrai-dev
+    image: preceptualai-dev:latest
+    container_name: preceptualai-dev
     stdin_open: true
     tty: true
     volumes:
@@ -59,12 +59,12 @@ services:
     ports:
       - "8888:8888"     # Jupyter (optional)
     environment:
-      - SPECTRAI_LOG_LEVEL=DEBUG
-      - SPECTRAI_LOG_FORMAT=console
+      - PRECEPTUALAI_LOG_LEVEL=DEBUG
+      - PRECEPTUALAI_LOG_FORMAT=console
     depends_on:
       - server
     networks:
-      - spectrai-net
+      - preceptualai-net
     profiles:
       - dev
 
@@ -73,7 +73,7 @@ services:
   # -------------------------------------------------------------------------
   prometheus:
     image: prom/prometheus:v2.51.0
-    container_name: spectrai-prometheus
+    container_name: preceptualai-prometheus
     ports:
       - "9091:9090"
     volumes:
@@ -85,19 +85,19 @@ services:
       - "--web.enable-lifecycle"
     restart: unless-stopped
     networks:
-      - spectrai-net
+      - preceptualai-net
 
   # -------------------------------------------------------------------------
   # Grafana
   # -------------------------------------------------------------------------
   grafana:
     image: grafana/grafana:10.4.0
-    container_name: spectrai-grafana
+    container_name: preceptualai-grafana
     ports:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=spectrai
+      - GF_SECURITY_ADMIN_PASSWORD=preceptualai
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana-data:/var/lib/grafana
@@ -105,7 +105,7 @@ services:
       - prometheus
     restart: unless-stopped
     networks:
-      - spectrai-net
+      - preceptualai-net
 
 # ---------------------------------------------------------------------------
 # Shared resources
@@ -115,5 +115,5 @@ volumes:
   grafana-data:
 
 networks:
-  spectrai-net:
+  preceptualai-net:
     driver: bridge

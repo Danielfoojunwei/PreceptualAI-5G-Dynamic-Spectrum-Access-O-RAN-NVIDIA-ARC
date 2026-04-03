@@ -1,4 +1,4 @@
-# SpectrAI Federated Learning — Multi-Device Docker Compose Stack
+# PreceptualAI Federated Learning — Multi-Device Docker Compose Stack
 #
 # Launches a complete FL deployment with:
 #   - 1 Aggregation server (central FL coordinator)
@@ -23,9 +23,9 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: spectrai-fl-aggregator
+    container_name: preceptualai-fl-aggregator
     command: >
-      python -m spectrai.federated.server
+      python -m preceptualai.federated.server
         --host 0.0.0.0
         --port 50051
         --aggregation_method hybrid_ltc
@@ -37,17 +37,17 @@ services:
       - "50051:50051"
       - "8080:8080"
     environment:
-      - SPECTRAI_ROLE=aggregator
-      - SPECTRAI_FL_METHOD=hybrid_ltc
-      - SPECTRAI_FL_TAU_MIX=0.3
-      - SPECTRAI_FL_MIN_DEVICES=3
-      - SPECTRAI_FL_NUM_ROUNDS=50
+      - PRECEPTUALAI_ROLE=aggregator
+      - PRECEPTUALAI_FL_METHOD=hybrid_ltc
+      - PRECEPTUALAI_FL_TAU_MIX=0.3
+      - PRECEPTUALAI_FL_MIN_DEVICES=3
+      - PRECEPTUALAI_FL_NUM_ROUNDS=50
       - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus
     volumes:
       - aggregator-state:/app/state
       - fl-models:/app/models
     networks:
-      - spectrai-fl
+      - preceptualai-fl
     healthcheck:
       test: ["CMD", "python", "-c", "import grpc; ch = grpc.insecure_channel('localhost:50051'); grpc.channel_ready_future(ch).result(timeout=5)"]
       interval: 30s
@@ -70,9 +70,9 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: spectrai-fl-edge-1
+    container_name: preceptualai-fl-edge-1
     command: >
-      python -m spectrai.federated.client_main
+      python -m preceptualai.federated.client_main
         --device_id edge-device-1
         --aggregator_host aggregator
         --aggregator_port 50051
@@ -80,15 +80,15 @@ services:
         --num_channels 5
         --local_steps 1000
     environment:
-      - SPECTRAI_ROLE=edge_device
-      - SPECTRAI_DEVICE_ID=edge-device-1
-      - SPECTRAI_AGGREGATOR=aggregator:50051
+      - PRECEPTUALAI_ROLE=edge_device
+      - PRECEPTUALAI_DEVICE_ID=edge-device-1
+      - PRECEPTUALAI_AGGREGATOR=aggregator:50051
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ${DATA_DIR:-./data}/urban_driving:/data/traces:ro
       - edge1-state:/app/state
     networks:
-      - spectrai-fl
+      - preceptualai-fl
     depends_on:
       aggregator:
         condition: service_healthy
@@ -108,9 +108,9 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: spectrai-fl-edge-2
+    container_name: preceptualai-fl-edge-2
     command: >
-      python -m spectrai.federated.client_main
+      python -m preceptualai.federated.client_main
         --device_id edge-device-2
         --aggregator_host aggregator
         --aggregator_port 50051
@@ -118,15 +118,15 @@ services:
         --num_channels 5
         --local_steps 1000
     environment:
-      - SPECTRAI_ROLE=edge_device
-      - SPECTRAI_DEVICE_ID=edge-device-2
-      - SPECTRAI_AGGREGATOR=aggregator:50051
+      - PRECEPTUALAI_ROLE=edge_device
+      - PRECEPTUALAI_DEVICE_ID=edge-device-2
+      - PRECEPTUALAI_AGGREGATOR=aggregator:50051
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ${DATA_DIR:-./data}/suburban_static:/data/traces:ro
       - edge2-state:/app/state
     networks:
-      - spectrai-fl
+      - preceptualai-fl
     depends_on:
       aggregator:
         condition: service_healthy
@@ -146,9 +146,9 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: spectrai-fl-edge-3
+    container_name: preceptualai-fl-edge-3
     command: >
-      python -m spectrai.federated.client_main
+      python -m preceptualai.federated.client_main
         --device_id edge-device-3
         --aggregator_host aggregator
         --aggregator_port 50051
@@ -156,15 +156,15 @@ services:
         --num_channels 5
         --local_steps 1000
     environment:
-      - SPECTRAI_ROLE=edge_device
-      - SPECTRAI_DEVICE_ID=edge-device-3
-      - SPECTRAI_AGGREGATOR=aggregator:50051
+      - PRECEPTUALAI_ROLE=edge_device
+      - PRECEPTUALAI_DEVICE_ID=edge-device-3
+      - PRECEPTUALAI_AGGREGATOR=aggregator:50051
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ${DATA_DIR:-./data}/mixed_streaming:/data/traces:ro
       - edge3-state:/app/state
     networks:
-      - spectrai-fl
+      - preceptualai-fl
     depends_on:
       aggregator:
         condition: service_healthy
@@ -182,14 +182,14 @@ services:
   # ==================================================================
   prometheus:
     image: prom/prometheus:v2.51.0
-    container_name: spectrai-fl-prometheus
+    container_name: preceptualai-fl-prometheus
     ports:
       - "9090:9090"
     volumes:
       - ./prometheus-fl.yaml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     networks:
-      - spectrai-fl
+      - preceptualai-fl
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
@@ -202,7 +202,7 @@ services:
 # Networks
 # ==================================================================
 networks:
-  spectrai-fl:
+  preceptualai-fl:
     driver: bridge
     ipam:
       config:

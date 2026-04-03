@@ -1,0 +1,333 @@
+// PreceptualAI Federated Learning gRPC Service Definition.
+//
+// Defines the communication protocol between edge devices (clients) and
+// the central aggregation server for the hybrid LTC-aware federated
+// learning system.
+//
+// Usage:
+//   protoc --python_out=. --grpc_python_out=. proto/preceptualai_fl.proto
+
+syntax = "proto3";
+
+package preceptualai.federated;
+
+option java_package = "ai.preceptualai.federated";
+option java_outer_classname = "PreceptualAIFederatedProto";
+
+// =====================================================================
+// Service
+// =====================================================================
+
+// PreceptualAIFederated is the central aggregation service for federated
+// SAC-LTC training with hybrid time-constant personalization.
+service PreceptualAIFederated {
+  // RegisterDevice enrolls a new edge device in the federation.
+  // Must be called before any weight upload. Returns a device token
+  // and the current global model for cold-start initialization.
+  rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
+
+  // UploadWeights sends locally trained model weights from a device
+  // to the aggregation server for inclusion in the next FL round.
+  rpc UploadWeights(UploadWeightsRequest) returns (UploadWeightsResponse);
+
+  // DownloadGlobalModel retrieves the latest aggregated model.
+  // If the device is known, returns a personalized model with mixed
+  // tau weights. If new/unknown, returns the fully averaged global model.
+  rpc DownloadGlobalModel(DownloadModelRequest) returns (DownloadModelResponse);
+
+  // GetFLStatus returns the current state of the federated learning
+  // process, including round number, registered devices, and metrics.
+  rpc GetFLStatus(FLStatusRequest) returns (FLStatusResponse);
+
+  // StreamTrainingMetrics opens a server-streaming RPC for real-time
+  // monitoring of per-round aggregation metrics.
+  rpc StreamTrainingMetrics(MetricsStreamRequest) returns (stream TrainingMetrics);
+}
+
+// =====================================================================
+// Registration
+// =====================================================================
+
+message RegisterDeviceRequest {
+  // Human-readable device identifier (e.g., "edge-node-austin-01").
+  string device_id = 1;
+
+  // Device capabilities and metadata.
+  DeviceCapabilities capabilities = 2;
+
+  // Optional: specific trace groups this device has access to.
+  repeated string trace_groups = 3;
+}
+
+message DeviceCapabilities {
+  // Compute device type available on the edge node.
+  string compute_device = 1;  // "cpu", "cuda", "tensorrt"
+
+  // Available GPU memory in MB (0 if CPU-only).
+  int64 gpu_memory_mb = 2;
+
+  // Maximum batch size the device can handle.
+  int32 max_batch_size = 3;
+
+  // Number of 5G trace files available locally.
+  int32 num_local_traces = 4;
+
+  // Device hardware identifier for telemetry.
+  string hardware_id = 5;
+}
+
+message RegisterDeviceResponse {
+  // Server-assigned authentication token for subsequent RPCs.
+  string device_token = 1;
+
+  // Current FL round number.
+  int32 current_round = 2;
+
+  // The global model for cold-start initialization.
+  ModelWeights global_model = 3;
+
+  // FL configuration the device should use.
+  FederatedConfig config = 4;
+
+  // Registration status.
+  RegistrationStatus status = 5;
+}
+
+enum RegistrationStatus {
+  REGISTRATION_STATUS_UNSPECIFIED = 0;
+  REGISTRATION_STATUS_SUCCESS = 1;
+  REGISTRATION_STATUS_ALREADY_REGISTERED = 2;
+  REGISTRATION_STATUS_REJECTED = 3;
+}
+
+// =====================================================================
+// Weight Upload
+// =====================================================================
+
+message UploadWeightsRequest {
+  // Device identifier.
+  string device_id = 1;
+
+  // Authentication token from registration.
+  string device_token = 2;
+
+  // FL round this update corresponds to.
+  int32 round_number = 3;
+
+  // The locally trained model weights.
+  ModelWeights local_weights = 4;
+
+  // Number of environment samples collected during local training.
+  int64 num_samples = 5;
+
+  // Local training metrics for telemetry.
+  LocalTrainingMetrics training_metrics = 6;
+}
+
+message UploadWeightsResponse {
+  // Whether the upload was accepted.
+  bool accepted = 1;
+
+  // Reason if not accepted.
+  string rejection_reason = 2;
+
+  // Number of devices that have reported for this round so far.
+  int32 devices_reported = 3;
+
+  // Total devices expected for this round.
+  int32 devices_expected = 4;
+}
+
+message LocalTrainingMetrics {
+  // Mean episode reward during local training.
+  float mean_reward = 1;
+
+  // Number of episodes completed.
+  int32 num_episodes = 2;
+
+  // Mean critic loss.
+  float mean_critic_loss = 3;
+
+  // Mean actor loss.
+  float mean_actor_loss = 4;
+
+  // Current entropy coefficient.
+  float alpha = 5;
+
+  // Current entropy.
+  float entropy = 6;
+
+  // Wall-clock training time in seconds.
+  float training_time_seconds = 7;
+}
+
+// =====================================================================
+// Model Download
+// =====================================================================
+
+message DownloadModelRequest {
+  // Device identifier.
+  string device_id = 1;
+
+  // Authentication token.
+  string device_token = 2;
+
+  // If true, request the fully averaged global model instead of
+  // the personalized variant. Useful for benchmarking.
+  bool force_global = 3;
+}
+
+message DownloadModelResponse {
+  // The model weights (personalized or global depending on request).
+  ModelWeights model = 1;
+
+  // Current FL round number.
+  int32 round_number = 2;
+
+  // Whether this is a personalized model or the raw global average.
+  bool is_personalized = 3;
+
+  // The tau_mix_ratio used for personalization.
+  float tau_mix_ratio = 4;
+}
+
+// =====================================================================
+// FL Status
+// =====================================================================
+
+message FLStatusRequest {
+  // Optional: only return info about a specific device.
+  string device_id = 1;
+}
+
+message FLStatusResponse {
+  // Current FL round number.
+  int32 current_round = 1;
+
+  // Total number of registered devices.
+  int32 total_devices = 2;
+
+  // Number of devices that have reported for the current round.
+  int32 devices_reported_current_round = 3;
+
+  // Aggregation method in use.
+  string aggregation_method = 4;
+
+  // Tau mix ratio.
+  float tau_mix_ratio = 5;
+
+  // Per-device status (only populated if device_id not specified).
+  repeated DeviceStatus device_statuses = 6;
+
+  // Historical round metrics.
+  repeated RoundMetrics round_history = 7;
+}
+
+message DeviceStatus {
+  string device_id = 1;
+  int32 last_round_participated = 2;
+  int64 total_samples_contributed = 3;
+  float last_mean_reward = 4;
+  float last_success_rate = 5;
+  bool online = 6;
+}
+
+message RoundMetrics {
+  int32 round_number = 1;
+  int32 num_devices = 2;
+  int64 total_samples = 3;
+  float mean_reward_across_devices = 4;
+  float mean_success_rate = 5;
+  float aggregation_time_seconds = 6;
+  string aggregation_method = 7;
+}
+
+// =====================================================================
+// Metrics Streaming
+// =====================================================================
+
+message MetricsStreamRequest {
+  // Start streaming from this round number (0 = from beginning).
+  int32 from_round = 1;
+}
+
+message TrainingMetrics {
+  // Round this metric corresponds to.
+  int32 round_number = 1;
+
+  // Timestamp (Unix epoch seconds).
+  int64 timestamp = 2;
+
+  // Round-level metrics.
+  RoundMetrics round_metrics = 3;
+
+  // Per-device metrics for this round.
+  repeated DeviceRoundMetrics device_metrics = 4;
+}
+
+message DeviceRoundMetrics {
+  string device_id = 1;
+  float mean_reward = 2;
+  float success_rate = 3;
+  float collision_rate = 4;
+  int64 num_samples = 5;
+  float training_time_seconds = 6;
+}
+
+// =====================================================================
+// Model Weights (serialization format)
+// =====================================================================
+
+message ModelWeights {
+  // Weights for each model component.
+  ComponentWeights actor = 1;
+  ComponentWeights critic1 = 2;
+  ComponentWeights critic2 = 3;
+}
+
+message ComponentWeights {
+  // Parameter name → serialized tensor.
+  map<string, TensorProto> parameters = 1;
+}
+
+message TensorProto {
+  // Tensor shape.
+  repeated int64 shape = 1;
+
+  // Flattened tensor data as float32 bytes (little-endian).
+  bytes data = 2;
+
+  // Data type (for future extensibility).
+  TensorDtype dtype = 3;
+}
+
+enum TensorDtype {
+  TENSOR_DTYPE_UNSPECIFIED = 0;
+  TENSOR_DTYPE_FLOAT32 = 1;
+  TENSOR_DTYPE_FLOAT16 = 2;
+  TENSOR_DTYPE_BFLOAT16 = 3;
+}
+
+// =====================================================================
+// Configuration (pushed to devices during registration)
+// =====================================================================
+
+message FederatedConfig {
+  // Tau mixing ratio for hybrid aggregation.
+  float tau_mix_ratio = 1;
+
+  // Number of local training steps per round.
+  int32 local_steps_per_round = 2;
+
+  // Aggregation method.
+  string aggregation_method = 3;
+
+  // FedProx mu (only relevant for fedprox method).
+  float fedprox_mu = 4;
+
+  // Target number of devices per round.
+  int32 target_devices_per_round = 5;
+
+  // Maximum seconds to wait for devices before aggregating.
+  int32 round_timeout_seconds = 6;
+}
