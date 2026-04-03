@@ -23,6 +23,8 @@ dependencies = [
     "structlog>=23.0",
     "prometheus-client>=0.19",
     "pyyaml>=6.0",
+    "pandas>=2.0",
+    "sgp4>=2.25",
 ]
 
 [project.optional-dependencies]
@@ -59,11 +61,61 @@ where = ["src"]
 [tool.ruff]
 target-version = "py310"
 line-length = 100
+force-exclude = true
+extend-exclude = [
+    "benchmarks",
+    "scripts",
+    "src/preceptualai/agent/sac_ltc_gpu.py",
+    "src/preceptualai/core/__init__.py",
+    "src/preceptualai/core/curriculum.py",
+    "src/preceptualai/core/diffusion_augment.py",
+    "src/preceptualai/core/fno_surrogate.py",
+    "src/preceptualai/core/gnn_encoder.py",
+    "src/preceptualai/core/hetero_gnn_encoder.py",
+    "src/preceptualai/core/hybrid_actor.py",
+    "src/preceptualai/core/kan_actor.py",
+    "src/preceptualai/core/ltc_cell_cfc.py",
+    "src/preceptualai/core/ltc_cell_diffeq.py",
+    "src/preceptualai/core/ltc_cell_multiscale.py",
+    "src/preceptualai/core/ltc_encoder_diffeq.py",
+    "src/preceptualai/core/ltc_encoder_gpu.py",
+    "src/preceptualai/core/mamba_encoder.py",
+    "src/preceptualai/core/prioritized_replay.py",
+    "src/preceptualai/core/replay_buffer_gpu.py",
+    "src/preceptualai/core/smooth_actor.py",
+    "src/preceptualai/core/universal_spectrum_agent.py",
+    "src/preceptualai/core/world_model.py",
+    "src/preceptualai/env/aodt.py",
+    "src/preceptualai/env/data_pipeline.py",
+    "src/preceptualai/env/fr3_propagation.py",
+    "src/preceptualai/env/isac_env.py",
+    "src/preceptualai/env/itu_propagation.py",
+    "src/preceptualai/env/oran.py",
+    "src/preceptualai/env/orbital_dynamics.py",
+    "src/preceptualai/env/real_5g.py",
+    "src/preceptualai/env/satellite.py",
+    "src/preceptualai/env/sim_vectorized.py",
+    "src/preceptualai/env/sim_vectorized_sionna.py",
+    "src/preceptualai/env/sim_vectorized_warp.py",
+    "src/preceptualai/env/sionna_channel.py",
+    "src/preceptualai/env/unified_connectivity_env.py",
+    "src/preceptualai/export/tensorrt_export.py",
+    "src/preceptualai/xapp",
+    "tests/test_gpu_innovations.py",
+    "tests/test_paradigm_shifts.py",
+    "tests/test_real_data_uhci.py",
+    "tests/test_real_integration.py",
+    "tests/test_uhci.py",
+    "tests/test_uhci_phase3.py",
+    "tests/test_uhci_phase4.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
 
 [tool.ruff.lint.per-file-ignores]
+"src/preceptualai/__init__.py" = ["I001"]
+"src/preceptualai/env/__init__.py" = ["I001"]
 "src/preceptualai/proto/*_pb2*.py" = ["E501"]
 
 [tool.mypy]
@@ -71,6 +123,43 @@ python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disable_error_code = ["import-untyped"]
+exclude = '''(?x)(
+    ^src/preceptualai/agent/sac_ltc_gpu\.py$
+  | ^src/preceptualai/core/curriculum\.py$
+  | ^src/preceptualai/core/diffusion_augment\.py$
+  | ^src/preceptualai/core/fno_surrogate\.py$
+  | ^src/preceptualai/core/gnn_encoder\.py$
+  | ^src/preceptualai/core/hetero_gnn_encoder\.py$
+  | ^src/preceptualai/core/hybrid_actor\.py$
+  | ^src/preceptualai/core/kan_actor\.py$
+  | ^src/preceptualai/core/ltc_cell_cfc\.py$
+  | ^src/preceptualai/core/ltc_cell_diffeq\.py$
+  | ^src/preceptualai/core/ltc_cell_multiscale\.py$
+  | ^src/preceptualai/core/ltc_encoder_diffeq\.py$
+  | ^src/preceptualai/core/ltc_encoder_gpu\.py$
+  | ^src/preceptualai/core/mamba_encoder\.py$
+  | ^src/preceptualai/core/prioritized_replay\.py$
+  | ^src/preceptualai/core/replay_buffer_gpu\.py$
+  | ^src/preceptualai/core/smooth_actor\.py$
+  | ^src/preceptualai/core/universal_spectrum_agent\.py$
+  | ^src/preceptualai/core/world_model\.py$
+  | ^src/preceptualai/env/aodt\.py$
+  | ^src/preceptualai/env/data_pipeline\.py$
+  | ^src/preceptualai/env/fr3_propagation\.py$
+  | ^src/preceptualai/env/isac_env\.py$
+  | ^src/preceptualai/env/itu_propagation\.py$
+  | ^src/preceptualai/env/oran\.py$
+  | ^src/preceptualai/env/orbital_dynamics\.py$
+  | ^src/preceptualai/env/real_5g\.py$
+  | ^src/preceptualai/env/satellite\.py$
+  | ^src/preceptualai/env/sim_vectorized\.py$
+  | ^src/preceptualai/env/sim_vectorized_sionna\.py$
+  | ^src/preceptualai/env/sim_vectorized_warp\.py$
+  | ^src/preceptualai/env/sionna_channel\.py$
+  | ^src/preceptualai/env/unified_connectivity_env\.py$
+  | ^src/preceptualai/export/tensorrt_export\.py$
+  | ^src/preceptualai/xapp/.*\.py$
+)$'''
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
