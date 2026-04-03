@@ -4,7 +4,7 @@
 
 ## Pricing Philosophy
 
-PreceptualAI follows an **open-core** model. The complete SAC-LTC agent, training pipeline, ONNX export, gRPC inference server, and Prometheus monitoring are free and open source under the Apache 2.0 license. This is not a crippled demo — it is a production-grade xApp that can run on a single cell site or in a lab environment with zero cost.
+PreceptualAI follows an **open-core** model. The repository’s core **UHCI training, benchmark, export, serving, and monitoring stack** is free and open source under the Apache 2.0 license. This is not a crippled demo — it is a production-grade connectivity-intelligence stack that can run on a single cell site or in a lab environment with zero software cost.
 
 Paid tiers add the capabilities that matter at fleet scale: federated learning across thousands of cell sites, per-site model personalization, enterprise support, and NVIDIA ARC optimization. The pricing is designed so that the free tier gets operators to evaluate and validate PreceptualAI, and the paid tiers unlock the compounding value that comes from multi-site deployment.
 
@@ -24,7 +24,7 @@ Paid tiers add the capabilities that matter at fleet scale: federated learning a
 
 | Capability | Included |
 |---|---|
-| LTC Encoder + SAC Agent | Yes |
+| Core UHCI learning and inference stack | Yes |
 | Simulated DSA Environment | Yes |
 | Real 5G Data Training (bring your own data) | Yes |
 | ONNX Model Export | Yes |
@@ -196,7 +196,7 @@ How ROI varies with efficiency improvement and deployment size:
 | 25K sites, Enterprise | $5.25M | 0.21% |
 | 50K sites, Enterprise | $10.0M | 0.20% |
 
-PreceptualAI's measured improvement of 1.4% is 7-14x the breakeven threshold, providing substantial margin of safety.
+The 1.4% scenario shown above is an illustrative upside case and sits well above the breakeven threshold, providing substantial margin of safety if similar gains are realized in deployment.
 
 ---
 
@@ -211,7 +211,7 @@ PreceptualAI's measured improvement of 1.4% is 7-14x the breakeven threshold, pr
 | Ongoing engineering cost | $1-2M/year (maintenance, improvements) | Included in license |
 | Federated learning | Build from scratch (6-12 months additional) | Included |
 | NVIDIA ARC optimization | Requires GPU engineering expertise | Included |
-| Risk of failure | High (novel architecture, rare expertise) | Low (proven on real 5G data) |
+| Risk of failure | High (novel architecture, rare expertise) | Lower if validated through operator data, controlled pilots, and staged deployment |
 | Community contributions | None | Open-source community improvements |
 | **Total 3-year cost (50K sites)** | **$8-16M** | **$30M** (but with proven ROI of $60M+/yr) |
 

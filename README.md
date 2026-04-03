@@ -1,457 +1,245 @@
-<p align="center">
-  <h1 align="center">Preceptual.ai</h1>
-  <p align="center"><strong>The Intelligent Spectrum Engine for 6G-Ready Networks</strong></p>
-  <p align="center">
-    AI-native dynamic spectrum management that learns the physics of your RF environment — <br/>
-    not just the statistics — using continuous-time neural ODEs and privacy-preserving federated learning.
-  </p>
-</p>
+# PreceptualAI
 
-<p align="center">
-  <a href="https://github.com/preceptualai-project/preceptualai/actions/workflows/ci.yaml"><img src="https://github.com/preceptualai-project/preceptualai/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
-  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python 3.10+"></a>
-  <a href="https://ghcr.io"><img src="https://img.shields.io/badge/docker-ghcr.io-blue.svg" alt="Docker"></a>
-  <a href="https://developer.nvidia.com/aerial"><img src="https://img.shields.io/badge/NVIDIA-ARC_Ready-76B900.svg" alt="NVIDIA ARC"></a>
-</p>
+**PreceptualAI** is best understood as a repository for **Universal Heterogeneous Connectivity Intelligence (UHCI)**: a software-defined intelligence layer for making connectivity and spectrum decisions across **terrestrial, non-terrestrial, and hybrid wireless environments**. The codebase is not merely a narrow reinforcement-learning benchmark. A full line-by-line audit of the repository shows a much larger system that combines **provider-aware world modeling, telecom-physics-aware propagation, graph-structured state encoding, adaptive temporal reasoning, learned decision policies, real-data pathways, low-latency runtime execution, O-RAN-facing control integration, and lifecycle governance** into one architecture.[1] [2] [3] [4] [5] [6] [7] [8] [9] [10] [11] [12]
 
----
+This README is intentionally the most comprehensive document in the repository. A lay reader should be able to understand **what problem the repository addresses, why the problem matters now, what the solution actually is, why the approach is defensible, what evidence is already measured, and how the codebase is organized into a reconstructable system**. A researcher or engineer should be able to use this document as the top-level map for rebuilding the full UHCI stack from the rest of the Markdown documentation and the implementation itself.[13] [14] [15]
 
-<table>
-<tr>
-<td align="center"><strong>3.14 ms</strong><br/>Mean Inference</td>
-<td align="center"><strong>63.4%</strong><br/>Success Rate</td>
-<td align="center"><strong>188K</strong><br/>Real 5G Measurements</td>
-<td align="center"><strong>&lt; 10 ms</strong><br/>Near-RT RIC Budget</td>
-<td align="center"><strong>74</strong><br/>Tests Passing</td>
-</tr>
-</table>
-
----
-
-## Why Preceptual.ai?
-
-The $37B AI-RAN market is building spectrum management on architectures designed for image classification. Fixed-timestep LSTMs and attention models treat RF environments as sequences of tokens. They are not. Radio spectrum is a continuous-time dynamical system — and Preceptual.ai is the first xApp that treats it as one.
-
-### Three Structural Moats
-
-**1. Continuous-Time LTC Encoder**
-Preceptual.ai's core is a Liquid Time-Constant neural ODE whose time constants are *input-dependent*. When PU activity spikes, the network integrates observations faster. During quiet periods, it retains longer memory. No other production xApp adapts its temporal resolution to the RF environment in real time.
-
-**2. Hybrid Federated Aggregation**
-Operators will never ship raw spectrum data to a cloud. Preceptual.ai's federated learning protocol splits model weights into two classes: structural weights (globally averaged across all sites) and tau weights (personalized per deployment). Every new operator makes the global model smarter without exposing a single IQ sample.
-
-**3. Real-Data Flywheel**
-Trained and validated on 188,000 real 5G measurements from 83 operator traces (UCC MISL dataset, Irish mobile network). Every federated participant adds real-world diversity. Synthetic-only competitors cannot replicate this distributional coverage.
-
----
-
-## Why Now?
-
-Three forces are converging to create a market window that did not exist 18 months ago:
-
-| Catalyst | What Changed | Preceptual.ai Advantage |
-|---|---|---|
-| **NVIDIA Aerial SDK open-sourced** | GPU-accelerated RAN is now accessible to startups, not just Nokia/Ericsson | First xApp optimized for ARC-Compact (L4) and ARC-Pro (Blackwell RTX PRO) |
-| **O-RAN R2/R3 maturity** | Near-RT RIC interfaces are standardized; xApp marketplace is real | Production gRPC server with < 4ms P99, fits inside 10ms RIC budget |
-| **Spectrum crisis at scale** | 5G mid-band exhaustion, CBRS congestion, 6G upper-mid-band planning | Continuous-time ODE formulation generalizes across band plans without retraining |
-
-The RIC platform market is growing from $0.67B (2025) to $7.09B (2030) at 60% CAGR. PreceptualAI is positioned at the intersection of the two fastest-growing segments: AI-RAN software and O-RAN xApp ecosystems.
-
----
-
-## How It Works
-
-### The LTC Cell
-
-At the heart of Preceptual.ai is a biologically-inspired neural ODE cell. Unlike LSTMs with fixed gate timescales, each LTC cell computes an input-dependent time constant that controls how fast the hidden state evolves:
-
-```
-f(x, h)  = tanh(W_h * h + W_x * x + b)            # nonlinear activation target
-tau(x)   = tau_base + softplus(W_tau * x + b_tau)   # input-dependent time constant
-h_new    = h + (dt / tau(x)) * (-h + f(x, h))      # Euler step of the neural ODE
-```
-
-**Why this matters for spectrum:**
-- When `tau(x)` is small (fast dynamics) --> the cell tracks rapid PU transitions in real time
-- When `tau(x)` is large (stable spectrum) --> the cell retains long-term channel quality estimates
-- The ODE formulation is *irregular-time-aware* — it naturally handles missing or delayed observations
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    PreceptualAI xApp                        │
-│                                                         │
-│  ┌──────────────┐    ┌──────────────┐                   │
-│  │   Spectrum    │    │  Multi-Layer │    ┌───────────┐  │
-│  │ Observations  │───>│  LTC Encoder │───>│   Actor   │──┼──> Channel
-│  │ (B, T, C*F)  │    │  (Neural ODE)│    │ (softmax) │  │    Selection
-│  └──────────────┘    └──────┬───────┘    └───────────┘  │
-│                             │                            │
-│                             │            ┌───────────┐  │
-│                             └───────────>│ Twin Q-Net │  │
-│                                          │ (Critics)  │  │
-│                                          └─────┬─────┘  │
-│                                                │         │
-│  ┌──────────────┐    ┌──────────────┐          │         │
-│  │   Entropy    │<───│ Replay Buffer│<─────────┘         │
-│  │  alpha(auto) │    │  (1M steps)  │                    │
-│  └──────────────┘    └──────────────┘                    │
-│                                                          │
-│  ┌──────────────┐    ┌──────────────┐                    │
-│  │  ONNX Export │───>│  TensorRT /  │───> gRPC Server    │
-│  │              │    │  NVIDIA ARC  │     (port 50051)   │
-│  └──────────────┘    └──────────────┘                    │
-└─────────────────────────────────────────────────────────┘
-```
-
-The SAC-LTC agent uses Soft Actor-Critic with automatic entropy tuning. The LTC encoder processes spectrum observation sequences step-by-step, producing a fixed-dimensional latent vector `z` that feeds both the actor (channel selection policy) and twin critics (Q-value estimation).
-
----
-
-## Federated Learning Flywheel
-
-Preceptual.ai's federated protocol is not standard FedAvg. It is a **hybrid aggregation** designed specifically for LTC networks:
-
-```mermaid
-graph TB
-    subgraph "Edge Site A (Dense Urban)"
-        EA[Local SAC-LTC Agent]
-        DA[Local 5G Traces]
-        DA --> EA
-    end
-
-    subgraph "Edge Site B (Suburban)"
-        EB[Local SAC-LTC Agent]
-        DB[Local 5G Traces]
-        DB --> EB
-    end
-
-    subgraph "Edge Site C (Industrial)"
-        EC[Local SAC-LTC Agent]
-        DC[Local 5G Traces]
-        DC --> EC
-    end
-
-    EA -->|Upload Weights| AGG
-    EB -->|Upload Weights| AGG
-    EC -->|Upload Weights| AGG
-
-    subgraph "Central Aggregator"
-        AGG[Hybrid FL Server]
-        GW[Global Structural Weights<br/>FedAvg on W_h, W_x, Actor, Critics]
-        TW[Personalized Tau Weights<br/>tau_mix_ratio blending per site]
-        AGG --> GW
-        AGG --> TW
-    end
-
-    GW -->|Broadcast| EA
-    GW -->|Broadcast| EB
-    GW -->|Broadcast| EC
-    TW -->|Site-Specific| EA
-    TW -->|Site-Specific| EB
-    TW -->|Site-Specific| EC
-```
-
-**How it works:**
-1. **Structural weights** (W_h, W_x, actor, critics) are averaged globally using FedAvg — these capture universal spectrum dynamics
-2. **Tau weights** (W_tau, b_tau) are blended using a configurable `tau_mix_ratio` — these encode site-specific temporal patterns (dense urban vs. rural, industrial IoT vs. consumer)
-3. **New devices** receive the full global model at registration for instant cold-start elimination
-4. **Raw spectrum data never leaves the edge** — only model weight deltas are transmitted
-
-**The flywheel effect:** Each new operator deployment improves the global structural model, which accelerates onboarding for the next operator, which attracts more operators. Synthetic-data competitors cannot replicate this compounding advantage.
-
----
-
-## Quick Start
-
-```bash
-# 1. Install
-git clone https://github.com/preceptualai-project/preceptualai.git && cd preceptualai
-pip install -e ".[dev]"
-
-# 2. Verify (74 tests)
-pytest tests/ -v
-
-# 3. Train
-python scripts/train.py --num_steps 50000 --seed 42
-
-# 4. Export
-python -c "from preceptualai.export import export_actor_to_onnx; print('Export ready')"
-
-# 5. Serve
-python -m preceptualai.xapp.server --model models/actor.onnx --port 50051
-```
-
-For custom training configurations:
-
-```bash
-python scripts/train.py \
-    --num_channels 20 \
-    --hidden_dim 128 \
-    --latent_dim 128 \
-    --num_layers 2 \
-    --batch_size 256 \
-    --output_dir results/run1
-```
-
----
-
-## Architecture
-
-```mermaid
-graph LR
-    subgraph Edge Devices
-        E1[Site 1<br/>NVIDIA ARC-Compact]
-        E2[Site 2<br/>NVIDIA ARC-Compact]
-        E3[Site N<br/>NVIDIA ARC-Pro]
-    end
-
-    subgraph PreceptualAI Cloud
-        GRPC[gRPC Gateway<br/>preceptualai.proto]
-        FL[FL Aggregator<br/>preceptualai_fl.proto]
-        PROM[Prometheus<br/>Metrics]
-        GLOB[Global Model<br/>Registry]
-    end
-
-    subgraph Near-RT RIC
-        RIC[O-RAN RIC Platform]
-        E2I[E2 Interface]
-    end
-
-    E1 -->|UploadWeights| FL
-    E2 -->|UploadWeights| FL
-    E3 -->|UploadWeights| FL
-    FL -->|Hybrid Aggregate| GLOB
-    GLOB -->|DownloadGlobalModel| E1
-    GLOB -->|DownloadGlobalModel| E2
-    GLOB -->|DownloadGlobalModel| E3
-    E1 -->|Predict| GRPC
-    GRPC -->|ChannelDecision| RIC
-    RIC -->|E2 Indication| E1
-    FL --> PROM
-    GRPC --> PROM
-```
-
----
-
-## Benchmarks
-
-All results are averaged over 5 random seeds with standard errors. Trained and evaluated on the UCC MISL 5G dataset (188K measurements, 83 real operator traces).
-
-| Metric | SAC-LTC | SAC-LSTM | SAC-LFM | PPO-LSTM |
-|---|---|---|---|---|
-| **Success Rate** | **63.37% +/- 0.44%** | 62.51% +/- 0.47% | 62.73% +/- 0.56% | 62.62% +/- 0.55% |
-| **Collision Rate** | **36.63% +/- 0.44%** | 37.49% +/- 0.47% | 37.27% +/- 0.56% | 37.38% +/- 0.55% |
-| **Spectral Efficiency** | **0.634 +/- 0.004** | 0.625 +/- 0.005 | 0.627 +/- 0.006 | 0.626 +/- 0.005 |
-| **Jain's Fairness Index** | 0.996 +/- 0.001 | 0.995 +/- 0.001 | 0.996 +/- 0.000 | 0.995 +/- 0.000 |
-| **Inference Latency (mean)** | 3.14 ms | 0.83 ms | 1.28 ms | 4.11 ms |
-| **Inference Latency (P99)** | 3.96 ms | 1.12 ms | 1.74 ms | 5.83 ms |
-| **Within 10ms RIC Budget** | Yes | Yes | Yes | Yes |
-
-**Key takeaway:** SAC-LTC achieves the highest success rate and spectral efficiency while maintaining sub-4ms P99 latency — well within the O-RAN Near-RT RIC's 10ms control loop budget.
-
-Reproduce benchmarks:
-
-```bash
-pip install -e ".[benchmarks]"
-python benchmarks/run_full_benchmark.py --config benchmarks/benchmark_config.yaml
-python benchmarks/visualize.py --results_dir benchmarks/results
-```
-
----
-
-## Deployment
-
-### Docker
-
-```bash
-# Build the image
-docker build -f docker/Dockerfile -t preceptualai:latest .
-
-# Run training
-docker run --rm preceptualai:latest python scripts/train.py --num_steps 100000
-
-# Run inference server
-docker run --rm -p 50051:50051 -p 9090:9090 preceptualai:latest \
-    python -m preceptualai.xapp.server --model /app/models/actor.onnx
-
-# Run with GPU (NVIDIA ARC)
-docker run --rm --gpus all -p 50051:50051 preceptualai:latest \
-    python -m preceptualai.xapp.server --model /app/models/actor.onnx --backend tensorrt
-```
-
-### NVIDIA ARC Hardware Support
-
-| Hardware | SKU | Use Case | Status |
-|---|---|---|---|
-| ARC-Compact | NVIDIA L4 | Edge inference, single-cell xApp | Supported |
-| ARC-Pro | Blackwell RTX PRO | Multi-cell inference, FL aggregation | Supported |
-| DGX / HGX | H100 / B200 | Central FL training, model development | Supported |
-
-```bash
-# Install GPU dependencies
-pip install preceptualai[gpu]
-
-# Export to TensorRT
-python -m preceptualai.export.tensorrt --onnx models/actor.onnx --output models/actor.trt
-
-# Verify on ARC hardware
-python -m preceptualai.xapp.server --model models/actor.trt --backend tensorrt --port 50051
-```
-
-### O-RAN RIC Integration
-
-1. **Register** the xApp with the RIC platform via `ricxappframe`
-2. **Subscribe** to E2 indications carrying spectrum measurements
-3. **Infer** channel selections using the exported ONNX/TensorRT model
-4. **Control** via E2 control messages back to the E2 node
-
-See [`src/preceptualai/xapp/`](src/preceptualai/xapp/) for the full integration layer.
-
----
-
-## gRPC API
-
-### Inference Service (`preceptualai.proto`)
-
-| Method | Type | Description |
-|---|---|---|
-| `Predict` | Unary | Single-shot channel selection from a spectrum observation |
-| `PredictStream` | Bidirectional streaming | Continuous observation feed with real-time decisions |
-| `GetHealth` | Unary | Liveness/readiness probe with model metadata |
-| `GetMetrics` | Unary | Prometheus-compatible metrics snapshot |
-
-### Federated Learning Service (`preceptualai_fl.proto`)
-
-| Method | Type | Description |
-|---|---|---|
-| `RegisterDevice` | Unary | Enroll edge device, receive global model for cold start |
-| `UploadWeights` | Unary | Submit locally trained weights for aggregation |
-| `DownloadGlobalModel` | Unary | Retrieve personalized or global model |
-| `GetFLStatus` | Unary | Federation status, round history, device health |
-| `StreamTrainingMetrics` | Server streaming | Real-time per-round aggregation metrics |
-
-Full protobuf definitions: [`proto/preceptualai.proto`](proto/preceptualai.proto) | [`proto/preceptualai_fl.proto`](proto/preceptualai_fl.proto)
-
----
-
-## Configuration
-
-Preceptual.ai uses a Pydantic-validated configuration schema:
-
-| Section | Parameter | Default | Description |
-|---|---|---|---|
-| `environment` | `num_channels` | 10 | Number of radio channels |
-| `environment` | `sequence_length` | 16 | Observation history window |
-| `environment` | `num_features` | 3 | Features per channel (SNR, interference, occupancy) |
-| `encoder` | `hidden_dim` | 128 | LTC cell hidden state dimension |
-| `encoder` | `latent_dim` | 128 | Encoder output dimension |
-| `encoder` | `num_layers` | 2 | Number of stacked LTC layers |
-| `encoder` | `dt` | 1.0 | ODE discretisation step size |
-| `agent` | `lr` | 3e-4 | Learning rate for all optimizers |
-| `agent` | `gamma` | 0.99 | Discount factor |
-| `agent` | `tau` | 0.005 | Polyak averaging coefficient |
-| `agent` | `buffer_size` | 1,000,000 | Replay buffer capacity |
-| `agent` | `batch_size` | 256 | Mini-batch size |
-
-```python
-from preceptualai.config import SpectralConfig
-
-cfg = SpectralConfig.from_yaml_file("config.yaml")
-```
-
----
-
-## Pricing
-
-Preceptual.ai follows an **open-core model** designed for land-and-expand within telecom operators:
-
-| Tier | What's Included | Price |
-|---|---|---|
-| **Community** | Full SAC-LTC agent, training, ONNX export, single-node inference, gRPC server | Free (Apache 2.0) |
-| **Pro** | Federated learning server, hybrid tau aggregation, multi-site management, Prometheus dashboards | Per-site / month |
-| **Enterprise** | Dedicated FL cluster, custom model tuning, SLA, 24/7 support, RIC integration services | Annual contract |
-
-The Community tier is a complete, production-grade xApp — not a crippled demo. Pro and Enterprise add the multi-site federated capabilities that create compounding network effects.
-
----
-
-## Roadmap
-
-| Quarter | Milestone |
+| Reader | Best starting path |
 |---|---|
-| **Q3 2026** | Multi-band support (CBRS 3.5 GHz + C-band 3.7 GHz), ORAN-SC RIC integration testing |
-| **Q4 2026** | TensorRT 10 optimization for ARC-Pro, FL protocol v2 with differential privacy (epsilon-delta guarantees) |
-| **Q1 2027** | 6G upper-mid-band (7-24 GHz) simulation environment, digital twin integration via NVIDIA Omniverse |
-| **Q2 2027** | Multi-agent cooperative spectrum sharing, inter-operator FL federation, 3GPP Release 19 alignment |
+| Lay reader, operator, partner, or investor | Read this file, then [`docs/SYSTEM_OVERVIEW.md`](docs/SYSTEM_OVERVIEW.md) and [`docs/UHCI_RESEARCH_GUIDE.md`](docs/UHCI_RESEARCH_GUIDE.md). |
+| Researcher or ML engineer | Read this file, then [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/TRAINING_AND_EVALUATION.md`](docs/TRAINING_AND_EVALUATION.md), and [`docs/DATA_AND_REPRODUCIBILITY.md`](docs/DATA_AND_REPRODUCIBILITY.md). |
+| Deployment engineer or telecom integrator | Read this file, then [`docs/DEPLOYMENT_AND_XAPP_GUIDE.md`](docs/DEPLOYMENT_AND_XAPP_GUIDE.md) and [`docs/API_AND_INTERFACES.md`](docs/API_AND_INTERFACES.md). |
+| Contributor or maintainer | Read [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md), [`docs/REPOSITORY_MAP.md`](docs/REPOSITORY_MAP.md), and [`docs/DEVELOPER_GUIDE.md`](docs/DEVELOPER_GUIDE.md). |
 
----
+## The Problem We Solve
 
-## Project Structure
+Modern wireless systems are no longer well described as one base station choosing one channel inside one fixed propagation regime. Real-world connectivity increasingly spans **multiple provider classes, multiple spectrum regimes, multiple control timescales, and multiple deployment surfaces**. A decision system may need to reason not only about interference and occupancy, but also about whether the right next action lies in **FR1, FR3, WiFi 7, HAPS, or a non-terrestrial option such as LEO, MEO, or GEO**, each with different latency, coverage, Doppler, handover, and coexistence behavior.[1] [6] [7] [16] [17]
 
+The challenge is therefore broader than classical dynamic spectrum access. The real problem is that **connectivity intelligence must now operate across a heterogeneous wireless world while remaining fast enough for control loops, grounded enough in telecom physics, and structured enough to fit programmable deployment surfaces such as O-RAN and AI-RAN**.[18] [19] [20] [21]
+
+> The central problem is no longer only “which channel should I pick next?” It is **how to build one decision layer that can reason across heterogeneous connectivity options, adapt over time, and operate inside real telecom software control loops**.
+
+| Structural constraint | Why it matters operationally | Why narrow systems break down |
+|---|---|---|
+| Connectivity is heterogeneous | Different provider classes expose different constraints and opportunities | Flat single-environment formulations hide crucial distinctions |
+| Propagation regimes differ | FR3, NTN, and atmospheric effects shape real performance envelopes | Simplified channel assumptions fail to capture deployment reality |
+| Control timescales are mixed | Fast inference, persistent state, and slower governance loops all matter | One fixed-clock controller is an architectural mismatch |
+| Telecom stacks are becoming programmable | O-RAN creates live software insertion points for control intelligence | Offline-only research code is insufficient |
+| AI and RAN are converging operationally | AI-RAN creates infrastructure pathways for learned control | Legacy packaging does not fit accelerator-native operations |
+| Claims must be auditable | Operators and researchers need reproducible evidence | Poorly documented systems are hard to trust or adopt |
+
+## Our Solution: UHCI
+
+**UHCI** is the repository’s answer to this problem. In code, UHCI is a layered architecture that combines **provider taxonomy, physics-aware environment modeling, heterogeneous state encoding, adaptive temporal reasoning, policy learning, runtime serving, and telecom lifecycle management** into one coherent system.[1] [2] [3] [4] [5] [6] [7] [8] [9] [10] [11] [12]
+
+The architecture starts by defining the world properly. `provider_registry.py` formalizes provider classes such as **LEO, MEO, GEO, HAPS, FR1, FR3, ISAC, and WiFi 7**, together with structured priors such as latency ranges, bandwidth, Doppler, handover periods, coverage, and coexistence assumptions.[1] That provider layer is then connected to explicit propagation modules such as `itu_propagation.py` and `fr3_propagation.py`, making telecom physics part of the decision problem rather than a post-hoc narrative.[6] [7]
+
+On top of that world model, `unified_connectivity_env.py` constructs a heterogeneous control environment. The representation stack includes graph-oriented encoding in `hetero_gnn_encoder.py` and continuous-time temporal backends in `ltc_cell_cfc.py`, including **CfC** and related adaptive temporal pathways.[2] [4] [5] The policy layer is broadened through `universal_spectrum_agent.py`, which makes the repository’s center of gravity a **general connectivity-intelligence agent** rather than a narrow benchmark workflow.[3]
+
+| UHCI layer | What it contributes | Principal code anchors |
+|---|---|---|
+| Provider ontology | Defines which connectivity classes exist and how they differ | `src/preceptualai/env/provider_registry.py` |
+| Propagation realism | Encodes standards- and band-aware wireless behavior | `src/preceptualai/env/itu_propagation.py`, `src/preceptualai/env/fr3_propagation.py` |
+| Unified environment | Builds observations, actions, rewards, and provider interactions | `src/preceptualai/env/unified_connectivity_env.py` |
+| Real-data pipeline | Connects the environment to richer telecom datasets and ingestion paths | `src/preceptualai/env/data_pipeline.py` |
+| Structural representation | Encodes heterogeneous system state relationally | `src/preceptualai/core/hetero_gnn_encoder.py` |
+| Temporal intelligence | Provides adaptive continuous-time reasoning, including CfC-capable pathways | `src/preceptualai/core/ltc_cell_cfc.py` |
+| Universal decision layer | Produces actions over the richer UHCI state space | `src/preceptualai/core/universal_spectrum_agent.py` |
+| Runtime and deployment | Serves, executes, and governs the learned intelligence | `src/preceptualai/xapp/` |
+
+## What UHCI Encompasses in This Repository
+
+A line-by-line repository audit shows that UHCI is not just an environment rename and not just a model swap. It spans multiple technical layers that, in many projects, would be split across separate research and production repositories.
+
+```text
+Provider taxonomy + telecom physics
+                ↓
+Unified heterogeneous environment + data ingestion
+                ↓
+Graph-structured encoding + continuous-time temporal reasoning
+                ↓
+Universal agent / learned control policy
+                ↓
+Low-latency inference + serving + AI-RAN packaging
+                ↓
+E2 / O-RAN integration + Non-RT lifecycle governance
 ```
-SAC-LTC/
-├── src/preceptualai/
-│   ├── core/           # LTC cell, encoder, actor, critic, replay buffer
-│   ├── agent/          # SAC-LTC agent
-│   ├── env/            # Gymnasium environments (sim, O-RAN, AODT)
-│   ├── export/         # ONNX / TensorRT export
-│   ├── xapp/           # O-RAN xApp integration + gRPC server
-│   ├── config.py       # Pydantic configuration schema
-│   └── monitoring/     # Prometheus metrics
-├── tests/              # 74 pytest tests
-├── scripts/            # Training and evaluation scripts
-├── benchmarks/         # Reproducible benchmark suite
-├── proto/              # gRPC / Protobuf definitions
-├── docker/             # Dockerfile for deployment
-├── docs/               # PR/FAQ, architecture docs
-└── pyproject.toml      # Package configuration
-```
 
----
+| UHCI subsystem | Repository evidence | Architectural meaning |
+|---|---|---|
+| Provider taxonomy | `provider_registry.py` | The system reasons across provider classes, not anonymous channels only |
+| Physics layer | `itu_propagation.py`, `fr3_propagation.py` | Decisions are constrained by propagation-aware modeling |
+| Unified environment | `unified_connectivity_env.py` | The world state is heterogeneous and provider-aware |
+| Data ingestion | `data_pipeline.py` | The stack is designed to connect to richer empirical telecom inputs |
+| Universal agent | `universal_spectrum_agent.py` | Decision logic is broader than one narrow benchmark actor |
+| Graph encoder | `hetero_gnn_encoder.py` | Connectivity state is represented structurally, not just as flat vectors |
+| Continuous-time backend | `ltc_cell_cfc.py` | Time dynamics are treated as a first-class modeling problem |
+| RT inference path | `dapp_engine.py` | The system includes a near-real-time execution lane |
+| Serving surface | `server.py`, `inference_engine.py` | The model is exposed as a callable live service |
+| Control-plane integration | `oran.py`, `e2_adapter.py` | The architecture is designed with O-RAN loop boundaries in mind |
+| Lifecycle governance | `rapp_trainer.py` | Model approval, monitoring, degradation checks, and retraining are explicit |
+| AI-RAN packaging | `aerial_adapter.py` | The stack contemplates accelerator-native telecom deployment |
 
-## Contributing
+## Why This Architecture Is Defensible
 
-We welcome contributions from the O-RAN, reinforcement learning, and telecom communities.
+The repository’s defensibility comes from **combination, structure, and execution path**, not from a single isolated modeling trick.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Run tests (`pytest tests/ -v`) — all 74 must pass
-4. Submit a pull request with a clear description
+First, the code combines **heterogeneous-provider reasoning** with **telecom-physics-aware modeling**. This matters because a connectivity controller that ignores provider differences, latency envelopes, handover dynamics, and propagation constraints is not addressing the full real-world problem.[1] [2] [6] [7]
 
-Please read our contribution guidelines and ensure all tests pass before submitting.
+Second, the architecture combines **structural state encoding** with **continuous-time temporal reasoning**. That is important because heterogeneous connectivity is relational and mixed-timescale by nature. A graph-oriented encoder and adaptive temporal backend are more aligned with that reality than a generic fixed-timescale flat controller.[3] [4] [5]
 
----
+Third, the repository includes a genuine **deployment story**. The presence of runtime abstractions, gRPC serving, RT-oriented inference, E2-facing integration, and Non-RT lifecycle governance means the codebase is trying to answer not only whether a model can be trained, but also **how it would be executed, monitored, and updated inside a telecom software environment**.[8] [9] [10] [11] [12]
 
-## Citation
+| Defensibility vector | Why it matters | Repository evidence |
+|---|---|---|
+| **Heterogeneous-provider worldview** | Expands value from narrow spectrum selection to broader connectivity intelligence | `provider_registry.py`, `unified_connectivity_env.py` |
+| **Physics-aware modeling** | Grounds decision logic in telecom reality | `itu_propagation.py`, `fr3_propagation.py` |
+| **Graph-structured state** | Preserves provider identity and system relationships | `hetero_gnn_encoder.py` |
+| **Adaptive temporal reasoning** | Aligns controller memory with mixed wireless timescales | `ltc_cell_cfc.py` |
+| **Universal control abstraction** | Makes the system extensible beyond one benchmark workflow | `universal_spectrum_agent.py` |
+| **Deployment realism** | Bridges research code to callable service interfaces and real-time paths | `server.py`, `dapp_engine.py`, `aerial_adapter.py` |
+| **Lifecycle governance** | Treats retraining, approval, rollout, and degradation as part of the system | `rapp_trainer.py` |
+| **Auditable evidence posture** | Separates benchmark-backed claims from broader architecture claims | Benchmark artifacts and docs system |
 
-```bibtex
-@inproceedings{preceptualai2026,
-  title     = {PreceptualAI: Soft Actor-Critic with Liquid Time-Constant Networks
-               for AI-Native Dynamic Spectrum Access in O-RAN},
-  author    = {PreceptualAI Contributors},
-  year      = {2026},
-  note      = {Continuous-time neural ODE encoder with hybrid federated
-               aggregation for real-time spectrum management on NVIDIA ARC},
-  url       = {https://github.com/preceptualai-project/preceptualai}
-}
-```
+## Why Now
+
+The timing argument for UHCI is strong because **infrastructure, standards, and policy are converging**.
+
+NVIDIA’s AI-RAN framing highlights a future in which AI and radio workloads coexist on accelerated infrastructure, creating a concrete execution substrate for learned telecom control.[18] O-RAN has made software-driven control loops more operationally real through the **Near-RT RIC**, **xApp**, and related open interfaces, which means the industry now has insertion points for programmable network intelligence.[19] At the same time, public-sector spectrum strategy is moving toward more adaptive, coexistence-aware, and innovation-oriented spectrum use, as reflected in the U.S. National Spectrum R&D Plan and NTIA’s AI-RAN-oriented program direction.[20] [21]
+
+> The opportunity exists now because the industry finally has both **a place to run connectivity intelligence** and **a reason to demand more adaptive cross-provider decision systems**.
+
+| Timing driver | What changed | Why UHCI fits now |
+|---|---|---|
+| **AI-RAN infrastructure** | AI and RAN workloads increasingly share accelerated platforms | UHCI already includes serving, RT inference, and AI-RAN packaging surfaces |
+| **O-RAN control surfaces** | RIC-oriented software loops make deployment practical | UHCI includes xApp, dApp, E2, and lifecycle-oriented modules |
+| **Dynamic spectrum pressure** | Policy momentum favors more adaptive coexistence-aware operation | Provider- and propagation-aware control becomes more valuable |
+| **Need for cross-layer reasoning** | Future networks span terrestrial and non-terrestrial assets | UHCI explicitly models heterogeneous providers and propagation regimes |
+| **Demand for auditability** | Operators and researchers increasingly demand code-backed claims | The repository now includes a documentation system designed for reconstruction and diligence |
+
+## Technical Architecture, End to End
+
+UHCI can be read as a full control stack. The environment layer defines what the system can observe and act on. The intelligence layer transforms that state into a structured latent representation and chooses an action. The runtime layer turns that decision into a callable service. The governance layer manages how models are approved, monitored, and refreshed over time.[1] [2] [3] [4] [5] [8] [9] [10] [11] [12]
+
+| Stage | Primary files | What happens |
+|---|---|---|
+| World definition | `provider_registry.py`, `itu_propagation.py`, `fr3_propagation.py` | The connectivity universe and its physical constraints are defined |
+| Decision environment | `unified_connectivity_env.py`, `data_pipeline.py` | Observations, actions, rewards, and empirical data pathways are assembled |
+| Representation learning | `hetero_gnn_encoder.py`, `ltc_cell_cfc.py` | Heterogeneous state is encoded structurally and temporally |
+| Decision policy | `universal_spectrum_agent.py` | The agent chooses a control action over the richer state space |
+| Runtime execution | `inference_engine.py`, `dapp_engine.py`, `server.py` | The trained model is executed and exposed as a service |
+| Telecom integration | `oran.py`, `e2_adapter.py`, `aerial_adapter.py` | The model is connected to O-RAN and accelerator-oriented deployment paths |
+| Lifecycle governance | `rapp_trainer.py` | Model cataloging, approval, monitoring, policy generation, and retraining are handled |
+
+## Measured Performance and Safe Benchmark Boundaries
+
+The repository includes empirical benchmark evidence, but that evidence should be described precisely. The most mature directly aggregated benchmark surface currently present in the repository is the control benchmark implemented in `benchmarks/benchmark.py` and summarized in `benchmark_summary.json`.[13] [14] That benchmark provides measured results under a specific included evaluation setting.
+
+The safe interpretation is therefore straightforward: **the repository contains measured improvement on important canonical control metrics within the included benchmark suite**, while the broader UHCI architecture is primarily supported by code-level implementation evidence and subsystem-level design, not by a single equally mature end-to-end aggregated benchmark covering every deployment and provider scenario.[13] [14]
+
+| Metric in the included benchmark suite | Reported result | Safe interpretation |
+|---|---:|---|
+| **Success rate** | **0.6337 ± 0.0044** | Best reported result in the included benchmark suite on successful transmissions.[14] |
+| **Collision rate** | **0.3663 ± 0.0044** | Best reported result in the included benchmark suite on lowest collision rate.[14] |
+| **Spectral efficiency** | **0.6337 ± 0.0044** | Best reported result in the included benchmark suite on spectral efficiency.[14] |
+| **Mean reward** | Best reported value is higher for another included model | The repository should not claim universal reward leadership from this artifact alone.[14] |
+| **Fairness** | Near-leading but not first in the included evaluation | The repository should describe fairness carefully and precisely.[14] |
+| **Mean inference latency** | Real-time-capable in the included benchmark framing | The repository should not claim fastest latency across all included models from this artifact alone.[14] |
+
+This distinction matters. It lets the documentation make a strong, honest statement: **the codebase already shows a broad UHCI system architecture, and it already contains measured leadership on key benchmark metrics inside the included evaluation lane, but the architecture is broader than the current single aggregated benchmark story**.
+
+## How UHCI Reaches Deployment
+
+One of the strongest aspects of the codebase is that it goes beyond training. `dapp_engine.py` implements a low-latency inference path with persistent temporal state and deployment-oriented optimizations. `server.py` exposes gRPC prediction, health, and metrics interfaces, making the intelligence layer inspectable as a live service. `inference_engine.py` provides the main runtime abstraction for loading and executing models.[8] [9] [10]
+
+At a slower lifecycle timescale, `rapp_trainer.py` provides model cataloging, approval, deployment logic, degradation monitoring, and policy-generation functionality aligned with a Non-RT RIC or SMO-style setting.[12] `e2_adapter.py` and `oran.py` express the lower-level control and measurement boundaries that connect the decision system to O-RAN-style loops.[11] `aerial_adapter.py` extends the story toward NVIDIA Aerial and ARC-oriented deployment profiles, which is why the repository fits the broader AI-RAN timing argument.[11] [18]
+
+| Deployment surface | What it does |
+|---|---|
+| `src/preceptualai/xapp/dapp_engine.py` | Executes low-latency inference for RT-oriented deployment |
+| `src/preceptualai/xapp/server.py` | Serves the model over gRPC with health and metrics endpoints |
+| `src/preceptualai/xapp/inference_engine.py` | Provides the main loaded-model runtime abstraction |
+| `src/preceptualai/xapp/e2_adapter.py` | Encodes the E2-facing measurement and control boundary |
+| `src/preceptualai/env/oran.py` | Frames the live O-RAN control-loop environment |
+| `src/preceptualai/xapp/rapp_trainer.py` | Manages cataloging, approval, monitoring, and policy artifacts |
+| `src/preceptualai/xapp/aerial_adapter.py` | Packages the runtime for NVIDIA Aerial and ARC-oriented deployment |
+
+## Our Moats
+
+The repository’s moats are best understood as **compound system moats** rather than as one secret algorithm.
+
+The first moat is **system breadth with internal coherence**. The codebase does not stop at one policy network. It ties together provider ontology, propagation realism, structured representation learning, continuous-time temporal reasoning, runtime execution, and telecom lifecycle logic in one inspectable system.[1] [2] [3] [4] [5] [8] [9] [10] [11] [12]
+
+The second moat is **domain-shaped architecture**. Provider priors, ITU-aligned propagation logic, FR3-specific behavior, and O-RAN-facing deployment modules create a code structure that is much harder to reproduce than a generic RL agent trained in a toy simulator.[1] [6] [7] [11] [12]
+
+The third moat is **evidence discipline**. The repository now separates benchmark-backed claims from architectural claims and makes the rebuild path explicit through a documentation system intended for lay readers, engineers, and researchers alike.[13] [14] [15]
+
+| Moat | Why it is hard to replicate quickly |
+|---|---|
+| Integrated heterogeneous-provider stack | Requires more than just a model; it requires a coherent world model and control formulation |
+| Physics-aware connectivity modeling | Requires telecom-domain priors and propagation-aware environment design |
+| Temporal and structural intelligence combined | Requires both graph reasoning and adaptive time modeling, not only flat sequence learning |
+| Telecom deployment path | Requires runtime, observability, O-RAN integration, and lifecycle management |
+| Documentation and evidence clarity | Reduces ambiguity for adopters while increasing trust and reconstructability |
+
+## What the Repository Is and Is Not
+
+This repository **is** a comprehensive, code-backed architecture for UHCI, including heterogeneous-provider modeling, propagation-aware environments, structural and temporal learning modules, runtime serving, and telecom lifecycle integration.[1] [2] [3] [4] [5] [6] [7] [8] [9] [10] [11] [12]
+
+It **is not** yet best described as a single uniform benchmarked product where every subsystem has exactly the same empirical maturity. The strongest aggregated quantitative evidence remains concentrated in the included benchmark suite, while the broader UHCI architecture is presently best understood as implementation-backed, technically extensive, and deployment-oriented.[13] [14]
+
+That distinction is important because it allows the repository to be read honestly and seriously. A careful reader should conclude that **the architectural scope is already broad, the benchmark evidence is real but bounded, and the overall repository is larger than any one benchmarked model path**.
+
+## How to Recreate the System from Documentation
+
+A careful reader can rebuild the repository in stages. The recommended path is to understand the system architecture first, then install and run the environment and training surfaces, then validate the benchmark evidence, and finally move into deployment-facing integration.
+
+| Build objective | Recommended path |
+|---|---|
+| Understand the problem, solution, moats, and timing | This README and [`docs/SYSTEM_OVERVIEW.md`](docs/SYSTEM_OVERVIEW.md) |
+| Understand the full technical decomposition | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| Understand the complete UHCI research stack | [`docs/UHCI_RESEARCH_GUIDE.md`](docs/UHCI_RESEARCH_GUIDE.md) |
+| Install and run the repository locally | [`docs/SETUP_AND_QUICKSTART.md`](docs/SETUP_AND_QUICKSTART.md) |
+| Reproduce benchmark evidence responsibly | [`docs/TRAINING_AND_EVALUATION.md`](docs/TRAINING_AND_EVALUATION.md) and [`docs/DATA_AND_REPRODUCIBILITY.md`](docs/DATA_AND_REPRODUCIBILITY.md) |
+| Integrate or deploy the runtime | [`docs/DEPLOYMENT_AND_XAPP_GUIDE.md`](docs/DEPLOYMENT_AND_XAPP_GUIDE.md) and [`docs/API_AND_INTERFACES.md`](docs/API_AND_INTERFACES.md) |
+| Navigate the repository structurally | [`docs/REPOSITORY_MAP.md`](docs/REPOSITORY_MAP.md) |
+
+## Documentation System
+
+The repository now uses a layered documentation system specifically to prevent the project from being misread as a narrow one-model codebase. The documentation is organized so that a layman can understand the business and technical narrative, while a researcher or engineer can reconstruct the implementation and its empirical boundaries from Markdown alone.
+
+| Documentation file | Purpose |
+|---|---|
+| [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md) | Master map of the documentation system |
+| [`docs/SYSTEM_OVERVIEW.md`](docs/SYSTEM_OVERVIEW.md) | Plain-language explanation of UHCI and why it matters |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Detailed decomposition of the full technical system |
+| [`docs/UHCI_RESEARCH_GUIDE.md`](docs/UHCI_RESEARCH_GUIDE.md) | Deepest explanation of the heterogeneous-connectivity research stack |
+| [`docs/TRAINING_AND_EVALUATION.md`](docs/TRAINING_AND_EVALUATION.md) | Benchmark and empirical-evidence guide |
+| [`docs/DATA_AND_REPRODUCIBILITY.md`](docs/DATA_AND_REPRODUCIBILITY.md) | Boundaries of what is directly reproducible |
+| [`docs/DEPLOYMENT_AND_XAPP_GUIDE.md`](docs/DEPLOYMENT_AND_XAPP_GUIDE.md) | Serving, xApp, dApp, and deployment path |
+| [`docs/API_AND_INTERFACES.md`](docs/API_AND_INTERFACES.md) | Scripts, configuration surfaces, and protocol contracts |
+| [`docs/REPOSITORY_MAP.md`](docs/REPOSITORY_MAP.md) | Directory-by-directory map of the repository |
 
 ## References
 
-- Hasani, R., Lechner, M., Amini, A., et al. "Liquid Time-constant Networks." *AAAI*, 2021.
-- Christodoulou, P. "Soft Actor-Critic for Discrete Action Settings." *arXiv:1910.07207*, 2019.
-- Haarnoja, T., Zhou, A., Abbeel, P., Levine, S. "Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning." *ICML*, 2018.
-- O-RAN Alliance. "O-RAN Architecture Description." O-RAN.WG1.O-RAN-Architecture-Description, 2023.
-
-## License
-
-Apache 2.0 — see [LICENSE](LICENSE) for details.
-
----
-
-<p align="center">
-  <strong>PreceptualAI</strong> — Because spectrum is a continuous-time problem, and your xApp should be too.
-</p>
+[1]: [Provider taxonomy in `src/preceptualai/env/provider_registry.py`](src/preceptualai/env/provider_registry.py)
+[2]: [Unified connectivity environment in `src/preceptualai/env/unified_connectivity_env.py`](src/preceptualai/env/unified_connectivity_env.py)
+[3]: [Universal spectrum agent in `src/preceptualai/core/universal_spectrum_agent.py`](src/preceptualai/core/universal_spectrum_agent.py)
+[4]: [Heterogeneous GNN encoder in `src/preceptualai/core/hetero_gnn_encoder.py`](src/preceptualai/core/hetero_gnn_encoder.py)
+[5]: [CfC temporal backend in `src/preceptualai/core/ltc_cell_cfc.py`](src/preceptualai/core/ltc_cell_cfc.py)
+[6]: [ITU propagation module in `src/preceptualai/env/itu_propagation.py`](src/preceptualai/env/itu_propagation.py)
+[7]: [FR3 propagation module in `src/preceptualai/env/fr3_propagation.py`](src/preceptualai/env/fr3_propagation.py)
+[8]: [Unified real-data pipeline in `src/preceptualai/env/data_pipeline.py`](src/preceptualai/env/data_pipeline.py)
+[9]: [RT-oriented dApp engine in `src/preceptualai/xapp/dapp_engine.py`](src/preceptualai/xapp/dapp_engine.py)
+[10]: [gRPC serving module in `src/preceptualai/xapp/server.py`](src/preceptualai/xapp/server.py)
+[11]: [O-RAN environment surface in `src/preceptualai/env/oran.py`](src/preceptualai/env/oran.py) and [E2 adapter in `src/preceptualai/xapp/e2_adapter.py`](src/preceptualai/xapp/e2_adapter.py)
+[12]: [Non-RT RIC lifecycle service in `src/preceptualai/xapp/rapp_trainer.py`](src/preceptualai/xapp/rapp_trainer.py)
+[13]: [Benchmark harness in `benchmarks/benchmark.py`](benchmarks/benchmark.py)
+[14]: [Aggregated benchmark summary in `benchmarks/results/benchmark_results_full/benchmark_summary.json`](benchmarks/results/benchmark_results_full/benchmark_summary.json)
+[15]: [Documentation index in `docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md)
+[16]: [UHCI training entry point in `scripts/train_uhci.py`](scripts/train_uhci.py)
+[17]: [Project manifest in `pyproject.toml`](pyproject.toml)
+[18]: [NVIDIA, "AI-RAN Solutions for 5G & 6G Cellular Networks"](https://www.nvidia.com/en-us/industries/telecommunications/ai-ran/)
+[19]: [O-RAN Software Community documentation](https://docs.o-ran-sc.org/en/k-release/)
+[20]: [NITRD, "National Spectrum Research and Development Plan 2024"](https://www.nitrd.gov/pubs/National-Spectrum-RD-Plan-2024.pdf)
+[21]: [NTIA, "NTIA Seeks Feedback on New Direction for Innovation Fund That Focuses on AI-RAN"](https://www.ntia.gov/blog/2026/ntia-seeks-feedback-new-direction-innovation-fund-focuses-ai-ran)
