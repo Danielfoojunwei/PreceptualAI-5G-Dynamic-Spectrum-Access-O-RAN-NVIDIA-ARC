@@ -1,4 +1,4 @@
-# SpectrAI Runtime Dependencies
+# PreceptualAI Runtime Dependencies
 torch>=2.1.0
 numpy>=1.24.3
 gymnasium>=0.29.1

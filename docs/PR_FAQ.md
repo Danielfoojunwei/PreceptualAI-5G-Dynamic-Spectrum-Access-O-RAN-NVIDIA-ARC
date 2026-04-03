@@ -1,4 +1,4 @@
-# SpectrAI PR/FAQ
+# PreceptualAI PR/FAQ
 
 *Amazon-style Press Release / Frequently Asked Questions*
 
@@ -6,32 +6,32 @@
 
 ## PRESS RELEASE
 
-### SpectrAI Launches AI-Powered Spectrum Engine That Adapts to Radio Conditions in Real Time
+### PreceptualAI Launches AI-Powered Spectrum Engine That Adapts to Radio Conditions in Real Time
 
 **Open-source O-RAN xApp uses biologically-inspired neural networks and federated learning to deliver 63% successful transmission rates on real 5G data — with sub-4ms latency on NVIDIA ARC hardware**
 
-**San Jose, CA — 2026** — SpectrAI today announced the general availability of its intelligent spectrum management engine, a production-grade O-RAN xApp that uses a novel class of neural networks called Liquid Time-Constant (LTC) networks to make real-time dynamic spectrum access decisions. The software is available under the Apache 2.0 open-source license, with enterprise tiers for operators seeking federated learning, dedicated support, and NVIDIA ARC optimization.
+**San Jose, CA — 2026** — PreceptualAI today announced the general availability of its intelligent spectrum management engine, a production-grade O-RAN xApp that uses a novel class of neural networks called Liquid Time-Constant (LTC) networks to make real-time dynamic spectrum access decisions. The software is available under the Apache 2.0 open-source license, with enterprise tiers for operators seeking federated learning, dedicated support, and NVIDIA ARC optimization.
 
 Mobile operators worldwide manage over $500 billion in cumulative spectrum assets, yet current RAN intelligent controllers rely on static rules or fixed-timescale AI models that cannot adapt their decision-making speed to changing radio conditions. When a sports stadium fills with 80,000 subscribers, or when interference patterns shift due to weather, these systems react too slowly — wasting spectrum and degrading subscriber experience.
 
-SpectrAI solves this with Liquid Time-Constant neural networks, a continuous-time neural ODE architecture whose time constants are input-dependent. When the spectrum is volatile, SpectrAI's inference speed increases automatically. When conditions are stable, it retains longer-term memory for better predictions. No manual tuning is required.
+PreceptualAI solves this with Liquid Time-Constant neural networks, a continuous-time neural ODE architecture whose time constants are input-dependent. When the spectrum is volatile, PreceptualAI's inference speed increases automatically. When conditions are stable, it retains longer-term memory for better predictions. No manual tuning is required.
 
-"For the first time, we have an AI system that matches its temporal reasoning to the actual dynamics of the radio environment," said the SpectrAI founding team. "Traditional LSTM and Transformer models process spectrum data at a fixed clock rate regardless of what's happening in the air. That's like driving with a fixed reaction time whether you're on an empty highway or in rush-hour traffic."
+"For the first time, we have an AI system that matches its temporal reasoning to the actual dynamics of the radio environment," said the PreceptualAI founding team. "Traditional LSTM and Transformer models process spectrum data at a fixed clock rate regardless of what's happening in the air. That's like driving with a fixed reaction time whether you're on an empty highway or in rush-hour traffic."
 
-Trained and validated on 188,000 real 5G measurements from the UCC MISL dataset (collected from an operational Irish mobile network), SpectrAI achieves:
+Trained and validated on 188,000 real 5G measurements from the UCC MISL dataset (collected from an operational Irish mobile network), PreceptualAI achieves:
 
 - **63.4% successful transmission rate** — best among all tested architectures including SAC-LSTM, SAC-LFM, and PPO-LSTM
 - **36.6% collision rate** — lowest across all baselines, reducing interference with primary users
 - **3.14ms mean inference latency** (3.96ms P99) — well within the 10ms Near-RT RIC control loop budget
 - **0.634 spectral efficiency** — 1.4% improvement over LSTM baselines
 
-SpectrAI also introduces Hybrid Federated Aggregation, a novel federated learning protocol designed specifically for LTC networks. The system separates model parameters into structural weights (shared globally across all cell sites) and time-constant weights (personalized per site). This means an operator can train a single federated model across thousands of cell sites, with each site retaining its own temporal adaptation characteristics — a dense urban site in Manhattan does not inherit the same dynamics as a rural highway cell in Kansas.
+PreceptualAI also introduces Hybrid Federated Aggregation, a novel federated learning protocol designed specifically for LTC networks. The system separates model parameters into structural weights (shared globally across all cell sites) and time-constant weights (personalized per site). This means an operator can train a single federated model across thousands of cell sites, with each site retaining its own temporal adaptation characteristics — a dense urban site in Manhattan does not inherit the same dynamics as a rural highway cell in Kansas.
 
 "Privacy-preserving AI for telecom is not optional — it's regulatory," said the team. "Hybrid Federated Aggregation means raw spectrum data never leaves the cell site. Only model weight updates are transmitted. And because we personalize the time constants, we don't sacrifice per-site performance for the sake of a global average."
 
 The software runs natively on NVIDIA Aerial RAN CoProcessors (ARC), supporting both ARC-Compact (L4) for cell-site inference and ARC-Pro (Blackwell RTX PRO) for training and federated aggregation. It integrates with any O-RAN-compliant Near-RT RIC via standard E2 interfaces, and exposes a gRPC API with Prometheus metrics for operational monitoring.
 
-SpectrAI is available today at [github.com/spectrai-project/spectrai](https://github.com/spectrai-project/spectrai). Enterprise licenses with SLA-backed support, federated learning orchestration, and NVIDIA ARC optimization are available by contacting sales@spectrai.ai.
+PreceptualAI is available today at [github.com/preceptualai-project/preceptualai](https://github.com/preceptualai-project/preceptualai). Enterprise licenses with SLA-backed support, federated learning orchestration, and NVIDIA ARC optimization are available by contacting sales@preceptualai.ai.
 
 ---
 
@@ -39,50 +39,50 @@ SpectrAI is available today at [github.com/spectrai-project/spectrai](https://gi
 
 ### External FAQ (Customers & Partners)
 
-**Q: What is SpectrAI?**
+**Q: What is PreceptualAI?**
 
-SpectrAI is an AI-powered O-RAN xApp (application for the RAN Intelligent Controller) that performs dynamic spectrum access — deciding which radio channels to use and when — using a novel neural network architecture called Liquid Time-Constant networks. It runs as a standard xApp on any O-RAN-compliant Near-RT RIC and makes spectrum decisions in under 4 milliseconds.
+PreceptualAI is an AI-powered O-RAN xApp (application for the RAN Intelligent Controller) that performs dynamic spectrum access — deciding which radio channels to use and when — using a novel neural network architecture called Liquid Time-Constant networks. It runs as a standard xApp on any O-RAN-compliant Near-RT RIC and makes spectrum decisions in under 4 milliseconds.
 
-**Q: Who is SpectrAI for?**
+**Q: Who is PreceptualAI for?**
 
-SpectrAI is designed for:
+PreceptualAI is designed for:
 - **Mobile network operators** (MNOs) managing spectrum across thousands of cell sites
 - **Neutral host providers** sharing spectrum across multiple operators in venues
 - **Private 5G network operators** (enterprise, defense, mining, manufacturing)
 - **NVIDIA ARC ecosystem partners** building AI-native RAN applications
 - **Telecom system integrators** deploying O-RAN solutions
 
-**Q: How is SpectrAI different from existing spectrum management solutions?**
+**Q: How is PreceptualAI different from existing spectrum management solutions?**
 
 Three architectural differentiators that no competitor offers:
 
 1. **Continuous-time adaptation:** LTC networks adjust their temporal reasoning speed based on current spectrum conditions. Fixed-timescale models (LSTM, Transformer) cannot do this.
 2. **Hybrid Federated Aggregation:** Our novel FL protocol shares feature-extraction weights globally while keeping time-constant weights personalized per site. This is the only production system that preserves per-site temporal dynamics during federated learning.
-3. **NVIDIA ARC native:** Purpose-built for the Aerial RAN CoProcessor, with TensorRT optimization and sub-10ms inference. As NVIDIA's dApp ecosystem matures, SpectrAI will access raw L1 PHY data for even faster decisions.
+3. **NVIDIA ARC native:** Purpose-built for the Aerial RAN CoProcessor, with TensorRT optimization and sub-10ms inference. As NVIDIA's dApp ecosystem matures, PreceptualAI will access raw L1 PHY data for even faster decisions.
 
-**Q: What data does SpectrAI need?**
+**Q: What data does PreceptualAI need?**
 
-SpectrAI processes standard 3GPP KPM (Key Performance Measurements) delivered via O-RAN E2 interface:
+PreceptualAI processes standard 3GPP KPM (Key Performance Measurements) delivered via O-RAN E2 interface:
 - RSRP (Reference Signal Received Power)
 - RSRQ (Reference Signal Received Quality)
 - SNR (Signal-to-Noise Ratio)
 - CQI (Channel Quality Indicator)
 - RSSI (Received Signal Strength Indicator)
 
-No proprietary data feeds are required. If your RAN exports E2 indications, SpectrAI can consume them.
+No proprietary data feeds are required. If your RAN exports E2 indications, PreceptualAI can consume them.
 
 **Q: How much does it cost?**
 
-SpectrAI uses an open-core model:
+PreceptualAI uses an open-core model:
 - **Community Edition:** Free and open source under Apache 2.0. Includes the full LTC encoder, SAC agent, training pipeline, ONNX export, and gRPC server.
 - **Pro:** Starting at $120/cell-site/year. Adds enterprise support (4-hour SLA), pre-trained models, NVIDIA ARC optimization, and Grafana dashboards.
 - **Enterprise:** Starting at $300/cell-site/year. Adds Hybrid Federated Learning orchestration, custom model training, dedicated support, and on-premise deployment.
 
 Volume discounts are available for deployments over 5,000 cell sites. See [PRICING.md](PRICING.md) for details.
 
-**Q: What about data privacy? Does SpectrAI send spectrum data to the cloud?**
+**Q: What about data privacy? Does PreceptualAI send spectrum data to the cloud?**
 
-No. SpectrAI's federated learning architecture is privacy-preserving by design:
+No. PreceptualAI's federated learning architecture is privacy-preserving by design:
 - Raw spectrum data never leaves the cell site
 - Only model weight updates (tensors, not data) are transmitted to the FL aggregator
 - The FL aggregator can run on-premise within the operator's network
@@ -92,7 +92,7 @@ No. SpectrAI's federated learning architecture is privacy-preserving by design:
 **Q: What hardware do I need?**
 
 For inference only:
-- Any x86 server with a CPU can run SpectrAI via ONNX Runtime
+- Any x86 server with a CPU can run PreceptualAI via ONNX Runtime
 - NVIDIA L4 GPU (ARC-Compact) recommended for production latency targets
 
 For training and federated learning:
@@ -106,9 +106,9 @@ For training and federated learning:
 - **Production deployment on RIC:** 4-8 weeks (RIC integration, E2 subscription, monitoring setup)
 - **Multi-site federated deployment:** 8-12 weeks (FL infrastructure, per-site validation)
 
-**Q: Is SpectrAI O-RAN compliant?**
+**Q: Is PreceptualAI O-RAN compliant?**
 
-Yes. SpectrAI implements:
+Yes. PreceptualAI implements:
 - Standard xApp registration via ricxappframe
 - E2SM-KPM for receiving spectrum measurements
 - E2SM-RC for sending control decisions to gNodeBs
@@ -117,7 +117,7 @@ Yes. SpectrAI implements:
 
 **Q: What is the performance impact on the RAN?**
 
-SpectrAI's inference path adds 3.14ms mean latency (3.96ms P99) to the control loop. The Near-RT RIC specification allows up to 10ms for xApp processing. SpectrAI uses less than 40% of this budget, leaving headroom for other xApps in the pipeline.
+PreceptualAI's inference path adds 3.14ms mean latency (3.96ms P99) to the control loop. The Near-RT RIC specification allows up to 10ms for xApp processing. PreceptualAI uses less than 40% of this budget, leaving headroom for other xApps in the pipeline.
 
 ---
 
@@ -172,7 +172,7 @@ Three-phase approach:
 
 Four structural shifts make this the right time:
 
-1. **NVIDIA ARC creates a new market.** By open-sourcing Aerial and releasing ARC hardware, NVIDIA is creating a GPU-accelerated RAN ecosystem that needs AI-native software. SpectrAI is purpose-built for this platform.
+1. **NVIDIA ARC creates a new market.** By open-sourcing Aerial and releasing ARC hardware, NVIDIA is creating a GPU-accelerated RAN ecosystem that needs AI-native software. PreceptualAI is purpose-built for this platform.
 
 2. **O-RAN deployments are real.** Tier-1 operators (Vodafone, DT, Rakuten, Dish) have deployed RICs in production. The xApp market is no longer theoretical.
 

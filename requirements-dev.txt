@@ -1,4 +1,4 @@
-# SpectrAI Development Dependencies
+# PreceptualAI Development Dependencies
 -r requirements.txt
 pytest>=7.4
 pytest-cov>=4.1

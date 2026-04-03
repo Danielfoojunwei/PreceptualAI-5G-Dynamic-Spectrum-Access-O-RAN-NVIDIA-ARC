@@ -1,5 +1,5 @@
 """
-Training loop for SpectrAI SAC-LTC agent on spectrum environments.
+Training loop for PreceptualAI SAC-LTC agent on spectrum environments.
 
 Usage:
     python scripts/train.py [--num_steps 50000] [--seed 42]
@@ -15,12 +15,12 @@ from collections import deque
 import numpy as np
 import torch
 
-from spectrai.agent.sac_ltc import SACLTCAgent
-from spectrai.env.sim import SimulatedDSAEnv
+from preceptualai.agent.sac_ltc import SACLTCAgent
+from preceptualai.env.sim import SimulatedDSAEnv
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Train SpectrAI SAC-LTC agent")
+    p = argparse.ArgumentParser(description="Train PreceptualAI SAC-LTC agent")
 
     # Environment
     p.add_argument("--env", type=str, default="sim",
@@ -142,7 +142,7 @@ def main():
         batch_size=args.batch_size,
         learning_starts=args.learning_starts,
     )
-    print("Agent: SAC-LTC (SpectrAI)")
+    print("Agent: SAC-LTC (PreceptualAI)")
 
     with open(os.path.join(args.output_dir, "config.json"), "w") as f:
         json.dump(vars(args), f, indent=2)

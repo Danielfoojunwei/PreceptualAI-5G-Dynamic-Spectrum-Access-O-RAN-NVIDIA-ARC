@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from spectrai.core.ltc_encoder import LTCEncoder
+from preceptualai.core.ltc_encoder import LTCEncoder
 
 
 class TestOutputShape:

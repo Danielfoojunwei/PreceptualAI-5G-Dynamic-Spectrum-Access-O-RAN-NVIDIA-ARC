@@ -24,7 +24,7 @@ import numpy as np
 
 class TestLTCCellGPU:
     def test_forward_shape(self):
-        from spectrai.core.ltc_cell_gpu import LTCCellGPU
+        from preceptualai.core.ltc_cell_gpu import LTCCellGPU
         cell = LTCCellGPU(input_dim=30, hidden_dim=64, dt=1.0, solver="heun")
         x = torch.randn(8, 30)
         h = torch.zeros(8, 64)
@@ -32,7 +32,7 @@ class TestLTCCellGPU:
         assert h_new.shape == (8, 64)
 
     def test_euler_solver(self):
-        from spectrai.core.ltc_cell_gpu import LTCCellGPU
+        from preceptualai.core.ltc_cell_gpu import LTCCellGPU
         cell = LTCCellGPU(input_dim=10, hidden_dim=32, dt=0.5, solver="euler")
         x = torch.randn(4, 10)
         h = torch.zeros(4, 32)
@@ -41,7 +41,7 @@ class TestLTCCellGPU:
         assert torch.isfinite(h_new).all()
 
     def test_sub_stepping(self):
-        from spectrai.core.ltc_cell_gpu import LTCCellGPU
+        from preceptualai.core.ltc_cell_gpu import LTCCellGPU
         cell = LTCCellGPU(input_dim=10, hidden_dim=32, dt=1.0, solver="heun", sub_steps=3)
         x = torch.randn(4, 10)
         h = torch.zeros(4, 32)
@@ -49,7 +49,7 @@ class TestLTCCellGPU:
         assert h_new.shape == (4, 32)
 
     def test_fused_variant(self):
-        from spectrai.core.ltc_cell_gpu import LTCCellGPUFused
+        from preceptualai.core.ltc_cell_gpu import LTCCellGPUFused
         cell = LTCCellGPUFused(input_dim=20, hidden_dim=64, dt=1.0)
         x = torch.randn(8, 20)
         h = torch.zeros(8, 64)
@@ -61,7 +61,7 @@ class TestLTCCellGPU:
 
 class TestMultiScaleLTCCell:
     def test_physics_aware_init(self):
-        from spectrai.core.ltc_cell_multiscale import MultiScaleLTCCell
+        from preceptualai.core.ltc_cell_multiscale import MultiScaleLTCCell
         cell = MultiScaleLTCCell(
             input_dim=30, hidden_dim=64,
             tau_init_mean=5.0, tau_init_std=1.0,
@@ -69,7 +69,7 @@ class TestMultiScaleLTCCell:
         assert cell.tau_base.mean().item() > 3.0  # Should be near 5.0
 
     def test_forward(self):
-        from spectrai.core.ltc_cell_multiscale import MultiScaleLTCCell
+        from preceptualai.core.ltc_cell_multiscale import MultiScaleLTCCell
         cell = MultiScaleLTCCell(input_dim=10, hidden_dim=32)
         x = torch.randn(4, 10)
         h = torch.zeros(4, 32)
@@ -79,19 +79,19 @@ class TestMultiScaleLTCCell:
 
 class TestMultiScaleLTCEncoder:
     def test_5g_timescales(self):
-        from spectrai.core.ltc_cell_multiscale import MultiScaleLTCEncoder
+        from preceptualai.core.ltc_cell_multiscale import MultiScaleLTCEncoder
         enc = MultiScaleLTCEncoder(input_dim=30, num_layers=4, domain="5g")
         assert len(enc.cells) == 4
 
     def test_forward_shape(self):
-        from spectrai.core.ltc_cell_multiscale import MultiScaleLTCEncoder
+        from preceptualai.core.ltc_cell_multiscale import MultiScaleLTCEncoder
         enc = MultiScaleLTCEncoder(input_dim=30, hidden_dim=64, latent_dim=32, num_layers=2)
         x = torch.randn(4, 16, 30)
         z = enc(x)
         assert z.shape == (4, 32)
 
     def test_tau_stats(self):
-        from spectrai.core.ltc_cell_multiscale import MultiScaleLTCEncoder
+        from preceptualai.core.ltc_cell_multiscale import MultiScaleLTCEncoder
         enc = MultiScaleLTCEncoder(input_dim=30, num_layers=3, domain="5g")
         stats = enc.get_tau_stats()
         assert "layer_0" in stats
@@ -102,14 +102,14 @@ class TestMultiScaleLTCEncoder:
 
 class TestLTCEncoderGPU:
     def test_forward_shape(self):
-        from spectrai.core.ltc_encoder_gpu import LTCEncoderGPU
+        from preceptualai.core.ltc_encoder_gpu import LTCEncoderGPU
         enc = LTCEncoderGPU(input_dim=30, hidden_dim=64, latent_dim=32, num_layers=2)
         x = torch.randn(4, 16, 30)
         z = enc(x)
         assert z.shape == (4, 32)
 
     def test_same_hidden_latent(self):
-        from spectrai.core.ltc_encoder_gpu import LTCEncoderGPU
+        from preceptualai.core.ltc_encoder_gpu import LTCEncoderGPU
         enc = LTCEncoderGPU(input_dim=30, hidden_dim=64, latent_dim=64, num_layers=2)
         assert enc.proj is None
         x = torch.randn(2, 8, 30)
@@ -121,8 +121,8 @@ class TestLTCEncoderGPU:
 
 class TestHybridActor:
     def test_forward_shapes(self):
-        from spectrai.core.ltc_encoder_gpu import LTCEncoderGPU
-        from spectrai.core.hybrid_actor import HybridActor
+        from preceptualai.core.ltc_encoder_gpu import LTCEncoderGPU
+        from preceptualai.core.hybrid_actor import HybridActor
         enc = LTCEncoderGPU(input_dim=30, hidden_dim=64, latent_dim=32)
         actor = HybridActor(enc, num_discrete_actions=10, continuous_action_dim=3)
         x = torch.randn(4, 16, 30)
@@ -133,8 +133,8 @@ class TestHybridActor:
         assert torch.allclose(probs.sum(dim=-1), torch.ones(4), atol=1e-5)
 
     def test_get_action(self):
-        from spectrai.core.ltc_encoder_gpu import LTCEncoderGPU
-        from spectrai.core.hybrid_actor import HybridActor
+        from preceptualai.core.ltc_encoder_gpu import LTCEncoderGPU
+        from preceptualai.core.hybrid_actor import HybridActor
         enc = LTCEncoderGPU(input_dim=30, hidden_dim=64, latent_dim=32)
         actor = HybridActor(enc, num_discrete_actions=10, continuous_action_dim=2)
         x = torch.randn(1, 16, 30)
@@ -145,8 +145,8 @@ class TestHybridActor:
         assert (c_act >= -1).all() and (c_act <= 1).all()
 
     def test_evaluate_actions(self):
-        from spectrai.core.ltc_encoder_gpu import LTCEncoderGPU
-        from spectrai.core.hybrid_actor import HybridActor
+        from preceptualai.core.ltc_encoder_gpu import LTCEncoderGPU
+        from preceptualai.core.hybrid_actor import HybridActor
         enc = LTCEncoderGPU(input_dim=30, hidden_dim=64, latent_dim=32)
         actor = HybridActor(enc, num_discrete_actions=10, continuous_action_dim=2)
         x = torch.randn(4, 16, 30)
@@ -162,7 +162,7 @@ class TestHybridActor:
 class TestReplayBufferGPU:
     def test_push_and_sample_cpu_fallback(self):
         """Test with CPU tensors when no GPU available."""
-        from spectrai.core.replay_buffer_gpu import ReplayBufferGPU
+        from preceptualai.core.replay_buffer_gpu import ReplayBufferGPU
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if device.type == "cpu":
             pytest.skip("GPU required for ReplayBufferGPU")
@@ -174,7 +174,7 @@ class TestReplayBufferGPU:
         assert batch["states"].shape == (1, 16, 30)
 
     def test_push_batch(self):
-        from spectrai.core.replay_buffer_gpu import ReplayBufferGPU
+        from preceptualai.core.replay_buffer_gpu import ReplayBufferGPU
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if device.type == "cpu":
             pytest.skip("GPU required for ReplayBufferGPU")
@@ -190,14 +190,14 @@ class TestReplayBufferGPU:
 
 class TestVectorizedDSAEnv:
     def test_reset_shape(self):
-        from spectrai.env.sim_vectorized import VectorizedDSAEnv
+        from preceptualai.env.sim_vectorized import VectorizedDSAEnv
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         env = VectorizedDSAEnv(num_envs=8, num_channels=5, device=device)
         obs = env.reset()
         assert obs.shape == (8, 16, 15)  # 5 channels * 3 features
 
     def test_step_rewards(self):
-        from spectrai.env.sim_vectorized import VectorizedDSAEnv
+        from preceptualai.env.sim_vectorized import VectorizedDSAEnv
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         env = VectorizedDSAEnv(num_envs=4, num_channels=5, device=device)
         env.reset()
@@ -208,7 +208,7 @@ class TestVectorizedDSAEnv:
         assert dones.shape == (4,)
 
     def test_auto_reset(self):
-        from spectrai.env.sim_vectorized import VectorizedDSAEnv
+        from preceptualai.env.sim_vectorized import VectorizedDSAEnv
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         env = VectorizedDSAEnv(num_envs=4, num_channels=5, max_steps=2, device=device)
         env.reset()
@@ -224,7 +224,7 @@ class TestVectorizedDSAEnv:
 
 class TestITUPropagation:
     def test_rain_attenuation_increases_with_frequency(self):
-        from spectrai.env.itu_propagation import ITUPropagation
+        from preceptualai.env.itu_propagation import ITUPropagation
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         itu = ITUPropagation(device=device)
         freq_low = torch.tensor([12.0], device=device)
@@ -235,7 +235,7 @@ class TestITUPropagation:
         assert atten_high > atten_low
 
     def test_total_attenuation_positive(self):
-        from spectrai.env.itu_propagation import ITUPropagation
+        from preceptualai.env.itu_propagation import ITUPropagation
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         itu = ITUPropagation(device=device)
         freq = torch.tensor([28.0], device=device)
@@ -245,7 +245,7 @@ class TestITUPropagation:
         assert atten > 0
 
     def test_batched_computation(self):
-        from spectrai.env.itu_propagation import ITUPropagation
+        from preceptualai.env.itu_propagation import ITUPropagation
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         itu = ITUPropagation(device=device)
         freq = torch.tensor([3.5, 28.0, 39.0], device=device)
@@ -259,7 +259,7 @@ class TestITUPropagation:
 
 class TestSionnaChannel:
     def test_tdl_pytorch_generate(self):
-        from spectrai.env.sionna_channel import TDLChannelPyTorch
+        from preceptualai.env.sionna_channel import TDLChannelPyTorch
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         tdl = TDLChannelPyTorch(num_envs=4, num_channels=10, device=device)
         snr_db, gain_db = tdl.generate()
@@ -268,7 +268,7 @@ class TestSionnaChannel:
         assert torch.isfinite(snr_db).all()
 
     def test_sionna_generator_fallback(self):
-        from spectrai.env.sionna_channel import SionnaChannelGenerator
+        from preceptualai.env.sionna_channel import SionnaChannelGenerator
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         gen = SionnaChannelGenerator(num_envs=8, num_channels=10, device=device)
         snr, intf = gen.generate_batch()
@@ -276,7 +276,7 @@ class TestSionnaChannel:
         assert (snr >= 0).all() and (snr <= 1).all()
 
     def test_occupancy_derivation(self):
-        from spectrai.env.sionna_channel import SionnaChannelGenerator
+        from preceptualai.env.sionna_channel import SionnaChannelGenerator
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         gen = SionnaChannelGenerator(num_envs=4, num_channels=10, device=device)
         occ = gen.get_occupancy(snr_threshold_db=5.0)
@@ -288,13 +288,13 @@ class TestSionnaChannel:
 
 class TestUnified5GDataPipeline:
     def test_schema(self):
-        from spectrai.env.data_pipeline import Unified5GDataPipeline
+        from preceptualai.env.data_pipeline import Unified5GDataPipeline
         pipeline = Unified5GDataPipeline()
         assert pipeline.num_features == 5
         assert pipeline.STANDARD_FEATURES == ["rsrp", "rsrq", "snr", "cqi", "rssi"]
 
     def test_empty_load(self):
-        from spectrai.env.data_pipeline import Unified5GDataPipeline
+        from preceptualai.env.data_pipeline import Unified5GDataPipeline
         pipeline = Unified5GDataPipeline(data_dirs={})
         traces = pipeline.load_all()
         assert traces == []
@@ -304,25 +304,25 @@ class TestUnified5GDataPipeline:
 
 class TestConfig:
     def test_gpu_encoder_config(self):
-        from spectrai.config import GPUEncoderConfig
+        from preceptualai.config import GPUEncoderConfig
         cfg = GPUEncoderConfig()
         assert cfg.hidden_dim == 256
         assert cfg.solver == "heun"
 
     def test_vectorized_env_config(self):
-        from spectrai.config import VectorizedEnvConfig
+        from preceptualai.config import VectorizedEnvConfig
         cfg = VectorizedEnvConfig()
         assert cfg.num_envs == 256
         assert cfg.backend == "pytorch"
 
     def test_multiscale_config(self):
-        from spectrai.config import MultiScaleConfig
+        from preceptualai.config import MultiScaleConfig
         cfg = MultiScaleConfig()
         assert cfg.num_layers == 4
         assert cfg.domain == "5g"
 
     def test_spectral_config_includes_gpu(self):
-        from spectrai.config import SpectralConfig
+        from preceptualai.config import SpectralConfig
         cfg = SpectralConfig()
         assert cfg.gpu_encoder.hidden_dim == 256
         assert cfg.gpu_agent.batch_size == 1024

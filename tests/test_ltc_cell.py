@@ -2,7 +2,7 @@
 
 import torch
 
-from spectrai.core.ltc_cell import LTCCell
+from preceptualai.core.ltc_cell import LTCCell
 
 
 class TestLTCCellForwardShape:

@@ -1,13 +1,13 @@
-# SpectrAI + NVIDIA Aerial Digital Twin Container
+# PreceptualAI + NVIDIA Aerial Digital Twin Container
 # ---------------------------------------------------------------------------
 # Multi-stage build:
 #   Stage 1: Extract and build pyAerial from the NVIDIA Aerial SDK container.
-#   Stage 2: Install SpectrAI and runtime dependencies.
+#   Stage 2: Install PreceptualAI and runtime dependencies.
 #
 # Requires NVIDIA Aerial SDK container access (nvcr.io/nvidia/aerial-sdk).
 #
 # Build:
-#   docker build -t spectrai-aerial:latest \
+#   docker build -t preceptualai-aerial:latest \
 #     -f docker/Dockerfile.aerial \
 #     --build-arg AERIAL_IMAGE=nvcr.io/nvidia/aerial-sdk:24.1 \
 #     .
@@ -15,7 +15,7 @@
 # Run (requires NVIDIA GPU):
 #   docker run --gpus all -p 50051:50051 -p 9090:9090 \
 #     -v ./models:/app/models \
-#     spectrai-aerial:latest
+#     preceptualai-aerial:latest
 # ---------------------------------------------------------------------------
 
 # ===========================================================================
@@ -44,8 +44,8 @@ RUN mkdir -p /tmp/cuphy_libs && \
 # ===========================================================================
 FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04 AS runtime
 
-LABEL maintainer="spectrai@example.com"
-LABEL org.opencontainers.image.description="SpectrAI + NVIDIA Aerial Digital Twin"
+LABEL maintainer="preceptualai@example.com"
+LABEL org.opencontainers.image.description="PreceptualAI + NVIDIA Aerial Digital Twin"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
@@ -122,19 +122,19 @@ RUN pip install --no-cache-dir cupy-cuda12x 2>/dev/null || \
     echo "CuPy install skipped (optional, needed for GPU channel estimation)"
 
 # ---------------------------------------------------------------------------
-# Install SpectrAI
+# Install PreceptualAI
 # ---------------------------------------------------------------------------
 COPY pyproject.toml /app/pyproject.toml
 COPY src/ /app/src/
 COPY proto/ /app/proto/
 
-RUN mkdir -p /app/src/spectrai/proto && \
-    touch /app/src/spectrai/proto/__init__.py && \
+RUN mkdir -p /app/src/preceptualai/proto && \
+    touch /app/src/preceptualai/proto/__init__.py && \
     python -m grpc_tools.protoc \
         -Iproto \
-        --python_out=src/spectrai/proto \
-        --grpc_python_out=src/spectrai/proto \
-        proto/spectrai.proto \
+        --python_out=src/preceptualai/proto \
+        --grpc_python_out=src/preceptualai/proto \
+        proto/preceptualai.proto \
     || true
 
 RUN pip install --no-cache-dir -e .
@@ -153,5 +153,5 @@ RUN echo "newrt | start\nnewrt | end" > /app/routes.rt
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD python -c "import grpc; ch=grpc.insecure_channel('localhost:50051'); grpc.channel_ready_future(ch).result(timeout=3)" || exit 1
 
-ENTRYPOINT ["python", "-m", "spectrai.xapp.server"]
+ENTRYPOINT ["python", "-m", "preceptualai.xapp.server"]
 CMD ["--config", "/app/config.yaml"]

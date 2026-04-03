@@ -1,4 +1,4 @@
-# SpectrAI Competitive Analysis
+# PreceptualAI Competitive Analysis
 
 ---
 
@@ -6,7 +6,7 @@
 
 The RAN intelligence market is projected to grow from $0.67B (2025) to $7.09B (2030) at 60% CAGR. Within this, the AI-RAN segment specifically — AI-driven applications for RAN optimization — is valued at $2.96B (2025) and projected to reach $37.19B by 2035.
 
-SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered spectrum management, and federated learning for telecom. No single competitor spans all three.
+PreceptualAI competes in the intersection of three segments: O-RAN xApps, AI-powered spectrum management, and federated learning for telecom. No single competitor spans all three.
 
 ---
 
@@ -23,7 +23,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 - Broad operator relationships across NA, EMEA, APAC
 - Active in O-RAN Alliance working groups
 
-**Weaknesses vs. SpectrAI:**
+**Weaknesses vs. PreceptualAI:**
 - Spectrum management uses traditional ML and rule-based systems — no continuous-time neural networks
 - No input-dependent time constants; models cannot adapt temporal reasoning to RF dynamics
 - No federated learning capability; models are trained centrally and deployed statically
@@ -34,7 +34,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 
 **Funding/Valuation:** $155M+ raised. Private. Estimated valuation $1-2B.
 
-**Market Position:** Market leader in O-RAN platform. Primary competitor for the RIC platform sale, but SpectrAI can run as an xApp on Mavenir's RIC.
+**Market Position:** Market leader in O-RAN platform. Primary competitor for the RIC platform sale, but PreceptualAI can run as an xApp on Mavenir's RIC.
 
 ---
 
@@ -49,7 +49,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 - Samsung partnership for integration into Samsung RAN
 - Strong patent portfolio in beamforming optimization
 
-**Weaknesses vs. SpectrAI:**
+**Weaknesses vs. PreceptualAI:**
 - Hardware-coupled approach: improvements require Cohere-specific beamforming hardware or deep RAN integration
 - Not a general-purpose spectrum management solution — focused on massive MIMO scenarios only
 - No continuous-time adaptation; spectral efficiency gains are static once configured
@@ -60,7 +60,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 
 **Funding/Valuation:** $46M Series D. Estimated valuation $200-400M.
 
-**Market Position:** Complementary rather than directly competitive. Cohere optimizes spatial efficiency within a channel; SpectrAI optimizes which channels to use. Could be bundled together.
+**Market Position:** Complementary rather than directly competitive. Cohere optimizes spatial efficiency within a channel; PreceptualAI optimizes which channels to use. Could be bundled together.
 
 ---
 
@@ -75,7 +75,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 - Strong in traditional SON use cases: handover optimization, load balancing, neighbor management
 - Data-rich from years of operating at scale
 
-**Weaknesses vs. SpectrAI:**
+**Weaknesses vs. PreceptualAI:**
 - Legacy SON architecture: statistical ML and heuristic optimization, not modern deep RL
 - No continuous-time adaptation; models operate on fixed optimization intervals (minutes, not milliseconds)
 - No federated learning; centralized data collection and model training
@@ -86,7 +86,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 
 **Funding/Valuation:** Acquired by Amdocs (2023). Acquisition price not disclosed; estimated $50-150M.
 
-**Market Position:** Largest installed base but aging technology. Represents the "previous generation" of RAN optimization that SpectrAI aims to replace.
+**Market Position:** Largest installed base but aging technology. Represents the "previous generation" of RAN optimization that PreceptualAI aims to replace.
 
 ---
 
@@ -101,7 +101,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 - PHY-layer focus provides capabilities that higher-layer solutions cannot (raw IQ processing)
 - Patent portfolio in AI for signal processing
 
-**Weaknesses vs. SpectrAI:**
+**Weaknesses vs. PreceptualAI:**
 - PHY-layer focus (signal detection/classification) rather than spectrum management decisions
 - Not an O-RAN xApp; limited integration with the RIC ecosystem
 - Does not make spectrum allocation decisions — detects and classifies signals, does not select channels
@@ -112,7 +112,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 
 **Funding/Valuation:** $10M+ raised. Private. Estimated valuation $50-100M.
 
-**Market Position:** Complementary rather than competitive. DeepSig senses spectrum; SpectrAI decides what to do with it. Potential integration partner.
+**Market Position:** Complementary rather than competitive. DeepSig senses spectrum; PreceptualAI decides what to do with it. Potential integration partner.
 
 ---
 
@@ -127,7 +127,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 - Qualcomm's customer base includes every major operator globally
 - Access to Qualcomm R&D resources and semiconductor expertise
 
-**Weaknesses vs. SpectrAI:**
+**Weaknesses vs. PreceptualAI:**
 - Now part of Qualcomm — no longer available as an independent, vendor-neutral solution
 - Operators wary of Qualcomm lock-in may prefer open-source alternatives
 - RAN automation focus (configuration, deployment) rather than real-time spectrum management
@@ -138,7 +138,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 
 **Funding/Valuation:** Acquired by Qualcomm for $350M (2022).
 
-**Market Position:** Strong RAN automation but now locked into the Qualcomm ecosystem. The $350M acquisition price is a market reference for SpectrAI's exit potential.
+**Market Position:** Strong RAN automation but now locked into the Qualcomm ecosystem. The $350M acquisition price is a market reference for PreceptualAI's exit potential.
 
 ---
 
@@ -153,7 +153,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 - Massive R&D budget ($4.8B annually) and Bell Labs research heritage
 - Deep operator relationships at CTO/CIO level
 
-**Weaknesses vs. SpectrAI:**
+**Weaknesses vs. PreceptualAI:**
 - Proprietary stack: Nokia SON/AVA works primarily with Nokia RAN equipment
 - Limited O-RAN commitment (Nokia has been slow to embrace fully disaggregated RAN)
 - Innovation pace constrained by need to support legacy equipment base
@@ -165,7 +165,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 
 **Funding/Valuation:** Public company (HEL: NOKIA). Market cap ~$23B.
 
-**Market Position:** Incumbent. Strongest with existing Nokia RAN customers. SpectrAI can co-exist on non-Nokia RICs or compete directly on open RAN deployments.
+**Market Position:** Incumbent. Strongest with existing Nokia RAN customers. PreceptualAI can co-exist on non-Nokia RICs or compete directly on open RAN deployments.
 
 ---
 
@@ -180,7 +180,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 - $4.5B annual R&D investment
 - Strong 5G patent portfolio
 
-**Weaknesses vs. SpectrAI:**
+**Weaknesses vs. PreceptualAI:**
 - Vendor lock-in: Ericsson AI works primarily with Ericsson RAN
 - Proprietary and closed-source; operators cannot evaluate or customize the AI
 - Limited O-RAN support (Ericsson has been publicly critical of open RAN disaggregation)
@@ -191,7 +191,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 
 **Funding/Valuation:** Public company (NASDAQ: ERIC). Market cap ~$25B.
 
-**Market Position:** Strongest incumbent. Competes through bundling with RAN hardware. SpectrAI targets the growing segment of operators who want vendor-neutral, open-source alternatives.
+**Market Position:** Strongest incumbent. Competes through bundling with RAN hardware. PreceptualAI targets the growing segment of operators who want vendor-neutral, open-source alternatives.
 
 ---
 
@@ -206,7 +206,7 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 - Strong engineering culture focused on automation
 - Experience with GPU-accelerated RAN (early NVIDIA partnership)
 
-**Weaknesses vs. SpectrAI:**
+**Weaknesses vs. PreceptualAI:**
 - Rakuten's telecom ambitions have been scaled back (financial pressures, leadership changes)
 - Platform play means spectrum management is one of many features, not the core focus
 - No published work on continuous-time neural networks or LTC for spectrum
@@ -217,13 +217,13 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 
 **Funding/Valuation:** Subsidiary of Rakuten Group (TYO: 4755). Rakuten Group market cap ~$8B.
 
-**Market Position:** Pioneer in cloud-native RAN but uncertain commercial trajectory outside Rakuten's own network. SpectrAI can run on Rakuten's RIC as an xApp.
+**Market Position:** Pioneer in cloud-native RAN but uncertain commercial trajectory outside Rakuten's own network. PreceptualAI can run on Rakuten's RIC as an xApp.
 
 ---
 
 ## Feature Comparison Matrix
 
-| Feature | SpectrAI | Mavenir | Cohere | AirHopAI | DeepSig | Cellwize | Nokia | Ericsson | Rakuten |
+| Feature | PreceptualAI | Mavenir | Cohere | AirHopAI | DeepSig | Cellwize | Nokia | Ericsson | Rakuten |
 |---|---|---|---|---|---|---|---|---|---|
 | **Continuous-time adaptation** | Yes | No | No | No | No | No | No | No | No |
 | **Federated learning** | Yes (hybrid) | No | No | No | No | No | No | No | No |
@@ -256,12 +256,12 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 
 ### How Competitors Might Respond
 
-| Competitor | Likely Response | SpectrAI Counter |
+| Competitor | Likely Response | PreceptualAI Counter |
 |---|---|---|
-| Mavenir | Add LTC-like capability to their xApp suite | 18+ month development cycle; SpectrAI will have federated data moat by then |
+| Mavenir | Add LTC-like capability to their xApp suite | 18+ month development cycle; PreceptualAI will have federated data moat by then |
 | Nokia/Ericsson | Build in-house or acquire | Acquisition is a positive outcome; in-house build is slow (2+ years in large org) |
 | DeepSig | Extend from PHY sensing to decision-making | Different expertise required; PHY sensing and RL for decisions are distinct competencies |
-| New startup | Build similar product | SpectrAI has first-mover advantage, real 5G data, NVIDIA relationship, and open-source community |
+| New startup | Build similar product | PreceptualAI has first-mover advantage, real 5G data, NVIDIA relationship, and open-source community |
 | Google/Microsoft | Enter telecom AI | Lack telecom domain expertise and operator relationships; enterprise sales cycle is foreign territory |
 
 ### Positioning Strategy
@@ -270,13 +270,13 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 
 **Against startups (Cohere, DeepSig):** "Continuous-time adaptation and federated learning are capabilities no other startup offers. We're not just another ML model — we've built a fundamentally different architecture."
 
-**Against build-in-house:** "Your team would need 18+ months to replicate what SpectrAI offers today, and you'd miss the federated learning flywheel. The open-source community is already building extensions and integrations."
+**Against build-in-house:** "Your team would need 18+ months to replicate what PreceptualAI offers today, and you'd miss the federated learning flywheel. The open-source community is already building extensions and integrations."
 
 ---
 
 ## Market Sizing by Competitor Revenue
 
-| Company | Est. Revenue (2025) | Growth | SpectrAI Addressable Share |
+| Company | Est. Revenue (2025) | Growth | PreceptualAI Addressable Share |
 |---|---|---|---|
 | Mavenir (RIC/xApp segment) | $50-80M | 40%+ | 10-20% (spectrum xApp only) |
 | Cohere Technologies | $5-15M | 50%+ | Complementary, not competitive |
@@ -285,18 +285,18 @@ SpectrAI competes in the intersection of three segments: O-RAN xApps, AI-powered
 | Nokia (SON/AVA AI) | $200-400M | 5-10% | 5-10% (open RAN displacement) |
 | Ericsson (Cognitive SW) | $300-500M | 5-10% | 5-10% (open RAN displacement) |
 
-**SpectrAI's opportunity:** Capture $60M+ in ARR by Year 3 from a combination of new O-RAN deployments (greenfield), displacement of legacy SON (brownfield), and NVIDIA ARC ecosystem growth.
+**PreceptualAI's opportunity:** Capture $60M+ in ARR by Year 3 from a combination of new O-RAN deployments (greenfield), displacement of legacy SON (brownfield), and NVIDIA ARC ecosystem growth.
 
 ---
 
-## Summary: SpectrAI's Differentiated Position
+## Summary: PreceptualAI's Differentiated Position
 
-SpectrAI is uniquely positioned at the intersection of three trends:
+PreceptualAI is uniquely positioned at the intersection of three trends:
 
 1. **Technical differentiation:** The only production system with continuous-time neural ODE adaptation for spectrum management, combined with hybrid federated learning that preserves per-site temporal dynamics.
 
-2. **Market timing:** NVIDIA ARC and O-RAN maturity are creating a new market for AI-native xApps. SpectrAI is purpose-built for this platform while competitors are retrofitting legacy architectures.
+2. **Market timing:** NVIDIA ARC and O-RAN maturity are creating a new market for AI-native xApps. PreceptualAI is purpose-built for this platform while competitors are retrofitting legacy architectures.
 
 3. **Business model differentiation:** Open-source core with enterprise FL upsell. No other spectrum management vendor offers an open-source evaluation path with a clear upgrade to production-grade federated deployment.
 
-The competitive risk is not that someone builds a better LTC spectrum engine — it is that operators decide the performance improvement is not worth the switching cost from incumbents. SpectrAI's go-to-market must demonstrate measurable, undeniable ROI in operator POCs.
+The competitive risk is not that someone builds a better LTC spectrum engine — it is that operators decide the performance improvement is not worth the switching cost from incumbents. PreceptualAI's go-to-market must demonstrate measurable, undeniable ROI in operator POCs.

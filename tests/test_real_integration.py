@@ -43,7 +43,7 @@ class TestReal5GDataPipeline:
     @skip_no_ucc
     def test_load_ucc_misl_real_data(self):
         """Load real UCC MISL 5G production measurements."""
-        from spectrai.env.data_pipeline import Unified5GDataPipeline
+        from preceptualai.env.data_pipeline import Unified5GDataPipeline
         pipeline = Unified5GDataPipeline(
             data_dirs={"ucc_misl": UCC_MISL_DIR},
             max_traces_per_source=20,
@@ -60,7 +60,7 @@ class TestReal5GDataPipeline:
     @skip_no_colosseum
     def test_load_colosseum_real_data(self):
         """Load real Colosseum O-RAN COMMAG measurements."""
-        from spectrai.env.data_pipeline import Unified5GDataPipeline
+        from preceptualai.env.data_pipeline import Unified5GDataPipeline
         pipeline = Unified5GDataPipeline(
             data_dirs={"colosseum": COLOSSEUM_DIR},
             max_traces_per_source=20,
@@ -75,7 +75,7 @@ class TestReal5GDataPipeline:
     @skip_no_colosseum
     def test_load_both_sources_unified(self):
         """Load both real datasets and verify unified normalization."""
-        from spectrai.env.data_pipeline import Unified5GDataPipeline
+        from preceptualai.env.data_pipeline import Unified5GDataPipeline
         pipeline = Unified5GDataPipeline(
             data_dirs={
                 "ucc_misl": UCC_MISL_DIR,
@@ -97,7 +97,7 @@ class TestReal5GDataPipeline:
     @skip_no_gpu
     def test_real_data_to_gpu_tensor(self):
         """Transfer real 5G data to GPU tensor."""
-        from spectrai.env.data_pipeline import Unified5GDataPipeline
+        from preceptualai.env.data_pipeline import Unified5GDataPipeline
         pipeline = Unified5GDataPipeline(
             data_dirs={"ucc_misl": UCC_MISL_DIR},
             max_traces_per_source=10,
@@ -119,7 +119,7 @@ class TestRealGPULTCCells:
     @skip_no_gpu
     def test_ltc_cell_gpu_heun_on_real_gpu(self):
         """Run fused LTC cell with Heun RK2 solver on real GPU."""
-        from spectrai.core.ltc_cell_gpu import LTCCellGPU
+        from preceptualai.core.ltc_cell_gpu import LTCCellGPU
         cell = LTCCellGPU(input_dim=30, hidden_dim=128, solver="heun", sub_steps=2).to(GPU_DEVICE)
         x = torch.randn(64, 30, device=GPU_DEVICE)
         h = torch.zeros(64, 128, device=GPU_DEVICE)
@@ -136,8 +136,8 @@ class TestRealGPULTCCells:
     @skip_no_gpu
     def test_cfc_cell_on_real_gpu(self):
         """Run CfC solver-free cell on real GPU and verify speed vs LTC."""
-        from spectrai.core.ltc_cell_cfc import CfCCell
-        from spectrai.core.ltc_cell_gpu import LTCCellGPU
+        from preceptualai.core.ltc_cell_cfc import CfCCell
+        from preceptualai.core.ltc_cell_gpu import LTCCellGPU
 
         B, D_in, D_h = 64, 30, 128
         x = torch.randn(B, D_in, device=GPU_DEVICE)
@@ -169,7 +169,7 @@ class TestRealGPULTCCells:
     @skip_no_gpu
     def test_diffeq_dopri5_on_real_gpu(self):
         """Run torchdiffeq dopri5 adaptive ODE solver on real GPU."""
-        from spectrai.core.ltc_cell_diffeq import LTCCellDiffeq
+        from preceptualai.core.ltc_cell_diffeq import LTCCellDiffeq
         cell = LTCCellDiffeq(
             input_dim=30, hidden_dim=64, solver="dopri5",
             use_adjoint=True, rtol=1e-3, atol=1e-4,
@@ -196,7 +196,7 @@ class TestRealGPUEncoders:
     @skip_no_gpu
     def test_ltc_encoder_gpu_gradient_checkpointing(self):
         """LTCEncoderGPU with gradient checkpointing on real GPU."""
-        from spectrai.core.ltc_encoder_gpu import LTCEncoderGPU
+        from preceptualai.core.ltc_encoder_gpu import LTCEncoderGPU
         # Test without checkpointing first (checkpointing has PyTorch compatibility
         # issues with list-based hidden state in some torch versions)
         enc = LTCEncoderGPU(
@@ -217,7 +217,7 @@ class TestRealGPUEncoders:
     @skip_no_gpu
     def test_mamba_encoder_on_real_gpu(self):
         """MambaEncoder linear-time processing on real GPU."""
-        from spectrai.core.mamba_encoder import MambaEncoder
+        from preceptualai.core.mamba_encoder import MambaEncoder
         enc = MambaEncoder(
             input_dim=30, hidden_dim=128, latent_dim=64,
             num_layers=4, d_state=16,
@@ -235,7 +235,7 @@ class TestRealGPUEncoders:
     @skip_no_gpu
     def test_cfc_encoder_on_real_gpu(self):
         """CfC encoder solver-free processing on real GPU."""
-        from spectrai.core.ltc_cell_cfc import CfCEncoder
+        from preceptualai.core.ltc_cell_cfc import CfCEncoder
         enc = CfCEncoder(
             input_dim=30, hidden_dim=128, latent_dim=64,
             num_layers=3, cell_type="cfc",
@@ -248,7 +248,7 @@ class TestRealGPUEncoders:
     @skip_no_gpu
     def test_diffeq_encoder_adjoint_on_real_gpu(self):
         """LTCEncoderDiffeq with adjoint backprop on real GPU."""
-        from spectrai.core.ltc_encoder_diffeq import LTCEncoderDiffeq
+        from preceptualai.core.ltc_encoder_diffeq import LTCEncoderDiffeq
         enc = LTCEncoderDiffeq(
             input_dim=30, hidden_dim=64, latent_dim=32,
             num_layers=2, solver="dopri5", use_adjoint=True,
@@ -273,7 +273,7 @@ class TestRealGPUInfrastructure:
     @skip_no_gpu
     def test_replay_buffer_gpu_real_cuda_streams(self):
         """GPU replay buffer with real CUDA async streams."""
-        from spectrai.core.replay_buffer_gpu import ReplayBufferGPU
+        from preceptualai.core.replay_buffer_gpu import ReplayBufferGPU
         buf = ReplayBufferGPU(capacity=10000, state_shape=(16, 30), device=GPU_DEVICE)
         # Push single transitions with pinned memory
         for i in range(100):
@@ -289,7 +289,7 @@ class TestRealGPUInfrastructure:
     @skip_no_gpu
     def test_replay_buffer_gpu_batch_push(self):
         """Vectorized batch push to GPU buffer."""
-        from spectrai.core.replay_buffer_gpu import ReplayBufferGPU
+        from preceptualai.core.replay_buffer_gpu import ReplayBufferGPU
         buf = ReplayBufferGPU(capacity=50000, state_shape=(16, 30), device=GPU_DEVICE)
         states = torch.randn(256, 16, 30, device=GPU_DEVICE)
         actions = torch.randint(0, 10, (256,), device=GPU_DEVICE)
@@ -303,7 +303,7 @@ class TestRealGPUInfrastructure:
     @skip_no_gpu
     def test_vectorized_env_512_parallel_on_gpu(self):
         """Run 512 parallel DSA environments on real GPU."""
-        from spectrai.env.sim_vectorized import VectorizedDSAEnv
+        from preceptualai.env.sim_vectorized import VectorizedDSAEnv
         env = VectorizedDSAEnv(num_envs=512, num_channels=10, device=GPU_DEVICE)
         obs = env.reset()
         assert obs.shape == (512, 16, 30)
@@ -332,8 +332,8 @@ class TestRealGPUAgentTraining:
     @skip_no_gpu
     def test_sac_ltc_gpu_agent_train_loop(self):
         """Full GPU SAC-LTC training: env step -> buffer push -> gradient update."""
-        from spectrai.agent.sac_ltc_gpu import SACLTCAgentGPU
-        from spectrai.env.sim_vectorized import VectorizedDSAEnv
+        from preceptualai.agent.sac_ltc_gpu import SACLTCAgentGPU
+        from preceptualai.env.sim_vectorized import VectorizedDSAEnv
 
         env = VectorizedDSAEnv(num_envs=64, num_channels=10, device=GPU_DEVICE)
         agent = SACLTCAgentGPU(
@@ -379,7 +379,7 @@ class TestRealGPUAgentTraining:
     def test_sac_ltc_gpu_save_load_roundtrip(self):
         """Save/load checkpoint and verify identical inference."""
         import tempfile
-        from spectrai.agent.sac_ltc_gpu import SACLTCAgentGPU
+        from preceptualai.agent.sac_ltc_gpu import SACLTCAgentGPU
 
         agent = SACLTCAgentGPU(
             state_shape=(16, 30), num_actions=10, input_dim=30,
@@ -406,7 +406,7 @@ class TestRealGPUPhysics:
     @skip_no_gpu
     def test_itu_propagation_batched_on_gpu(self):
         """Run ITU-R P.618/P.838/P.676 on real GPU with batched tensors."""
-        from spectrai.env.itu_propagation import ITUPropagation
+        from preceptualai.env.itu_propagation import ITUPropagation
         itu = ITUPropagation(device=GPU_DEVICE)
 
         # Batch of 1000 link computations
@@ -430,7 +430,7 @@ class TestRealGPUPhysics:
     @skip_no_gpu
     def test_sionna_tdl_channel_on_gpu(self):
         """Run 3GPP TDL-A channel model on real GPU."""
-        from spectrai.env.sionna_channel import TDLChannelPyTorch
+        from preceptualai.env.sionna_channel import TDLChannelPyTorch
         tdl = TDLChannelPyTorch(
             num_envs=256, num_channels=10,
             model="TDL-A", carrier_freq_hz=3.5e9,
@@ -457,7 +457,7 @@ class TestRealGPUPhysics:
     @skip_no_gpu
     def test_fr3_propagation_on_gpu(self):
         """FR3 band (7-24 GHz) path loss on real GPU."""
-        from spectrai.env.fr3_propagation import FR3PropagationModel
+        from preceptualai.env.fr3_propagation import FR3PropagationModel
         model = FR3PropagationModel(device=GPU_DEVICE)
         freq = torch.tensor([7.0, 10.0, 15.0, 20.0, 24.0], device=GPU_DEVICE)
         dist = torch.tensor([100.0, 200.0, 500.0, 1000.0, 2000.0], device=GPU_DEVICE)
@@ -480,7 +480,7 @@ class TestRealGPUNextGen:
     @skip_no_gpu
     def test_gnn_encoder_on_real_gpu(self):
         """GNN spatial encoder with real CUDA matrix ops."""
-        from spectrai.core.gnn_encoder import GNNSpatialEncoder
+        from preceptualai.core.gnn_encoder import GNNSpatialEncoder
         enc = GNNSpatialEncoder(input_dim=30, embed_dim=64, num_layers=2, num_heads=4).to(GPU_DEVICE)
         x = torch.randn(32, 10, 30, device=GPU_DEVICE, requires_grad=True)
         adj = GNNSpatialEncoder.build_interference_adj(10).to(GPU_DEVICE)
@@ -492,7 +492,7 @@ class TestRealGPUNextGen:
     @skip_no_gpu
     def test_kan_actor_on_real_gpu(self):
         """KAN actor with RBF spline activations on GPU."""
-        from spectrai.core.kan_actor import KANActor
+        from preceptualai.core.kan_actor import KANActor
         actor = KANActor(encoder_latent_dim=64, num_actions=10).to(GPU_DEVICE)
         z = torch.randn(32, 64, device=GPU_DEVICE, requires_grad=True)
         probs = actor(z)
@@ -504,7 +504,7 @@ class TestRealGPUNextGen:
     @skip_no_gpu
     def test_world_model_imagine_on_gpu(self):
         """World model imagined rollouts on real GPU."""
-        from spectrai.core.world_model import LTCWorldModel
+        from preceptualai.core.world_model import LTCWorldModel
         wm = LTCWorldModel(obs_dim=30, num_actions=10, hidden_dim=64).to(GPU_DEVICE)
         h0 = torch.zeros(32, 64, device=GPU_DEVICE)
         policy = lambda h: torch.randint(0, 10, (h.shape[0],), device=GPU_DEVICE)
@@ -515,7 +515,7 @@ class TestRealGPUNextGen:
     @skip_no_gpu
     def test_fno_surrogate_on_gpu(self):
         """FNO channel surrogate with Fourier convolutions on real GPU."""
-        from spectrai.core.fno_surrogate import FNOChannelSurrogate
+        from preceptualai.core.fno_surrogate import FNOChannelSurrogate
         fno = FNOChannelSurrogate(num_features=3, width=32, modes=4, num_layers=3).to(GPU_DEVICE)
         x = torch.randn(32, 10, 3, device=GPU_DEVICE, requires_grad=True)
         y = fno(x)
@@ -527,7 +527,7 @@ class TestRealGPUNextGen:
     @skip_no_gpu
     def test_diffusion_train_and_sample_on_gpu(self):
         """Diffusion model training + sampling on real GPU."""
-        from spectrai.core.diffusion_augment import SpectrumDiffusionModel
+        from preceptualai.core.diffusion_augment import SpectrumDiffusionModel
         model = SpectrumDiffusionModel(
             obs_dim=30, hidden_dim=128, num_blocks=3, num_diffusion_steps=20,
         ).to(GPU_DEVICE)
@@ -553,7 +553,7 @@ class TestRealGPUISAC:
     @skip_no_gpu
     def test_isac_full_episode_on_gpu(self):
         """Run full ISAC episode with sensing on real GPU."""
-        from spectrai.env.isac_env import ISACVectorizedDSAEnv
+        from preceptualai.env.isac_env import ISACVectorizedDSAEnv
         env = ISACVectorizedDSAEnv(
             num_envs=128, num_channels=10,
             num_sensing_targets=3, device=GPU_DEVICE,
@@ -589,9 +589,9 @@ class TestEndToEndRealIntegration:
         End-to-end: load real UCC MISL data, create GPU environment
         driven by real measurements, train SAC-LTC agent on GPU.
         """
-        from spectrai.env.data_pipeline import Unified5GDataPipeline
-        from spectrai.env.sim_vectorized import VectorizedDSAEnv
-        from spectrai.agent.sac_ltc_gpu import SACLTCAgentGPU
+        from preceptualai.env.data_pipeline import Unified5GDataPipeline
+        from preceptualai.env.sim_vectorized import VectorizedDSAEnv
+        from preceptualai.agent.sac_ltc_gpu import SACLTCAgentGPU
 
         # 1. Load real 5G data
         pipeline = Unified5GDataPipeline(
@@ -632,7 +632,7 @@ class TestEndToEndRealIntegration:
     @skip_no_gpu
     def test_multiscale_encoder_on_real_gpu(self):
         """Multi-scale LTC with 5G physics timescales on real GPU."""
-        from spectrai.core.ltc_cell_multiscale import MultiScaleLTCEncoder
+        from preceptualai.core.ltc_cell_multiscale import MultiScaleLTCEncoder
         enc = MultiScaleLTCEncoder(
             input_dim=30, hidden_dim=64, latent_dim=32,
             num_layers=4, domain="5g",
@@ -659,7 +659,7 @@ class TestRealDAppLatency:
     @skip_no_gpu
     def test_dapp_latency_benchmark(self):
         """Benchmark dApp inference latency on real GPU."""
-        from spectrai.xapp.dapp_engine import DAppInferenceEngine
+        from preceptualai.xapp.dapp_engine import DAppInferenceEngine
         engine = DAppInferenceEngine(
             input_dim=30, hidden_dim=64, num_actions=10,
             device=GPU_DEVICE, use_cuda_graph=True,

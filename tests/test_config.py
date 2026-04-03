@@ -2,7 +2,7 @@
 
 import pytest
 
-from spectrai.config import SpectralConfig
+from preceptualai.config import SpectralConfig
 
 
 class TestDefaultConfig:

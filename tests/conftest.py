@@ -1,5 +1,5 @@
 """
-Shared pytest fixtures for SpectrAI test suite.
+Shared pytest fixtures for PreceptualAI test suite.
 
 Provides lightweight, CPU-only fixtures suitable for CI environments
 without GPU hardware.
@@ -8,8 +8,8 @@ without GPU hardware.
 import pytest
 import torch
 
-from spectrai.agent.sac_ltc import SACLTCAgent
-from spectrai.env.sim import SimulatedDSAEnv
+from preceptualai.agent.sac_ltc import SACLTCAgent
+from preceptualai.env.sim import SimulatedDSAEnv
 
 # ---------------------------------------------------------------------------
 # Device

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-SpectrAI xApp gRPC Client — queries the running xApp for spectrum decisions.
+PreceptualAI xApp gRPC Client — queries the running xApp for spectrum decisions.
 
 Usage:
     # Start server first:
-    python -m spectrai.xapp.server --config xapp_config.yaml &
+    python -m preceptualai.xapp.server --config xapp_config.yaml &
 
     # Then run client:
     python scripts/xapp_client.py
@@ -20,15 +20,15 @@ import numpy as np
 
 # Add proto path
 sys.path.insert(0, "src")
-from spectrai.proto import spectrai_pb2, spectrai_pb2_grpc
+from preceptualai.proto import preceptualai_pb2, preceptualai_pb2_grpc
 
 
 def run_health_check(stub):
     """Check xApp health status."""
     print("\n=== Health Check ===")
-    request = spectrai_pb2.HealthRequest()
+    request = preceptualai_pb2.HealthRequest()
     response = stub.GetHealth(request)
-    print(f"  Status:  {spectrai_pb2.HealthStatus.ServingStatus.Name(response.status)}")
+    print(f"  Status:  {preceptualai_pb2.HealthStatus.ServingStatus.Name(response.status)}")
     print(f"  Model:   {response.model_path}")
     print(f"  Backend: {response.backend}")
     print(f"  Version: {response.version}")
@@ -48,7 +48,7 @@ def run_predictions(stub, num_requests, sequence_length, num_channels, num_featu
         # Generate observation (simulating real 5G channel measurements)
         observation = np.random.randn(sequence_length * input_dim).astype(np.float32).tolist()
 
-        request = spectrai_pb2.PredictRequest(
+        request = preceptualai_pb2.PredictRequest(
             observation=observation,
             sequence_length=sequence_length,
             input_dim=num_channels * num_features,
@@ -90,7 +90,7 @@ def run_predictions(stub, num_requests, sequence_length, num_channels, num_featu
 def run_metrics(stub):
     """Get xApp metrics."""
     print("\n=== Metrics ===")
-    request = spectrai_pb2.MetricsRequest()
+    request = preceptualai_pb2.MetricsRequest()
     response = stub.GetMetrics(request)
     print(f"  Predictions:  {response.predictions_total}")
     print(f"  Collisions:   {response.collisions_total}")
@@ -104,7 +104,7 @@ def run_metrics(stub):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="SpectrAI xApp gRPC Client")
+    parser = argparse.ArgumentParser(description="PreceptualAI xApp gRPC Client")
     parser.add_argument("--host", type=str, default="localhost")
     parser.add_argument("--port", type=int, default=50051)
     parser.add_argument("--num_requests", type=int, default=100)
@@ -114,10 +114,10 @@ def main():
     args = parser.parse_args()
 
     target = f"{args.host}:{args.port}"
-    print(f"SpectrAI xApp Client — connecting to {target}")
+    print(f"PreceptualAI xApp Client — connecting to {target}")
 
     channel = grpc.insecure_channel(target)
-    stub = spectrai_pb2_grpc.SpectrAIStub(channel)
+    stub = preceptualai_pb2_grpc.PreceptualAIStub(channel)
 
     # 1. Health check
     health = run_health_check(stub)

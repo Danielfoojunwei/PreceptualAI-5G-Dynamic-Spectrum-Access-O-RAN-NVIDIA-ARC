@@ -1,4 +1,4 @@
-# SpectrAI xApp Configuration
+# PreceptualAI xApp Configuration
 # Matches demo_output/checkpoint.pt dimensions (trained on real 5G data)
 
 environment:

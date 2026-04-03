@@ -41,3 +41,7 @@ proto/*_pb2*.pyi
 # Docker
 .docker/
 demo_results/
+
+data/colosseum/
+data/ucc_misl/
+checkpoints/

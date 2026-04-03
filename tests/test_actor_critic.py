@@ -2,9 +2,9 @@
 
 import torch
 
-from spectrai.core.actor import LTCActor
-from spectrai.core.critic import LTCCritic
-from spectrai.core.ltc_encoder import LTCEncoder
+from preceptualai.core.actor import LTCActor
+from preceptualai.core.critic import LTCCritic
+from preceptualai.core.ltc_encoder import LTCEncoder
 
 
 def _make_encoder(device, input_dim=12, hidden_dim=32, latent_dim=32):

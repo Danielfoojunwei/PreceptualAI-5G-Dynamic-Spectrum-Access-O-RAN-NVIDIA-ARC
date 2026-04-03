@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from spectrai.env.sim import SimulatedDSAEnv
+from preceptualai.env.sim import SimulatedDSAEnv
 
 
 class TestResetShape:

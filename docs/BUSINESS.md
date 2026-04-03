@@ -1,12 +1,12 @@
-# SpectrAI Business Model & Go-to-Market Strategy
+# PreceptualAI Business Model & Go-to-Market Strategy
 
 ---
 
 ## Executive Summary
 
-SpectrAI is an AI-powered O-RAN xApp for dynamic spectrum management built on Liquid Time-Constant (LTC) neural networks with hybrid federated learning. It is the first production system that adapts its temporal reasoning speed to real-time radio conditions and the first to offer per-site personalization during federated model training.
+PreceptualAI is an AI-powered O-RAN xApp for dynamic spectrum management built on Liquid Time-Constant (LTC) neural networks with hybrid federated learning. It is the first production system that adapts its temporal reasoning speed to real-time radio conditions and the first to offer per-site personalization during federated model training.
 
-The RAN Intelligent Controller (RIC) xApp market is projected to grow from $0.67B in 2025 to $7.09B by 2030 (60% CAGR). NVIDIA's open-sourcing of the Aerial RAN stack and release of ARC hardware is creating a new GPU-accelerated RAN ecosystem that needs AI-native software. SpectrAI is purpose-built for this inflection point.
+The RAN Intelligent Controller (RIC) xApp market is projected to grow from $0.67B in 2025 to $7.09B by 2030 (60% CAGR). NVIDIA's open-sourcing of the Aerial RAN stack and release of ARC hardware is creating a new GPU-accelerated RAN ecosystem that needs AI-native software. PreceptualAI is purpose-built for this inflection point.
 
 **Business model:** Open-core software with three tiers — free community edition (Apache 2.0), Pro ($120/cell-site/year), and Enterprise ($300/cell-site/year). At scale, a single Tier-1 operator deployment (50,000 cell sites) represents $6-15M ARR.
 
@@ -66,7 +66,7 @@ Four structural shifts converging simultaneously:
 
 4. **NVIDIA ARC is the new platform.** GPU-accelerated L1/L2 on ARC hardware needs AI-native xApps. Legacy spectrum software cannot exploit the hardware.
 
-### SpectrAI Unique Value
+### PreceptualAI Unique Value
 
 | Value Driver | Benefit | Quantified Impact |
 |---|---|---|
@@ -85,9 +85,9 @@ Four structural shifts converging simultaneously:
 |---|---|
 | Spectrum asset value | $5B (C-band auction reference) |
 | Baseline spectral efficiency | 0.625 (LSTM-based system) |
-| SpectrAI spectral efficiency | 0.634 (measured, 1.4% improvement) |
+| PreceptualAI spectral efficiency | 0.634 (measured, 1.4% improvement) |
 | Annual value of 1.4% improvement | $70M |
-| SpectrAI Enterprise cost | $15M/year (50K x $300/site) |
+| PreceptualAI Enterprise cost | $15M/year (50K x $300/site) |
 | **Net annual value** | **$55M (367% ROI)** |
 
 **Tier-2 operator, 15,000 cell sites:**
@@ -96,7 +96,7 @@ Four structural shifts converging simultaneously:
 |---|---|
 | Spectrum asset value | $1.5B |
 | Annual value of 1.4% improvement | $21M |
-| SpectrAI Enterprise cost | $3.6M/year (15K x $240/site with volume discount) |
+| PreceptualAI Enterprise cost | $3.6M/year (15K x $240/site with volume discount) |
 | **Net annual value** | **$17.4M (483% ROI)** |
 
 Even a 0.5% efficiency gain yields a 10:1 ROI at Enterprise pricing.
@@ -107,7 +107,7 @@ Even a 0.5% efficiency gain yields a 10:1 ROI at Enterprise pricing.
 
 ### Open-Core Model
 
-SpectrAI follows the open-core playbook proven by HashiCorp ($5.3B acquisition), Confluent ($9B peak market cap), Elastic ($3B+), and GitLab ($8B+): free open-source core to drive adoption and community, paid tiers for enterprise features, support, and managed services.
+PreceptualAI follows the open-core playbook proven by HashiCorp ($5.3B acquisition), Confluent ($9B peak market cap), Elastic ($3B+), and GitLab ($8B+): free open-source core to drive adoption and community, paid tiers for enterprise features, support, and managed services.
 
 ### Tier Structure
 
@@ -138,7 +138,7 @@ SpectrAI follows the open-core playbook proven by HashiCorp ($5.3B acquisition),
 ### Pricing Rationale
 
 - **Pro at $120/site/year ($10/site/month):** Competitive with infrastructure monitoring SaaS (Datadog: $15-23/host/month). For 10K sites = $1.2M/year, well within typical operator xApp budgets.
-- **Enterprise at $300/site/year ($25/site/month):** Includes federated learning, the primary moat. SD-RAN platform licenses run ~$500K+/year. SpectrAI at $300/site with 50K sites = $15M, justified by $70M+ annual value delivered.
+- **Enterprise at $300/site/year ($25/site/month):** Includes federated learning, the primary moat. SD-RAN platform licenses run ~$500K+/year. PreceptualAI at $300/site with 50K sites = $15M, justified by $70M+ annual value delivered.
 - **Volume discounts:** 10% at 5K+ sites, 20% at 20K+, custom pricing at 50K+.
 
 ### Revenue Per Customer Model
@@ -250,7 +250,7 @@ See [PRICING.md](PRICING.md) for detailed pricing model and ROI calculator.
                     Specialized (Spectrum Only)
                            ^
                            |
-              DeepSig      |     SpectrAI
+              DeepSig      |     PreceptualAI
               (PHY/signal) |     (LTC + FL)
                            |
   Closed Source <----------+----------> Open Source
@@ -262,11 +262,11 @@ See [PRICING.md](PRICING.md) for detailed pricing model and ROI calculator.
                     Broad Platform (Full RAN)
 ```
 
-SpectrAI occupies a unique position: specialized in spectrum management and open-source. No competitor combines both.
+PreceptualAI occupies a unique position: specialized in spectrum management and open-source. No competitor combines both.
 
 ### Detailed Comparison
 
-| Dimension | SpectrAI | Mavenir | Cohere Technologies | AirHopAI | DeepSig |
+| Dimension | PreceptualAI | Mavenir | Cohere Technologies | AirHopAI | DeepSig |
 |---|---|---|---|---|---|
 | **Core Technology** | LTC neural ODE + SAC RL | Traditional ML + rules | Massive MIMO beamforming | SON + statistical ML | Deep learning for RF |
 | **Continuous-time adaptation** | Yes (input-dependent tau) | No | No | No | No |

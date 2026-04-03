@@ -1,5 +1,5 @@
 """
-Tests for the SpectrAI federated learning module.
+Tests for the PreceptualAI federated learning module.
 
 Covers the core FL mechanics without requiring a real 5G dataset or
 long training runs.  All tests use synthetic state_dicts that mirror
@@ -12,14 +12,14 @@ from collections import OrderedDict
 import pytest
 import torch
 
-from spectrai.agent.sac_ltc import SACLTCAgent
-from spectrai.federated.aggregator import (
+from preceptualai.agent.sac_ltc import SACLTCAgent
+from preceptualai.federated.aggregator import (
     HybridFederatedAggregator,
     _is_tau_weight,
     _partition_state_dict,
 )
-from spectrai.federated.client import FederatedSACLTCClient
-from spectrai.federated.config import FLConfig
+from preceptualai.federated.client import FederatedSACLTCClient
+from preceptualai.federated.config import FLConfig
 
 # ======================================================================
 # Fixtures

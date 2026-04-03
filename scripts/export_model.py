@@ -1,5 +1,5 @@
 """
-Model export CLI for SpectrAI.
+Model export CLI for PreceptualAI.
 
 Loads a trained SAC-LTC checkpoint, exports the actor to ONNX,
 optionally compiles a TensorRT engine, and runs validation
@@ -26,7 +26,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-logger = logging.getLogger("spectrai.export")
+logger = logging.getLogger("preceptualai.export")
 
 
 def parse_args() -> argparse.Namespace:
@@ -142,7 +142,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     logger.info("Loading checkpoint: %s", args.checkpoint)
 
-    from spectrai.agent.sac_ltc import SACLTCAgent
+    from preceptualai.agent.sac_ltc import SACLTCAgent
 
     device = torch.device("cpu")
     state_shape = (args.sequence_length, input_dim)
@@ -164,7 +164,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     logger.info("Exporting to ONNX: %s", args.output)
 
-    from spectrai.export.onnx_export import export_actor_onnx
+    from preceptualai.export.onnx_export import export_actor_onnx
 
     onnx_path = export_actor_onnx(
         agent=agent,
@@ -181,7 +181,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     if args.benchmark:
         logger.info("Benchmarking ONNX Runtime ...")
-        from spectrai.export.onnx_export import benchmark_onnx
+        from preceptualai.export.onnx_export import benchmark_onnx
 
         try:
             latency = benchmark_onnx(
@@ -208,7 +208,7 @@ def main() -> None:
             args.precision,
         )
 
-        from spectrai.export.tensorrt_export import compile_tensorrt
+        from preceptualai.export.tensorrt_export import compile_tensorrt
 
         try:
             trt_path = compile_tensorrt(
@@ -221,7 +221,7 @@ def main() -> None:
 
             if args.benchmark:
                 logger.info("Benchmarking TensorRT ...")
-                from spectrai.export.tensorrt_export import benchmark_tensorrt
+                from preceptualai.export.tensorrt_export import benchmark_tensorrt
 
                 trt_latency = benchmark_tensorrt(
                     trt_path,

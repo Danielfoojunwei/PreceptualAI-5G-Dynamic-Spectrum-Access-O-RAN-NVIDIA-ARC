@@ -3,7 +3,7 @@
 import numpy as np
 import torch
 
-from spectrai.core.replay_buffer import ReplayBuffer
+from preceptualai.core.replay_buffer import ReplayBuffer
 
 
 class TestPushAndSample:

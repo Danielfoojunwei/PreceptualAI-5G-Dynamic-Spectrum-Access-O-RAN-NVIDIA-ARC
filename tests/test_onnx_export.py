@@ -7,9 +7,9 @@ import numpy as np
 import pytest
 import torch
 
-from spectrai.core.actor import LTCActor
-from spectrai.core.ltc_encoder import LTCEncoder
-from spectrai.export.onnx_export import export_actor_onnx
+from preceptualai.core.actor import LTCActor
+from preceptualai.core.ltc_encoder import LTCEncoder
+from preceptualai.export.onnx_export import export_actor_onnx
 
 INPUT_DIM = 12
 HIDDEN_DIM = 32
