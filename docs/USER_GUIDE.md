@@ -144,6 +144,46 @@ env = Real5GEnvironment(
 
 ---
 
+## UHCI Training (v0.2)
+
+### Universal Heterogeneous Connectivity Intelligence
+
+Train the UHCI agent across all connectivity providers:
+
+```bash
+# Default (FR1 + FR3 + LEO, CfC temporal backend)
+python scripts/train_uhci.py
+
+# Full 8-provider training with all innovations
+python scripts/train_uhci.py \
+    --num-steps 50000 \
+    --providers LEO MEO GEO HAPS FR1 FR3 ISAC WIFI7 \
+    --temporal-backend cfc \
+    --use-diffusion \
+    --use-fno \
+    --use-world-model \
+    --use-smooth-power \
+    --device cuda
+
+# Real data from HuggingFace (no local CSVs needed)
+python scripts/train_uhci.py --telecomts-only --num-steps 20000
+```
+
+### UHCI Feature Flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `--providers` | All 8 | Provider types to include |
+| `--temporal-backend` | cfc | Temporal encoder: cfc, ltc, or mamba |
+| `--use-diffusion` / `--no-diffusion` | ON | DDPM spectrum augmentation |
+| `--use-fno` / `--no-fno` | ON | FNO channel surrogate |
+| `--use-world-model` | OFF | Dyna imagined rollouts |
+| `--use-smooth-power` | OFF | SmODE 3GPP power control |
+| `--use-real-data` | OFF | Use UCC MISL + Colosseum + TelecomTS |
+| `--telecomts-only` | OFF | Use only TelecomTS from HuggingFace |
+
+---
+
 ## Model Export
 
 ### ONNX Export
