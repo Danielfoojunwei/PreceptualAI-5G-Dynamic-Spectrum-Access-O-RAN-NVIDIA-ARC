@@ -1,0 +1,90 @@
+flowchart TB
+    %% UHCI overall layered architecture
+
+    subgraph Inputs["External Inputs and Operating Context"]
+        users["Users / Traffic Demand"]
+        telemetry["Network Telemetry and Measurements"]
+        standards["Standards and Domain Priors\n3GPP • ITU-R • O-RAN"]
+        providers["Connectivity Providers\nLEO • MEO • GEO • HAPS • FR1 • FR3 • ISAC • Wi-Fi 7"]
+    end
+
+    subgraph World["1. World Model and Telecom Physics"]
+        registry["Provider Registry\nprovider_registry.py"]
+        itu["NTN / Earth-Space Propagation\nitu_propagation.py"]
+        fr3["FR3 / Terrestrial Propagation\nfr3_propagation.py"]
+    end
+
+    subgraph Env["2. Unified Environment Layer"]
+        envcore["Unified Connectivity Environment\nunified_connectivity_env.py"]
+        datapipeline["Unified Data Pipeline\ndata_pipeline.py"]
+        oranenv["O-RAN Environment Surface\noran.py"]
+    end
+
+    subgraph Intelligence["3. Representation and Decision Intelligence"]
+        gnn["Heterogeneous Graph Encoder\nhetero_gnn_encoder.py"]
+        temporal["Continuous-Time Temporal Models\nltc_cell.py • ltc_cell_cfc.py"]
+        agent["Universal Spectrum Agent\nuniversal_spectrum_agent.py"]
+        critic["Value / Critic Logic\npolicy evaluation and optimization"]
+    end
+
+    subgraph Runtime["4. Runtime, Serving, and Control"]
+        infer["Inference Engine\ninference_engine.py"]
+        dapp["Low-Latency dApp Engine\ndapp_engine.py"]
+        grpc["gRPC Serving Surface\nserver.py"]
+        e2["E2 / O-RAN Adapter\ne2_adapter.py"]
+        aerial["AI-RAN / Aerial Runtime Path\naerial_adapter.py"]
+    end
+
+    subgraph Lifecycle["5. Training, Governance, and Distributed Learning"]
+        trainer["Training Entry Points\nscripts/train_uhci.py"]
+        rapp["Non-RT RIC / rApp Lifecycle\nrapp_trainer.py"]
+        fed["Hybrid Federated Aggregator\naggregator.py"]
+        proto["Formal Service Contracts\nproto/*.proto"]
+        bench["Benchmarks and Evaluation\nbenchmarks/"]
+    end
+
+    users --> envcore
+    telemetry --> datapipeline
+    standards --> registry
+    standards --> itu
+    standards --> fr3
+    providers --> registry
+
+    registry --> envcore
+    itu --> envcore
+    fr3 --> envcore
+    datapipeline --> envcore
+    oranenv --> envcore
+    envcore --> gnn
+    envcore --> temporal
+    gnn --> agent
+    temporal --> agent
+    agent --> critic
+
+    agent --> infer
+    infer --> dapp
+    infer --> grpc
+    infer --> e2
+    infer --> aerial
+
+    trainer --> agent
+    trainer --> gnn
+    trainer --> temporal
+    bench --> trainer
+    proto --> grpc
+    proto --> fed
+    fed --> trainer
+    rapp --> trainer
+    rapp --> infer
+    rapp --> e2
+
+    e2 --> telemetry
+    grpc --> users
+
+    classDef layer fill:#f7f9fc,stroke:#4a5568,stroke-width:1px,color:#1a202c;
+    classDef focus fill:#ebf8ff,stroke:#3182ce,stroke-width:1px,color:#1a202c;
+    classDef control fill:#f0fff4,stroke:#38a169,stroke-width:1px,color:#1a202c;
+
+    class registry,itu,fr3,envcore,datapipeline,oranenv layer;
+    class gnn,temporal,agent,critic focus;
+    class infer,dapp,grpc,e2,aerial,trainer,rapp,fed,proto,bench control;
