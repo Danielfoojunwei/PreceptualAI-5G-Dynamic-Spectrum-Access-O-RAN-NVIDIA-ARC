@@ -388,37 +388,37 @@ def train_and_evaluate(env_name, env, env_cfg, training_steps, eval_episodes,
         sr = np.mean(all_results[agent_name]["success_rate"])
         print(f"    {agent_name:25s} Success={sr:.2%}", flush=True)
 
-    # ── RL agents ──
+    # ── RL agents (~5.3M params each with h=384, l=384, layers=3) ──
     rl_configs = {
         "sac_ltc": {
             "module": "sac_ltc_agent",
             "class": "SACLTCAgent",
             "params": {
-                "hidden_dim": 128,
-                "latent_dim": 128,
-                "num_layers": 2,
+                "hidden_dim": 384,
+                "latent_dim": 384,
+                "num_layers": 3,
                 "dt": 1.0,
                 "lr": 3e-4,
                 "gamma": 0.99,
                 "tau": 0.005,
-                "buffer_size": min(training_steps, 500000),
+                "buffer_size": min(training_steps, 1000000),
                 "batch_size": 256,
-                "learning_starts": 1000,
+                "learning_starts": 2000,
             },
         },
         "sac_lstm": {
             "module": "sac_lstm_agent",
             "class": "SACLSTMAgent",
             "params": {
-                "hidden_dim": 128,
-                "latent_dim": 128,
-                "num_layers": 2,
+                "hidden_dim": 384,
+                "latent_dim": 384,
+                "num_layers": 3,
                 "lr": 3e-4,
                 "gamma": 0.99,
                 "tau": 0.005,
-                "buffer_size": min(training_steps, 500000),
+                "buffer_size": min(training_steps, 1000000),
                 "batch_size": 256,
-                "learning_starts": 1000,
+                "learning_starts": 2000,
             },
         },
     }
@@ -518,15 +518,18 @@ def train_and_evaluate(env_name, env, env_cfg, training_steps, eval_episodes,
 
 def main():
     parser = argparse.ArgumentParser(description="500K-Step Real-Data Training")
-    parser.add_argument("--steps", type=int, default=500000)
+    parser.add_argument("--steps", type=int, default=5000000,
+                        help="Training steps (default 5M for full convergence)")
     parser.add_argument("--seeds", type=int, default=1,
-                        help="Number of seeds (default 1 for 500K — expensive)")
-    parser.add_argument("--eval-episodes", type=int, default=50)
+                        help="Number of seeds (default 1 — each run is long)")
+    parser.add_argument("--eval-episodes", type=int, default=100,
+                        help="Evaluation episodes per seed (default 100)")
     parser.add_argument("--env", type=str, default="all",
                         choices=["all", "real5g", "telecomts", "realistic"])
     parser.add_argument("--output-dir", type=str, default="realdata_500k_results")
+    _repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     parser.add_argument("--data-dir", type=str,
-                        default="data/ucc_misl/5Gdataset/extracted/5G-production-dataset")
+                        default=os.path.join(_repo_root, "data/ucc_misl/5Gdataset/extracted/5G-production-dataset"))
     parser.add_argument("--telecomts-samples", type=int, default=500)
     args = parser.parse_args()
 
