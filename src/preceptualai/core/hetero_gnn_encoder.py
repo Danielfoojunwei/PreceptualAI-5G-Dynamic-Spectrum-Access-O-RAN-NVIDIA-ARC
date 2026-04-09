@@ -82,6 +82,112 @@ class HeteroNodeProjection(nn.Module):
         return out
 
 
+class MoPENodeProjection(nn.Module):
+    """
+    Mixture of Provider Experts (MoPE) — Sparse Expert Routing for GNN.
+
+    Paradigm Shift 5: Replaces per-type projections with domain experts
+    routed via a learned gating function. Scales to future provider types
+    (THz, RIS, UAV relay) without retraining existing experts.
+
+    Expert domains:
+      Expert 0: NTN specialist (LEO, MEO, GEO, HAPS — orbital dynamics)
+      Expert 1: Sub-6 GHz specialist (FR1, WiFi7 — urban fading)
+      Expert 2: mmWave specialist (FR3, ISAC — atmospheric absorption)
+
+    Each provider routes to k-of-N experts via a learned softmax gate.
+    Load balancing auxiliary loss prevents expert collapse.
+
+    Inspired by Switch Transformer (Fedus et al., 2022) and Mixtral
+    (Jiang et al., 2024), adapted for wireless provider types.
+    """
+
+    NTN_TYPES = {ProviderType.LEO, ProviderType.MEO, ProviderType.GEO, ProviderType.HAPS}
+    SUB6_TYPES = {ProviderType.FR1, ProviderType.WIFI7}
+    MMWAVE_TYPES = {ProviderType.FR3, ProviderType.ISAC}
+
+    def __init__(
+        self,
+        provider_types:   List[ProviderType],
+        raw_feature_dim:  int,
+        latent_dim:       int,
+        num_experts:      int = 3,
+        top_k:            int = 2,
+        load_balance_coef: float = 0.01,
+    ):
+        super().__init__()
+        self.provider_types = provider_types
+        self.latent_dim = latent_dim
+        self.num_experts = num_experts
+        self.top_k = top_k
+        self.load_balance_coef = load_balance_coef
+
+        # Expert networks
+        self.experts = nn.ModuleList([
+            nn.Sequential(
+                nn.Linear(raw_feature_dim, latent_dim),
+                nn.SiLU(),
+                nn.Linear(latent_dim, latent_dim),
+            )
+            for _ in range(num_experts)
+        ])
+
+        # Gating network: input features → expert routing weights
+        self.gate = nn.Linear(raw_feature_dim, num_experts)
+
+        # Per-expert layer norms
+        self.norms = nn.ModuleList([
+            nn.LayerNorm(latent_dim) for _ in range(num_experts)
+        ])
+
+        # Store last auxiliary loss for training
+        self._aux_loss = torch.tensor(0.0)
+
+    @property
+    def aux_loss(self) -> torch.Tensor:
+        """Load balancing auxiliary loss — add to main training loss."""
+        return self._aux_loss
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: (B, P, raw_feature_dim) — raw node features
+        Returns:
+            h: (B, P, latent_dim) — expert-routed embeddings
+        """
+        B, P, D = x.shape
+        x_flat = x.reshape(B * P, D)
+
+        # Compute gating weights
+        gate_logits = self.gate(x_flat)  # (B*P, num_experts)
+        gate_weights = F.softmax(gate_logits, dim=-1)
+
+        # Top-k expert selection
+        top_k_weights, top_k_indices = torch.topk(gate_weights, self.top_k, dim=-1)
+        top_k_weights = top_k_weights / top_k_weights.sum(dim=-1, keepdim=True)  # renormalize
+
+        # Compute expert outputs (only for selected experts)
+        out = torch.zeros(B * P, self.latent_dim, device=x.device, dtype=x.dtype)
+        for k in range(self.top_k):
+            expert_idx = top_k_indices[:, k]  # (B*P,)
+            weight = top_k_weights[:, k].unsqueeze(-1)  # (B*P, 1)
+
+            for e in range(self.num_experts):
+                mask = expert_idx == e
+                if mask.any():
+                    expert_out = self.experts[e](x_flat[mask])
+                    expert_out = self.norms[e](expert_out)
+                    out[mask] += weight[mask] * expert_out
+
+        # Load balancing auxiliary loss (Switch Transformer style)
+        # Encourage uniform expert utilization
+        f_i = gate_weights.mean(dim=0)  # fraction routed to each expert
+        p_i = (gate_weights > 1.0 / self.num_experts).float().mean(dim=0)
+        self._aux_loss = self.load_balance_coef * self.num_experts * (f_i * p_i).sum()
+
+        return out.reshape(B, P, self.latent_dim)
+
+
 class HeteroEdgeAttention(nn.Module):
     """
     Edge-conditioned multi-head attention for heterogeneous graphs.
