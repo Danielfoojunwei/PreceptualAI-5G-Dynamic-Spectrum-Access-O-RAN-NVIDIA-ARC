@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from benchmark import evaluate_agent, make_agent, train_off_policy, train_ppo
 from dsa_env import DSAEnv
+from traditional_baselines import TRADITIONAL_BASELINES, TraditionalBaseline
 
 CONFIG = {
     "training_steps": 5000,
@@ -94,6 +95,21 @@ CONFIG = {
                 "ent_coef": 0.01,
             },
         },
+        # Traditional baselines (no training required)
+        "random":               {"class": "random", "params": {}},
+        "round_robin":          {"class": "round_robin", "params": {}},
+        "greedy_sinr":          {"class": "greedy_sinr", "params": {}},
+        "epsilon_greedy":       {"class": "epsilon_greedy", "params": {"epsilon": 0.1}},
+        "tdma":                 {"class": "tdma", "params": {}},
+        "fdma":                 {"class": "fdma", "params": {"fixed_channel": 0}},
+        "proportional_fair":    {"class": "proportional_fair", "params": {}},
+        "thompson_sampling":    {"class": "thompson_sampling", "params": {}},
+        "ucb":                  {"class": "ucb", "params": {"c": 1.414}},
+        "whittle_index":        {"class": "whittle_index", "params": {"pu_on_prob": 0.3, "pu_off_prob": 0.5}},
+        "boltzmann":            {"class": "boltzmann", "params": {"temperature": 0.5}},
+        "wifi7_mlo":            {"class": "wifi7_mlo", "params": {}},
+        "ofdma":                {"class": "ofdma", "params": {}},
+        "carrier_aggregation":  {"class": "carrier_aggregation", "params": {"k_candidates": 3}},
     },
 }
 
@@ -137,7 +153,10 @@ def main():
             agent = make_agent(agent_type, agent_params, env_cfg, device)
 
             # Train
-            if agent_type in ("sac_lfm", "sac_lstm", "sac_ltc"):
+            if isinstance(agent, TraditionalBaseline):
+                # Heuristic baselines: skip training
+                curves = {}
+            elif agent_type in ("sac_lfm", "sac_lstm", "sac_ltc"):
                 env = DSAEnv(
                     num_channels=env_cfg["num_channels"],
                     sequence_length=env_cfg["sequence_length"],

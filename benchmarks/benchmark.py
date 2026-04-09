@@ -42,6 +42,13 @@ def make_agent(agent_type: str, agent_params: dict, env_cfg: dict, device: torch
     input_dim = num_channels * num_features
     state_shape = (seq_len, input_dim)
 
+    # Traditional (non-learning) baselines
+    from traditional_baselines import TRADITIONAL_BASELINES
+    if agent_type in TRADITIONAL_BASELINES:
+        cls, default_params = TRADITIONAL_BASELINES[agent_type]
+        merged = {**default_params, **agent_params}
+        return cls(num_channels=num_channels, num_features=num_features, **merged)
+
     if agent_type == "sac_lfm":
         from sac_agent import SACAgent
         return SACAgent(
@@ -114,7 +121,10 @@ def evaluate_agent(
 
     for _ in range(num_episodes):
         state, _ = env.reset()
-        if agent_type == "ppo_lstm":
+        # Reset per-episode state (PPO LSTM hidden state, bandit posteriors, etc.)
+        if hasattr(agent, 'reset_episode'):
+            agent.reset_episode()
+        elif hasattr(agent, 'reset_eval_state'):
             agent.reset_eval_state()
 
         ep_reward = 0.0
@@ -334,7 +344,14 @@ def run_benchmark(config: dict, agent_filter: List[str] | None = None, eval_only
 
             # ---------- Training ----------
             if not eval_only:
-                if agent_type in ("sac_lfm", "sac_lstm", "sac_ltc"):
+                from traditional_baselines import TraditionalBaseline
+                if isinstance(agent, TraditionalBaseline):
+                    # Heuristic baselines: no training needed
+                    curves = {"note": "Heuristic baseline — no training"}
+                    curves_path = os.path.join(run_dir, "training_curves.json")
+                    with open(curves_path, "w") as f:
+                        json.dump(curves, f)
+                elif agent_type in ("sac_lfm", "sac_lstm", "sac_ltc"):
                     env = DSAEnv(
                         num_channels=env_cfg["num_channels"],
                         sequence_length=env_cfg["sequence_length"],

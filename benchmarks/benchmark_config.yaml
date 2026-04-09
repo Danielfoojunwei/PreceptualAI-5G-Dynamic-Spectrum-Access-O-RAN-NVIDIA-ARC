@@ -86,3 +86,63 @@ agents:
       gae_lambda: 0.95
       clip_range: 0.2
       ent_coef: 0.01
+
+  # ── Traditional baselines (no training required) ────────────────────
+  random:
+    class: "random"
+    params: {}
+  round_robin:
+    class: "round_robin"
+    params: {}
+  greedy_sinr:
+    class: "greedy_sinr"
+    params: {}
+  epsilon_greedy:
+    class: "epsilon_greedy"
+    params:
+      epsilon: 0.1
+  tdma:
+    class: "tdma"
+    params: {}
+  fdma:
+    class: "fdma"
+    params:
+      fixed_channel: 0
+  proportional_fair:
+    class: "proportional_fair"
+    params: {}
+  thompson_sampling:
+    class: "thompson_sampling"
+    params: {}
+  ucb:
+    class: "ucb"
+    params:
+      c: 1.414
+  whittle_index:
+    class: "whittle_index"
+    params:
+      pu_on_prob: 0.3
+      pu_off_prob: 0.5
+  boltzmann:
+    class: "boltzmann"
+    params:
+      temperature: 0.5
+  wifi7_mlo:
+    class: "wifi7_mlo"
+    params: {}
+  ofdma:
+    class: "ofdma"
+    params: {}
+  carrier_aggregation:
+    class: "carrier_aggregation"
+    params:
+      k_candidates: 3
+
+# Agent categories for reporting
+agent_categories:
+  rl_agents: [sac_ltc, sac_lfm, sac_lstm, ppo_lstm]
+  traditional_fixed: [random, round_robin, tdma, fdma]
+  traditional_heuristic: [greedy_sinr, epsilon_greedy, proportional_fair]
+  traditional_bandit: [thompson_sampling, ucb, boltzmann]
+  traditional_model_based: [whittle_index]
+  traditional_standard_inspired: [wifi7_mlo, ofdma, carrier_aggregation]
