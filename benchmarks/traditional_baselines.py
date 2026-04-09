@@ -64,22 +64,47 @@ class TraditionalBaseline(ABC):
         """
         Extract per-channel [SNR, interference, occupancy] from the latest timestep.
 
-        The DSA env stacks features as:
-            [snr_0, interf_0, occ_0, snr_1, interf_1, occ_1, ...]
-        so reshaping to (num_channels, num_features) gives columns [SNR, interf, occ].
+        Handles both 3-feature envs (SNR, interference, occupancy) and
+        2-feature envs (SNR, interference only — realistic/no-leak envs).
 
         Args:
             state: shape (sequence_length, num_channels * num_features)
 
         Returns:
             snr, interference, occupancy — each shape (num_channels,)
+            If occupancy is not available, returns zeros (forces inference).
         """
         latest = state[-1]  # most recent timestep
         features = latest.reshape(self.num_channels, self.num_features)
         snr = features[:, 0]
         interference = features[:, 1]
-        occupancy = features[:, 2]
+        if self.num_features >= 3:
+            occupancy = features[:, 2]
+        else:
+            # No occupancy signal — must infer from SNR/interference
+            # High SNR + low interference => likely free
+            occupancy = np.zeros(self.num_channels)
         return snr, interference, occupancy
+
+    def _infer_occupancy(self, snr: np.ndarray, interference: np.ndarray) -> np.ndarray:
+        """
+        Infer binary occupancy from SNR and interference when no direct signal.
+
+        Uses SINR threshold: high SINR => likely free, low => likely occupied.
+        Returns soft probability of being occupied in [0, 1].
+        """
+        sinr = snr / (interference + 1e-8)
+        # Sigmoid: SINR > ~1.5 => likely free (occ ~0), SINR < ~0.5 => likely occupied (occ ~1)
+        exponent = np.clip(3.0 * (sinr - 1.0), -50, 50)
+        occ_prob = 1.0 / (1.0 + np.exp(exponent))
+        return occ_prob
+
+    def _get_occupancy_estimate(self, state: np.ndarray) -> np.ndarray:
+        """Get occupancy — direct if available, inferred if not."""
+        snr, interference, occupancy = self._parse_observation(state)
+        if self.num_features < 3:
+            return self._infer_occupancy(snr, interference)
+        return occupancy
 
     def _parse_full_history(self, state: np.ndarray) -> np.ndarray:
         """
@@ -236,6 +261,8 @@ class ProportionalFairBaseline(TraditionalBaseline):
             self.reset_episode()
 
         snr, interference, occupancy = self._parse_observation(state)
+        if self.num_features < 3:
+            occupancy = self._infer_occupancy(snr, interference)
 
         # Update average throughput from previous action's outcome
         if self._last_action is not None:
@@ -284,7 +311,9 @@ class ThompsonSamplingBaseline(TraditionalBaseline):
         if self._alpha_params is None:
             self.reset_episode()
 
-        _, _, occupancy = self._parse_observation(state)
+        snr, interference, occupancy = self._parse_observation(state)
+        if self.num_features < 3:
+            occupancy = self._infer_occupancy(snr, interference)
 
         # Update posterior from previous action's outcome
         if self._last_action is not None:
@@ -340,7 +369,9 @@ class UCBBaseline(TraditionalBaseline):
         if self._counts is None:
             self.reset_episode()
 
-        _, _, occupancy = self._parse_observation(state)
+        snr, interference, occupancy = self._parse_observation(state)
+        if self.num_features < 3:
+            occupancy = self._infer_occupancy(snr, interference)
 
         # Update from previous action
         if self._last_action is not None:
@@ -388,10 +419,16 @@ class WhittleIndexBaseline(TraditionalBaseline):
         self.p10 = pu_off_prob  # P(ON -> OFF)
 
     def select_action(self, state: np.ndarray, deterministic: bool = True) -> int:
-        _, _, occupancy = self._parse_observation(state)
+        snr, interference, occupancy = self._parse_observation(state)
 
-        # Threshold noisy occupancy to get believed state
-        believed_occupied = (occupancy > 0.5).astype(float)
+        # If no occupancy signal, infer from SINR
+        if self.num_features < 3:
+            sinr = snr / (interference + 1e-8)
+            # Soft belief: high SINR => likely free
+            exponent = np.clip(5.0 * (sinr - 1.0), -50, 50)
+            believed_occupied = 1.0 / (1.0 + np.exp(exponent))  # sigmoid
+        else:
+            believed_occupied = (occupancy > 0.5).astype(float)
 
         # Whittle index: one-step-ahead probability of being free
         # If currently free (occ=0): P(stays free) = 1 - p01
@@ -430,7 +467,9 @@ class BoltzmannBaseline(TraditionalBaseline):
         if self._q_values is None:
             self.reset_episode()
 
-        _, _, occupancy = self._parse_observation(state)
+        snr, interference, occupancy = self._parse_observation(state)
+        if self.num_features < 3:
+            occupancy = self._infer_occupancy(snr, interference)
 
         # Update Q from previous action
         if self._last_action is not None:
@@ -499,11 +538,15 @@ class WiFi7MLOBaseline(TraditionalBaseline):
         # Latest interference
         latest_interf = history[-1, :, 1]  # (C,)
 
-        # Occupancy stability: std of occupancy over time (lower = more stable)
-        occ_std = history[:, :, 2].std(axis=0)  # (C,)
-
-        # Latest occupancy
-        latest_occ = history[-1, :, 2]  # (C,)
+        if self.num_features >= 3:
+            # Direct occupancy available
+            occ_std = history[:, :, 2].std(axis=0)  # (C,)
+            latest_occ = history[-1, :, 2]  # (C,)
+        else:
+            # Infer occupancy from SINR ratio across history
+            sinr_history = history[:, :, 0] / (history[:, :, 1] + 1e-8)
+            occ_std = sinr_history.std(axis=0)  # SINR stability as proxy
+            latest_occ = self._infer_occupancy(history[-1, :, 0], history[-1, :, 1])
 
         score = (
             self.w_snr * mean_snr
@@ -540,8 +583,14 @@ class OFDMABaseline(TraditionalBaseline):
         # Average interference across history
         avg_interf = history[:, :, 1].mean(axis=0)  # (C,)
 
-        # Average occupancy across history (lower = more available)
-        avg_occ = history[:, :, 2].mean(axis=0)  # (C,)
+        if self.num_features >= 3:
+            avg_occ = history[:, :, 2].mean(axis=0)  # (C,)
+        else:
+            # Infer average occupancy from SINR
+            avg_occ = np.mean([
+                self._infer_occupancy(history[t, :, 0], history[t, :, 1])
+                for t in range(history.shape[0])
+            ], axis=0)
 
         # CQI-inspired metric: quality weighted by availability
         quality = (avg_snr - avg_interf) * (1.0 - avg_occ)
@@ -578,7 +627,13 @@ class CarrierAggregationBaseline(TraditionalBaseline):
         top_k_indices = np.argsort(latest_snr)[-k:]
 
         # Among top-K, pick the one with lowest mean occupancy
-        avg_occ = history[:, :, 2].mean(axis=0)  # (C,)
+        if self.num_features >= 3:
+            avg_occ = history[:, :, 2].mean(axis=0)  # (C,)
+        else:
+            avg_occ = np.mean([
+                self._infer_occupancy(history[t, :, 0], history[t, :, 1])
+                for t in range(history.shape[0])
+            ], axis=0)
         best_among_top_k = top_k_indices[np.argmin(avg_occ[top_k_indices])]
 
         return int(best_among_top_k)
