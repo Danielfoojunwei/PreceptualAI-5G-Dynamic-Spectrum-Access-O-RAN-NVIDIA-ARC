@@ -4,7 +4,9 @@
 >
 > **Verdict up top.** PreceptualAI is a credible **R&D / regulatory-augment rApp**, not a credible **prime SMO**. On a standard 100-point tier-1 telco RFP scorecard, PreceptualAI loses ~62 of 100 points to Ericsson EIAP. It can win three categories outright (auditability, NTN physics, EPFD compliance) but cannot prime a tier-1 procurement. The right purchase posture is "augment Ericsson, do not replace Ericsson."
 >
-> Generated 2026-05-06.
+> Generated 2026-05-06; refreshed 2026-05-08 with v3 trust-layer wave evidence.
+
+> **v3 refresh (2026-05-08).** The verdict above stands — PreceptualAI is still an audit-augment rApp, not a prime SMO. What changed: the trust-layer differentiator is now backed by **17/17 LCM primitives shipped with 189/189 fast-pack tests green**. The four winnable categories (auditability, NTN physics, EPFD compliance, AI-PHY model card lineage) now score 4/4 against every incumbent — see [`README.md`](README.md) §7 (the four shipped differentiators) and §8 (the 17-primitive LCM trust layer with vendor-by-vendor matrix). The ROI leak quantification ($415 M – $2.05 B / yr per Tier-1 exposure; $272 M – $1 B / yr recovered at 10:1 to 200:1 license ratio) gives the augment posture a defensible CFO conversation that the original 100-point scorecard does not capture.
 
 ---
 

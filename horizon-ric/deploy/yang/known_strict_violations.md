@@ -1,5 +1,8 @@
 # Known `pyang --strict --canonical` Violations
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08.*
+
+
 This file enumerates every vendored YANG module under `deploy/yang/` that does
 **not** pass `pyang --strict --canonical -p deploy/yang/ <module>` cleanly,
 along with the exact pyang diagnostic. The CI gate (`tests/test_yang_strict.py`

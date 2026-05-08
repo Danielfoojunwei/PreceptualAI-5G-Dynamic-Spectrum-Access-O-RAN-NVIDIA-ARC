@@ -1,10 +1,19 @@
 # Standards Conformance — rApp + xApp
 
+*Date: 2026-05-08 (post-v3 trust-layer wave; standards inventory canonical).*
+
 > Complete inventory of standards that govern PreceptualAI (rApp) and its companion xApp deployments (parent Preceptual UHCI). Each architectural component is mapped to specific spec sections. Each conformance gap has a remediation plan.
 >
 > **Scope**: Production + pilot deployment of an O-RAN compliant rApp/xApp suite handling NTN+terrestrial RAN telemetry and policy.
 >
 > **Audience**: engineering, compliance, customer architects, regulator-facing reviewers.
+
+**v3 standards-additions (verified by Agent A in `~/.claude/plans/AUDIT_STANDARDS.md`):**
+- **3GPP TS 28.105 §7.4** (NOT §6.4) — 4 mandatory model-card fields. Implemented in `observability/model_card.py:153` + AI-PHY-specific extension `evidence/ai_phy_lineage.py`.
+- **3GPP TS 28.567 §6.3** — LoopState semantics (Idle/Retrain/Validate/Promote/Monitor/Rollback). Implemented in `runtime/loop_state.py`.
+- **3GPP RP-25xxxx (TSG-RAN #109, Sept 2025)** — 6G initial waveform agreement (CP-OFDM + DFT-s-OFDM as 6GR baseline). RAN#109 NOT RAN#103 (which was March 2024); P0 correction landed in plan v3 §10.1.
+- **AI-RAN Alliance WG1 work item #19** — HybridDeepRx (Nokia + R&S, MWC 2026). PreceptualAI emits per-decision counterfactual + lineage envelopes for HybridDeepRx swaps via `policy/neural_rx_decision.py`.
+- **GDPR Art. 6** — lawful processing grounds enum enforced in `data/lineage.py`.
 
 ---
 

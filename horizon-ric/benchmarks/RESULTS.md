@@ -1,6 +1,6 @@
 # PreceptualAI Production Benchmark Results
 
-_Generated: 2026-05-06T15:50:19+00:00_
+_Generated: 2026-05-06T15:50:19+00:00 · Canonical-to-v3-wave: 2026-05-08. See [`BENCHMARKS.md`](../BENCHMARKS.md) for the consolidated v3 numbers and [`README.md`](../README.md) Part III (sections 17–26) for empirical-evidence deep dive (24-h soak 99.93 % A1 success, EPFD 0.19 % violation rate, 18 µs/record audit verify, etc.)._
 
 Methodology: 2 warm-up + 5+ measured iterations per bench; median + p95 reported. Status thresholds: PASS ≤ target, WATCH ≤ 1.5×target, FAIL > 1.5×target.
 

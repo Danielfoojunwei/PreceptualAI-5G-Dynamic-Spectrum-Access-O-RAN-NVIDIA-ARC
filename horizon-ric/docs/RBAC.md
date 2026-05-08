@@ -1,5 +1,8 @@
 # PreceptualAI RBAC + Multi-Tenancy
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 The PreceptualAI rApp ships with a production-grade RBAC + JWT-bearer
 auth layer built on **Casbin** (Apache 2.0) and **python-jose** (Apache
 2.0). This document is the operator's reference: roles, custom-role

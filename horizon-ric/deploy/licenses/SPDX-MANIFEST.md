@@ -1,5 +1,8 @@
 # PreceptualAI SPDX License Manifest
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08.*
+
+
 Generated from `deploy/sbom/horizon-ric-sbom.json` (CycloneDX 1.5).
 
 Total components: **189**

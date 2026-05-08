@@ -1,5 +1,8 @@
 # OWASP ZAP Baseline Scan Proof (Row 37)
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
+
+
 _Scan time_: 2026-05-06T22:43:23.669624+00:00
 _Target_: http://127.0.0.1:8083
 _Tool_: ZAP 2.16.0 JAR (cross-platform), JDK 21 aarch64

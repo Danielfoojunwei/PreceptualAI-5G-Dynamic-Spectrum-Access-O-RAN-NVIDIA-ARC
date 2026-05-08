@@ -1,5 +1,8 @@
 # arm64 Edge Benchmark Proof (Row 28)
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
+
+
 _Run_: 2026-05-06T22:49:16.158554+00:00
 _Architecture_: **aarch64** (NVIDIA GB10 host)
 _Python_: 3.12.3

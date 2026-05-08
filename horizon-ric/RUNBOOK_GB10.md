@@ -1,5 +1,8 @@
 # RUNBOOK — Day-1 demo on a single NVIDIA GB10 (DGX Spark / Project Digits)
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 **Audience: the demo engineer running the customer pilot kickoff next week.**
 Zero cloud cost. Everything below runs on one GB10 (128 GB unified memory,
 ~1 PFLOPS fp4) sitting under your desk.

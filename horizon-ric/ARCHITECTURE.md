@@ -1,8 +1,18 @@
 # PreceptualAI Architecture
 
+*Date: 2026-05-08 (canonical to v3 trust-layer wave). Full per-section deep dive in [`README.md`](README.md) Part II.*
+
 This document is the **engineer's map** of PreceptualAI. It tells you where
 things live, what depends on what, and exactly where to plug in a new
 data source / modality / sink / model.
+
+**v3 added modules.** Trust layer + AI-RAN integration shipped these new modules — read [`README.md`](README.md) §9 for the full ASCII topology including:
+- `policy/{neural_rx_decision, dpod_activation, learned_constellation_decision}.py` (M1, AI-PHY decisions with counterfactual envelope)
+- `planner/physics/{otfs, fdss, grant_free_sic}.py` (M4, 6G modulation primitives)
+- `evidence/ai_phy_lineage.py` (M5, TS 28.105 §7.4 with AI-PHY block lineage)
+- `runtime/{atomic_promotion, shadow_executor, artefact_vault, loop_state}.py` (M7+M8+M9, LCM atomics)
+- `data/{aerial.py::DLDBLiveConsumer, lineage.py}` (M2 + M9, NVIDIA Aerial Data Lake live consumer + GDPR data manifest)
+- `integrations/{nvidia_arc_ota, viavi_d4ai, viavi_digital_twin}.py` (M2 + M3, vendor sandbox bindings)
 
 ## Topology
 

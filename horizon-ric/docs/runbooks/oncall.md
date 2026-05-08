@@ -1,5 +1,8 @@
 # Runbook — On-call Rotation (First 5 Minutes of a Page)
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 The rules of the chair. Read this on Day 1. Re-read at handover.
 
 ## Severity / impact

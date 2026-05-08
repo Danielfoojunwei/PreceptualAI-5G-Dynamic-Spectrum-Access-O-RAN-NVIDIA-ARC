@@ -1,5 +1,8 @@
 # Runbook — Federated-Learning Convergence Failure
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 For the on-call when a federated round's loss is not decreasing across the
 client cohort, or a single client's update has anomalous magnitude. Pairs
 with `customer_escalation.md` for tenant communication.

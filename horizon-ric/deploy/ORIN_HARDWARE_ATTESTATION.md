@@ -1,5 +1,8 @@
 # Jetson Orin Nano Hardware Attestation Packet (Row 26)
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
+
+
 _Document version: 1.0 · Issued: 2026-05-08 · Issuer: PreceptualAI engineering_
 
 This is a signable engineering attestation closing the only False conjunct in

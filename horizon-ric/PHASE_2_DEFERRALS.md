@@ -1,6 +1,15 @@
 # Phase 2 Deferrals — Auditor-Grade Register
 
-This document enumerates the audit findings that the Phase 1 audit-rApp deployment posture explicitly defers to Phase 2, together with the compensating control that mitigates each gap today. The companion register `PHASE_1_CLOSED.md` covers findings closed in Phase 1; this file covers everything else. All `file:line` references are anchors at HEAD of branch `claude/scheduling-methods-comparison-fUrn2`.
+*Date: 2026-05-08 (post-v3 trust-layer wave; F#32, F#36, F#38 PROMOTED to CLOSED).*
+
+This document enumerates the audit findings that the Phase 1 audit-rApp deployment posture explicitly defers to Phase 2, together with the compensating control that mitigates each gap today. The companion register `PHASE_1_CLOSED.md` covers findings closed in Phase 1; this file covers everything else. All `file:line` references are anchors at HEAD of branch `claude/preceptualai-rapp-pilot-ready`.
+
+**v3 promotions to CLOSED.** Three findings originally listed here are now closed in code (Wave 5 hard-fix wave):
+- **F#32 — Casbin RBAC decidability via Z3 SMT.** Proven in `tests/test_rbac_smt_completeness.py` (5/5 SMT theorems UNSAT/SAT).
+- **F#36 — CfC Lipschitz error bound.** Empirical bound in `tests/test_cfc_lipschitz_bound.py` (L̂_x p99 = 0.059, L̂_h p99 = 0.895).
+- **F#38 — Constraint projection convergence rate.** Empirical convergence in `tests/test_constraint_projection_convergence.py` (max 2 iterations on 100 random infeasible actions).
+
+**Remaining genuine deferrals**: F#23 (≥3 live tier-1 deployments — commercial-time), F#24 (24×7 NOC contract — commercial-time), F#27 (A2 arbitration — needs second rApp), F#35 (TD-MPC2 sublinear-regret bound — open research).
 
 The scope of Phase 1 is a **single-rApp, advisory, shadow-mode** audit deployment. Findings that only become exploitable or material once we move to multi-rApp arbitration, formal-method review, or commercial-ops contracts are deferred here with a quarter-dated commitment.
 

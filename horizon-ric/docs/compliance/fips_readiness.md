@@ -1,5 +1,8 @@
 # FIPS 140-3 Readiness Disclosure
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 **Version:** 0.1.0
 **Date:** 2026-05-07
 **Audience:** federal procurement (FedRAMP, DoD), regulated-industry compliance teams, security architects evaluating PreceptualAI against FIPS-140-required workloads.

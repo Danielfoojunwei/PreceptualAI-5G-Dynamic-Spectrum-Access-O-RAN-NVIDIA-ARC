@@ -1,5 +1,8 @@
 # NVIDIA_INTEGRATION.md — PreceptualAI's NVIDIA-first stack
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 > PreceptualAI is built as a first-class consumer of the NVIDIA RAN stack: **Aerial (cuBB SDK)**, **ARC**, **AODT** and **Sionna**. This document is the per-component map: what we integrate, what file in our codebase consumes it, what is tested vs stubbed, and the 3-month roadmap to deepen each integration.
 
 ---

@@ -1,5 +1,8 @@
 # Production & Pilot Readiness
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 > Three-tier checklist: **Pilot-Ready** → **Production-Ready** → **GA-Ready**. Each tier is gated by concrete acceptance criteria. Pair this with `STANDARDS.md` (which covers protocol conformance) for the full picture.
 
 ---

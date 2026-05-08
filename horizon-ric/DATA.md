@@ -1,5 +1,8 @@
 # DATA.md — How PreceptualAI handles its real-data corpus
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 **Honest status (today):** **~8 GB of real, NVIDIA-anchored data is on disk; the full 1.1 TB ingest is staged via NGC pulls.**
 
 The real-data corpus on disk now is:

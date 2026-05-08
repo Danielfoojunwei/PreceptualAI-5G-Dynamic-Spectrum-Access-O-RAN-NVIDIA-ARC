@@ -1,9 +1,11 @@
 # MARKETPLACE_POSITIONING — How PreceptualAI sells against Ericsson EIAP / Nokia MantaRay / VIAVI
 
 **Version:** 0.2.0
-**Date:** 2026-05-06
+**Date:** 2026-05-08 (post-v3 trust-layer wave)
 **Audience:** sales engineering, marketing, partner success, customer-facing engineering.
-**Companion docs:** `DEVIL_D_RFP.md` (the hostile RFP scorecard this document responds to), `MARKETPLACE_GAPS.md` (the four RFP-medium gaps and the cost to close them), `REFERENCE_CASE_STUDIES.md` (pre-pilot reference scenarios), `OPERATOR_DEPLOYER_DUTIES.md` (EU AI Act deployer-duty inheritance), `PILOT.md` (90-day pilot pack).
+**Companion docs:** `README.md` (49-section deep dive), `DEVIL_D_RFP.md` (the hostile RFP scorecard this document responds to), `REFERENCE_CASE_STUDIES.md` (pre-pilot reference scenarios), `OPERATOR_DEPLOYER_DUTIES.md` (EU AI Act deployer-duty inheritance).
+
+**v3 status.** §7 "AI-RAN Alliance integration positioning" appended in this version with: 9 verbatim trust quotes (Verizon CTO, Ofcom, EU AI Act, Dell'Oro, GSMA, ITU-T FG-AN, NIS2, XAI O-RAN survey, Agentic AI 6G), 5 ROI leaks ($415 M – $2.05 B / yr per Tier-1 exposure), value-capture table ($272 M – $1 B / yr recovered at 10:1 to 200:1 license ratio), 17-primitive LCM trust layer comparison, sales-engineering 3 paths, strategic ask (co-author AI-RAN Alliance WG1 normative audit annex).
 
 This document replaces the implicit "next-generation full-stack RIC" framing with the explicit **augment-don't-replace** framing the procurement team can defend to the CTO. It is the file every sales-engineering presentation, partner pitch, and marketplace listing should align to. It is one page on purpose.
 

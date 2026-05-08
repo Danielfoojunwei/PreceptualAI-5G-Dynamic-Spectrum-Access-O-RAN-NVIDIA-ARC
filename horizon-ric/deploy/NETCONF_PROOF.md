@@ -1,5 +1,8 @@
 # NETCONF Live Round-Trip Proof
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
+
+
 > **Closes audit caveat #3** — *"We have NETCONF code (ncclient wrapper) but
 > no live E2 node has actually connected."*
 >

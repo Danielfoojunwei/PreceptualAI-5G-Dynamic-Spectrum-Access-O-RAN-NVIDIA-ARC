@@ -1,5 +1,8 @@
 # OPERATOR_DEPLOYER_DUTIES — EU AI Act Art. 26 inheritance for PreceptualAI deployers
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 **Version:** 0.2.0
 **Date:** 2026-05-06
 **Audience:** EU operator's compliance officer, DPO, AI Act register owner.

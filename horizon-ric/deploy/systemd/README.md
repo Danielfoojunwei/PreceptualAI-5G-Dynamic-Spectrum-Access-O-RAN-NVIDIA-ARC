@@ -1,5 +1,8 @@
 # PreceptualAI — Jetson Orin Nano systemd profile
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08.*
+
+
 Production-grade `systemd` unit + daily soak timer for the **Jetson Orin Nano
 8 GiB** edge profile. The constraints in `horizon-ric-orin.service` (2-CPU
 affinity, 8 GiB memory ceiling, watchdog) reproduce the Orin envelope on any

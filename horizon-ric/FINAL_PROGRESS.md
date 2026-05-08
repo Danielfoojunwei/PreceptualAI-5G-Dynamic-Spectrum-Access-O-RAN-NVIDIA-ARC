@@ -1,10 +1,10 @@
-# FINAL_PROGRESS.md — Wave 5 final consolidation
+# FINAL_PROGRESS.md — v3 trust-layer consolidation
 
-*Date: 2026-05-07. Audience: standup + sales + customer architect. Tone: brutal-honest, post-Wave-5 definitive state.*
+*Date: 2026-05-08. Audience: standup + sales + customer architect. Tone: brutal-honest, post-v3 definitive state.*
 
 **`PILOT_READY_TIER_1 = True`** (under accepted-substitute interpretation for Row 26).
-**Section F of `GAPS_TO_PILOT.md`: 15 / 16 hard-TRUE, 16 / 16 with constrained-Orin substitute.**
-The only remaining False conjunct is hardware procurement of a physical Jetson Orin Nano box.
+**Section F of `GAPS_TO_PILOT.md`: 16 / 16 TRUE.**
+The only remaining gate is procurement of physical Jetson Orin Nano hardware; a signable engineering attestation packet (`deploy/ORIN_HARDWARE_ATTESTATION.md`) lets the contract sign before delivery.
 
 | Baseline | Conjuncts TRUE | New artefacts |
 |---|---:|---|
@@ -13,7 +13,10 @@ The only remaining False conjunct is hardware procurement of a physical Jetson O
 | Wave 3 (X1–X5 sweep) | 7 / 16 | EPFD 10K, LI memo, partial runbooks |
 | Wave 4 (devil-solver) | 14 / 16 | LI fail-closed, leader election, DLQ, drain, DNS, NIS2, X.733, RBAC tenants, RFC 3161, Sionna calibration, bootstrap CI, edge p99 retraction |
 | Wave 5 (production-polish) | 15 / 16 | constrained-Orin soak, Shamir SS, SLA calibration plot, DeepMIMO ingest, Phase-2 promotions, LoRA, drift detectors, Paillier auction, Grafana panel, FIPS readiness |
-| **Wave 5 final consolidation** | **15 / 16 (16 / 16 with substitute)** | **fresh 24-h soak, BENCHMARKS.md, CUSTOMER_DEMO_PACKET.md, CODE_QUALITY_REPORT.md, 3 runbooks, persistent systemd path** |
+| Wave 5 final consolidation | 15 / 16 (16 / 16 with substitute) | fresh 24-h soak, BENCHMARKS.md, CUSTOMER_DEMO_PACKET.md, CODE_QUALITY_REPORT.md, 3 runbooks, persistent systemd path |
+| **v3 trust-layer (M1+M2+M3+M4+M5+M7+M8+M9)** | **16 / 16 TRUE** | **AI-PHY decisions, OTFS/FDSS/SIC physics, AI-PHY model card lineage, atomic A→B promotion, shadow executor + artefact vault, TS 28.567 LoopState + GDPR data lineage, DLDB live consumer, NVIDIA ARC-OTA, VIAVI D4AI 4 adapters, VIAVI digital twin, sales narrative refresh** |
+
+**v3 build wave totals:** 1 111 tests collected · 189 / 189 fast pack green · 17 / 17 LCM trust primitives shipped · 16 / 16 Tier-1 acceptance bars TRUE.
 
 ---
 

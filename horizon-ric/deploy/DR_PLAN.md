@@ -1,5 +1,8 @@
 # Horizon-RIC Disaster-Recovery Plan
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
+
+
 | Field            | Value |
 |------------------|-------|
 | **Owner**        | Horizon-RIC SRE on-call |

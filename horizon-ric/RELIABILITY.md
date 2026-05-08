@@ -1,8 +1,12 @@
 # PreceptualAI Reliability Engineering
 
+*Date: 2026-05-08 (canonical to v3 trust-layer wave).*
+
 This document captures the engineering choices behind the
 `horizon_ric.runtime` package — the production layer that gives the
 rApp daemon its 99.999 % availability target.
+
+**v3 reliability status.** The runtime now ships **5 new LCM atomics** alongside the existing reliability primitives: `atomic_promotion.py` (RCU-style A→B swap at slot boundary, ≤ 1-slot rollback, 11/11 tests green), `shadow_executor.py` + `artefact_vault.py` (validation gate + bit-identical content-addressed retrieval, 20/20 tests green), `loop_state.py` (TS 28.567 LoopState machine, 16/16 tests green), `data/lineage.py` (GDPR-validated training-data manifest, 8/8 tests green). 24-h shadow soak: **99.93 % A1 success, 1 440/1 440 chain intact, 0 breaker rejections, 143 fault injections survived.** Constrained-Orin envelope soak: **99.60 % A1 success, 1 440/1 440 chain intact, 145 fault injections survived.** Combined chain integrity: **2 880/2 880 verifies intact, 0 corruption events.**
 
 It is the operator-facing companion to the inline docstrings; if you
 need to alert, page, dashboard, or rebuild the unit, this is the

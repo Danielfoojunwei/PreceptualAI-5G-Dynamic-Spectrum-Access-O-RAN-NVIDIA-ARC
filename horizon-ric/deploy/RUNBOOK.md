@@ -1,5 +1,8 @@
 # PreceptualAI On-Call Runbook
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
+
+
 For operators paged on a PreceptualAI rApp alert. Each scenario below has:
 
 1. **What you'll see** — the symptom in Grafana / kubectl / journalctl.

@@ -1,8 +1,10 @@
 # FINAL_ULTRAREVIEW — `/ultrareview` final pass
 
-Date: 2026-05-06
+Date: 2026-05-06; refreshed 2026-05-08 (post-v3 trust-layer wave).
 Repo: `/home/danielfoojunwei/Preceptualv1/horizon-ric`
-Branch: `claude/scheduling-methods-comparison-fUrn2`
+Branch: `claude/preceptualai-rapp-pilot-ready` (v3 active branch)
+
+**v3 update.** All ultrareview findings still hold or have been promoted to closed-in-code. New empirical numbers superseding the originals: test corpus 856 → **1 111 collected**, fast pack 105/105 → **189/189 green**, LCM trust primitives 11 → **17/17 SHIPPED**, M1+M2+M3+M4+M5+M7+M8+M9 all landed.
 Mode: real data, real checkpoints, no mocks / fakes / stubs / hardcoded values.
 
 ## 1. Headline numbers

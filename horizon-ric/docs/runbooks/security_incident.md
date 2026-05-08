@@ -1,5 +1,8 @@
 # Runbook — Security Incident Response
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 Activates when a PreceptualAI tenant chain breaks, an IDS hit lands on the rApp
 pod, or a vendor / regulator notification arrives. Pair this runbook with
 `cert_rotation.md` (credential rotation step) and `customer_escalation.md`

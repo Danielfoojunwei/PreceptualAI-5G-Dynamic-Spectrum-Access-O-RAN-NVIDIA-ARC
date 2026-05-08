@@ -1,5 +1,8 @@
 # Cosign image signing for PreceptualAI
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08.*
+
+
 PreceptualAI publishes container images signed with [Sigstore Cosign](https://docs.sigstore.dev/cosign/overview/),
 in line with O-RAN.WG11 (Security Specification) supply-chain integrity
 requirements and SLSA L3 attestation.

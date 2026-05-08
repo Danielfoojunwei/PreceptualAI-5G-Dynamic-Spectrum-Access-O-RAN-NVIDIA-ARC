@@ -1,5 +1,8 @@
 # SMO Integration Guide
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 PreceptualAI ships as a vendor-portable non-RT RIC rApp. Operators wire
 it into their SMO of choice by selecting an A1 *dialect* on
 `A1AdapterConfig`. A dialect is the (URL surface + body shape + auth

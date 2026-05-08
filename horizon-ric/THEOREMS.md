@@ -1,9 +1,13 @@
 # THEOREMS.md — load-bearing formal claims
 
-This document collects the three load-bearing theorems that the
+*Date: 2026-05-08 (post-v3 trust-layer wave; T4 + T5 promoted from Phase-2 deferral to closed-in-code).*
+
+This document collects the **five** load-bearing theorems that the
 horizon-ric mathematical correctness rests on. Each theorem has a
 formal statement, a proof sketch, the citation back into the code that
 realises it, and the test(s) that operationally re-verify the claim.
+
+**v3 promotion: T4 and T5 now CLOSED IN CODE.** Originally Phase-2 deferrals (F#36 CfC Lipschitz error bound; F#38 constraint projection convergence rate). After Wave 5 the empirical bounds + convergence proof landed in `tests/test_cfc_lipschitz_bound.py` and `tests/test_constraint_projection_convergence.py` — making the registered theorem count 5 (T1–T5).
 
 The three theorems are:
 

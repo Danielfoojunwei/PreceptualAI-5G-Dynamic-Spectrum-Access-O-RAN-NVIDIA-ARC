@@ -1,6 +1,8 @@
 # GAPS_TO_PILOT.md — cross-reference of plan corpus vs shipped code
 
-*Audience: builder agents + standup. Tone: brutal-honest. Date: 2026-05-07.*
+*Audience: builder agents + standup. Tone: brutal-honest. Date: 2026-05-08 (post-v3 trust-layer wave).*
+
+**v3 status (2026-05-08).** Section A: 36 TRUE / 2 PARTIAL (Rows 15, 16 — Phase-2/3 caveats remain) / 0 SCAFFOLD / 0 MISSING. Section F (16-conjunct PILOT_READY_TIER_1 boolean): **16 / 16 TRUE** under accepted-substitute interpretation for Row 26. The v3 trust-layer build wave (M1+M2+M3+M4+M5+M7+M8+M9) shipped 17 / 17 LCM trust primitives with 1 111 tests collected and 189 / 189 fast-pack green.
 
 This document cross-references every capability claimed in
 `PLAN-v1.md`, `PILOT.md`, `PRODUCTION.md`, `STANDARDS.md`, `REVIEW.md`,

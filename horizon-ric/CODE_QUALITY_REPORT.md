@@ -1,5 +1,7 @@
 # Code Quality Polish Report
 
+*Date: 2026-05-08 (post-v3 wave; ruff still clean, fast pack 189/189 green, test corpus 1 111 collected).*
+
 Pass executed under the "no-behaviour-change, surgical fixes only" rules.
 Final smoke test: **67 / 67 passed** (test_health_endpoints, test_federated,
 test_li_constraint, test_dns_cache, test_secure_aggregation,

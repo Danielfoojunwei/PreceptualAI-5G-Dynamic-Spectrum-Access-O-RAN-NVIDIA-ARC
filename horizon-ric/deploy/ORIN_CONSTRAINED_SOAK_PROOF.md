@@ -1,5 +1,8 @@
 # Jetson Orin Nano — Constrained-Envelope 24-h Soak Proof (Row 26)
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
+
+
 _Run started_: 2026-05-07T10:08:54.307371+00:00 · _ended_: 2026-05-07T10:20:55.509361+00:00
 
 Wall-clock **12.0 min × speedup 120× = 24.00 simulated hours** under

@@ -1,5 +1,8 @@
 # 24-hour Shadow Soak Proof (Row 7)
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
+
+
 _Run started_: 2026-05-07T10:21:16.743351+00:00  ·  _ended_: 2026-05-07T10:51:17.525627+00:00
 
 Wall-clock 30.0 min × speedup 48.0× = **24.00 simulated hours**.

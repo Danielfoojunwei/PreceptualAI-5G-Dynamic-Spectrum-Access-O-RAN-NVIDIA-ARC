@@ -1,8 +1,10 @@
 # PreceptualAI — Customer Demo Packet
 
-**Version**: 0.2.0   **Date**: 2026-05-07   **Repo SHA**: `d23f1215156d00b7f16ab0c6934b3342f6f25900`
+**Version**: 0.2.0   **Date**: 2026-05-08 (post-v3 trust-layer wave)   **Branch**: `claude/preceptualai-rapp-pilot-ready`
 
-Pointers: [`FINAL_PROGRESS.md`](FINAL_PROGRESS.md) · [`GAPS_TO_PILOT.md`](GAPS_TO_PILOT.md) · [`RELIABILITY.md`](RELIABILITY.md) · [`deploy/SLO.md`](deploy/SLO.md)
+**v3 update.** Test corpus 1 111 collected · 189/189 fast pack green · 17/17 LCM trust primitives shipped · 16/16 PILOT_READY_TIER_1 acceptance bars TRUE · sales narrative now includes Demo 4 CFO ROI exhibit ($272 M – $1 B / yr recovered ROI at 10:1 to 200:1 license ratio).
+
+Pointers: [`README.md`](README.md) (49-section deep dive) · [`FINAL_PROGRESS.md`](FINAL_PROGRESS.md) · [`GAPS_TO_PILOT.md`](GAPS_TO_PILOT.md) · [`RELIABILITY.md`](RELIABILITY.md) · [`deploy/SLO.md`](deploy/SLO.md) · [`MARKETPLACE_POSITIONING.md`](MARKETPLACE_POSITIONING.md) §7
 
 ---
 

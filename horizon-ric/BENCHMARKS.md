@@ -1,8 +1,10 @@
 # PreceptualAI — Consolidated Benchmark Document
 
-_Generated 2026-05-07 (refresh of fast benchmarks in this session; long-running soak / 10K stress numbers cited from existing artefacts)._
+_Generated 2026-05-08 (v3 trust-layer build wave; refresh of fast benchmarks; long-running soak / 10K stress numbers cited from existing on-disk artefacts)._
 
 This is the auditor-grade roll-up of every empirical number PreceptualAI ships. Each cell carries `(source: <file>:<headline-line>)` so an auditor can cross-check. Nothing is fabricated; nothing is gold-plated. Where a measurement was re-run during this consolidation, the source line points to a fresh log captured below; where it was not (e.g. the 24-h soak), it points to the on-disk proof file.
+
+**v3 status update.** Test corpus has grown from 856 → **1 111 collected** with the trust-layer (M1+M4+M5+M7+M8+M9) and integration (M2+M3) modules added; **189 / 189 fast pack green**; LCM trust layer is **17 / 17 primitives SHIPPED** (zero PARTIAL, zero MISSING). PILOT_READY_TIER_1 = True under accepted-substitute interpretation; Section F = 16 / 16 TRUE.
 
 ---
 

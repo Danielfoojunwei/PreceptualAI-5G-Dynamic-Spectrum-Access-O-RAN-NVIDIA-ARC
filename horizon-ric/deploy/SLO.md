@@ -1,5 +1,8 @@
 # PreceptualAI SLOs
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
+
+
 Formal Service-Level Objectives for the PreceptualAI rApp suite. These are the
 contractual targets enforced by Prometheus alerts (`deploy/prometheus/rules.yml`)
 and tracked on the `PreceptualAI rApp Overview` Grafana dashboard.

@@ -1,5 +1,8 @@
 # PreceptualAI — the audit-first, NTN-native rApp that runs alongside your existing SMO
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 _Marketplace whitepaper, May 2026. Audience: CTO, Network Architect, Regulatory Officer, Procurement._
 
 ---

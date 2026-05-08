@@ -1,5 +1,8 @@
 # Hardware Procurement Playbook — Jetson Orin Nano (Row 26)
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 _Document version: 1.0 · Issued: 2026-05-08_
 
 ## Honest framing

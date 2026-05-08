@@ -1,5 +1,8 @@
 # Example external connector — `random_telemetry`
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08.*
+
+
 A self-contained external Python package that ships a PreceptualAI
 connector. Demonstrates the entry-point plug-in path: installing this
 wheel makes `RandomTelemetrySource` discoverable by the core registry

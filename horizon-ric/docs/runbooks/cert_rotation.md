@@ -1,5 +1,8 @@
 # Runbook — Certificate / Key Rotation
 
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+
+
 For the on-call when a cert-expiry alert fires, a CA-compromise notice arrives,
 or the quarterly rotation cron rings.
 

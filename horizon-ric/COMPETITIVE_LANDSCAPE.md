@@ -1,6 +1,8 @@
 # Competitive Landscape — PreceptualAI vs the AI-RAN + NTN rApp / SMO market
 
-_Generated: 2026-05-06. Author: PreceptualAI team._
+_Generated: 2026-05-08 (post-v3 trust-layer wave). Author: PreceptualAI team._
+
+**v3 update.** Added 17-primitive LCM trust layer comparison ([`README.md`](README.md) §8 → Section "vendor-by-vendor matrix"). PreceptualAI is the **only** candidate scoring TRUE on per-decision counterfactual envelope, SHA-256 hash chain, RFC 3161 anchor, atomic A→B at slot boundary, bit-identical artefact vault, TS 28.567 LoopState, ITU-R S.1503 EPFD in-loop, drift detectors with Prometheus, TS 28.105 §7.4 model card, and GDPR Art. 6 lineage. Competitor coverage on those 10 primitives: NVIDIA Aerial 2/10, Nokia MantaRay 2/10, Ericsson IAP 2/10, OSC NONRTRIC 0/10.
 
 > **Honesty note.** We do **not** have access to Ericsson EIC/EIAP, Nokia MantaRay, or NVIDIA Aerial source code. Every competitor cell in the tables below cites a public URL or whitepaper. Where we cannot find published evidence, the cell is marked `no public evidence found` rather than invented. Our own row cites a file/test in this repo.
 

@@ -1,5 +1,7 @@
 # PreceptualAI Modularity Inventory
 
+*Date: 2026-05-08 (post-v3 trust-layer wave; canonical with 144 source modules / 30 751 LoC).*
+
 PreceptualAI is built around **named registries**. Anything that is likely
 to vary between operators, deployments, regions, or model families is
 swapped at config time, not patched into core. The same registry pattern
