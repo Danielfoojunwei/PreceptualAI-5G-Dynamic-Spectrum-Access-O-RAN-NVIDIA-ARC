@@ -1,0 +1,2004 @@
+module _3gpp-common-trace {
+  yang-version 1.1;
+  namespace "urn:3gpp:sa5:_3gpp-common-trace";
+  prefix "trace3gpp";
+
+  import _3gpp-common-top { prefix top3gpp; }
+  import _3gpp-common-yang-types {prefix types3gpp; }
+  import _3gpp-common-yang-extensions {prefix yext3gpp; }
+  import ietf-inet-types { prefix inet; }
+  import _3gpp-common-files { prefix files3gpp; }
+
+  organization "3GPP SA5";
+  contact "https://www.3gpp.org/DynaReport/TSG-WG--S5--officials.htm?Itemid=464";
+
+  description "Trace handling
+    Copyright 2025, 3GPP Organizational Partners (ARIB, ATIS, CCSA, ETSI, TSDSI, 
+    TTA, TTC). All rights reserved.";
+  reference "3GPP TS 28.623
+      Generic Network Resource Model (NRM)
+      Integration Reference Point (IRP);
+      Solution Set (SS) definitions
+
+      3GPP TS 28.622
+      Generic Network Resource Model (NRM)
+      Integration Reference Point (IRP);
+      Information Service (IS)" ;
+
+  revision 2025-08-06 { reference CR-0563; }
+  revision 2025-06-24 { reference "CR-0550"; }
+  revision 2025-05-06 { reference "CR-0531 CR-0535" ; }
+  revision 2025-02-06 { reference "CR-0503 CR-0507" ; }
+  revision 2025-02-05 { reference "CR-0460" ; }
+  revision 2024-11-05 { reference "CR-0470" ; }
+  revision 2024-10-06 { reference "CR-0459"; }
+  revision 2024-08-06 { reference "CR-0376 CR-0378 CR-0420"; }
+  revision 2024-05-12 { reference "CR-0401"; }
+  revision 2024-05-06 { reference CR-0359; }
+  revision 2024-04-06 { reference "CR-0342"; }
+  revision 2024-01-29 { reference "CR-0316"; }
+  revision 2023-11-06 { reference "CR-0290 CR-0294"; }
+  revision 2023-11-03 { reference CR-0302 ; } 
+  revision 2023-09-18 { reference CR-0271 ; } 
+  revision 2023-08-10 { reference CR-0261; }
+  revision 2023-04-26 { reference CR-0250; }
+  revision 2023-02-18 { reference "CR-0234"; }
+  revision 2023-02-16 { reference "CR-0233"; }
+  revision 2022-09-30 { reference CR-0191 ; }
+  revision 2022-04-27 { reference "CR-0159"; }
+  revision 2021-10-18 { reference "CR-0139"; }
+  revision 2021-07-22 { reference "CR-0137"; }
+  revision 2021-01-25 { reference "CR-0122"; }
+  revision 2020-11-16 { reference "CR-0117"; }
+  revision 2020-08-06 { reference "CR-0102"; }
+
+  feature FilesUnderTraceJob {
+    description "Files shall be contained under TraceJob";
+  }
+
+  grouping FreqInfoGrp {
+    description "Represents the FreqInfo dataType. 
+      This <<dataType>> defines the RF reference frequency and the frequency 
+      operating bands used in a cell for a given direction (UL or DL) in FDD 
+      or for both UL and DL directions in TDD";
+    
+    leaf arfcn {
+      type uint32 {
+        range 0..3279165;
+      }
+      mandatory true;
+      description "RF Reference Frequency as defined in TS 38.104, 
+        clause 5.4.2.1. The frequency provided identifies the absolute 
+        frequency position of the reference resource block (Common RB 0) 
+        of the carrier. Its lowest subcarrier is also known as Point A.";
+    }
+    
+    leaf-list freqBands {
+      type uint32 {
+        range 1..1024;
+      } 
+      min-elements 1;
+      description "List of NR frequency operating bands. Primary NR 
+        Operating Band as defined in TS 38.104, clause 5.4.2.3.
+        The value 1 corresponds to n1, value 2 corresponds to NR operating 
+        band n2, etc.";
+    }
+  }
+  
+  grouping AreaConfigGrp {
+    description "Represents the AreaConfig dataType.
+      This <<dataType>> defines the area for which measurement logging should 
+      be performed. It is described by a list of cells and a list of 
+      frequencies.";
+    
+    list freqInfo {
+      key arfcn;
+      min-elements 1;
+      max-elements 32;
+      description "It specifies the carrier frequency and bands used in 
+        a cell.";
+
+      uses FreqInfoGrp ;
+    }
+    
+    leaf-list pciList {
+      type uint32 {
+        range 0..1007;
+      } 
+      min-elements 1;
+      max-elements 32;
+      description "List of neighbour cells subject for MDT scope.";
+    }
+  }
+  
+  grouping AreaScopeGrp {
+    description "Represents the AreaScope dataType.
+      This <<dataType>> defines an area scope"; 
+
+    choice AreaScopeChoice {
+      case eutran-only {
+        leaf-list eutraCellIdList {
+          type string;
+          min-elements 1;
+          max-elements 32;
+          description "List of E-UTRAN cells identified by E-UTRAN-CGI";
+        }
+      }      
+      case tac {
+        leaf-list tacList {
+          type types3gpp:Tac;
+          min-elements 1;
+          max-elements 8;
+          description "Tracking Area Code list";
+        }
+        leaf-list cAGIdList {
+          type string;
+          max-elements 256;
+          description "It identifies a CAG list containing up to 
+            256 CAG-identifiers per UE or up to 12 CAG-identifiers 
+            per cell, see TS 38.331 [38]. CAG ID is used to combine 
+            with PLMN ID to identify a PNI-NPN.AG ID is a hexadecimal 
+            range with size 32 bit.";
+        }
+      }
+      case else {
+        list nPNIdentityList {
+          description "list of NPN IDs of in NR. It is either 
+            a list of PNI-NPNs identified by CAG ID with 
+            associated plmn-Identity or a list of SNPN 
+            identified by Network ID with associated plmn-Identity";
+          key idx;
+          min-elements 1;
+          uses types3gpp:NpnIdGrp;
+          leaf idx { type string; }
+        }
+        leaf-list nrCellIdList {
+          must 'not(../taiList)';
+          type string;
+          max-elements 32;
+          description "List of NR cells identified by NG-RAN CGI";
+        }
+        list taiList {
+          must 'not(../nrCellIdList)';
+          description "Tracking Area Identity list";
+          key idx;
+          max-elements 8;
+          leaf idx { type string; }
+          uses types3gpp:TaiGrp;
+        }
+      }
+    }
+  }
+  
+  grouping NpnIdGrp {
+    description "Represents the NpnId dataType."; 
+
+    list plmnId {
+      key "mcc mnc";
+      description "It specifies the PLMN Id of the NPN network.";
+      uses types3gpp:PLMNId;
+      max-elements 1;
+    }
+
+    choice npnidChoice {
+      leaf-list cAGIdList {
+        type string; 
+      max-elements 256;
+        description "It identifies a CAG list containing up to 256 
+          CAG-identifiers per UE or up to 12 CAG-identifiers per cell, 
+          see TS 38.331.
+          CAG ID is used to combine with PLMN ID to identify a PNI-NPN.
+          CAG ID is a hexadecimal range with size 32 bit.";
+    }
+
+      leaf-list nIDList {
+        type string;
+      max-elements 16;
+        description "It identifies a list of NIDs containing up to 16 NIDs, 
+          see TS 38.331.
+          NID is used to combine with PLMN ID to identify an SNPN. 
+          NID is a hexadecimal range with size 44 bit.";
+      }
+    }
+  }
+
+  grouping ExcessPacketDelayThresholdsGrp {
+    description "Represents the ExcessPacketDelayThresholds dataType.
+      This <<dataType>> defines a excess packet delay threshold information 
+      to enable the calculation of the PDCP Excess Packet Delay in the 
+      uplink in case of M6 uplink measurements are requested. The excess 
+      packet delay threshold information is specified with the 5QI value 
+      and excess packet delay threshold value.";
+    
+    leaf fiveQIValue {
+      type uint8;
+      mandatory true;
+      description "It indicates 5QI value.";
+    }
+    
+    leaf excessPacketDelayThresholdValue {
+      type decimal64 {
+        fraction-digits 2;
+        range 0.25|0.5|1|2|4|5|10|20|30|40|50|60|70|80|90|100|150|300|500 ;
+      }
+      mandatory true;
+      units milliseconds;
+      description "Value of excess packet delay threshold 
+        for M6 UL measurement in milliseconds.";
+    }
+  }
+  
+  grouping TraceReferenceGrp {
+    description "Represents the TraceReference dataType.
+      This <<dataType>> defines a globally unique identifier, which uniquely 
+      identifies the Trace Session that is created by the TraceJob. It is 
+      composed of the MCC, MNC (resulting in PLMN identifier) and the 
+      trace identifier.";
+    
+      uses types3gpp:PLMNId;  // mcc+mnc
+      
+      leaf traceId {
+        type string {
+          pattern "[0-9a-fA-F]{6}";
+        }
+        mandatory true;
+        description "An identifier, which identifies the Trace 
+          (together with MCC and MNC). This is a 3 byte Octet String,
+          expressed in hexadecimal form e.g., '1a7b3d').";
+      }
+  }
+  
+  grouping MbsfnAreaGrp {
+    description "Represents the MbsfnArea dataType. 
+      This <<dataType>> defines a MBSFN area. It is composed of the MBSFN Area 
+      identifier and the carrier frequency (EARFCN).";
+  
+    leaf mbsfnAreaId {
+      type uint32 {
+        range 1..max;
+      }
+      mandatory true;
+      description "MBSFN Area Identifier";
+    }
+    
+    leaf earfcn{
+      type uint32 {
+        range 1..max;
+      }
+      mandatory true;
+      description "Carrier Frequency";
+    }
+  }
+  
+  grouping TraceConfigGrp {
+
+    description "Defines the configuration parameters of TraceJob 
+      which are specific for Trace or combined Trace and Immediate MDT.
+      The attribute listOfNeTypes specifies the network elements to be 
+      traced. The optional attribute listOfInterfaces allows to specify
+      the individual interfaces of the network elements to be recorded.
+      The attribute traceDepth allows to configure the level of detail 
+      of the information which shall be recorded.  For trace the reporting
+      is event based, where the triggering event is configured with 
+      attribute triggeringEvents. For each triggering event the first and 
+      last message (start/stop triggering event) to record  are specified.";
+
+    list listOfInterfaces {
+      key idx;
+
+      description "Specifies the interfaces that need to be traced in the given
+        ManagedEntityFunction.The attribute is applicable only for Trace. In
+        case this attribute is not used, it carries a null semantic.";
+      reference "Clause 5.5 of 3GPP TS 32.422 for additional details on the
+        allowed values.";
+
+      leaf idx { type uint32 ; }
+
+      leaf-list MSCServerInterfaces {
+        type enumeration {
+          enum A ;
+          enum Iu-CS ;
+          enum Mc ;
+          enum MAP-G ;
+          enum MAP-B ;
+          enum MAP-E ;
+          enum MAP-F ;
+          enum MAP-D ;
+          enum MAP-C ;
+          enum CAP ;
+        }
+      }
+      leaf-list MGWInterfaces {
+        type enumeration {
+          enum Mc ;
+          enum Nb-UP ;
+          enum Iu-UP ;
+        }
+      }
+      leaf-list RNCInterfaces {
+        type enumeration {
+          enum Iu-CS ;
+          enum Iu-PS ;
+          enum Iur ;
+          enum Iub ;
+          enum Uu ;
+        }
+      }
+      leaf-list SGSNInterfaces {
+        type enumeration {
+          enum Gb ;
+          enum Iu-PS ;
+          enum Gn ;
+          enum MAP-Gr ;
+          enum MAP-Gd ;
+          enum MAP-Gf ;
+          enum Ge ;
+          enum Gs ;
+          enum S6d ;
+          enum S4 ;
+          enum S3 ;
+          enum S13 ;
+        }
+      }
+      leaf-list GGSNInterfaces {
+        type enumeration {
+          enum Gn ;
+          enum Gi ;
+          enum Gmb ;
+        }
+      }
+      leaf-list S-CSCFInterfaces {
+        type enumeration {
+          enum Mw ;
+          enum Mg ;
+          enum Mr ;
+          enum Mi ;
+        }
+      }
+      leaf-list P-CSCFInterfaces {
+        type enumeration {
+          enum Gm ;
+          enum Mw ;
+        }
+      }
+      leaf-list I-CSCFInterfaces {
+        type enumeration {
+          enum Cx ;
+          enum Dx ;
+          enum Mg ;
+          enum Mw ;
+        }
+      }
+      leaf-list MRFCInterfaces {
+        type enumeration {
+          enum Mp ;
+          enum Mr ;
+        }
+      }
+      leaf-list MGCFInterfaces {
+        type enumeration {
+          enum Mg ;
+          enum Mj ;
+          enum Mn ;
+        }
+      }
+      leaf-list IBCFInterfaces {
+        type enumeration {
+          enum Ix ;
+          enum Mx ;
+        }
+      }
+      leaf-list E-CSCFInterfaces {
+        type enumeration {
+          enum Mw ;
+          enum Ml ;
+          enum Mm ;
+          enum Mi-Mg ;
+        }
+      }
+      leaf-list BGCFInterfaces {
+        type enumeration {
+          enum Mi ;
+          enum Mj ;
+          enum Mk ;
+        }
+      }
+      leaf-list ASInterfaces {
+        type enumeration {
+          enum Dh ;
+          enum Sh ;
+          enum ISC ;
+          enum Ut ;
+        }
+      }
+      leaf-list HSSInterfaces {
+        type enumeration {
+          enum MAP-C ;
+          enum MAP-D ;
+          enum Gc ;
+          enum Gr ;
+          enum Cx ;
+          enum S6d ;
+          enum S6a ;
+          enum Sh ;
+        }
+      }
+      leaf-list EIRInterfaces {
+        type enumeration {
+          enum MAP-F ;
+          enum S13 ;
+          enum MAP-Gf ;
+        }
+      }
+      leaf-list BM-SCInterfaces {
+        type enumeration {
+          enum Gmb ;
+        }
+      }
+      leaf-list MMEInterfaces {
+        type enumeration {
+          enum S1-MME ;
+          enum S3 ;
+          enum S6a ;
+          enum S10 ;
+          enum S11 ;
+          enum S13 ;
+        }
+      }
+      leaf-list SGWInterfaces {
+        type enumeration {
+          enum S4 ;
+          enum S5 ;
+          enum S8 ;
+          enum S11 ;
+          enum Gxc ;
+        }
+      }
+      leaf-list PDN_GWInterfaces {
+        type enumeration {
+          enum S2a ;
+          enum S2b ;
+          enum S2c ;
+          enum S5 ;
+          enum S6b ;
+          enum Gx ;
+          enum S8 ;
+          enum SGi ;
+        }
+      }
+      leaf-list eNBInterfaces {
+        type enumeration {
+          enum S1-MME ;
+          enum X2 ;
+        }
+      }
+      leaf-list en-gNBInterfaces {
+        type enumeration {
+          enum S1-MME ;
+          enum X2 ;
+          enum Uu ;
+          enum F1-C ;
+          enum E1 ;
+        }
+      }
+      leaf-list AMFInterfaces {
+        type enumeration {
+          enum N1 ;
+          enum N2 ;
+          enum N8 ;
+          enum N11 ;
+          enum N12 ;
+          enum N14 ;
+          enum N15 ;
+          enum N20 ;
+          enum N22 ;
+          enum N26 ;
+        }
+      }
+      leaf-list AUSFInterfaces {
+        type enumeration {
+          enum N12 ;
+          enum N13 ;
+        }
+      }
+      leaf-list NEFInterfaces {
+        type enumeration {
+          enum N29 ;
+          enum N30 ;
+          enum N33 ;
+        }
+      }
+      leaf-list NRFInterfaces {
+        type enumeration {
+          enum N27 ;
+        }
+      }
+      leaf-list NSSFInterfaces {
+        type enumeration {
+          enum N22 ;
+          enum N31 ;
+        }
+      }
+      leaf-list PCFInterfaces {
+        type enumeration {
+          enum N5 ;
+          enum N7 ;
+          enum N15 ;
+        }
+      }
+      leaf-list SMFInterfaces {
+        type enumeration {
+          enum N4 ;
+          enum N7 ;
+          enum N10 ;
+          enum N11 ;
+          enum S5-C ;
+          enum N38 ;
+          enum N16 ;
+          enum N16a ;
+        }
+      }
+      leaf-list SMSFInterfaces {
+        type enumeration {
+          enum N20 ;
+          enum N21 ;
+        }
+      }
+      leaf-list UDMInterfaces {
+        type enumeration {
+          enum N8 ;
+          enum N10 ;
+          enum N13 ;
+          enum N21 ;
+        }
+      }
+      leaf-list UPFInterfaces {
+        type enumeration {
+          enum N4 ;
+        }
+      }
+      leaf-list ng-eNBInterfaces {
+        type enumeration {
+          enum NG-C ;
+          enum Xn-C ;
+          enum Uu ;
+        }
+      }
+      leaf-list gNB-CU-CPInterfaces {
+        type enumeration {
+          enum NG-C ;
+          enum Xn-C ;
+          enum Uu ;
+          enum F1-C ;
+          enum E1 ;
+          enum X2-C ;
+        }
+      }
+      leaf-list gNB-CU-UPInterfaces {
+        type enumeration {
+          enum E1 ;
+        }
+      }
+      leaf-list gNB-DUInterfaces {
+        type enumeration {
+          enum F1-C ;
+      }
+    }
+    }
+
+    leaf-list listOfNeTypes {
+      type enumeration {
+        enum MSC_SERVER;
+        enum SGSN;
+        enum MGW;
+        enum GGSN;
+        enum RNC;
+        enum BM_SC;
+        enum MME;
+        enum SGW;
+        enum PGW;
+        enum ENB;
+        enum EN_GNB;
+        enum GNB_CU_CP;
+        enum GNB_CU_UP;
+        enum GNB_DU;
+      }
+      description "Specifies the network element types where the trace should
+        be activated. The attribute is applicable only for Trace with
+        Signalling Based Trace activation. ";
+      reference "Clause 5.4 of 3GPP TS 32.422.";
+    }
+
+    leaf traceDepth {
+      when '../../jobType = "TRACE_ONLY"'
+        +  ' or ../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type enumeration  {
+        enum MINIMUM;
+        enum MEDIUM;
+        enum MAXIMUM;
+        enum VENDORMINIMUM;
+        enum VENDORMEDIUM;
+        enum VENDORMAXIMUM;
+      }
+      default MAXIMUM;
+      description "It specifies the trace depth. The attribute is 
+        applicable only for Trace.";
+      reference "Clause 5.3 of 3GPP TS 32.422.";
+    }  
+    
+    list triggeringEvents {
+      key idx;
+      description "It specifies the triggering event parameter of the trace 
+        session. The attribute is applicable only for Trace.";
+      reference "Clause 5.1 of 3GPP TS 32.422"; 
+      leaf idx { type uint32; }
+      max-elements 1;
+
+      leaf-list MSC_SERVER {
+        type enumeration {
+          enum MO_MT_CALLS;
+          enum MO_MT_SMS;
+          enum LU_IMSIattach_IMSIdetach;
+          enum SS; 
+        }
+      }
+
+      leaf-list SGSN {
+        type enumeration {
+          enum PDPcontext;
+          enum MO_MT_SMS;
+          enum RAU_GPRSattach_GPRSdetach;
+          enum MBMScontext;
+        }
+      }
+
+      
+      leaf-list MGW {
+        type enumeration {
+          enum CONTEXT;
+        }
+      }
+
+      leaf-list GGSN {
+        type enumeration {
+          enum PDPcontext;
+          enum MBMScontext;
+        }
+      }
+
+      leaf-list IMS {
+        type enumeration {
+          enum SIPsession_StandaloenTransaction;
+        }
+      }
+
+      leaf-list BM_SC {
+        type enumeration {
+          enum MBMSactivation;
+        }
+      }
+
+      leaf-list MME {
+        type enumeration {
+          enum UEinitiatedPDNconnectivityRequest;
+          enum ServiceRequest;
+          enum InitialAttach_TAU_Detach;
+          enum UEInitiatedPDNdisconnection;
+          enum BearerActivationModificationDeletion;
+          enum Handover;
+        }
+      }
+
+      
+      leaf-list SGW {
+        type enumeration {
+          enum PDNconnectionCreation;
+          enum PDNconnectionTermination;
+          enum BearerActivationModificationDeletion;
+        }
+      }
+
+      leaf-list PGW {
+        type enumeration {
+          enum PDNconnectionCreation;
+          enum PDNconnectionTermination;
+          enum BearerActivationModificationDeletion;
+        }
+      }
+
+      leaf-list AMF {
+        type enumeration {
+          enum Registration;
+          enum ServiceRequest;
+          enum Handover;
+          enum UEderegistration;
+          enum NetworkDeregistration;
+          enum UEMobilityFromEPC;
+          enum UEMobilityToEPC;
+          enum CovergedChargingService;
+        }
+      }
+
+      leaf-list SMF {
+        type enumeration {
+          enum PDUsessionEstablishment;
+          enum PDUsessionModification;
+          enum PDUsessionRelease;
+          enum PDUsessionUPactivationDeactivation;
+          enum MobilityBtw3gppAndN3gppTo5GC;
+          enum MobilityFromEpc;
+          enum MobilityBtwISMForVSMF;
+          enum CovergedChargingService;
+          enum OfflineOnlyCharging;
+        }
+      }
+
+      leaf-list PCF {
+        type enumeration {
+          enum AMpolicy;
+          enum SMpolicy;
+          enum Authorization;
+          enum BDTpolicy;
+          enum SpendingLimitControl;
+        }
+      }
+
+      leaf-list UPF {
+        type enumeration {
+          enum N4Session;
+        }
+      }
+
+      leaf-list AUSF {
+        type enumeration {
+          enum UEauthentication;
+        }
+      }
+
+      leaf-list NEF {
+        type enumeration {
+          enum EventExposure;
+          enum PFDmanagement;
+          enum ParameterProvisiong;
+          enum Trigger;
+        }
+      }
+
+      leaf-list NRF {
+        type enumeration {
+          enum NFmanagement;
+          enum NFdiscovery;
+        }
+      }
+
+      leaf-list NSSF {
+        type enumeration {
+          enum NSSelection;
+          enum NSSAI;
+        }
+      }
+
+      leaf-list SMSF {
+        type enumeration {
+          enum SMService;
+        }
+      }
+
+      leaf-list UDM {
+        type enumeration {
+          enum UEcontext;
+          enum SubscriberData;
+          enum UEauthentication;
+          enum EventExposure;
+        }
+      }
+    }
+  }
+
+  grouping ImmediateMdtConfigGrp {
+   description "Represents the ImmediateMdtConfig dataType. 
+      This <<dataType>> defines the configuration parameters of 
+      IOC TraceJob which are specific for Immediate MDT or combine 
+      Trace and Immediate MDT. 
+      
+      The optional attribute positioningMethod allows to specify 
+      the positioning methods to use.
+
+      The following attributes are conditional available based on the
+      measurements configured in listOfMeasurements:
+        -reportInterval (conditional for M1 in LTE or NR and M1/M2 in UMTS),
+        -reportAmount (conditional for M1/M2 in UMTS),
+        -reportAmountM1LTE (conditional for M1 in LTE),
+        -reportAmountM4LTE (conditional for M4 in LTE),
+        -reportAmountM5LTE (conditional for M5 in LTE),
+        -reportAmountM6LTE (conditional for M6 in LTE),
+        -reportAmountM7LTE (conditional for M7 in LTE),
+        -reportAmountM1NR (conditional for M1 in NR),
+        -reportAmountM4NR (conditional for M4 in NR),
+        -reportAmountM5NR (conditional for M5 in NR),
+        -reportAmountM6NR (conditional for M6 in NR),
+        -reportAmountM7NR (conditional for M7 in NR),
+        -reportingTrigger (conditional for M1 in LTE or NR and M1/M2 in UMTS),
+        -eventThreshold (conditional for A2 event reporting or A2 event
+          triggered periodic reporting),
+        -collectionPeriodRRMNR (conditional for M4 and M5 in NR),
+        -collectionPeriodM6NR (conditional for M6 in NR),
+        -collectionPeriodM7NR (conditional for M7 in NR),
+        -collectionPeriodRRMLTE (conditional for M3 in LTE),
+        -measurementPeriodLTE (conditional for M4 and M5 in LTE),
+        -collectionPeriodM6LTE (conditional for M6 in LTE),
+        -collectionPeriodM7LTE (conditional for M7 in LTE),
+        -collectionPeriodRRMUMTS (conditional for M4 and M5 in UMTS),
+        -measurementPeriodUMTS (conditional for M6 and M7 in UMTS),
+        -measurementQuantity (conditional for 1F event reporting),
+        -beamLevelMeasurement (conditional for M1 in NR),
+        -excessPacketDelayThresholds (conditional for M6 UL measurement in NR).
+
+       For immediate MDT, the measurement reporting is dependent on the 
+       configured measurements:
+        
+        - For measurement M1 in LTE or NR, it is possible to select between 
+        periodical, event triggered, event triggered periodic reporting or 
+        reporting according to all configured RRM event triggers. For M1 and M2 
+        measurement in UMTS, it is possible to select between periodical, event 
+        triggered reporting or reporting according to all configured RRM event 
+        triggers. Parameter reportingTrigger determines which of the reporting 
+        methods is selected and in case of event triggered or event-triggered 
+        periodic, which is the decisive event type. For periodical reporting, 
+        parameters reportInterval and reportAmount determine the interval between
+        two successive reports and the number of reports. This means the 
+        periodical reporting terminates after reportAmount reports have been
+        sent as long as reportAmount is configured with a value different from 
+        infinity. For event-triggered periodic reporting, these two parameters 
+        apply in addition to parameter eventThreshold which determines the 
+        threshold of the event. In this case up to reportAmount reports are 
+        sent with a periodicity of reportInterval after the entering condition 
+        is fulfilled. The reporting is stopped, if the leaving condition is 
+        fulfulled and is restarted if the configured event reoccurs. For event 
+        based reporting, there is only one report sent after the event occurs. 
+        The parameters to configure are reportingTrigger and eventThreshold. 
+        In case of UMTS and 1f event reporting, additionally parameter 
+        measurementQuantity is necessary in order to determine for which 
+        measurement(s) the event threshold is applicable.  Parameter 
+        beamLevelMeasurement determines whether beam level measurements shall
+        be included in case of NR.
+        
+        - For measurement M2 in LTE or NR, reporting is according to RRM
+        configuration, see TS 38.321, TS 36.321 and TS 38.331, TS 36.331.  
+        
+        - For measurement M4 in UMTS, reporting is either according to RRM 
+        configuration, see TS 25.321 and TS 25.331 or periodic or event
+        triggered periodic using parameter collectionPeriodRRMUMTS and 
+        eventThresholdUphUMTS.
+        
+        - For measurement M3 in UMTS, the reporting is done upon
+        availability, see TS 37.320.
+        
+        - For measurements M4, M5, M6 and M7 in NR, for measurements 
+        M3, M4, M5, M6 and M7 in LTE and for measurements M5, M6 and M7 
+        in UMTS periodical reporting is applied. The configurable parameter
+        is the interval between two measurements (collectionPeriodRrmNr, 
+        collectionPeriodM6NR, collectionPeriodM7NR, collectionPeriodRRMLTE,
+        measurementPeriodLte, collectionPeriodM6LTE, collectionPeriodM7LTE,
+        collectionPeriodRRMUMTS, measurementPeriodUMTS) and the number of 
+        reports (reportAmountM4NR, reportAmountM5NR, reportAmountM6NR, 
+        reportAmountM7NR, reportAmountM4LTE, reportAmountM5LTE, 
+        reportAmountM6LTE, reportAmountM7LTE).  If no collection
+        period is configured for M5 in UMTS, all available measurements
+        ar elogged according to RRM configuration.
+        
+        - Measurements M8 and M9 in NR or LTE are reported according to 
+        configured M1 and/or M6 related UE measurement reporting. 
+        ";
+        
+   leaf listOfMeasurements {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"';
+      type enumeration {
+        enum M1;
+        enum M2;
+        enum M3;
+        enum M4;
+        enum M5;
+        enum M6_DL;
+        enum M6_UL;
+        enum M7_DL;
+        enum M7_UL;
+        enum M1_EVENT_TRIGGERED;
+        enum M6;
+        enum M7;
+        enum M8;
+        enum M9;
+      }
+      description "It specifies the UE measurements that shall be 
+        collected in an Immediate MDT job. The attribute is 
+        applicable only for Immediate MDT.";
+      reference "Clause 5.10.3 of 3GPP TS 32.422.";
+    }
+
+   leaf reportingTrigger {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"';
+      type enumeration {
+        enum PERIODICAL;
+        enum A2_FOR_LTE;
+        enum 1F_FOR_UMTS;
+        enum 1I_FOR_UMTS_MCPS_TDD;
+        enum A2_TRIGGERED_PERIODIC_FOR_LTE;
+        enum ALL_CONFIGURED_RRM_FOR_LTE;
+        enum ALL_CONFIGURED_RRM_FOR_UMTS;
+      }
+      description "It specifies whether periodic or event based 
+        measurements should be collected.
+        The attribute is applicable only for Immediate MDT and when the
+        listOfMeasurements is configured for M1 (for both UMTS and LTE)
+        or M2 (only for UMTS).";
+      reference "Clause 5.10.4 of 3GPP TS 32.422.";
+    }
+
+   leaf reportInterval {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"'
+        +  ' and ../reportingTrigger = "PERIODICAL"';
+      type uint32 {
+        range "120|240|250|480|500|640|1000|1024|2000|2048|3000|4000|"
+          +"5120|6000|8000|10240|12000|16000|20000|"
+          +"20480|24000|28000|32000|40960|60000|64000|"
+          +"360000|720000|1800000|3600000";
+      }
+      units milliseconds;
+      description "It specifies the interval between the periodical measurements
+        that shall be taken when the UE is in connected mode.
+        The attribute is applicable only for Immediate MDT and when
+        reportingTrigger is configured for periodical measurements.";
+      reference "Clause 5.10.5 of 3GPP TS 32.422.";
+    }
+    
+   leaf reportAmount {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"'
+        +  ' and ../reportingTrigger = "PERIODICAL"';
+      type union {
+        type uint32 {
+          range "1|4|8|16|32|64" ;
+        }
+        type enumeration {
+          enum INFINITY;
+        }
+      }
+      description "It specifies the number of measurement reports that shall be
+        taken for periodic reporting while the UE is in connected.
+        The attribute is applicable only for Immediate MDT and when
+        reportingTrigger is configured for periodical measurements.";
+      reference "Clause 5.10.6 of 3GPP TS 32.422.";
+    }
+    
+   leaf eventThreshold {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"';
+      type int64;
+      description "Specifies the threshold which should trigger the reporting
+        in case A2 event reporting in LTE or 1F/1l event in UMTS. The attribute
+        is applicable only for Immediate MDT and when reportingTrigger is
+        configured for A2 event in LTE or 1F event or 1l event in UMTS.";
+      reference "Clauses 5.10.7 and 5.10.7a of 3GPP TS 32.422.";
+    }
+    
+   leaf collectionPeriodRRMNR {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"'
+        + ' or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type uint32 {
+        range "1024|2048|5120|10240|60000";
+      }
+      units milliseconds;
+      description "Specifies the collection period for collecting RRM 
+        configured measurement samples for M4, M5 in NR. The attribute is 
+        applicable only for Immediate MDT.";
+      reference "Clause 5.10.30 of 3GPP TS 32.422.";
+    }
+
+   leaf collectionPeriodM6NR {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"'
+        + ' or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type enumeration {
+        enum 120ms;
+        enum 240ms;
+        enum 480ms;
+        enum 640ms;
+        enum 1024ms;
+        enum 2048ms;
+        enum 5120ms;
+        enum 10240ms;
+        enum 20480ms;
+        enum 40960ms;
+        enum 1min;
+        enum 6min;
+        enum 12min;
+        enum 30min;
+      }
+      description "It specifies the collection period for the Packet Delay 
+        measurement (M6) for NR MDT taken by the gNB. The attribute is 
+        applicable only for Immediate MDT.";
+      reference "clause 5.10.34 of  TS 32.422.";
+    }
+    
+    leaf collectionPeriodM7NR {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"'
+        + ' or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type uint32 {
+        range "1..60";
+      }
+      description "It specifies the collection period for the Packet Loss Rate 
+        measurement (M7) for NR MDT taken by the gNB. The attribute is 
+        applicable only for Immediate MDT. ";    
+      reference "clause 5.10.35 of  TS 32.422.";
+    }
+
+   leaf collectionPeriodRRMLTE {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"' 
+        +  ' or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type enumeration {
+        enum 100ms;
+        enum 1000ms;
+        enum 1024ms;
+        enum 1280ms;
+        enum 2048ms;
+        enum 2560ms;
+        enum 5120ms;
+        enum 10000ms;
+        enum 10240ms;
+        enum 1min;
+      }
+      description "Specifies the collection period for collecting RRM configured
+        measurement samples for M3 in LTE. The attribute is applicable only
+        for Immediate MDT.";
+      reference "Clause 5.10.20 of 3GPP TS 32.422.";
+    }
+
+   leaf measurementPeriodLTE {
+          when '../../../jobType = "IMMEDIATE_MDT_ONLY"'
+            +  ' or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type enumeration {
+        enum 1024ms;
+        enum 2048ms;
+        enum 5120ms;
+        enum 10240ms;
+        enum 1min;
+      }
+      mandatory true;
+      description "It specifies the measurement period for the 
+        Data Volume (M4) and Scheduled IP throughput measurements
+        (M5) for LTE MDT taken by the eNB. The attribute is 
+        applicable only for Immediate MDT.";
+      reference "Clause 5.10.23 of 3GPP TS 32.422.";
+    }
+    
+    leaf collectionPeriodM6LTE {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"' 
+        +  ' or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type uint32 {
+        range "1024|2048|5120|10240";
+      }
+      units milliseconds;
+      description "Specifies the collection period for the Packet Delay 
+        measurement (M6) for MDT taken by the eNB. The attribute is applicable 
+        only for Immediate MDT.";
+      reference "Clause 5.10.32 of  TS 32.422.";
+    }
+    
+    leaf collectionPeriodM7LTE {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"' 
+        +  ' or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type uint16 {
+        range 1..60 ;
+      }
+      description "It specifies the collection period for the Packet Loss Rate 
+        measurement (M7) for LTE MDT taken by the eNB. The attribute is 
+        applicable only for Immediate MDT.";
+      reference "Clause 5.10.33 of  TS 32.422.";
+    }
+
+    leaf eventThresholdUphUMTS {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"' 
+        +  ' or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type uint16 {
+        range 0..31 ;
+      }        
+      description "It specifies the threshold which should trigger 
+        the reporting in case of event-triggered periodic reporting for M4 
+        (UE power headroom measurement) in UMTS.";
+        reference "Clause 5.10.39 of TS 32.422.";
+    }
+
+    leaf collectionPeriodRRMUMTS {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"'
+        +  ' or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type uint32 {
+        range "100|250|500|1000|2000|"
+          +"3000|4000|6000";
+      }
+      units milliseconds;
+      description "Specifies the collection period for collecting RRM configured
+        measurement samples for M3, M4, M5 in UMTS. The attribute is applicable
+        only for Immediate MDT.";
+      reference "Clause 5.10.21 of 3GPP TS 32.422.";
+    }
+
+    leaf measurementPeriodUMTS {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"'
+        +  'or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type uint32 {
+        range "1000|2000|3000|4000|6000|8000|12000|16000|20000|"
+          +"24000|28000|32000|64000";
+      }
+      units milliseconds;
+      description "It specifies the measurement period for the Data Volume and
+        Throughput measurements for MDT taken by RNC.
+        The attribute is applicable only for Immediate MDT.";
+      reference "Clause 5.10.22 of 3GPP TS 32.422.";
+    }
+
+    leaf measurementQuantity {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"'
+        +  ' or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type enumeration {
+        enum CPICH_ECNO;
+        enum CPICH_RSCP;
+        enum PATHLOSS;
+      }
+      description "It specifies the measurements that are collected in an MDT
+        job for a UMTS MDT configured for event triggered reporting.";
+      reference "Clause 5.10.15 of 3GPP TS 32.422.";
+    }
+    
+    leaf beamLevelMeasurement {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"'
+        +  ' or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type boolean;
+      default false;
+      description "Indicates whether the NR M1 beam level measurements shall 
+        be included or not.";
+      reference "Clause 5.10.40 of TS 32.422.";
+    }
+
+    leaf positioningMethod {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"'
+        +  ' or ../../../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type enumeration {
+        enum GNSS;
+        enum E_CELL_ID;
+      }
+      description "It specifies what positioning method should be used in the
+        MDT job.";
+      reference "Clause 5.10.19 of 3GPP TS 32.422.";
+    }
+    
+    list excessPacketDelayThresholds {
+      description "Excess packet delay thresholds info for M6 UL measurement.";
+      min-elements 1;
+      key idx;
+      leaf idx { type string; }
+      uses ExcessPacketDelayThresholdsGrp;
+    }
+    
+    leaf reportAmountM1LTE {
+      type enumeration {
+        enum 1;
+        enum 2;
+        enum 4;
+        enum 8;
+        enum 16;
+        enum 32;
+        enum 64;
+        enum INFINITY;
+      }
+      description "It specifies the number of measurement reports that shall be 
+        taken for periodic reporting while the UE is in connected mode. 
+        The attribute is applicable only for Immediate MDT and combined Trace 
+        and Immediate MDT and when reportingTrigger is configured for periodical 
+        measurements and applicable only for LTE.";
+      reference "Clause 5.10.6 of TS 32.422.";
+    }
+    
+    leaf reportAmountM4LTE {
+      type enumeration {
+        enum 1;
+        enum 2;
+        enum 4;
+        enum 8;
+        enum 16;
+        enum 32;
+        enum 64;
+        enum INFINITY;
+      }
+      description "It specifies the number of measurement reports that shall be 
+        taken for periodic reporting while the UE is in connected mode. 
+        The attribute is applicable only for Immediate MDT and combined Trace 
+        and Immediate MDT and when reportingTrigger is configured for periodical 
+        measurements and applicable only for LTE."; 
+      reference "Clause 5.10.6 of TS 32.422."; 
+    }
+
+    leaf reportAmountM5LTE {
+      type enumeration {
+        enum 1;
+        enum 2;
+        enum 4;
+        enum 8;
+        enum 16;
+        enum 32;
+        enum 64;
+        enum INFINITY;
+      }
+      description "It specifies the number of measurement reports that shall be 
+        taken for periodic reporting while the UE is in connected mode. 
+        The attribute is applicable only for Immediate MDT and combined Trace 
+       and Immediate MDT and when reportingTrigger is configured for periodical 
+        measurements and applicable only for LTE.";
+      reference "Clause 5.10.6 of TS 32.422."; 
+    }
+
+    leaf reportAmountM6LTE {
+      type enumeration {
+        enum 1;
+        enum 2;
+        enum 4;
+        enum 8;
+        enum 16;
+        enum 32;
+        enum 64;
+        enum INFINITY;
+      }
+      description "It specifies the number of measurement reports that shall be 
+        taken for periodic reporting while the UE is in connected mode. 
+        The attribute is applicable only for Immediate MDT and combined Trace 
+        and Immediate MDT and when reportingTrigger is configured for periodical 
+        measurements and applicable only for LTE.";
+      reference "Clause 5.10.6 of TS 32.422."; 
+    }
+
+    leaf reportAmountM7LTE {
+      type enumeration {
+        enum 1;
+        enum 2;
+        enum 4;
+        enum 8;
+        enum 16;
+        enum 32;
+        enum 64;
+        enum INFINITY;
+      }
+      description "It specifies the number of measurement reports that shall be 
+        taken for periodic reporting while the UE is in connected mode. 
+        The attribute is applicable only for Immediate MDT and combined Trace 
+        and Immediate MDT and when reportingTrigger is configured for periodical 
+        measurements and applicable only for LTE.";
+      reference "Clause 5.10.6 of TS 32.422."; 
+    }
+
+    leaf reportAmountM1NR {
+      type enumeration {
+        enum 1;
+        enum 2;
+        enum 4;
+        enum 8;
+        enum 16;
+        enum 32;
+        enum 64;
+        enum INFINITY;
+      }
+      description "It specifies the number of measurement reports that shall be 
+        taken for periodic reporting while the UE is in connected mode. 
+        The attribute is applicable only for Immediate MDT and combined Trace 
+        and Immediate MDT and when reportingTrigger is configured for periodical 
+        measurements and applicable only for NR.";
+      reference "Clause 5.10.6 of TS 32.422."; 
+    }
+
+    leaf reportAmountM4NR {
+      type enumeration {
+        enum 1;
+        enum 2;
+        enum 4;
+        enum 8;
+        enum 16;
+        enum 32;
+        enum 64;
+        enum INFINITY;
+      }
+      description "It specifies the number of measurement reports that shall be 
+        taken for periodic reporting while the UE is in connected mode. 
+        The attribute is applicable only for Immediate MDT and combined Trace 
+        and Immediate MDT and when reportingTrigger is configured for periodical 
+        measurements and applicable only for NR."; 
+      reference "Clause 5.10.6 of TS 32.422."; 
+    }
+
+    leaf reportAmountM5NR {
+      type enumeration {
+        enum 1;
+        enum 2;
+        enum 4;
+        enum 8;
+        enum 16;
+        enum 32;
+        enum 64;
+        enum INFINITY;
+      }
+      description "It specifies the number of measurement reports that shall be 
+        taken for periodic reporting while the UE is in connected mode. 
+        The attribute is applicable only for Immediate MDT and combined Trace 
+        and Immediate MDT and when reportingTrigger is configured for periodical 
+        measurements and applicable only for NR.";
+        reference "Clause 5.10.6 of TS 32.422."; 
+    }
+
+    leaf reportAmountM6NR {
+      type enumeration {
+        enum 1;
+        enum 2;
+        enum 4;
+        enum 8;
+        enum 16;
+        enum 32;
+        enum 64;
+        enum INFINITY;
+      }
+      description "It specifies the number of measurement reports that shall be 
+        taken for periodic reporting while the UE is in connected mode. 
+        The attribute is applicable only for Immediate MDT and combined Trace 
+        and Immediate MDT and when reportingTrigger is configured for periodical 
+        measurements and applicable only for NR.";
+      reference "Clause 5.10.6 of TS 32.422."; 
+    }
+
+    leaf reportAmountM7NR {
+      type enumeration {
+        enum 1;
+        enum 2;
+        enum 4;
+        enum 8;
+        enum 16;
+        enum 32;
+        enum 64;
+        enum INFINITY;
+      }
+      description "It specifies the number of measurement reports that shall be 
+        taken for periodic reporting while the UE is in connected mode. 
+        The attribute is applicable only for Immediate MDT and combined Trace 
+        and Immediate MDT and when reportingTrigger is configured for periodical 
+        measurements and applicable only for NR.";
+      reference "Clause 5.10.6 of TS 32.422."; 
+    }
+  }
+
+  grouping LoggedMdtConfigGrp {
+    description "This <<dataType>> defines the configuration parameters of 
+      IOC TraceJob which are specific for Logged MDT or Logged MBSFN MDT. 
+
+      Based on the value configured for attribute jobType in IOC TraceJob, 
+      different attributes are available. In case of LOGGED_MDT_ONLY, the 
+      attributes reportType, eventListForEventTriggeredMeasurement, 
+      eventThresholdL1, hysteresisL1, timeToTriggerL1, 
+      areaConfigurationForNeighCells
+      and npnIdentityList are applicable. In case of LOGGED_MBSFN_MDT, 
+      the attribute mbsfnAreaList is applicable. 
+      The optional attribute plmnList allows to specify the PLMNs where 
+      measurement collection, status indication and log reporting is allowed, 
+      the optional attribute areaConfigurationForNeighCell allows to specify 
+      the area for which UE is requested to perform measurements logging for 
+      neighbour cells which have list of frequencies.  For logged MDT in UMTS 
+      and LTE, the reporting is periodical. Parameter loggingInterval 
+      determines  the interval between the reports and parameter 
+      loggingDuration determines how long the configuration is valid 
+      meaning after this duration has passed no further reports are sent. 
+      In NR, the reporting can be periodical or event 
+      based, determined by parameter reportType. For periodical reporting the 
+      same parameters as in LTE and UMTS apply. For event based reporting, 
+      parameter eventListForEventTriggeredMeasurement configures the event 
+      type, namely 'out of coverage' or 'L1 event'. In case 'L1 event' is
+      selected as event type, the logging is performed according to 
+      parameter loggingInterval at regular intervals only when the
+      conditions indicated by eventThresholdL1, 
+      hysteresisL1, timeToTriggerL1 (defining the thresholds, hysteresis 
+      and time to trigger) are met and if UE is 'camped normally' state 
+      (TS 38.331, TS 38.304).  In case 'out of coverage' is selected as 
+      event type, the
+      logging is performed according to parameter loggingInterval at regular 
+      intervals only when the UE is in 'any cell selection' state. 
+      Furthermore, logging is performed immediately upon transition from the
+      'any cell selection' state to the 'camped normally' state (TS 38.331, 
+      TS 38.304).";
+    
+    leaf traceCollectionEntityId {
+      type int64;
+      description "It specifies the TCE Id which is sent to the UE in 
+        Logged MDT.";
+      reference "Clause 5.10.11 of 3GPP TS 32.422."; 
+    }
+    
+    leaf loggingDuration {
+      when '../../../jobType = "LOGGED_MDT_ONLY" or' 
+        + ' ../../../jobType = "LOGGED_MBSFN_MDT"';
+      type uint32 {
+        range "600|1200|2400|3600|5400|7200";
+      }
+      units seconds;
+      description "Specifies how long the MDT configuration is valid at the
+        UE in case of Logged MDT. The attribute is applicable only for
+        Logged MDT and Logged MBSFN MDT.";
+      reference "Clause 5.10.9 of 3GPP TS 32.422.";
+    }
+
+    leaf loggingInterval {
+      when '../../../jobType = "LOGGED_MDT_ONLY" or' 
+        + ' ../../../jobType = "LOGGED_MBSFN_MDT"';
+      type enumeration {
+        enum 320ms;
+        enum 640ms;
+        enum 1280ms;
+        enum 2560ms;
+        enum 5120ms;
+        enum 10240ms;
+        enum 20480ms;
+        enum 30720ms;
+        enum 40960ms;
+        enum 61440ms;
+        enum INFINITY;
+      }
+
+      description "Specifies the periodicty for Logged MDT. The attribute is
+        applicable only for Logged MDT and Logged MBSFN MDT.";
+      reference "Clause 5.10.8 of 3GPP TS 32.422.";
+    }
+    
+    leaf reportType {
+      when '../../../jobType = "IMMEDIATE_MDT_ONLY"';
+      type enumeration {
+        enum PERIODICAL;
+        enum EVENT_TRIGGERED;
+      }
+      description "It specifies report type for logged NR MDT";
+      reference "Clause 5.10.27 of 3GPP TS 32.422.";
+    }
+    
+    leaf eventListForEventTriggeredMeasurement {
+      when '../../../jobType = "LOGGED_MDT_ONLY"';
+      type enumeration {
+        enum OUT_OF_COVERAGE ;
+        enum A2_EVENT ;
+      }
+      description "Specifies event types for event triggered measurement in the
+        case of logged NR MDT.  Each trace session may configure at most one
+        event. The UE shall perform logging of measurements only upon certain
+        condition being fulfilled:
+        - Out of coverage.
+        - A2 event.";
+      reference "Clause 5.10.28 of 3GPP TS 32.422.";
+    }
+
+    leaf eventThresholdL1 {
+      when '../../../jobType = "LOGGED_MDT_ONLY" or' 
+        + ' ../../../jobType = "LOGGED_MBSFN_MDT"';
+      type uint32 {
+        range "0..127";
+      }
+      description "It specifies the threshold which should trigger 
+        the reporting in case of event based reporting of logged NR MDT. 
+        The attribute is applicable only for Logged MDT and when reportType 
+        is configured for event triggered reporting and when 
+        eventListForEventTriggeredMeasurement is configured for L1 event.";
+      reference "clause 5.10.36 of TS 32.422.";
+    }
+    
+    leaf hysteresisL1 {
+      when '../../../jobType = "LOGGED_MDT_ONLY" or '
+         + '../../../jobType = "LOGGED_MBSFN_MDT"';
+      type uint32 {
+        range "0..30";
+      }
+      description "It specifies the hysteresis used within the entry and leave 
+        condition of the L1 event based reporting of logged NR MDT. 
+        The attribute is applicable only for Logged MDT, when reportType 
+        is configured for event triggered reporting and when 
+        eventListForEventTriggeredMeasurement is configured for L1 event. ";
+      reference "clause 5.10.37 of TS 32.422.";
+    }
+
+    leaf timeToTriggerL1 {
+      when '../../../jobType = "LOGGED_MDT_ONLY" or '
+          + '../../../jobType = "LOGGED_MBSFN_MDT"';
+      type int32 {
+        range 0|40|64|80|100|128|160|256|320|480|512|640|1024|1280|2560|5120;
+      }
+      units milliseconds;
+      description "It specifies the threshold which should trigger 
+        the reporting in case of event based reporting of logged NR MDT. 
+        The attribute is applicable only for Logged MDT, when reportType 
+        is configured for event triggered reporting and when 
+        eventListForEventTriggeredMeasurement is configured for L1 event.";
+      reference "clauses 5.10.38 of TS 32.422.";
+    }
+    
+    list areaConfigurationForNeighCell {
+      when '../../../jobType = "LOGGED_MDT_ONLY"';
+      key "idx";
+      leaf idx { type uint32 ; }
+      description "It specifies the area for which UE is requested to perform
+        measurement logging for neighbour cells which have list of frequencies.
+        If it is not configured, the UE shall perform measurement logging for
+        all the neighbour cells.
+
+        Applicable only to NR Logged MDT.";
+      reference "Clause 5.10.26 of 3GPP TS 32.422.";
+
+      uses AreaConfigGrp;
+    }
+
+    list mbsfnAreaList {
+      when '../../../jobType = "LOGGED_MBSFN_MDT"';
+      key "mbsfnAreaId earfcn";
+      max-elements 8;
+      description "The MBSFN Area consists of a MBSFN Area ID and Carrier
+        Frequency (EARFCN). The target MBSFN area List can have up to 8 entries.
+        This parameter is applicable only if the job type is Logged MBSFN MDT.";
+      reference "Clause 5.10.25 of 3GPP TS 32.422.";
+      
+      uses MbsfnAreaGrp;
+    }
+    
+    list nPNIdentityList {
+      description "It defines which NPNs that can be served by the NR cell, 
+        and which CAG IDs or NIDs can be supported by the NR cell for 
+        corresponding PNI-NPN or SNPN.";
+      key idx;
+      max-elements 1;  
+      uses NpnIdGrp;
+      leaf idx { type string;}
+    }
+  }
+
+  grouping MdtConfigGrp {
+    description "Defines the configuration parameters of IOC 
+     TraceJob which are specific for MDT. The attribute 
+     anonymizationOfMdtData specifies the level of anonymization 
+     of MDT data.  The attribute areaScope defines the area scope of MDT, 
+     which is specified in clause 5.10.2 of TS 32.422.  The   
+     optional attribute sensorInformation allows to 
+     specify  the sensor information to include.  Based on the value 
+     configured for attribute jobType in IOC TraceJob, the attributes 
+     immediateMdtConfig or loggedMdtConfig are available: In case of 
+     IMMEDIATE_MDT_ONLY or IMMEDIATE_MDT_AND_TRACE the attribute 
+     immediateMdtConfig is applicable. In case of LOGGED_MDT_ONLY or 
+     LOGGED_MBSFN_MDT the attribute loggedMdtConfig is applicable.";
+
+   leaf anonymizationOfMdtData {
+      when ../areaScope ;
+      type enumeration {
+        enum NO_IDENTITY;
+        enum TAC_OF_IMEI;
+      }
+      default NO_IDENTITY;
+      description "Specifies the level of anonymization of MDT data.
+        This attribute is only applicable for management based activation";
+      reference "Clause 5.10.12 of 3GPP TS 32.422.";
+    }
+
+   list areaScope {
+      key "idx";
+      leaf idx { type uint32 ; }
+      description "It specifies the area where data shall be collected.";
+      max-elements 1;
+      uses AreaScopeGrp;      
+    }
+
+   leaf-list sensorInformation {
+      type enumeration {
+        enum BAROMETRIC_PRESSURE;
+        enum UE_SPEED;
+        enum UE_ORIENTATION;
+      }
+      description "It specifies which sensor information shall be included in
+        logged NR MDT and immediate NR MDT measurement if they are available.";
+      reference "Clause 5.10.29 of 3GPP TS 32.422.";
+    }
+
+    list immediateMdtConfig {
+      description "The set of parameters specific for Immediate MDT 
+        configuration.";
+      key idx;
+      max-elements 1;
+      leaf idx { type string; }
+      uses ImmediateMdtConfigGrp;
+    }
+      
+    list loggedMdtConfig {
+      description "The set of parameters specific for Logged MDT and Logged 
+        MBSFN MDT configuration.";
+      key idx;
+      max-elements 1;
+      leaf idx { type string; }
+      uses LoggedMdtConfigGrp;
+    }    
+
+    leaf mNOnly {
+      type boolean;
+      default false;
+      description "Specifies whether the MDT configuration is for MN  
+        only or not. The value FALSE means the MDT configuration is for 
+        both MN and SN. The value TRUE means the MDT configuration is  
+        for MN only.";
+    }   
+ 
+    list pLMNList {
+      key "mcc mnc";
+      uses types3gpp:PLMNId;
+      max-elements 16;
+      description "It indicates the PLMNs where measurement collection. ";
+      reference "Clause 5.10.24 of 3GPP TS 32.422.";
+    } 
+  }
+
+  grouping UECoreMeasConfigGrp {
+    description "Represents the UECoreMeasConfig dataType.
+      This <<dataType>> defines the aconfiguration parameters of IOC 
+      TraceJob which are specific for 5GC UE level measurements 
+      collection.";
+    
+    leaf-list ueCoreMeasurements {
+      type string;
+      min-elements 1;
+      description "List of 5GC UE level measurements identified by name. 
+        The list may include 5GC UE level measurements 
+        defined in TS 28.558, or vendor specific measurements.
+        
+        For 5GC UE level measurements defined in TS 28.558, the 
+        name is constructed as follows:
+        'family.measurementName.subcounter' for measurement type 
+        with specified subcounter
+        'family.measurementName.ALL' for measurement type with all 
+        supported subcounters
+        'family.measurementName' for measurement type without 
+        subcounters
+        'family' for measurement family, including all measurement 
+        types and 
+        the associated subcounters under this family.
+        For non-3GPP specified 5GC UE level measurements the name is 
+        defined elsewhere.";
+    }
+
+    leaf ueCoreMeasGranularityPeriod {
+      type uint32;
+      description "Granularity period used to produce 5GC UE 
+        level measurements. The period is defined in milliseconds (ms).";
+    }
+
+    leaf nfTypeToMeasure {
+      type string;
+      mandatory true;
+      description "It indicates the type of NE to produce the 5GC UE level 
+        measurements.
+        
+        allowedValues: The NF types represented by the measured object 
+        classes as defined by f) of the 5GC UE level measurements specified 
+        in TS 28.558.";
+    }    
+    
+    leaf-list objectInstances {
+      type string;
+      description "List of object instances. 
+        Each object instance is identified by its DN.";
+    }
+
+    leaf-list rootObjectInstances {
+      type string;
+      description "List of object instances.
+        Each object instance is identified by its DN and designates
+        the root of a substree that contains the root object and all
+        descendant objects.";
+    }
+  }
+
+  grouping TraceJobGrp {
+
+    leaf jobType {
+      type enumeration {
+        enum IMMEDIATE_MDT_ONLY;
+        enum LOGGED_MDT_ONLY;
+        enum TRACE_ONLY;
+        enum IMMEDIATE_MDT_AND_TRACE;
+        enum RLF_REPORT_ONLY;
+        enum RCEF_REPORT_ONLY;
+        enum LOGGED_MBSFN_MDT;
+        enum 5GC_UE_LEVEL_MEASUREMENTS_ONLY;
+        enum TRACE_AND_5GC_UE_LEVEL_MEASUREMENTS;
+        enum IMMEDIATE_MDT_AND_5GC_UE_LEVEL_MEASUREMENTS;
+        enum TRACE_AND_IMMEDIATE_MDT_AND_5GC_UE_LEVEL_MEASUREMENTS;      
+      }
+      default TRACE_ONLY;
+      description "It specifies whether the
+        TraceJob represents only MDT, Logged MBSFN MDT, Trace, or 
+        5GC UE level measurements job, or a combined job. It also 
+        defines the MDT mode.";
+      reference "Clause 5.9a of 3GPP TS 32.422.";
+    }
+    
+    list pLMNTarget {
+      key "mcc mnc";
+      description "Specifies which PLMN that the subscriber of the session to
+        be recorded uses as selected PLMN.";
+      
+      uses types3gpp:PLMNId;
+    }
+
+    leaf-list listOfTraceMetrics {
+      when '../jobType = "TRACE_ONLY"'
+        +  ' or ../jobType = "IMMEDIATE_MDT_AND_TRACE"';
+      type string;
+      description "List of trace metrics identified by name.
+        Includes trace messages, MDT measurements (Immediate MDT, 
+        Logged MDT, Logged MBSFN MDT), RLF and RCEF reports, 
+        see TS 32.422). Trace messages are identified with their message
+        identifier. Trace metric identifier is constructed as
+        defined in clause 10 of TS 32.422.
+        For non-3GPP specified trace metrics the name is defined elsewhere.";
+      reference "Clause 10 of 3GPP TS 32.422.";
+    }
+
+    leaf traceCollectionEntityIPAddress {
+      type inet:ip-address;
+      description "It specifies the address of the Trace Collection Entity 
+        when the attribute traceReportingFormat is configured for the 
+        file-based reporting. The attribute is applicable for both Trace and 
+        MDT.";
+      reference "Clause 5.9 of 3GPP TS 32.422.";
+    }
+    
+    leaf traceReportingConsumerUri {
+      when '../traceReportingFormat  = "STREAMING"';
+      type inet:uri;
+      description "URI of the Streaming Trace data reporting MnS consumer
+        (a.k.a. streaming target).";
+      reference "Clause 5.9 of 3GPP TS 32.422.";
+    }
+    
+    list traceReference {
+      key "idx";
+      min-elements 1;
+      max-elements 1;
+      description "A globally unique identifier, which uniquely identifies the
+        Trace Session that is created by the TraceJob.
+        In case of shared network, it is the MCC and MNC of the Participating
+        Operator that request the trace session that shall be provided.
+        The attribute is applicable for both Trace and MDT.";
+      reference "Clause 5.6 of 3GPP TS 32.422.";
+
+      leaf idx { type uint32 ; }
+      uses trace3gpp:TraceReferenceGrp ;    
+    }
+
+    leaf jobId {
+      type string;
+      yext3gpp:inVariant;
+      description "Identifier of a TraceJob";
+    }
+
+    leaf traceReportingFormat {
+      type enumeration {
+        enum FILE-BASED;
+        enum STREAMING;
+      }
+      default FILE-BASED;
+      description "Specifies the trace reporting format - streaming trace
+        reporting or file-based trace reporting";
+      reference "3GPP TS 32.422 clause 5.11";
+    }
+    
+    list traceTarget {
+      key "targetIdType targetIdValue";
+      max-elements 1;
+
+      leaf targetIdType {
+        type enumeration {
+          enum IMSI;
+          enum IMEI;
+          enum IMEISV;
+          enum PUBLIC_ID;
+          enum UTRAN_CELL;
+          enum E-UTRAN_CELL;
+          enum NG-RAN_CELL;
+          enum ENB;
+          enum RNC;
+          enum GNB;
+          enum SUPI;
+        }
+      }
+
+      leaf targetIdValue {
+        type string;
+      }
+
+      description "Specifies the target object of the Trace and MDT. The
+        attribute is applicable for both Trace and MDT. This attribute
+        includes the ID type of the target as an enumeration and the ID value.
+
+        The traceTarget shall be 'PUBLIC_ID' in case of a Management Based
+        Activation is done to an SCSCFFunction (Serving Call Session 
+        Control Function)  or PCSCFFunction (Proxy Call Session Control 
+        Function).  The traceTarget shall be 'UTRAN_CELL' only in case 
+        of the UTRAN cell traffic trace function.
+
+        The traceTarget shall be 'E-UTRAN_CELL' only in case of E-UTRAN cell
+        traffic trace function.
+
+        The traceTarget shall be 'NG-RAN_CELL' only in case of NR cell
+        traffic trace function.
+
+        The traceTarget shall be either 'IMSI', 'IMEI' or
+        'IMEISV' if the Trace Session is activated to any of the following
+        ManagedEntity(ies):
+        - HssFunction
+        - MscServerFunction
+        - SgsnFunction
+        - GgsnFunction
+        - BmscFunction
+        - RncFunction
+        - MmeFunction
+        - ServingGWFunction
+        - PGWFunction
+
+        The traceTarget shall be either 'SUPI' or 'IMEISV' if the Trace Session
+        is activated to any of the followed ManagedEntity(ies):
+        - AFFunction
+        - AMFFunction
+        - AUSFFunction
+        - NEFFunction
+        - NRFFunction
+        - NSSFFunction
+        - PCSCFFunction
+        - SMFFunction
+        - UPFFunction
+        - UDMFunction
+
+        In case of signalling based MDT, the traceTarget attribute should
+        be able to carry 'PUBLIC_ID', 'IMSI', 'IMEI', 'IMEISV' or 'SUPI'.
+
+        In case of management based 5GC UE level measurements collection, 
+        the traceTarget attribute shall be able to carry the corresponding 
+        Measured UE Identifier as defined by the bullet g) of the 5GC UE 
+        level measurements (see TS 28.558) when the TraceJob is created 
+        at the subject ManagedEntity.";
+      reference "3GPP TS 32.422.";
+    }
+
+    list traceConfig {
+      when '../jobType = "TRACE_ONLY"'
+      +  ' or ../jobType = "IMMEDIATE_MDT_AND_TRACE"'
+      +  ' or ../jobType = "TRACE_AND_5GC_UE_LEVEL_MEASUREMENTS"'
+      +  ' or ../jobType = 
+      "TRACE_AND_IMMEDIATE_MDT_AND_5GC_UE_LEVEL_MEASUREMENTS"';  
+      key idx;
+      description "Trace config";
+      max-elements 1;
+      uses TraceConfigGrp;    
+      leaf idx { type string; }
+    }
+    
+    list mdtConfig { 
+      when '../jobType = "IMMEDIATE_MDT_ONLY"'
+        + ' or ../jobType = "IMMEDIATE_MDT_AND_TRACE"'
+        + ' or ../jobType = "RLF_REPORT_ONLY"'
+        + ' or ../jobType = "RCEF_REPORT_ONLY"'
+        + ' or ../jobType = "LOGGED_MBSFN_MDT"'
+        + ' or ../jobType = "IMMEDIATE_MDT_AND_5GC_UE_LEVEL_MEASUREMENTS"'
+        + ' or ../jobType = 
+        "TRACE_AND_IMMEDIATE_MDT_AND_5GC_UE_LEVEL_MEASUREMENTS"';
+      key idx;
+      description "MDT config";
+      max-elements 1;       
+      uses MdtConfigGrp;
+      leaf idx { type string; }    
+    }
+
+    list ueCoreMeasConfig { 
+      when '../jobType = "5GC_UE_LEVEL_MEASUREMENTS_ONLY"'
+         + ' or ../jobType = "TRACE_AND_5GC_UE_LEVEL_MEASUREMENTS"'
+         + ' or ../jobType = "IMMEDIATE_MDT_AND_5GC_UE_LEVEL_MEASUREMENTS"'
+         + ' or ../jobType = 
+         "TRACE_AND_IMMEDIATE_MDT_AND_5GC_UE_LEVEL_MEASUREMENTS"';
+      key idx;
+      description "5GC UE level measurements config";
+      max-elements 1;       
+      uses UECoreMeasConfigGrp;
+      leaf idx { type string; }    
+    }
+   
+    list nPNTarget {
+      description "applicable only for NR and shall be present in case of NPN 
+        either a PNI-NPN or a SNPN) and for management-based activation when 
+        several NPNs are supported in the RAN.";
+      key idx;
+      max-elements 1;  
+      uses NpnIdGrp;
+      leaf idx { type string;}
+    }
+  }
+
+  grouping TraceSubtree {
+    description "Contains classes that manage Tracing.
+      Should be used in all  classes (or classes inheriting from)
+      - SubNetwork
+      - ManagedElement
+      - ManagedFunction
+
+      If a YANG module wants to augment these classes/list/groupings they must
+      augment all user classes!";
+
+    list TraceJob {
+      description "A TraceJob instance represents the Trace Control and 
+        Configuration parameters of a particular Trace Job (see TS 32.421 and 
+        TS 32.422 for details). It can be name-contained by SubNetwork, 
+        ManagedElement, ManagedFunction.
+
+        To activate Trace Jobs, a MnS consumer has to create TraceJob object 
+        instances on the MnS producer. A MnS consumer can activate a Trace Job 
+        for another MnS consumer since it is not required the value of 
+        traceCollectionEntityIPAddress or traceReportingConsumerUri to be 
+        his own.
+
+        For the details of Trace Job activation see clauses 4.1.1.1.2 and 
+        4.1.2.1.2 of TS 32.422.
+
+        When a MnS consumer wishes to deactivate a Trace Job, the MnS consumer 
+        shall delete the corresponding TraceJob instance. 
+        
+        For details of management Trace Job activation/deactivation see clause
+        4.1.1.1.2 of TS 32.422.
+
+        The attribute traceReference specifies a globally unique ID and 
+        identifies a Trace session. One Trace Session may be activated to 
+        multiple Network Elements. The traceReference is populated by the
+        consumer that makes the request for a Trace Session.
+
+        The jobId attribute presents the job identifier of a TraceJob instance. 
+        The jobId can be used to associate  multiple TraceJob instances. 
+        For example, it is possible to configure the same jobId value for 
+        multiple TraceJob instances required to produce the data (e.g. RSRP 
+        values of M1 and RLF reports) for a specific network analysis.
+
+        The attribute traceReportingFormat defines the method for reporting 
+        the produced measurements. The selectable options are file-based or 
+        stream-based reporting. In case of file-based reporting the attribute 
+        traceCollectionEntityIPAddress is used to specify the IP address to 
+        which the trace records shall be transferred, while in case of 
+        stream-based reporting the attribute traceReportingConsumerUri 
+        specifies the streaming target.
+
+        The mandatory attribute traceTarget determines the target object of 
+        the TraceJob. Dependent on the network element to which the Trace 
+        Session is activated different types of the target object are possible. 
+        The attribute pLMNTarget defines the PLMN for which sessions shall be 
+        selected in the Trace Session in case of management based activation 
+        when several PLMNs are supported in the RAN.
+
+        The attribute jobType specifies the kind of data to collect. In case of
+        Trace only, the configuration parameters of attribute traceConfig shall
+        be applied. In case of Immediate MDT only, Logged MDT only, RLF reports
+        only, RCEF reports only and Logged MBSFN MDT, the configuration 
+        parameters of attribute mdtConfig or a subset of these shall be 
+        applied. In case of UE measurements only, the configuration parameters
+        of attribute ueCoreMeasConfig shall be applied. In case of any
+        combination of Trace, Immediate MDT, Trace and UE measurements, the
+        configuration parameters of the corresponding attributes traceConfig,
+        mdtConfig and ueCoreMeasConfig are applicable. 
+
+        Creation and deletion of TraceJob instances by MnS consumers is 
+        optional; when not supported, the TraceJob instances may be created 
+        and deleted by the system or be pre-installed.";
+
+      key id;
+      uses top3gpp:Top_Grp ;
+      container attributes {
+        uses TraceJobGrp ;
+      }
+      uses files3gpp:FilesSubtree {
+        if-feature FilesUnderTraceJob;
+      }
+    }
+  }
+}

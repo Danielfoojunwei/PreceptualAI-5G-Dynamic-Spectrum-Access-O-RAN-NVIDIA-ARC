@@ -1,0 +1,117 @@
+module _3gpp-common-filemanagement {
+  yang-version 1.1;
+  namespace "urn:3gpp:sa5:_3gpp-common-filemanagement";
+  prefix "filemgmt3gpp";
+
+  import _3gpp-common-subnetwork { prefix subnet3gpp; }
+  import _3gpp-common-top { prefix top3gpp; }
+  import _3gpp-common-yang-types { prefix types3gpp; }
+  import _3gpp-common-yang-extensions { prefix yext3gpp; }
+  import _3gpp-common-managed-element { prefix me3gpp; }
+  import ietf-inet-types { prefix inet; }
+   
+  organization "3GPP SA5";
+  contact "https://www.3gpp.org/DynaReport/TSG-WG--S5--officials.htm?Itemid=464";
+  description "Defines the YANG mapping of the FileDownloadJob Information Object
+    Class (IOC) that is part of the Generic Network Resource Model (NRM).
+    Copyright 2023, 3GPP Organizational Partners (ARIB, ATIS, CCSA, ETSI, TSDSI, 
+    TTA, TTC). All rights reserved.";
+  reference "3GPP TS 28.623 Generic Network Resource Model (NRM)";
+
+  revision 2024-11-12 { reference CR-0473 ; }
+  revision 2023-09-18 { reference CR-0271 ; } 
+  revision 2023-02-14 { reference CR-0234; }
+  revision 2022-10-24 { reference CR-0196;  }
+  revision 2022-02-10 { reference "Initial revision, S5-221757"; }
+
+  grouping FileDownloadProcessMonitor {
+    description "Provides specialisations of the ProcessMonitor datatype.";
+    uses types3gpp:ProcessMonitorGrp {
+          refine resultStateInfo {
+            description "If status is FAILED resultStateInfo will be one of
+                the following or empty.";
+                must '../status != "FAILED"
+                or . = "UNKNOWN"
+                or . = "NO_STORAGE"
+                or . = "LOW_MEMORY"
+                or . = "NO_CONNECTION_TO_REMOTE_SERVER"
+                or . = "FILE_NOT_AVAILABLE"
+                or . = "DNS_CANNOT_BE_RESOLVED"
+                or . = "TIMER_EXPIRED"
+                or . = "OTHER"
+                or . = "NULL" ';
+          }
+           refine status {
+             description "Status must not be 'PARTIALLY_FAILED'.";
+             must '. != "PARTIALLY_FAILED" ';
+          }
+    }
+  }
+  
+  grouping FileDownloadJobGrp {
+    description "Represents the FileDownloadJob IOC.";
+    reference "3GPP TS 28.622";
+    uses top3gpp:Top_Grp;
+    
+    leaf fileLocation {
+      type inet:uri ;
+      yext3gpp:notNotifyable;
+      yext3gpp:inVariant;
+      description "Location of the file incl. the file transfer protocol, 
+        and the file name for the case the file content cannot be retrieved 
+        by reading the 'fileContent' attribute.
+        
+        The allowed file transfer protocols are:
+        - sftp
+        - ftpes
+        - https
+        
+        Examples:
+        'sftp://companyA.com/datastore/fileName.xml',
+        'https://companyA.com/ManagedElement=1/Files=1/File=1'
+        ";
+    }
+    
+    leaf notificationRecipientAddress {
+      description "Address of the notification recipient.";
+      type string;
+      yext3gpp:notNotifyable;
+      yext3gpp:inVariant;
+    }
+
+    leaf cancelJob {
+      description "Setting this attribute to TRUE cancels the file download job.
+         As specified in the definition of ProcessMonitor, cancellation is 
+         possible in the NOT_STARTED and RUNNING state. Setting the attribute  
+         to FALSE has no observable result.";
+      type boolean;
+      mandatory true;
+    }
+
+    list jobMonitor {
+      key "id";
+      description "Provides monitoring for the file download job.";
+      uses FileDownloadProcessMonitor;
+    }
+  }
+
+  grouping FileDownloadJobSubtree {
+    description "Helps augmenting FileDownloadJob into multiple places.";
+    list FileDownloadJob {
+      description "Specifies the FileDownloadJob IOC, see 3GPP TS 28.622.";
+      key "id";
+      uses top3gpp:Top_Grp;
+      container attributes {
+        uses FileDownloadJobGrp;
+      }
+    }  
+  }
+  
+  augment "/subnet3gpp:SubNetwork" {
+    uses FileDownloadJobSubtree;
+  }
+
+  augment "/me3gpp:ManagedElement" {
+    uses FileDownloadJobSubtree;
+  }
+}

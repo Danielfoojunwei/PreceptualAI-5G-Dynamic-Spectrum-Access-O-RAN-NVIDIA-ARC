@@ -1,0 +1,35 @@
+name: sbom
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  cyclonedx:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install runtime deps + cyclonedx-bom
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+          pip install cyclonedx-bom==7.3.0
+      - name: Generate CycloneDX 1.5 SBOM
+        run: |
+          mkdir -p deploy/sbom
+          cyclonedx-py environment --sv 1.5 --of JSON \
+            --output-file deploy/sbom/horizon-ric-sbom.json \
+            --pyproject pyproject.toml
+          python deploy/sbom/validate_sbom.py
+      - name: Upload SBOM as artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizon-ric-sbom-${{ github.ref_name }}
+          path: deploy/sbom/horizon-ric-sbom.json

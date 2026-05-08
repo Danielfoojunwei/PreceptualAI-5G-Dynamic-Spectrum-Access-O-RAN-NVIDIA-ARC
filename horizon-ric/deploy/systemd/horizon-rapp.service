@@ -1,0 +1,86 @@
+# PreceptualAI rApp — bare-metal systemd unit.
+#
+# Install:
+#   sudo cp deploy/systemd/horizon-rapp.service /etc/systemd/system/
+#   sudo cp .env.example /etc/horizon/horizon.env  # then edit
+#   sudo useradd --system --uid 10000 --home /opt/horizon --shell /usr/sbin/nologin horizon
+#   sudo install -d -o horizon -g horizon /var/lib/horizon /var/log/horizon
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now horizon-rapp
+#
+# The service uses Type=notify and WatchdogSec=30; the rApp lifecycle pings
+# WATCHDOG=1 every 15s via horizon_ric.rapp.sd_notify.
+
+[Unit]
+Description=PreceptualAI rApp — NTN-Aware AI-RAN Resource-Orchestration
+Documentation=https://github.com/preceptualai/horizon-ric
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=notify
+NotifyAccess=main
+
+User=horizon
+Group=horizon
+
+WorkingDirectory=/opt/horizon
+EnvironmentFile=-/etc/horizon/horizon.env
+
+ExecStart=/opt/horizon/.venv/bin/horizon-rapp
+
+# Graceful shutdown — give the rApp 25s to deregister + flush evidence chain.
+TimeoutStartSec=60
+TimeoutStopSec=30
+KillSignal=SIGTERM
+KillMode=mixed
+
+# Watchdog — the rApp pings every 15s, systemd kills + restarts at 30s silence.
+WatchdogSec=30
+
+# Resilience.
+Restart=on-failure
+RestartSec=10
+RestartSteps=5
+RestartMaxDelaySec=300
+
+# Hardening.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# rApp needs to write to /var/lib/horizon (state + evidence) and /var/log/horizon.
+ReadWritePaths=/var/lib/horizon /var/log/horizon
+
+# Resource limits.
+LimitNOFILE=65536
+LimitNPROC=4096
+TasksMax=4096
+
+# Logging — structlog already emits JSON; route to journald.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=horizon-rapp
+
+[Install]
+WantedBy=multi-user.target

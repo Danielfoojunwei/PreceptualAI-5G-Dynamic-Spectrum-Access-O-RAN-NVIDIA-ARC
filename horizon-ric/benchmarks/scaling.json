@@ -1,0 +1,37 @@
+[
+  {
+    "n": 1,
+    "spatial_prior_ms": 0.045551,
+    "entity_tokenizer_ms": 3.333542,
+    "perceiver_ms": 20.152945,
+    "total_ms": 23.532038
+  },
+  {
+    "n": 10,
+    "spatial_prior_ms": 0.264301,
+    "entity_tokenizer_ms": 17.531878,
+    "perceiver_ms": 23.462567,
+    "total_ms": 41.258746
+  },
+  {
+    "n": 100,
+    "spatial_prior_ms": 19.185832,
+    "entity_tokenizer_ms": 170.365759,
+    "perceiver_ms": 20.048402,
+    "total_ms": 209.59999299999998
+  },
+  {
+    "n": 1000,
+    "spatial_prior_ms": 1939.775457,
+    "entity_tokenizer_ms": 1688.39597,
+    "perceiver_ms": 33.217498,
+    "total_ms": 3661.388925
+  },
+  {
+    "n": 5000,
+    "entity_tokenizer_ms": 8844.583633,
+    "perceiver_ms": 31.928963,
+    "total_ms": 8876.512596,
+    "spatial_prior_ms": NaN
+  }
+]

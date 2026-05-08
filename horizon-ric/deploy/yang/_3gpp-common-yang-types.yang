@@ -1,0 +1,1041 @@
+module _3gpp-common-yang-types {
+  yang-version 1.1;
+  namespace "urn:3gpp:sa5:_3gpp-common-yang-types";
+  prefix "types3gpp";
+  
+  import ietf-inet-types { prefix inet; }
+  import ietf-yang-types { prefix yang; }
+  import _3gpp-common-yang-extensions { prefix yext3gpp; }
+
+  organization "3GPP SA5";
+  contact "https://www.3gpp.org/DynaReport/TSG-WG--S5--officials.htm?Itemid=464";
+  description "The model defines a YANG mapping of the top level 
+    information classes used for management of 5G networks and 
+    network slicing.
+    Copyright 2025, 3GPP Organizational Partners (ARIB, ATIS, CCSA, ETSI, TSDSI, 
+    TTA, TTC). All rights reserved.";
+  reference "3GPP TS 28.623";
+
+  revision 2025-11-06 { reference CR-1639 ; } 
+  revision 2025-10-06 { reference CR-0581; }
+  revision 2025-08-18 { reference CR-1557; }
+  revision 2025-08-06 { reference CR-0563; }
+  revision 2025-02-18 { reference CR-0511; } 
+  revision 2025-02-06 { reference CR-0507; } 
+  revision 2024-05-18 { reference CR-0359; } 
+  revision 2024-04-12 { reference CR-0346; } 
+  revision 2023-11-06 { reference CR-0305; }
+  revision 2023-09-18 { reference CR-0271 ; } 
+  revision 2023-08-09 { reference CR-0266; }
+  revision 2023-05-10 { reference CR-0250; }
+  revision 2023-02-14 { reference CR-0234; }
+  revision 2022-11-04 { reference "CR-0194"; }
+  revision 2022-10-24 { reference CR-0196;  }
+  revision 2022-07-26 { reference "CR-0180" ; }
+  revision 2022-02-09 { reference "CR-0144"; }
+  revision 2021-11-01 { reference "CR-0141"; }
+  
+  revision 2021-09-30 {
+    description "Added Longitude, Latitude, TenthOfDegrees, OnOff.";
+    reference "CR-0138";
+  }
+
+  revision 2020-11-06 {
+    description "Removed incorrect S-NSSAI definitions.";
+    reference "CR-0118";
+  }
+
+  revision 2020-03-10 {
+    description "Removed faulty when statements.";
+    reference "SP-200229";
+  }
+ 
+  revision 2019-10-25 {
+    description "Added ManagedNFProfile.";
+    reference "S5-194457";
+  }
+
+  revision 2019-10-16 {
+    description "Added SAP and usageState.";
+    reference "S5-193518";
+  }
+
+  revision 2019-06-23 {
+    reference  "Initial version.";
+  }
+
+  typedef EnabledDisabled {
+    type enumeration {
+      enum DISABLED ;
+      enum ENABLED ;
+    }
+  }
+  
+  grouping nameValuePair {
+    leaf name { type string; }
+    leaf value { type string; }
+  }
+
+  typedef DayOfWeek {
+    type enumeration {
+      enum MONDAY;
+      enum TUESDAY;
+      enum WEDNESDAY;
+      enum THURSDAY;
+      enum FRIDAY;
+      enum SATURDAY;
+      enum SUNDAY;
+    }
+  }
+  
+  typedef DaysOfMonth {
+    type uint8 {
+      range 0..31;
+    }
+  }
+  
+  typedef FullTime {
+    type yang:time-with-zone-offset;
+  }
+
+  grouping TimeWindowGrp {
+    leaf startTime {
+      type yang:date-and-time;
+      yext3gpp:inVariant;
+    }
+    leaf endTime {
+      type yang:date-and-time;
+      yext3gpp:inVariant;
+    }
+  }  
+  grouping SNssai {
+    description 
+      "Single Network Slice Selection Assistance Information(S-NSSAI)";
+    reference "3GPP TS 23.003";
+  
+    leaf sd {
+      description "Slice Differentiator
+        If not needed, the value can be set to ff:ff:ff.";
+      type yang:hex-string {
+        length 8;
+      }
+      reference "3GPP TS 23.003";
+    }
+    
+    leaf sst {
+      type uint8;
+      description "Slice/Service Type.
+         Values 0 to 127 belong to standardized SST range and are defined in 
+         3GPP TS 23.501. Values 128 to 255 belong to operator-specific range.";
+    }
+  }  
+  grouping ProcessMonitorGrp {
+    description "Provides attributes to monitor the progress of processes 
+      with specific purpose and limited lifetime running on MnS producers. 
+      It may be used as data type for dedicated progress monitor attributes 
+      when specifying the management representation of these processes. 
+      The attributes in this clause are defined in a generic way. 
+      For some attributes specialisations may be provided when specifying a 
+      concrete process representation.
+
+      If a management operation on some IOCs triggers an associated 
+      asynchronous process (whose progress shall be monitored), this should 
+      also result in creating an attribute named 'processMonitor' (of type 
+      'ProcessMonitor') in these IOC(s). The processMonitor attribute may be 
+      accompanied by use-case specific additional data items.
+
+      The progress of the process is described by the 'status' and 
+      'progressPercentage' attributes. Additional textual qualifications for 
+      the 'status' attribute may be provided by the 'progressStateInfo' and 
+      'resultStateInfo' attributes.
+
+      When the process is instantiated, the 'status' is set to 'NOT_RUNNING' 
+      and the 'progressPercentage' to '0'. The MnS producer decides when to 
+      start executing the process and to transition into the 'RUNNING' state. 
+      This time is captured in the 'startTime' attribute. Alternatively, the 
+      process may start to execute directly upon its instantiation. One 
+      alternative must be selected when using this data type.
+
+      During the 'RUNNING' state the 'progressPercentage' attribute may be 
+      repeatedly updated. The exact semantic of this attribute is subject to 
+      further specialisation. The 'progressInfo' attribute may be used to 
+      provide additional textual information in the 'NOT_RUNNING', 'CANCELLING' 
+      and 'RUNNING' states. Further specialisation of 
+      'progressStateInfo' may be provided where this data type is 
+      used.
+
+      Upon successful completion of the process, the 'status' attribute is set 
+      to 'FINISHED', the 'progressPercentage' to 100%. The time is captured in 
+      the 'endTime' attribute. Additional textual information may be provided 
+      in the 'resultStateInfo' attribute. The type of 
+      'resultStateInfo' in this data type definition is 'String'. 
+      Further specialisation of 'resultStateInfo' may be provided 
+      where this data type is used.
+
+      In case the process fails to complete successfully, the 'status' 
+      attribute is set to 'FAILED' or 'PARTIALLY_FAILED', the current value of 
+      'progressPercentage' is frozen, and the time captured in 'endTime'. The 
+      'resultStateInfo' specifies the reason for the failure. 
+      Specific failure reasons may be specified where the data type defined in 
+      this clause is used. The exact semantic of failure may be subject for 
+      further specialisation as well.
+
+      In case the process is cancelled, the 'status' attribute is first set to 
+      'CANCELLING' and when the process is really cancelled then to 'CANCELLED'. 
+      The transition to 'CANCELLED' is captured in the 'endTime' attribute. 
+      The value of 'progressPercentage' is frozen. Additional textual 
+      information may be provided in the 'resultStateInfo' attribute.
+
+      The 'resultStateInfo' attribute is provided only for additional textual 
+      qualification of the states 'FINISHED', 'FAILED', 'PARTIALLY_FAILED' or 
+      'CANCELLED'. It shall not be used for making the outcome, that the 
+      process may produce in case of success, available.
+
+      The process may have to be completed within a certain time after its 
+      creation, for example because required data may not be available any 
+      more after a certain time, or the process outcome is needed until a 
+      certain time and when not provided by this time is not needed any more. 
+      The time until the MnS producer automatically cancels the process is 
+      indicated by the 'timer' attribute.";
+      
+    leaf id {
+      type string;
+      mandatory true;
+      description "Id of the process. It is unique within a single 
+        multivalue attribute of type ProcessMonitor.";
+    }
+    
+    leaf status { 
+      type enumeration {
+        enum NOT_STARTED ;
+        enum RUNNING ;
+        enum CANCELLING ;
+        enum FINISHED ;
+        enum FAILED ;
+        enum PARTIALLY_FAILED ;
+        enum CANCELLED ;
+      }
+      config false;
+      default  RUNNING;
+      description "Represents the status of the associated process, 
+        whether it fails, succeeds etc. 
+        It does not represent the returned values of a successfully finished 
+        process. ";
+    }
+
+    leaf progressPercentage {
+      type uint8 {
+        range 0..100;
+      }
+      config false;
+      description "Progress of the associated process as percentage";
+    }
+
+    leaf-list progressStateInfo {
+      type string;
+      config false;
+      description "Additional textual qualification of the states 
+        'NOT_STARTED', 'CANCELLING' and 'RUNNING'.
+
+        For specific processes, specific well-defined strings (e.g. string 
+        patterns or enums) may be defined as a specialisation.";
+    }
+
+    leaf resultStateInfo {
+      type string;
+      config false;
+      description "Additional textual qualification of the states 
+        'FINISHED', 'FAILED', 'PARTIALLY_FAILED and 'CANCELLED'. 
+        For example, in the 'FAILED' or 'PARTIALLY_FAILED' state this 
+        attribute may be used to provide error reasons.
+
+        This attribute shall not be used to make the outcome of the process 
+        available for retrieval, if any. For this purpose, dedicated 
+        attributes shall be specified when specifying the representation of 
+        a specific process.
+
+        For specific processes, specific well-defined strings (e.g. string 
+        patterns or enums) may be defined as a specialisation.";
+    }
+
+    leaf startTime {
+      type yang:date-and-time;
+      config false;
+      description "Start time of the associated process, i.e. the time when the 
+        status changed from 'NOT_STARTED' to 'RUNNING'.";
+    }
+
+    leaf endTime {
+      type yang:date-and-time;
+      config false;
+      description "Date and time when status changed to 'SUCCESS', 'CANCELLED', 
+        'FAILED' or 'PARTIALLY_FAILED'. 
+
+        If the time is in the future, it is the estimated time 
+        the process will end.";
+    }
+
+    leaf timer {
+      type uint32;
+      units minutes;
+      description "Time until the associated process is automatically cancelled.
+        If set, the system decreases the timer with time. When it reaches zero 
+        the cancellation of the associated process is initiated by the 
+        MnS_Producer. 
+        If not set, there is no time limit for the process.
+        
+        Once the timer is set, the consumer can not change it anymore. 
+        If the consumer has not set the timer the MnS Producer may set it.";
+      yext3gpp:notNotifyable;
+    }
+  }
+  
+    grouping NpnIdGrp {
+    description "Represents the NPN supported by the <<IOC>> using this 
+      <<dataType>> as one of its attributes in case of the cell is a 
+      NPN-only cell.";
+      
+    list plmnId {
+      key "mcc mnc";
+      min-elements 1;
+      description "It specifies the PLMN Id of the NPN network.";
+      uses types3gpp:PLMNId;
+    }
+   
+    choice npnidChoice {
+      leaf-list cAGIdList {
+        type string {
+          pattern '^[A-Fa-f0-9]{8}$';
+        }
+        max-elements 256;
+        description "It identifies a CAG list containing up to 12 
+          CAG-identifiers per Ue or up to 12 CAG-identifiers per cell, 
+          see TS 38.331.
+          CAG ID is used to combine with PLMN ID to identify a PNI-NPN.CAG ID is
+          a hexadecimal range with size 32 bit";
+      }
+     
+      leaf-list nIDList {
+        type string {
+          pattern '^[A-Fa-f0-9]{11}$';
+        }
+        max-elements 16;
+        description "It identifies a list of NIDs containing up to 16 NIDs, see
+        TS 38.331. NID is used to combine with PLMN ID to identify an SNPN.
+        NID is a hexadecimal range with size 44 bit.";
+      }
+    }
+  }
+  
+
+
+  
+  
+  typedef TenthOfDegrees { 
+    type uint16 { 
+      range 0..3600; 
+    }
+    units "0.1 degrees";
+    description "A single integral value corresponding to an angle in degrees 
+      between 0 and 360 with a resolution of 0.1 degrees.";
+  }
+
+  typedef Latitude {
+    type decimal64 {
+      fraction-digits 4;
+      range "-90.0000..+90.0000"; 
+    }
+    description "Latitude values";
+  }
+
+  typedef Longitude {
+    type decimal64 {
+      fraction-digits 4;
+      range "-180.0000..+180.0000"; 
+    }
+    description "Longitude values";
+  }
+
+  typedef Altitude  {
+    type decimal64 {
+      fraction-digits 6;
+    }
+    units "meters";
+    description
+      "Height from a reference 0 value.";  
+  }
+
+  grouping GeographicalCoordinates {
+    description "This datatype represents the geographical coordinates";
+    reference "3GPP TS 28.538 clause 6.3.8";
+    
+    leaf latitude {
+      type Latitude;
+      mandatory true; 
+    }
+      
+    leaf longitude {
+      type Longitude;
+      mandatory true; 
+    }
+  }
+
+  typedef OnOff {
+    type enumeration {
+      enum ON;
+      enum OFF;
+    }
+  }
+  grouping SPNInfoIdGrp {
+    description "This data type represents the SNPN identification
+    consisting of MCC, MNC, and optionally NID.";
+    leaf mcc {
+      type string;
+      description "Mobile Country Code (MCC) of the SNPN.";
+    }
+
+        leaf mnc {
+            type string;
+            description "Mobile Network Code (MNC) of the SNPN.";
+        }
+
+        leaf nId {
+            type string;
+            description "Network Identifier (NID) of the SNPN.";
+        }
+    } 
+  grouping SNPNIdGrp {
+    description "This <<dataType>> represents the information of a SNPN
+     identification";
+    leaf mCC {
+      description "This is the Mobile Country Code (MCC) of the PLMN
+      identifier. See TS 23.003 [13] subclause 2.2 and 12.1";
+      type string;
+    }
+     leaf mNC {
+      description "This is the Mobile Network Code (MNC) of the PLMN
+      identifier. See TS 23.003 [13] subclause 2.2 and 12.1.";
+      type string;
+    }
+    leaf nId {
+      description "Network Identity; Shall be present if PlmnIdNid
+      identifies an SNPN";
+      type string;
+    }
+  }
+  
+  typedef usageState {
+    type enumeration {
+      enum IDLE;
+      enum ACTIVE;
+      enum BUSY;
+    }
+    description "It describes whether or not the resource is actively in 
+      use at a specific instant, and if so, whether or not it has spare 
+      capacity for additional users at that instant. The value is READ-ONLY.";
+    reference "ITU T Recommendation X.731";
+  }
+  
+  grouping SAPGrp {
+    leaf host {
+      type inet:host;
+      mandatory true;
+    }
+    leaf port {
+      type inet:port-number;
+      mandatory true;
+    }
+    description "Service access point.";
+    reference "TS 28.622";
+  }
+  
+  typedef Mcc {
+    description "The mobile country code consists of three decimal digits, 
+      The first digit of the mobile country code identifies the geographic 
+      region (the digits 1 and 8 are not used):";
+    type string {
+      pattern '[02-79][0-9][0-9]';
+    }
+    reference "3GPP TS 23.003 subclause 2.2 and 12.1";
+  }
+
+  typedef Mnc {
+    description "The mobile network code consists of two or three 
+      decimal digits (for example: MNC of 001 is not the same as MNC of 01)";
+    type string {
+      pattern '[0-9][0-9][0-9]|[0-9][0-9]';
+    }
+    reference "3GPP TS 23.003 subclause 2.2 and 12.1";
+  }
+
+  grouping PLMNId {
+    leaf mcc {
+      mandatory true;
+      type Mcc;
+    }
+    leaf mnc {
+      mandatory true;
+      type Mnc;
+    }
+    reference "TS 38.413 clause 9.3.3.5";
+  }
+  
+  typedef Nci {
+    description "NR Cell Identity. The NCI shall be of fixed length of 36 bits 
+      and shall be coded using full hexadecimal representation. 
+      The exact coding of the NCI is the responsibility of each PLMN operator";
+    reference "TS 23.003";
+    type union {
+      type string {
+        length 36;
+        pattern '[01]+';
+      }
+      type string {
+        length 9;
+        pattern '[a-fA-F0-9]*';
+      }
+    }
+  }
+    
+  typedef OperationalState {
+    reference "3GPP TS 28.625 and ITU-T X.731";
+    type enumeration {
+      enum DISABLED {
+        value 0;
+        description "The resource is totally inoperable.";
+      }
+
+      enum ENABLED {
+        value 1;
+        description "The resource is partially or fully operable.";
+      }
+
+    }
+  }
+  
+  typedef BasicAdministrativeState {
+    reference "3GPP TS 28.625 and ITU-T X.731";
+    type enumeration {
+      enum LOCKED {
+        value 0;
+        description "The resource is administratively prohibited from performing
+                 services for its users.";
+      }
+
+      enum UNLOCKED {
+        value 1;
+        description "The resource is administratively permitted to perform
+          services for its users. This is independent of its inherent
+          operability.";
+      }
+    }
+  }
+  
+  typedef AdministrativeState {
+    reference "3GPP TS 28.625 and ITU-T X.731";
+    type enumeration {
+      enum LOCKED {
+        value 0;
+        description "The resource is administratively prohibited from performing
+                 services for its users.";
+      }
+
+      enum UNLOCKED {
+        value 1;
+        description "The resource is administratively permitted to perform
+          services for its users. This is independent of its inherent
+          operability.";
+      }
+
+      enum SHUTTINGDOWN {
+        value 2;
+        description "Use of the resource is administratively permitted to
+          existing instances of use only. While the system remains in
+          the shutting down state the manager or the managed element 
+          may at any time cause the resource to transition to the 
+          locked state.";
+      }
+    }
+  }
+  
+  typedef AvailabilityStatus {
+      type enumeration {
+          enum IN_TEST;
+          enum FAILED;                           
+          enum POWER_OFF;                           
+          enum OFF_LINE;                           
+          enum OFF_DUTY;                           
+          enum DEPENDENCY;                           
+          enum DEGRADED;                           
+          enum NOT_INSTALLED;                           
+          enum LOG_FULL;                           
+       }
+  }
+  
+  typedef CellState {
+      type enumeration {
+        enum IDLE;
+        enum INACTIVE;              
+        enum ACTIVE;              
+     }
+  }
+
+  typedef Nrpci {
+    type uint32;
+    description "Physical Cell Identity (PCI) of the NR cell.";
+    reference "TS 36.211 subclause 6.11";
+  }
+
+  typedef Tac {
+    type int32 {
+      range 0..16777215 ;
+    }
+    description "Tracking Area Code";
+    reference "TS 23.003 clause 19.4.2.3";
+  }
+
+  grouping TaiGrp {
+    description "This <<dataType>> defines a Tracking Area Identity (TAI) 
+      as specified in clause 28.6 of TS 23.003, clause 8.2 of TS 38.300 
+      and clause 9.3.3.11 of TS 38.413. It is composed of the PLMN 
+      identifier (PLMN-Id, which is composed of the MCC and MNC) and 
+      the Tracking Area Code (TAC). ";
+    list plmnId {
+      description "PLMN Identity.";
+      min-elements 1;
+      max-elements 1;
+      key "mcc mnc";
+      uses types3gpp:PLMNId;
+    }
+    
+    leaf tac { type Tac; }
+  }
+       
+  grouping GeoCoordinateGrp {
+    description "Geographical location on earth"; 
+    leaf latitude {
+      type decimal64 {
+        fraction-digits 4;
+        range -90..90 ;
+      }
+      mandatory true;
+      description "Latitude based on World Geodetic System (1984 version) 
+        global reference frame (WGS 84). Positive values correspond to the 
+        northern hemisphere.";
+      }
+        
+    leaf longitude {
+      type decimal64 {
+        fraction-digits 4;
+        range -180..180 ;
+      }
+      mandatory true;
+      description "Longitude based on World Geodetic System (1984 version) 
+        global reference frame (WGS 84). Positive values correspond to 
+        degrees east of 0 degrees longitude.";
+    }
+    
+    leaf altitude { 
+      type Altitude; 
+    }     
+  }
+   
+  grouping GeoAreaGrp {
+    description "This data type defines a geographical area. 
+      The geo-area is defined using a convex polygon in the attribute 
+      'convexGeoPolygon'.";
+    
+    list convexGeoPolygon {
+      description "Specifies the geographical area with a convex polygon. 
+        The convex polygon is specified by its corners.";
+        key "latitude longitude";
+      min-elements 3;
+      ordered-by user;
+      
+      uses GeoCoordinateGrp;
+    }
+  }
+  
+  typedef AmfRegionId {
+    type union { 
+      type uint8 ;
+      type string {
+        length 8;
+        pattern '[01]*';
+      }
+    }
+    reference "clause 2.10.1 of 3GPP TS 23.003";
+  }
+
+  typedef AmfSetId {
+    type union { 
+      type uint16 {
+        range '0..1023';
+      }
+      type string {
+        length 8;
+        pattern '[01]*';
+      }
+    }
+    reference "clause 2.10.1 of 3GPP TS 23.003";
+  }
+
+  typedef AmfPointer {
+    type union { 
+      type uint8 {
+        range '0..63';
+      }
+      type string {
+        length 6;
+        pattern '[01]*';
+      }
+    }
+    reference "clause 2.10.1 of 3GPP TS 23.003";
+  }
+        
+  grouping AmfIdentifier {        
+    leaf amfRegionId {
+      type AmfRegionId;
+    }
+    leaf amfSetId {
+      type AmfSetId;
+    }
+    leaf amfPointer {
+      type AmfPointer;
+    } 
+    description "The AMFI is constructed from an AMF Region ID, 
+      an AMF Set ID and an AMF Pointer. 
+      The AMF Region ID identifies the region, 
+      the AMF Set ID uniquely identifies the AMF Set within the AMF Region, and 
+      the AMF Pointer uniquely identifies the AMF within the AMF Set. "; 
+  }    
+
+// type definitions especially for core NFs
+
+  typedef NfType {
+    type enumeration {
+      enum NRF;
+      enum UDM;
+      enum AMF;
+      enum SMF;
+      enum AUSF;
+      enum NEF;
+      enum PCF;
+      enum SMSF;
+      enum NSSF;
+      enum UDR;
+      enum LMF;
+      enum GMLC;
+      enum 5G_EIR;
+      enum SEPP;
+      enum UPF;
+      enum N3IWF;
+      enum AF;
+      enum UDSF;
+      enum BSF;
+      enum CHF;
+    }          
+  }
+  
+  typedef NotificationType {
+    type enumeration {
+      enum N1_MESSAGES;
+      enum N2_INFORMATION;
+      enum LOCATION_NOTIFICATION;
+    }      
+  }
+  
+  typedef Load {
+    description "Latest known load information of the NF, percentage ";
+    type uint8 {
+      range 0..100;
+    }
+  }
+
+  typedef N1MessageClass {
+    type enumeration {
+      enum 5GMM;
+      enum SM;
+      enum LPP;
+      enum SMS; 
+    }      
+  }
+  
+  typedef N2InformationClass {
+    type enumeration {
+      enum SM;
+      enum NRPPA;
+      enum PWS;
+      enum PWS_BCAL;
+      enum PWS_RF;
+    }              
+  }
+  
+  grouping DefaultNotificationSubscription {
+    
+    leaf notificationType {
+      type NotificationType;
+    }
+    
+    leaf callbackUri {
+      type inet:uri;
+    }
+    
+    leaf n1MessageClass {
+      type N1MessageClass;
+    }
+    
+    leaf n2InformationClass {
+      type N2InformationClass;
+    }    
+  }  
+        
+  grouping Ipv4AddressRange {
+  leaf start {
+    type inet:ipv4-address;
+    }
+  leaf end {
+    type inet:ipv4-address;
+    }    
+  }
+    
+  grouping Ipv6PrefixRange {
+  leaf start {
+    type inet:ipv6-prefix;
+    }
+  leaf end {
+    type inet:ipv6-prefix;
+    }    
+  }
+     
+  typedef NsiId {
+    type string;
+  }
+    
+  typedef UeMobilityLevel {
+    type enumeration {
+      enum STATIONARY;
+      enum NOMADIC;
+      enum RESTRICTED_MOBILITY;
+      enum FULLY_MOBILITY;
+    }
+  }
+      
+  typedef ResourceSharingLevel {
+      type enumeration {
+        enum SHARED;
+        enum NOT_SHARED;
+      }
+  }
+      
+  typedef TxDirection {
+      type enumeration {
+        enum DL;
+        enum UL;
+        enum DL_AND_UL;
+      }
+  }
+      
+  grouping AddressWithVlan {
+    leaf ipAddress {
+      type inet:ip-address;   
+    }
+    leaf vlanId {
+       type uint16;
+    }  
+  }
+
+  /* DistinguishedName pattern is built up based on the 
+    EBNF in 32.300 clause 7.3  EBNF of DN String Representation
+  
+    leaf DN { type string {   //  Same pattern as LocalDN
+      pattern '[A-Z][^,=+<>#;\\"\r\n*.]*=([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2}))(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?(,[A-Z][^,=+<>#;\\"\r\n*.]*=([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2}))(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?)*';      
+    } }
+  
+    leaf fullLocalDN { type string {   // LocalRDN , { RDNSeparator , LocalRDN }    RDNSeparator is a single , no space or \R allowed   Me.mykey=1 allowed
+      //  (fullLocalRDN)(,(fullLocalRDN))*
+      pattern '(([A-Z][^,=+<>#;\\"\r\n*.]*|([A-Z][^,=+<>#;\\"\r\n*.]*\.[a-z][^,=+<>#;\\"\r\n*.]*))=(([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2}))(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?))(,(([A-Z][^,=+<>#;\\"\r\n*.]*|([A-Z][^,=+<>#;\\"\r\n*.]*\.[a-z][^,=+<>#;\\"\r\n*.]*))=(([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2}))(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?)))*';      
+    } }
+  
+    leaf LocalDN { type string {   // LocalRDN , { RDNSeparator , LocalRDN }    RDNSeparator is a single , no space or \R allowed
+      //  LocalRDN(,LocalRDN)*
+      pattern '[A-Z][^,=+<>#;\\"\r\n*.]*=([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2}))(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?(,[A-Z][^,=+<>#;\\"\r\n*.]*=([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2}))(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?)*';      
+    } }
+  
+    leaf fullLocalRDN { type string {   // same as fullLocalDNAttributeTypeAndValue
+      pattern '([A-Z][^,=+<>#;\\"\r\n*.]*|([A-Z][^,=+<>#;\\"\r\n*.]*\.[a-z][^,=+<>#;\\"\r\n*.]*))=(([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2}))(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?)';      
+    } }
+  
+    leaf LocalRDN { type string {   // same as LocalDNAttributeTypeAndValue
+      pattern '[A-Z][^,=+<>#;\\"\r\n*.]*=([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2}))(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?';      
+    } }
+  
+    leaf fullLocalDNAttributeTypeAndValue { type string { // LocalDNAttributeType , AttributeTypeAndValueSeparator , RegularAttributeValue 
+      // pattern LocalDNAttributeType=RegularAttributeValue
+      pattern '([A-Z][^,=+<>#;\\"\r\n*.]*|([A-Z][^,=+<>#;\\"\r\n*.]*\.[a-z][^,=+<>#;\\"\r\n*.]*))=(([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2}))(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?)';      
+    } }
+    
+      // limitation: NamesOfClassAndNamingAttributenot supported Me.mykey=1
+    leaf LocalDNAttributeTypeAndValue { type string { 
+      // ebnf1          LocalDNAttributeType , AttributeTypeAndValueSeparator , RegularAttributeValue
+      // ebnf2-limited  NameOfClassWithIdAttribute , AttributeTypeAndValueSeparator , RegularAttributeValue
+      // pattern        NameOfClassWithIdAttribute=RegularAttributeValue
+      pattern '[A-Z][^,=+<>#;\\"\r\n*.]*=([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2}))(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?';      
+    } }
+
+    leaf LocalDNAttributeType { type string {   // NameOfClassWithIdAttribute | NamesOfClassAndNamingAttribute  RDNSeparator is a single , no space or \R allowed
+      //  NameOfClassWithIdAttribute|NamesOfClassAndNamingAttribute
+      pattern '[A-Z][^,=+<>#;\\"\r\n*.]*|([A-Z][^,=+<>#;\\"\r\n*.]*\.[a-z][^,=+<>#;\\"\r\n*.]*)';      
+    } }
+
+    leaf RegularAttributeValue { type string {       // ( AttributeValueChar - SpaceChar ) , [ { AttributeValueChar } , ( AttributeValueChar - SpaceChar ) ]
+      pattern '([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2}))(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?' ; 
+    } }
+    
+    leaf NamesOfClassAndNamingAttribute  { type string {  // ClassName , ClassNamingAttributeSeparator , NamingAttributeName
+      // pattern: ClassName\.NamingAttributeName
+      pattern '[A-Z][^,=+<>#;\\"\r\n*.]*\.[a-z][^,=+<>#;\\"\r\n*.]*' ; 
+    } }
+  
+    leaf restrictiveClassName { type string {     // 
+      pattern '[a-zA-Z][a-zA-Z0-9-_]*' ; 
+    } }
+  
+    leaf ClassName { type string {     // CapitalLetterChar , { LocalDNAttributeTypeChar }
+      pattern '[A-Z][^,=+<>#;\\"\r\n*.]*' ; 
+    } }
+  
+    leaf NamingAttributeName { type string {   // SmallLetterChar , { LocalDNAttributeTypeChar }
+      pattern '[a-z][^,=+<>#;\\"\r\n*.]*' ; 
+    } }    
+    
+  */
+  typedef DistinguishedName {    
+    type string {
+      pattern '[A-Z][^,=+<>#;\\"\r\n*.]*=([^,=+<>#;\\"\r\n* ]|'
+      + '(\\[a-fA-F0-9]{2}))(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*'
+      + '([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?'
+      + '(,[A-Z][^,=+<>#;\\"\r\n*.]*=([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2}))'
+      + '(([^,=+<>#;\\"\r\n*]|(\\[a-fA-F0-9]{2}))*'
+      + '([^,=+<>#;\\"\r\n* ]|(\\[a-fA-F0-9]{2})))?)*';      
+    }
+    description "Represents the 3GPP standard for DistinguishedName. 
+      
+      Limitations: 
+      - RDNSeparator: don't allow SpaceChar or CarriageReturnChar
+      - NullDN: Disallow nullDN that is the same as not providing a DN
+      - NamesOfClassAndNamingAttribute format not allowed 
+        (eg. ManagedElement.mykey=345436)";
+    reference  "3GPP TS 32.300";
+  } 
+ 
+  typedef QOffsetRange  {
+    type int8 { 
+      range "-24 | -22 | -20 | -18 | -16 | -14 | -12 | -10 | -8 | -6 | " +
+        " -5 | -4 | -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 8 | 10 | " +
+        " 12 | 14 | 16 | 18 | 20 | 22 | 24"; 
+    }
+    units dB;
+  }
+
+  grouping ReportingCtrl {
+    choice reportingCtrl {
+      mandatory true;
+      description "
+        This choice defines the method for reporting collected performance
+        metrics to MnS consumers as well as the parameters for configuring the
+        reporting function. It is a choice between the control parameter
+        required for the reporting methods, whose presence selects the
+        reporting method as follows:
+
+        - When only the fileReportingPeriod attribute is present, the MnS
+        producer shall store files on the MnS producer at a location selected
+        by the MnS producer and, on condition that an appropriate subscription
+        is in place, inform the MnS consumer about the availability of new
+        files and the file location using the notifyFileReady notification.
+        In case the preparation of a file fails, 'notifyFilePreparationError'
+        shall be sent instead.
+
+        - When the 'fileReportingPeriod' and 'notificationRecipientAddress'
+        attributes are present, then the MnS producer shall behave like
+        described for the case that only the 'fileReportingPeriod' is present.
+        In addition, the MnS producer shall create on behalf of the MnS
+        consumer a subscription, using 'NtfSubscriptionControl', for the
+        notification types 'notifyMOICreation' and 'notifyMOIDeletion' related
+        to the 'File' instances that will be produced later. In case an existing
+        subscription does already include the 'File' instances to be produced,
+        no new subscription shall be created. The
+        'notificationRecipientAddress' attribute in the created
+        'NtfSubscriptionControl' instance shall be set to the value of the
+        'notificationRecipientAddress' in the related 'PerfMetricJob'. This
+        feature is called implicit notification subscription, as opposed to the
+        case where the MnS consumer creates the subscription (explicit
+        notification subscription). When the related 'PerfMetricJob' is
+        deleted, the 'NtfSubscriptionControl' instance created due to the
+        request for implicit subscription shall be deleted as well.
+
+        - When only the 'fileReportingPeriod' and 'fileLocation' attributes
+        are present (CHOICE_3), the MnS producer shall store the files at the
+        location specified by 'fileLocation'. The file location may identify 
+        any entity such as a file server or a MnS consumer. The identified 
+        MnS consumer may or may not be identical to the MnS consumer creating 
+        the 'PerfMetricJob'. The MnS producer may emit 'notifyFileReady' and 
+        'notifyFilePreparationError' notifications to inform subscribers that 
+        a file has been made available at the location specified by 'fileLocation'.
+
+        - When only the streamTarget attribute is present, the MnS producer
+        shall stream the data to the location specified by streamTarget.
+
+        For the file-based reporting methods the fileReportingPeriod attribute
+        specifies the time window during which collected measurements are
+        stored into the same file before the file is closed and a new file is
+        opened.";
+
+      case file-based-reporting {
+        leaf fileReportingPeriod {
+          type uint32 {
+            range 1..max;
+          }
+          units minutes;
+          mandatory true;
+          description "For the file-based reporting method this is the time
+            window during which collected measurements are stored into the same
+            file before the file is closed and a new file is opened.
+            The time-period must be a multiple of the granularityPeriod.
+
+            Applicable when the file-based reporting method is supported.";
+        }
+        choice reporting-target {
+          case file-target {
+            leaf fileLocation {
+            type string ;
+            description "Applicable and must be present when the file-based
+              reporting method is supported, and the files are stored on the MnS
+              consumer.";
+            }
+          }
+          case notification-target {
+            leaf notificationRecipientAddress {
+            type string;
+            description "Must be present when the notification-based reporting
+              method is supported, and the the files are available as
+              notifications for the MnS consumer to subscribe to.";
+            }
+          }
+        description "When netiher fileLocation or notificationRecipientAddress
+          are present, the files are stored and available to the MnS consumer
+          if the MnS subscribes to the notifyFileReady notification.";
+        }
+      }
+
+      case stream-based-reporting {
+        leaf streamTarget {
+          type string;
+          mandatory true;
+          description "Applicable when stream-based reporting method is
+            supported.";
+        }
+      }
+    }
+  }
+}

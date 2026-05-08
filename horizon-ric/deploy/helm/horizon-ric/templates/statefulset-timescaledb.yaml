@@ -1,0 +1,164 @@
+{{- if .Values.timescaledb.enabled }}
+---
+# TimescaleDB — primary backing store for the `decisions` hypertable.
+# Closes Row 38 (DR backup/restore). The image is the official
+# `timescale/timescaledb:<version>-pg<pg-major>` distribution; we hold the
+# evidence chain on a real PVC so backups are recoverable across pod
+# rescheduling. Retention on the hypertable is enforced via the
+# initialisation ConfigMap (drop_chunks older than 7 days).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "horizon-ric.fullname" . }}-timescaledb
+  labels:
+    {{- include "horizon-ric.labels" . | nindent 4 }}
+    app.kubernetes.io/component: timescaledb
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+      protocol: TCP
+  selector:
+    {{- include "horizon-ric.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: timescaledb
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "horizon-ric.fullname" . }}-timescaledb
+  labels:
+    {{- include "horizon-ric.labels" . | nindent 4 }}
+    app.kubernetes.io/component: timescaledb
+type: Opaque
+data:
+  # Random password generated at install time; idempotent across upgrades
+  # via the `lookup` fallback (returns the existing secret's value when
+  # present, otherwise generates a fresh 32-char alphanumeric password).
+  {{- $existing := (lookup "v1" "Secret" .Release.Namespace (printf "%s-timescaledb" (include "horizon-ric.fullname" .))) }}
+  {{- $password := "" }}
+  {{- if and $existing $existing.data $existing.data.POSTGRES_PASSWORD }}
+  {{-   $password = $existing.data.POSTGRES_PASSWORD }}
+  {{- else }}
+  {{-   $password = (randAlphaNum 32 | b64enc) }}
+  {{- end }}
+  POSTGRES_PASSWORD: {{ $password | quote }}
+  POSTGRES_USER: {{ .Values.timescaledb.user | b64enc | quote }}
+  POSTGRES_DB:   {{ .Values.timescaledb.database | b64enc | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "horizon-ric.fullname" . }}-timescaledb-init
+  labels:
+    {{- include "horizon-ric.labels" . | nindent 4 }}
+    app.kubernetes.io/component: timescaledb
+data:
+  # initdb hook: create the TimescaleDB extension + the decisions hypertable
+  # with chunk_time_interval = 1 day, then enforce 7-day retention.
+  01-init.sql: |
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
+    CREATE TABLE IF NOT EXISTS decisions (
+      decision_id    TEXT          NOT NULL,
+      ts             TIMESTAMPTZ   NOT NULL,
+      tenant_id      TEXT          NOT NULL,
+      chain_hash     BYTEA         NOT NULL,
+      payload        JSONB         NOT NULL,
+      PRIMARY KEY (decision_id, ts)
+    );
+    SELECT create_hypertable(
+      'decisions', 'ts',
+      chunk_time_interval => INTERVAL '1 day',
+      if_not_exists => TRUE
+    );
+    SELECT add_retention_policy(
+      'decisions', INTERVAL '{{ .Values.timescaledb.retention }}',
+      if_not_exists => TRUE
+    );
+    CREATE INDEX IF NOT EXISTS decisions_tenant_ts ON decisions (tenant_id, ts DESC);
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "horizon-ric.fullname" . }}-timescaledb
+  labels:
+    {{- include "horizon-ric.labels" . | nindent 4 }}
+    app.kubernetes.io/component: timescaledb
+spec:
+  serviceName: {{ include "horizon-ric.fullname" . }}-timescaledb
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "horizon-ric.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: timescaledb
+  template:
+    metadata:
+      labels:
+        {{- include "horizon-ric.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: timescaledb
+    spec:
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+        runAsNonRoot: true
+      containers:
+        - name: timescaledb
+          image: "{{ .Values.timescaledb.image.repository }}:{{ .Values.timescaledb.image.tag }}"
+          imagePullPolicy: {{ .Values.timescaledb.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "horizon-ric.fullname" . }}-timescaledb
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "horizon-ric.fullname" . }}-timescaledb
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "horizon-ric.fullname" . }}-timescaledb
+                  key: POSTGRES_DB
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "{{ .Values.timescaledb.user }}", "-d", "{{ .Values.timescaledb.database }}"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "{{ .Values.timescaledb.user }}", "-d", "{{ .Values.timescaledb.database }}"]
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.timescaledb.resources | nindent 12 }}
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+      volumes:
+        - name: init-sql
+          configMap:
+            name: {{ include "horizon-ric.fullname" . }}-timescaledb-init
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.timescaledb.persistence.storageClass }}
+        storageClassName: {{ .Values.timescaledb.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.timescaledb.persistence.size }}
+{{- end }}
