@@ -472,7 +472,7 @@ The 0.19 % residual violation rate is the BR-IFIC reference set behaviour; this 
 | Horizon | ECE | 95 % CI | Brier | Status (≤ 0.10 bar) |
 |---|---:|---|---:|:---:|
 | 30 s | **0.0484** | [0.0375, 0.0731] | 0.1198 | ✅ PASS |
-| 60 s | **0.0794** | [0.058, 0.109] | 0.182 | ✅ PASS (CI grazes) |
+| 60 s | **0.0788** | [0.0579, 0.1090] | 0.1816 | ✅ PASS (CI grazes) |
 | 300 s | **0.0540** | [0.042, 0.087] | 0.183 | ✅ PASS |
 
 The 60 s upper-CI of 0.109 grazes the 0.10 bar; documented honestly in `docs/sla_calibration.md` as calibration debt ticket TD-MPC2-CAL-1. Reliability diagram with Wilson 95 % CI ribbon at `benchmarks/sla_tail_calibration.png`.

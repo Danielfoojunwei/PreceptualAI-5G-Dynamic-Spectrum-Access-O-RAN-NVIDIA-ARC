@@ -39,6 +39,12 @@ dependencies = [
     "casbin>=1.36",                      # security/rbac.py
     "authlib>=1.3",                      # rapp/auth.py (OAuth2 client)
     "starlette>=0.37",                   # used by rapp/middleware
+    # Data + planner deps that are top-level imports and break collection
+    # when missing (per CI run 25557819898 logs):
+    "pyarrow>=15.0",                     # data/aerial.py (FAPI parquet)
+    "sgp4>=2.23",                        # planner/physics/orbital.py (TLE propagator)
+    "phe>=1.5",                          # trading/auction.py (Paillier; private_auction
+                                         #   ships its own pure-python fallback)
     # Observability
     "opentelemetry-api>=1.25",
     "opentelemetry-sdk>=1.25",

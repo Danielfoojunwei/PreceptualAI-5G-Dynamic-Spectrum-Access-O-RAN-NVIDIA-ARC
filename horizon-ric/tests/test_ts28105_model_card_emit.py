@@ -29,8 +29,23 @@ def _list_card_pt_pairs() -> list[tuple[Path, Path]]:
         pt = md.with_suffix(".pt")
         if pt.is_file():
             pairs.append((md, pt))
-    assert pairs, f"no checkpoint cards found under {CKPT}"
+    # CI / fresh-clone tolerance: `.gitignore` excludes `*.pt`, so binary
+    # checkpoints are not committed. The model-card MDs are committed but
+    # the .pt files only exist after training. When no pairs are found,
+    # the parametrised tests are auto-skipped (parametrize() over an empty
+    # list yields zero cases). A separate test below asserts the .md cards
+    # themselves exist + are well-formed even without binary artefacts.
     return pairs
+
+
+def _list_md_only_cards() -> list[Path]:
+    """Every committed model-card MD, regardless of .pt presence.
+
+    Used by the CI-friendly ``test_md_cards_exist`` smoke check below so
+    we still gate that the canonical cards roster is committed (the
+    `.pt` weights are not).
+    """
+    return sorted(CKPT.glob("*.md"))
 
 
 def _sha256_file(p: Path) -> str:
@@ -192,6 +207,19 @@ def test_card_inference_type_is_recognised(md: Path, pt: Path) -> None:
     val = m.group(1).lower()
     assert val in {"real-time", "batch", "stream", "near-real-time"}, (
         f"{md.name}: inferenceType {val!r} not in TS 28.105 §7.4 vocab."
+    )
+
+
+def test_md_cards_exist() -> None:
+    """The model-card MDs are committed even when the .pt weights are not.
+
+    Closes a CI gap where the prior assertion in `_list_card_pt_pairs()`
+    aborted collection on a fresh clone (which gitignores `*.pt`).
+    """
+    cards = _list_md_only_cards()
+    assert len(cards) >= 5, (
+        f"expected ≥ 5 model-card MDs under {CKPT}, found {len(cards)}; "
+        f"the cards themselves must be committed regardless of weights"
     )
 
 
