@@ -23,7 +23,7 @@ import sqlite3
 import subprocess
 import sys
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -40,7 +40,6 @@ from horizon_ric.evidence.schema import (  # noqa: E402
     PredictedOutcome,
 )
 from horizon_ric.evidence.store import JsonlEvidenceStore  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

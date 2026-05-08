@@ -17,7 +17,6 @@ from horizon_ric.policy.td_mpc_planner import (
     TDMPCPlanner,
 )
 
-
 # ─── LiquidS4 ────────────────────────────────────────────────────────────
 
 

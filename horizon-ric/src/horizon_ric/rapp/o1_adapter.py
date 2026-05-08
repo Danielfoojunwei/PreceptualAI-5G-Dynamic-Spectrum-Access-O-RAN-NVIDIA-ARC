@@ -245,7 +245,6 @@ class O1Adapter:
         loop = asyncio.get_running_loop()
 
         def _run() -> str:  # pragma: no cover — IO
-            attrs: list[str] = []
             inner = ""
             if stream:
                 inner += f"<stream>{stream}</stream>"

@@ -8,8 +8,8 @@ from horizon_ric.planner.physics.coexistence import (
     aggregate_aclr_leakage_dBm,
     compose_feasibility,
     ngso_inline_event_probability,
-    ntn_to_terrestrial_required_guard_db,
     nru_fair_share_airtime,
+    ntn_to_terrestrial_required_guard_db,
     p_servicelink_rain_given_gateway,
 )
 

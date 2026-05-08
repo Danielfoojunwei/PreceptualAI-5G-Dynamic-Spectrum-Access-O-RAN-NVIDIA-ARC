@@ -47,8 +47,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 try:  # pragma: no cover - import shim
     import pkcs11 as _pkcs11
-    from pkcs11 import Mechanism as _Mechanism
     from pkcs11 import KeyType as _KeyType
+    from pkcs11 import Mechanism as _Mechanism
     from pkcs11 import ObjectClass as _ObjectClass
 
     _PKCS11_AVAILABLE = True

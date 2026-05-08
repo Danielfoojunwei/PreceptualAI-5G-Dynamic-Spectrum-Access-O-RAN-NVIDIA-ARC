@@ -16,11 +16,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from hypothesis import HealthCheck, assume, given, settings, strategies as st
+from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import strategies as st
 
 # ───────────────────────── propagation.py ─────────────────────────────
-
-
 from horizon_ric.planner.physics.propagation import (
     free_space_path_loss_dB,
     gas_attenuation_dB,
@@ -240,8 +239,7 @@ def test_evidence_chain_detects_tamper_at_exact_index(
 
 import torch
 
-from horizon_ric.core.cfc_core import CfCConfig
-from horizon_ric.core.cfc_core import CfCCell
+from horizon_ric.core.cfc_core import CfCCell, CfCConfig
 
 
 @settings(max_examples=20, deadline=4000)

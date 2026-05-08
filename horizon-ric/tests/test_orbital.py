@@ -20,7 +20,6 @@ from horizon_ric.planner.physics.orbital import (
     walker_delta_constellation,
 )
 
-
 _T0 = datetime(2026, 5, 6, 12, 0, 0, tzinfo=timezone.utc)
 
 

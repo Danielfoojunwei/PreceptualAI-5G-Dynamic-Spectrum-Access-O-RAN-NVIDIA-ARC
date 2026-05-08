@@ -30,7 +30,6 @@ import pytest
 
 from horizon_ric.rapp.o1_adapter import O1Adapter, O1AdapterConfig
 
-
 _HOST = os.getenv("O1_TEST_HOST", "127.0.0.1")
 _PORT = int(os.getenv("O1_TEST_PORT", "8830"))
 _USER = os.getenv("O1_TEST_USER", os.getenv("USER", "netconf"))

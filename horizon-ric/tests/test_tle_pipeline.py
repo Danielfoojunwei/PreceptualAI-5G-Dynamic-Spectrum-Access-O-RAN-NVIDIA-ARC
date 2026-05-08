@@ -21,7 +21,6 @@ import pytest
 from horizon_ric.data.tle_pipeline import TLEConstellationPropagator
 from horizon_ric.planner.physics.epfd import EPFDTimeCDF, NGSOEmitter
 
-
 # ─── helpers ─────────────────────────────────────────────────────────────
 
 

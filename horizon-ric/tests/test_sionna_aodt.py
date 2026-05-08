@@ -19,7 +19,6 @@ from horizon_ric.data.aodt import AODTScenario
 from horizon_ric.data.sionna_channel import SionnaChannelGenerator
 from horizon_ric.encoder.spatial_prior import SpatialPrior
 
-
 AODT_TEST_SCENE = Path(__file__).parent / "fixtures" / "aodt_test_scene.usda"
 
 

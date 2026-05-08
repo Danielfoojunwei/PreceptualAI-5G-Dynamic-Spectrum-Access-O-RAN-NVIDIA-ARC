@@ -24,9 +24,17 @@ from horizon_ric.federated import ClientUpdate, FedAvg
 # can pickle it by import path.
 from tests._fed_worker import (
     TinyLinear as _TinyLinear,
+)
+from tests._fed_worker import (
     client_worker as _client_worker,
-    state_from_bytes as _state_from_bytes,
+)
+from tests._fed_worker import (
     state_dict_to_bytes as _state_dict_to_bytes,
+)
+from tests._fed_worker import (
+    state_from_bytes as _state_from_bytes,
+)
+from tests._fed_worker import (
     tensor_to_bytes as _tensor_to_bytes,
 )
 

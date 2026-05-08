@@ -88,7 +88,6 @@ class SpatialPrior:
             geometry from entity i to entity j.
         """
         if not entities:
-            empty = np.empty((0,))
             return SpatialPriorTensor(
                 node_xyz_m=np.zeros((0, 3)),
                 los_mask=np.zeros((0, 0), dtype=bool),

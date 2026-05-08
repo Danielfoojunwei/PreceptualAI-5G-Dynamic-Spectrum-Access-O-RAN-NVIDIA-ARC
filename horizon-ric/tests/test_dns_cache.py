@@ -19,7 +19,6 @@ from horizon_ric.runtime.dns_cache import (
     build_caching_async_client,
 )
 
-
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 

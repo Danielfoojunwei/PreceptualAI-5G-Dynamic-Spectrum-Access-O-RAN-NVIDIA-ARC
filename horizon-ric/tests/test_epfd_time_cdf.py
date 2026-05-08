@@ -12,7 +12,6 @@ from horizon_ric.planner.physics.epfd import (
 )
 from horizon_ric.planner.physics.geodesy import ECEF, GSO_RADIUS_M
 
-
 _T0 = datetime(2026, 5, 6, 12, 0, 0, tzinfo=timezone.utc)
 
 

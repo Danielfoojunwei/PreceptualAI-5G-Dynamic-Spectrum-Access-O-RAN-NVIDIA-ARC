@@ -21,7 +21,6 @@ from horizon_ric.rapp.a1_adapter import (
 from horizon_ric.rapp.lifecycle import HorizonRAppLifecycle, RAppState
 from horizon_ric.rapp.r1_adapter import R1Adapter, R1AdapterConfig
 
-
 # ─── R1 adapter ───────────────────────────────────────────────────────────
 
 

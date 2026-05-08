@@ -50,7 +50,6 @@ from horizon_ric.policy.diffusion_tail import (  # noqa: E402
     DiffusionTailSampler,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEEPMIMO_ROOT = Path("/home/danielfoojunwei/Preceptualv1/data/deepmimo")
 OUT_PLOT = REPO_ROOT / "benchmarks" / "diffusion_tail_reliability.png"

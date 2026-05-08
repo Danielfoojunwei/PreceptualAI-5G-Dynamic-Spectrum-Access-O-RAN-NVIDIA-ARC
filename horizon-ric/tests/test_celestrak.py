@@ -22,7 +22,6 @@ from horizon_ric.data.celestrak import (
 )
 from horizon_ric.io.registry import list_connectors
 
-
 # Pick the first available LEO-ish group for the basic reader tests.
 # Order matters: prefer larger ones for stronger signal, fall back as needed.
 _PREFERRED_GROUPS = [

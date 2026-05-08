@@ -7,7 +7,6 @@ from horizon_ric.rapp.a1_adapter import A1Adapter, A1AdapterConfig
 from horizon_ric.rapp.auth import AuthConfig, build_secure_async_client
 from horizon_ric.rapp.r1_adapter import R1Adapter, R1AdapterConfig
 
-
 # ─── AuthConfig + secure-client construction ────────────────────────────
 
 

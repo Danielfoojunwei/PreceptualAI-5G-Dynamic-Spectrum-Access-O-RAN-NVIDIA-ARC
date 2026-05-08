@@ -10,7 +10,6 @@ from horizon_ric.trading import (
     SecondPriceResult,
 )
 
-
 # Use a smaller key for fast tests; not for production.
 _TEST_KEY_BITS = 1024
 

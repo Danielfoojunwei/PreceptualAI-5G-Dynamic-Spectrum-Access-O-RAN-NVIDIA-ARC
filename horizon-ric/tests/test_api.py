@@ -36,7 +36,6 @@ from horizon_ric.rapp.dashboard_api import (  # noqa: E402
     issue_token,
 )
 
-
 # ── fixtures ────────────────────────────────────────────────────────────────
 
 

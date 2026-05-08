@@ -14,7 +14,6 @@ import pytest
 
 from horizon_ric.io.registry import ConnectorRegistry, get_source, list_connectors
 
-
 HAS_EXAMPLE = importlib.util.find_spec("random_telemetry") is not None
 
 

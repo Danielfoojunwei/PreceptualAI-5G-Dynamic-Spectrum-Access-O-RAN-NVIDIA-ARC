@@ -27,11 +27,10 @@ import pytest
 from jose.exceptions import JWTError
 
 from horizon_ric.security.jwt import (
+    _OVERLAP_WINDOW_DEFAULT_SEC,
     MAX_CLOCK_SKEW_SECONDS,
     JWTManager,
-    _OVERLAP_WINDOW_DEFAULT_SEC,
 )
-
 
 _FIXTURE = Path(__file__).resolve().parent / "fixtures" / "test_jwt_signing.pem"
 

@@ -12,6 +12,7 @@ import logging
 import math
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from horizon_ric.data.itu_r import (
@@ -25,8 +26,6 @@ from horizon_ric.data.itu_r import (
     _to_grid_lon,
 )
 from horizon_ric.planner.physics.propagation import rain_attenuation_dB
-import numpy as np
-
 
 # Resolve the on-disk data dir the same way the reader does. We
 # don't import its private helper; we just hard-code the canonical

@@ -18,7 +18,6 @@ from horizon_ric.core.timing_budgets import (
     memory_bound_latency_ms,
 )
 
-
 # ─── CfCCell ─────────────────────────────────────────────────────────────
 
 

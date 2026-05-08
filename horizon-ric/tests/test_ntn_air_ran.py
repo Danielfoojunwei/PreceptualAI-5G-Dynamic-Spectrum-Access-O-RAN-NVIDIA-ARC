@@ -19,7 +19,6 @@ from horizon_ric.scenarios.disaster import _default_config as _disaster_defaults
 from horizon_ric.scenarios.enterprise import _default_config as _enterprise_defaults
 from horizon_ric.scenarios.rural import _default_config as _rural_defaults
 
-
 # ---------------------------------------------------------------------------
 # Generic framework
 # ---------------------------------------------------------------------------

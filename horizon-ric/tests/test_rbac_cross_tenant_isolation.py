@@ -17,9 +17,9 @@ from pathlib import Path
 import pytest
 
 from horizon_ric.security.rbac import (
-    Casbin,
     DEFAULT_MODEL_PATH,
     DEFAULT_POLICY_PATH,
+    Casbin,
 )
 
 

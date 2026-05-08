@@ -13,14 +13,14 @@ from horizon_ric.encoder.link_state import (
 )
 from horizon_ric.planner.physics.orbital import (
     KeplerianElements,
+    OrbitalState,
     keplerian_state,
 )
-
 
 _T0 = datetime(2026, 5, 6, 12, 0, 0, tzinfo=timezone.utc)
 
 
-def _starlink_state() -> "OrbitalState":
+def _starlink_state() -> OrbitalState:
     return keplerian_state(KeplerianElements(
         a_km=6378.137 + 550.0,
         e=0.0,

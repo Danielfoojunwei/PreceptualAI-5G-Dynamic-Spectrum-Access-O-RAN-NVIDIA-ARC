@@ -27,7 +27,6 @@ import pytest
 
 from horizon_ric.rapp.a1_adapter import A1Adapter, A1AdapterConfig
 
-
 # Per-dialect URL/body expectations. policy_type_id 20001 corresponds to
 # the default "horizon.qos.priority" type defined in DEFAULT_POLICY_TYPES.
 DIALECTS: dict[str, dict[str, str | Callable[[str], str]]] = {

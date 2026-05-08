@@ -116,7 +116,7 @@ def _normalise_grid(grid: _Grid) -> _Grid:
 
 def _to_grid_lon(lon_deg: float, grid_lons: np.ndarray) -> float:
     """Translate input lon ∈ [-180,180] to whatever convention the grid uses."""
-    lo, hi = float(grid_lons[0]), float(grid_lons[-1])
+    hi = float(grid_lons[-1])
     # Tolerance for grid that wraps to 360 vs 359.x
     if hi > 180.5:
         # Grid stored on [0, 360]
@@ -153,7 +153,6 @@ def _bilinear(grid: _Grid, lat_deg: float, lon_deg: float) -> float:
         j1 = 0
         # Distance from lons[j0] (upper end) to g_lon, treating wrap.
         # Compute fractional position as if lons extended.
-        dlon = (lons[1] - lons[0]) if n_lon > 1 else 1.0
         # Use lons[j0]-360 as the "left" sample if grid is 0..360.
         if lons[-1] > 180.5:
             left = float(lons[j0]) - 360.0

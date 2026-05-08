@@ -100,7 +100,6 @@ def ecef_to_geodetic(p: ECEF) -> tuple[float, float, float]:
     if p_xy < 1e-9:
         # Near a geographic pole.
         lat = math.copysign(math.pi / 2.0, z)
-        n_polar = WGS84_A_M * WGS84_A_M / WGS84_B_M
         h = abs(z) - WGS84_B_M
         return math.degrees(lat), math.degrees(lon), h
 

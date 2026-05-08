@@ -14,7 +14,6 @@ from horizon_ric.encoder import (
 )
 from horizon_ric.planner.physics.geodesy import ECEF
 
-
 # ─── SpatialPrior ────────────────────────────────────────────────────────
 
 

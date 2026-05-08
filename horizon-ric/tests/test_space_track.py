@@ -15,7 +15,6 @@ import pytest
 
 from horizon_ric.data.space_track import SpaceTrackClient
 
-
 _FAKE_TLE = (
     "ISS (ZARYA)\n"
     "1 25544U 98067A   24123.45678901  .00012345  00000-0  22334-4 0  9990\n"

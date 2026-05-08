@@ -22,7 +22,6 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from horizon_ric.core import LatentDynamics, LatentDynamicsConfig
 from horizon_ric.policy.td_mpc_planner import TDMPCConfig, TDMPCPlanner
 
-
 CHECKPOINTS = ROOT / "checkpoints"
 TRAINED_AVAILABLE = (
     (CHECKPOINTS / "tdmpc_value_v0.1.pt").exists()
@@ -208,7 +207,11 @@ class TestTDMPCPlannerCheckpointed:
     def _load(self):
         # Import the training module's heads to get the matching nn.Module shape.
         from train_tdmpc_planner import (  # type: ignore[import-not-found]
-            D_ACTION, D_LATENT, HORIZON, PolicyPrior, ValueHead,
+            D_ACTION,
+            D_LATENT,
+            HORIZON,
+            PolicyPrior,
+            ValueHead,
         )
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

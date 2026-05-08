@@ -165,8 +165,6 @@ def j2_secular_rates(elem: KeplerianElements) -> tuple[float, float, float]:
     p = elem.a_km * (1.0 - elem.e * elem.e)
     factor = 1.5 * n * _J2 * (_R_E_KM / p) ** 2
     cos_i = math.cos(elem.i_rad)
-    sin_i = math.sin(elem.i_rad)
-    sin2_i = sin_i * sin_i
     d_raan = -factor * cos_i
     d_argp = 0.5 * factor * (5.0 * cos_i * cos_i - 1.0)
     d_M = 0.5 * factor * math.sqrt(1.0 - elem.e * elem.e) * (3.0 * cos_i * cos_i - 1.0)

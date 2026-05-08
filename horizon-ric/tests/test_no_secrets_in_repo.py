@@ -124,7 +124,7 @@ def test_no_committed_private_key_files() -> None:
     """No `*.key|*.pem|*.p12|*.pfx` in the repo unless explicitly allowlisted."""
     offenders: list[str] = []
     for p in _walk_repo():
-        if not p.suffix.lower() in SECRET_SUFFIXES:
+        if p.suffix.lower() not in SECRET_SUFFIXES:
             continue
         rel = _rel(p)
         if rel in ALLOWLISTED_KEY_FILES:

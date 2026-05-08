@@ -27,7 +27,6 @@ from horizon_ric.observability.x733_alarms import (
     map_event_to_alarm,
 )
 
-
 # ─── pydantic model + YANG render ───────────────────────────────────────
 
 
@@ -122,7 +121,9 @@ def test_bus_active_and_clearing_alarm() -> None:
 def test_circuit_breaker_emits_x733_on_open(monkeypatch) -> None:
     """Force the breaker into OPEN state and assert an X.733 alarm fires."""
     import asyncio
+
     import httpx
+
     from horizon_ric.runtime.circuit_breaker import (
         AsyncCircuitBreaker,
         BreakerConfig,
