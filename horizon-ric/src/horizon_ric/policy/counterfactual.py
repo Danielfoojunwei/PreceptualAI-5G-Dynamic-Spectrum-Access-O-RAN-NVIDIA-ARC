@@ -12,8 +12,9 @@ violations, plus a metric → rejection-cause mapping.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
-from typing import Iterable, Literal
+from typing import TYPE_CHECKING, Iterable, Literal, Optional
 
 import torch
 
@@ -23,6 +24,12 @@ from horizon_ric.evidence.schema import (
     RejectedAlternative,
     RejectionReasonMachine,
 )
+
+if TYPE_CHECKING:
+    from horizon_ric.integrations.viavi_digital_twin import (
+        CounterfactualRollout,
+        ViaviDigitalTwin,
+    )
 
 _HORIZON = Literal["30s", "60s", "300s"]
 
@@ -49,6 +56,10 @@ def build_rejected_alternatives(
     chosen_score: float,
     soft_constraint_threshold: float = 1e-6,
     random_seed: int = 0,
+    external_twin: Optional["ViaviDigitalTwin"] = None,
+    state: Optional[dict] = None,
+    chosen_action: Optional[dict] = None,
+    twin_n_steps: int = 100,
 ) -> list[RejectedAlternative]:
     """Materialise an audit-ready list of `RejectedAlternative`s.
 
@@ -67,11 +78,40 @@ def build_rejected_alternatives(
     identical list. Caller-provided so the seed of record is the seed
     actually used by the planner; `0` is a safe default for fully-
     deterministic decision paths.
+
+    ``external_twin`` (M3 part 2): optional :class:`ViaviDigitalTwin`
+    hook. When set, each candidate's predicted KPIs are additionally
+    cross-checked by replaying ``(state, candidate.action)`` against
+    the VIAVI Pipeline 2 digital twin. The cause classification and
+    record schema are unchanged — the twin's predicted KPIs are
+    reflected back into ``PredictedOutcome.sla_risk_*`` when the
+    backend returns an ``"sla_risk"`` channel, otherwise the local
+    planner's values are kept. ``state`` and ``chosen_action`` are
+    only consulted when ``external_twin`` is provided. If ``None``,
+    behaviour is byte-identical to the pre-M3 path so existing
+    counterfactual tests stay green.
     """
+    twin_results: dict[int, "CounterfactualRollout"] = {}
+    if external_twin is not None:
+        if state is None or chosen_action is None:
+            raise ValueError(
+                "external_twin requires `state` and `chosen_action` "
+                "to be provided so the twin can replay each candidate.",
+            )
+
     out: list[RejectedAlternative] = []
     sorted_cands = sorted(
         candidates, key=lambda c: c.reward_sum, reverse=True,
     )
+    if external_twin is not None and sorted_cands:
+        twin_results = _run_twin_for_candidates(
+            external_twin,
+            state or {},
+            chosen_action or {},
+            sorted_cands,
+            twin_n_steps,
+        )
+
     for rank, cand in enumerate(sorted_cands, start=1):
         if cand.constraint_violation_sum > soft_constraint_threshold:
             cause = "constraint_violation_hard"
@@ -96,19 +136,72 @@ def build_rejected_alternatives(
             threshold=float(cand.threshold),
             horizon=cand.horizon,
         )
+        sla30 = float(cand.sla_risk_30s)
+        sla60 = float(cand.sla_risk_1min)
+        sla300 = float(cand.sla_risk_5min)
+        twin_rollout = twin_results.get(rank - 1)
+        if twin_rollout is not None:
+            twin_sla = twin_rollout.predicted_kpis_alternative.get("sla_risk")
+            if twin_sla is not None:
+                # The twin gives one number; we mirror it across all
+                # three horizons in the absence of horizon-resolved
+                # twin output. Keeps existing schema valid.
+                sla30 = sla60 = sla300 = float(twin_sla)
+
         out.append(RejectedAlternative(
             rank=rank,
             action=cand.action,
             predicted_outcome=PredictedOutcome(
-                sla_risk_30s=float(cand.sla_risk_30s),
-                sla_risk_1min=float(cand.sla_risk_1min),
-                sla_risk_5min=float(cand.sla_risk_5min),
+                sla_risk_30s=sla30,
+                sla_risk_1min=sla60,
+                sla_risk_5min=sla300,
             ),
             rejection_reason_machine=reason,
             rejection_reason_human=generate_human_explanation(reason),
             random_seed=int(random_seed),
         ))
     return out
+
+
+def _run_twin_for_candidates(
+    twin: "ViaviDigitalTwin",
+    state: dict,
+    chosen_action: dict,
+    sorted_cands: list[AlternativeCandidate],
+    n_steps: int,
+) -> dict[int, "CounterfactualRollout"]:
+    """Replay each candidate through the twin and return rollouts by index.
+
+    Synchronously invokes the (async) twin via ``asyncio.run`` when no
+    loop is running. If a caller is already inside a running loop they
+    should drive ``twin.rollout`` directly and post-process — this
+    helper exists so the synchronous ``build_rejected_alternatives``
+    contract is preserved.
+    """
+    async def _gather() -> list["CounterfactualRollout"]:
+        results: list["CounterfactualRollout"] = []
+        for cand in sorted_cands:
+            roll = await twin.rollout(
+                state,
+                chosen_action,
+                cand.action,
+                n_steps=n_steps,
+            )
+            results.append(roll)
+        return results
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop — safe to spin one up.
+        rollouts = asyncio.run(_gather())
+        return dict(enumerate(rollouts))
+    # We are already inside a loop — refuse to nest.
+    raise RuntimeError(
+        "build_rejected_alternatives(external_twin=...) cannot be "
+        "called from inside a running event loop; use the async "
+        "twin.rollout API directly and post-process.",
+    )
 
 
 def candidates_from_planner_elite(

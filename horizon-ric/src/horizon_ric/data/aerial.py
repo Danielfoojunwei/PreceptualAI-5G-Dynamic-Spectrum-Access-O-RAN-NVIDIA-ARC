@@ -28,11 +28,12 @@ for use with `torch.utils.data.DataLoader`, and offers a
 
 from __future__ import annotations
 
+import asyncio
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Iterable, Iterator
+from typing import Any, AsyncIterator, Iterable, Iterator, Literal
 
 import numpy as np
 import pyarrow.parquet as pq
@@ -474,6 +475,300 @@ class AerialH5Source(_AerialReaderSource):
     _expects = "directory"
 
 
+# ─── DLDB live consumer ──────────────────────────────────────────────────
+
+
+# Subset of NVIDIA Aerial Data Lake "capture points" we know how to map
+# onto our `Modality` literal. The DLDB exposes more — additional ones
+# can be added as the wire format stabilises. We refuse to invent
+# capture-point names: only the ones in this Literal are accepted.
+DLDBCapturePoint = Literal[
+    "ul_iq",
+    "l1_fapi",
+    "l2_fapi",
+    "timestamps_sync",
+    "cell_ue_context",
+]
+
+_DLDB_CAPTURE_TO_MODALITY: dict[str, Modality] = {
+    "ul_iq": "spectrum_iq",
+    "l1_fapi": "kpm_5g",
+    "l2_fapi": "kpm_5g",
+    "timestamps_sync": "kpm_5g",
+    "cell_ue_context": "kpm_5g",
+}
+
+
+def _register_dldb_dropped_counter() -> Any:
+    """Register `dldb_dropped_events_total` idempotently.
+
+    Repeated `Counter(...)` calls under the same name raise
+    `ValueError("Duplicated timeseries...")` on the default registry —
+    which fires whenever a test re-imports this module or instantiates a
+    consumer twice. We catch that and look up the existing collector.
+    """
+    try:
+        from prometheus_client import (
+            REGISTRY,
+            Counter,  # local import: optional dep
+        )
+    except Exception:  # pragma: no cover - prometheus is a project dep
+        return None
+
+    name = "dldb_dropped_events_total"
+    try:
+        return Counter(
+            name,
+            "DLDB live-consumer events dropped because the local queue was "
+            "full (drop-oldest backpressure policy).",
+        )
+    except ValueError:
+        # Already registered — fish it back out of the default registry.
+        existing = getattr(REGISTRY, "_names_to_collectors", {}).get(name)
+        if existing is not None:
+            return existing
+        # Some prometheus_client versions suffix with `_total`; fall back
+        # to the public collect() walk.
+        for collector in list(getattr(REGISTRY, "_collector_to_names", {})):
+            metric_name = getattr(collector, "_name", None)
+            if metric_name == name:
+                return collector
+        raise
+
+
+DLDB_DROPPED_EVENTS_TOTAL = _register_dldb_dropped_counter()
+
+
+class DLDBLiveConsumer:
+    """Streaming consumer for the NVIDIA Aerial Data Lake (DLDB).
+
+    The DLDB exposes a long-poll HTTP endpoint at `/dldb/stream`. Each
+    poll returns a JSON list of capture-point events (possibly empty if
+    nothing new arrived inside the server's poll window). We decode each
+    event into a canonical :class:`TelemetryEvent` so downstream code
+    cannot tell whether the producer was a parquet replay or a live
+    bridge — this is deliberate: tests that exercise FAPI parquet still
+    work against this stream.
+
+    Backpressure: a bounded :class:`asyncio.Queue` of size ``buffer_size``
+    sits between the polling task and :meth:`stream`. When it is full we
+    drop the **oldest** event (FIFO eviction) and increment the
+    ``dldb_dropped_events_total`` Prometheus counter.
+
+    Reconnect: any HTTP/transport error puts the polling loop into
+    exponential backoff — 50 ms × 2^n, capped at ``reconnect_backoff_max_s``.
+    The polling task only ever exits when :meth:`close` is called.
+
+    Capture-point filter: ``capture_points`` is the set the caller wants
+    to *receive*. The polling task asks the server for that set (as a
+    `points=` query param) and then re-filters defensively on the client
+    side, because the reference DLDB stub is not contractually obligated
+    to honour the filter.
+    """
+
+    def __init__(
+        self,
+        dldb_endpoint: str,
+        capture_points: list[DLDBCapturePoint],
+        buffer_size: int = 1000,
+        reconnect_backoff_max_s: float = 5.0,
+    ) -> None:
+        if not dldb_endpoint:
+            raise ValueError("dldb_endpoint must be a non-empty URL")
+        if not capture_points:
+            raise ValueError("capture_points must list at least one point")
+        if buffer_size <= 0:
+            raise ValueError("buffer_size must be positive")
+        if reconnect_backoff_max_s <= 0:
+            raise ValueError("reconnect_backoff_max_s must be positive")
+        self.dldb_endpoint = dldb_endpoint.rstrip("/")
+        self.capture_points: set[str] = set(capture_points)
+        self.buffer_size = int(buffer_size)
+        self.reconnect_backoff_max_s = float(reconnect_backoff_max_s)
+        self._queue: asyncio.Queue[TelemetryEvent] = asyncio.Queue(
+            maxsize=self.buffer_size
+        )
+        self._poll_task: asyncio.Task[None] | None = None
+        self._closed = asyncio.Event()
+        self._client: Any = None  # httpx.AsyncClient — typed loosely so
+        # importing aerial.py doesn't require httpx at import time.
+
+    # ── public API ─────────────────────────────────────────────────────
+
+    async def stream(self) -> AsyncIterator[TelemetryEvent]:
+        """Yield events as they arrive from the DLDB.
+
+        Starts the background polling task on first call. Safe to call
+        only once per instance — the polling task is shared and the
+        queue is not multicast.
+        """
+        self._ensure_poll_task()
+        try:
+            while not self._closed.is_set():
+                # `wait_for` lets us notice close() promptly without
+                # consuming a sentinel item from the queue.
+                try:
+                    ev = await asyncio.wait_for(self._queue.get(), timeout=0.1)
+                except asyncio.TimeoutError:
+                    continue
+                yield ev
+        finally:
+            # Drain any remaining items without blocking the caller.
+            return  # pragma: no cover - generator-finally housekeeping
+
+    async def close(self) -> None:
+        """Cancel the polling task and release the HTTP client.
+
+        Idempotent: calling close() repeatedly is a no-op after the first
+        successful invocation.
+        """
+        if self._closed.is_set():
+            return
+        self._closed.set()
+        task = self._poll_task
+        if task is not None and not task.done():
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
+        if self._client is not None:
+            try:
+                await self._client.aclose()
+            except Exception:
+                pass
+            self._client = None
+
+    # ── internals ──────────────────────────────────────────────────────
+
+    def _ensure_poll_task(self) -> None:
+        if self._poll_task is None or self._poll_task.done():
+            self._poll_task = asyncio.create_task(
+                self._poll_loop(), name="dldb-live-consumer-poll"
+            )
+
+    async def _poll_loop(self) -> None:
+        import httpx  # local import — keeps aerial.py importable in
+        # environments without httpx (parquet-only deployments).
+
+        if self._client is None:
+            self._client = httpx.AsyncClient(timeout=httpx.Timeout(30.0))
+
+        backoff_s = 0.05  # 50 ms initial
+        url = f"{self.dldb_endpoint}/dldb/stream"
+        params = {"points": ",".join(sorted(self.capture_points))}
+
+        while not self._closed.is_set():
+            try:
+                resp = await self._client.get(url, params=params)
+                resp.raise_for_status()
+                payload = resp.json()
+                # Expected wire format: list[dict] of TelemetryEvent-shaped
+                # dicts. An empty list is a heartbeat (no new events in the
+                # poll window) — perfectly normal, don't reset state.
+                events = payload if isinstance(payload, list) else payload.get(
+                    "events", []
+                )
+                for raw in events:
+                    if self._closed.is_set():
+                        return
+                    cp = (raw.get("tags") or {}).get("capture_point") or raw.get(
+                        "capture_point"
+                    )
+                    if cp is not None and cp not in self.capture_points:
+                        continue
+                    try:
+                        ev = self._decode_event(raw)
+                    except Exception:
+                        # Skip malformed events; the server may publish a
+                        # mix of payload shapes. We never crash the loop
+                        # for one bad row.
+                        continue
+                    self._enqueue_with_drop(ev)
+                # Successful poll resets the backoff.
+                backoff_s = 0.05
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                # Transport error / 5xx / connection refused mid-stream.
+                # Sleep with exponential backoff, but bail early if close()
+                # fires while we're sleeping.
+                try:
+                    await asyncio.wait_for(
+                        self._closed.wait(), timeout=backoff_s
+                    )
+                    return
+                except asyncio.TimeoutError:
+                    pass
+                backoff_s = min(backoff_s * 2.0, self.reconnect_backoff_max_s)
+
+    def _enqueue_with_drop(self, ev: TelemetryEvent) -> None:
+        try:
+            self._queue.put_nowait(ev)
+            return
+        except asyncio.QueueFull:
+            pass
+        # Drop oldest, then enqueue. We pop one and increment the
+        # counter; if multiple were full we still only drop one per put.
+        try:
+            self._queue.get_nowait()
+        except asyncio.QueueEmpty:  # pragma: no cover - race only
+            pass
+        else:
+            if DLDB_DROPPED_EVENTS_TOTAL is not None:
+                DLDB_DROPPED_EVENTS_TOTAL.inc()
+        try:
+            self._queue.put_nowait(ev)
+        except asyncio.QueueFull:  # pragma: no cover - race only
+            if DLDB_DROPPED_EVENTS_TOTAL is not None:
+                DLDB_DROPPED_EVENTS_TOTAL.inc()
+
+    @staticmethod
+    def _decode_event(raw: dict[str, Any]) -> TelemetryEvent:
+        """Translate a DLDB wire-format dict into a TelemetryEvent.
+
+        We accept two shapes:
+
+          1. A pre-shaped TelemetryEvent dict (e.g. server replays from
+             a parquet) — pass straight through to pydantic.
+          2. A capture-point-native dict that carries `capture_point`
+             and a free-form payload — we synthesise the canonical
+             fields (event_id, modality, source_id, ts_utc) from it.
+        """
+        if "modality" in raw and "event_id" in raw and "ts_utc" in raw:
+            return TelemetryEvent.model_validate(raw)
+
+        cp = raw.get("capture_point")
+        modality = _DLDB_CAPTURE_TO_MODALITY.get(cp or "", "kpm_5g")
+        ts_raw = raw.get("ts_utc") or raw.get("timestamp")
+        if isinstance(ts_raw, (int, float)):
+            ts = datetime.fromtimestamp(float(ts_raw), tz=timezone.utc)
+        elif isinstance(ts_raw, str):
+            ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+        else:
+            ts = datetime.now(tz=timezone.utc)
+        ev_id = raw.get("event_id") or f"dldb-{cp}-{uuid.uuid4().hex[:12]}"
+        source_id = raw.get("source_id") or f"dldb:{cp or 'unknown'}"
+        payload = raw.get("payload") or {
+            k: v for k, v in raw.items()
+            if k not in {"capture_point", "event_id", "ts_utc", "source_id"}
+        }
+        tags = dict(raw.get("tags") or {})
+        if cp is not None:
+            tags.setdefault("capture_point", str(cp))
+        return TelemetryEvent(
+            event_id=ev_id,
+            modality=modality,
+            source_id=source_id,
+            ts_utc=ts,
+            sequence=raw.get("sequence"),
+            payload=payload,
+            tags=tags,
+        )
+
+
 __all__ = [
     "AerialDataset",
     "AerialFAPIReader",
@@ -482,5 +777,8 @@ __all__ = [
     "AerialFrontHaulSource",
     "AerialH5Source",
     "AerialH5TestVectorReader",
+    "DLDB_DROPPED_EVENTS_TOTAL",
+    "DLDBCapturePoint",
+    "DLDBLiveConsumer",
     "ReaderSpec",
 ]

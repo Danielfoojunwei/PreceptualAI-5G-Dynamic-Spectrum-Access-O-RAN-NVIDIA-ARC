@@ -1,6 +1,6 @@
 # PreceptualAI
 
-**The regulator-defensible audit-rApp for O-RAN — runs alongside Ericsson EIAP / Nokia MantaRay, adds the per-decision counterfactual envelope and tamper-evident audit chain incumbents do not ship.**
+**PreceptualAI is the regulator-defensible audit-rApp that runs alongside Ericsson EIAP / Nokia MantaRay.** For deployments adopting AI-RAN Alliance neural-PHY blocks (HybridDeepRx, DPoD, learned constellations) on NVIDIA Aerial or VIAVI D4AI, we are also the only audit + counterfactual + lifecycle-management trust layer for those AI-PHY decisions. **Without us, the AI-RAN ROI cannot be proven to a CFO and the AI-RAN model lifecycle cannot be governed to a regulator.**
 
 [![tests](https://img.shields.io/badge/tests-105%2F105_green-brightgreen)]() [![soak](https://img.shields.io/badge/24h_soak-99.93%25_A1-brightgreen)]() [![chain](https://img.shields.io/badge/audit_chain-2880%2F2880-brightgreen)]() [![ZAP](https://img.shields.io/badge/OWASP_ZAP-0_Crit_0_High_0_Med-brightgreen)]() [![pilot](https://img.shields.io/badge/PILOT__READY__TIER__1-True-brightgreen)]()
 
@@ -24,6 +24,8 @@ PreceptualAI is an **O-RAN Non-RT RIC rApp suite** that ships the four lines on 
 | 4 | **TS 28.105 model card on every promotion** | 4 mandatory fields + open weights. `src/horizon_ric/observability/model_card.py` + `tests/test_ts28105_model_card_emit.py` (34 / 34 green) |
 
 **What you do not get from us, told up-front (this is the trust move).** Zero production cells today. No 24×7 NOC under contract today. Not FIPS 140-3 module-validated (deployable on FIPS-mode RHEL with documented primitive inventory; module validation is a 6-week Phase-2 effort). p99 on physical Jetson Orin Nano hardware is not yet measured on the actual silicon — the 2-core constrained envelope on aarch64 GB10 (same ISA, *stricter* compute budget) ships as Tier-1 substitute with a signable attestation packet.
+
+**LCM trust primitives (M7–M9 trust-layer roadmap).** Beyond the four shipped differentiators, the milestone bundle M7–M9 specified in `MARKETPLACE_POSITIONING.md` "AI-RAN Alliance integration positioning" closes the AI-PHY lifecycle-management gap with five primitives: **atomic A→B promotion** at slot boundary, **shadow executor** running candidate weights in parallel, **bit-identical artefact vault** for content-addressed rollback, **TS 28.567 LoopState** (Retrain / Rollback / Scale) state machine, and **per-zone training-data lineage**. Combined with the existing SHA-256 chain, RFC 3161 anchor, KS + Page-Hinkley drift detectors, TS 28.105 §7.4 model card, and X.733 ML-failure alarm vocab, this is the 17-primitive LCM trust layer that Ericsson EIAP, Nokia MantaRay, NVIDIA Aerial, and OSC NONRTRIC do not ship today (gap matrix in `AUDIT_LCM_GAP.md` §1.5).
 
 ---
 
@@ -420,6 +422,7 @@ The following decisions are pinned in [`ARCHITECTURE.md`](ARCHITECTURE.md), [`TH
 - **Architecture**: aarch64 native; x86_64 supported
 - **License**: Apache-2.0
 - **Vendor lock-in**: zero — runs alongside any O-RAN-compliant SMO
+- **AI-RAN Alliance positioning**: trust + ROI + LCM layer for HybridDeepRx, DPoD, neural-RX, learned constellations on NVIDIA Aerial / VIAVI D4AI. See [`MARKETPLACE_POSITIONING.md`](MARKETPLACE_POSITIONING.md) §"AI-RAN Alliance integration positioning" for the trust-quotes, ROI-leak table, and LCM primitive map.
 - **Repo SHA used in this README**: `git rev-parse HEAD`
 
-For pilot conversations, regulator-readable demo runs, or RFP responses, see [`CUSTOMER_DEMO_PACKET.md`](CUSTOMER_DEMO_PACKET.md).
+For pilot conversations, regulator-readable demo runs, or RFP responses, see [`CUSTOMER_DEMO_PACKET.md`](CUSTOMER_DEMO_PACKET.md) — including **Demo 4: CFO ROI exhibit** (5-minute conversation, $272M–$1B/yr value-capture table).

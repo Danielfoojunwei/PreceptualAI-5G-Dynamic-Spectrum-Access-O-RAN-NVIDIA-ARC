@@ -93,3 +93,65 @@ Full 15-question breakdown, gap-to-parity costs, and the 6 we cannot fix on a 12
 ---
 
 *This packet is hand-out grade. Numbers cite `file:line` against repo SHA `d23f1215156d00b7f16ab0c6934b3342f6f25900`. If a number changes, this document is stale — regenerate from the proof MDs in `deploy/` and `benchmarks/`.*
+
+---
+
+## Page 5 — Demo 4: CFO ROI exhibit (5-minute CFO conversation)
+
+*Added 2026-05-08. Source: `~/.claude/plans/AUDIT_ROI_GAP.md` §4–§5. This is the financial-buyer demo. Use it whenever the architect demos (Demos 1–3 above) are not sufficient — i.e. whenever the spend authorization sits with the CFO, not the CTO.*
+
+### Why this demo exists
+
+Demos 1–3 are architect-facing. They prove the system works. They do **not** translate the wedge into the financial language a Tier-1 CFO uses to approve the line item. Demo 4 takes the audit-chain output from any of Demos 1–3 and projects it onto a Tier-1 P&L view. **Inputs:** operator turnover, claimed AI-RAN annual value, regulatory jurisdiction. **Outputs:** (a) % of claimed value defensible without our chain, (b) % defensible with it, (c) estimated annual fine exposure with vs without the chain, (d) audit headcount delta. Every number sources to `AUDIT_ROI_GAP.md` or a regulator-published fine tier.
+
+### The value-capture table
+
+For a Tier-1 deploying AI-RAN at scale (≥30k macro sites, $0.7–2.4B 5-yr capex), the conservative annual recovery:
+
+| # | Leak | Annual exposure (Tier-1) | PreceptualAI feature that plugs it | $ recovered (Tier-1/yr) |
+|--:|---|---:|---|---:|
+| L1 | Attribution failure (30–50% of claimed gain undefendable to auditor) | **$300–500M** | Per-decision counterfactual envelope + pinned RNG seed (M1, `policy/counterfactual.py`, `evidence/explanation.py`) | **$150–300M** |
+| L2 | Drift erosion (10–25% of original gain disappears within 12 mo) | **$100–250M** | KS + Page-Hinkley drift detectors on input distribution (`continual/drift_detector.py`) | **$60–150M** |
+| L3 | Catastrophic regression on bad model promotion (2–4 incidents/yr × $5–20M) | **$10–80M** | SHA-256 chain + RFC 3161 anchor + bit-identical artefact replay (existing + M8) | **$8–60M** |
+| L4 | Regulatory clawback — EU AI Act high-risk fine up to 3% global turnover | **$0–1,200M** episodic | TS 28.105 §7.4 model card chain consumable by regulator (M5) | **$50–500M** amortized |
+| L5 | Audit headcount — 10–30 internal FTE + Big-4 external | **$5–19M** recurring | Automated evidence pipeline; auditor consumes the chain directly (M5) | **$4–18M** |
+| | **Total annual exposure** | **$415M – $2.05B** | | **$272M – $1.03B/yr recovered** |
+
+**License-model implication.** Per-network subscription target **$5–25M/yr** is **0.5–9%** of recovered value — a **10:1 to 200:1 value-to-price ratio**. This is the CFO no-brainer threshold.
+
+### The 5-minute CFO conversation script
+
+*Drop-in voiceover; no engineering jargon; CFO language only — capex preservation, opex reduction, regulatory liability avoidance, board defensibility. Full source: `AUDIT_ROI_GAP.md` §5.*
+
+**[0:00 — Opening, 20 s]**
+> "You've signed off on roughly **$1.5 billion of AI-RAN capex over the next 5 years**. Your operator's pitch deck says that buys you a $5–10 billion AI-inference revenue opportunity plus throughput, energy, and footprint gains. I'm not here to argue with the upside. I'm here to talk about the **part of that decision your auditor and your regulator are going to test**, and what it costs you if you can't pass the test."
+
+**[0:20 — The proof gap, 40 s]**
+> "When your CTO tells the board 'AI-RAN delivered a 15% throughput lift this quarter,' three questions come back: *Was it actually the AI, or was it the new spectrum band? Is the gain still there, or has it silently degraded? Can you prove to a regulator exactly which decisions the AI made and why?* Today, the answer to all three is **'we have the dashboards.'** Dashboards are not evidence. The AI-RAN Alliance work items, NVIDIA Aerial, Nokia MantaRay, Ericsson IAP — none of them ship the proof apparatus. They ship the AI. The proof apparatus is what we ship."
+
+**[1:00 — The five leaks, 60 s]**
+> "Let me put numbers on it.
+> **One.** Without counterfactuals, **30 to 50% of your claimed gain can't be defended** when an auditor asks. On a $1B/yr value claim, that's $300–500M of vapor.
+> **Two.** Production AI silently drifts. Conservative literature says **10 to 25% of the gain disappears within 12 months** — and your dashboards stay green while it happens. That's another $100–250M.
+> **Three.** When a model promotion goes bad — and it will, two to four times a year — without replay, your post-mortem costs three times more, takes three times longer, and doesn't satisfy the SLA-credit dispute from your B2B customer.
+> **Four.** EU AI Act, NIS2, parallel state regimes. **One high-risk non-compliance finding is up to 3% of global turnover.** For you, that's about €1.2 billion. **One fine wipes out a full year of AI-RAN ROI.**
+> **Five.** Just keeping the lights on for AI governance — internal headcount plus Big-4 audit — runs $5 to $19 million per year **before any fine**.
+> Add it up: **$400M to $2B per year of exposure your CFO peers are not pricing in**."
+
+**[2:00 — The fix, 45 s]**
+> "We are the proof layer. We sit on top of whatever you've already bought — Aerial, MantaRay, IAP, VIAVI, doesn't matter. For every AI decision your network makes, we emit a tamper-evident, regulator-replayable record: what was decided, what was rejected, why, and the random seed needed to reproduce it bit-for-bit. We detect drift in days. We make a model rollback a one-day forensic exercise instead of a three-week one. We give your regulator a signed chain they can verify themselves. Conservatively, we recover **$270 million to $1 billion per year** of the value your AI-RAN spend would otherwise leak. We charge you about 1% of that. **The math is not subtle.**"
+
+**[2:45 — Close, 15 s]**
+> "If your AI-RAN spend is going to clear board scrutiny in the next quarterly review, you need this layer in place **before**, not after, the first regulator inquiry. We can have a pilot running on your existing stack in **8 weeks**. What's the right next conversation to set up?"
+
+### How to run Demo 4 in a meeting
+
+1. **Pre-meeting (10 min).** Customize the value-capture table: replace "$1B claimed value" with the operator's actual published AI-RAN revenue/savings target; replace "€40B turnover" with the operator's actual global revenue. Recompute the L4 row using the operator's jurisdiction (EU AI Act 3%, US state regimes, etc.).
+2. **Live (5 min).** Walk the table top-to-bottom; speak the script verbatim. Hand the printed one-pager across the table at the [2:45] close.
+3. **Post-meeting (15 min).** Auto-generate a board-ready one-pager from the operator's own audit-chain output (real numbers, not the synthetic $1B example) using `scripts/cfo_one_pager.py` (planned M9 deliverable; until then, manually populate the template in `docs/CFO_ONE_PAGER_TEMPLATE.md`).
+
+### Acceptance criterion
+
+A sales engineer can run Demo 4 with a finance buyer (not architect) in <5 minutes and produce a board-ready one-pager at the end. If the meeting goes longer than 5 minutes on the script alone, return to Demo 1 (counterfactual envelope) — that is the single most CFO-legible architect demo and earns the next meeting.
+
+---

@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 authors = [{name = "Preceptual AI"}]
-keywords = ["o-ran", "ai-ran", "ntn", "rapp", "smo", "non-rt-ric"]
+keywords = ["o-ran", "ai-ran", "ntn", "rapp", "smo", "non-rt-ric", "trust", "lcm", "audit", "counterfactual", "regulator-defensible", "ai-ran-alliance"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Telecommunications Industry",

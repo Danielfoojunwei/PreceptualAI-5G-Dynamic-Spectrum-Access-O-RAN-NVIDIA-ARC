@@ -1,26 +1,20 @@
-"""NVIDIA Aerial Cloud-Native RAN (ARC) management-plane integration.
+"""DEPRECATED — legacy entry point for NVIDIA Aerial integrations.
 
-The cuBB L1/L2 stack itself is reached via FAPI (parquet ingest is in
-``horizon_ric.data.aerial`` and the live FAPI socket lives in cuBB's
-SDK; PreceptualAI does NOT ship E2 today). This module covers the
-*management* plane — Aerial Cloud RAN's REST API for:
+This module historically housed the management-plane ``ARCClient``
+(model registry uploads + PM KPI reads) and is the path many existing
+imports take. The new real-time I/Q feed consumer lives in
+``horizon_ric.integrations.nvidia_arc_ota`` as ``ARCOTAConsumer``;
+that is the symbol new code should reach for.
 
-  * uploading model checkpoints to its inference model registry
-  * reading PM (performance management) KPIs from its data plane
+This shim:
 
-We deliberately keep the surface narrow — the parts an rApp vendor
-actually needs to integrate with ARC at deploy time. Anything broader
-(E2 service models, FAPI live control) is out of scope and called out
-honestly in docs/SMO_INTEGRATION.md.
-
-Reference (public surface):
-    NVIDIA Aerial Cloud RAN documentation. The full administrator
-    surface lives behind an NVIDIA Developer login; the public reference
-    documents the REST shape used here.
-
-The client uses ``httpx.AsyncClient`` so it is fully testable against
-``httpx.MockTransport`` — no live network or proprietary stack is
-required to validate the payload contract.
+  * preserves the legacy ``ARCClient`` / ``ARCClientConfig`` surface
+    (the management plane is genuinely separate from the real-time
+    consumer, so we do not delete it — we just stop adding to it here);
+  * re-exports the new ``ARCOTAConfig`` / ``ARCOTAConsumer`` symbols so
+    backwards-compatible imports keep working through 0.2.0;
+  * emits a ``DeprecationWarning`` at import time pointing callers at
+    ``nvidia_arc_ota``.
 """
 
 from __future__ import annotations
@@ -28,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -35,28 +30,46 @@ from typing import Any
 import httpx
 import structlog
 
+# Re-export the real-time consumer so existing
+# `from horizon_ric.integrations.nvidia_arc import ARCOTAConsumer`
+# style imports keep working through 0.2.0.
+from horizon_ric.integrations.nvidia_arc_ota import (  # noqa: F401
+    ARCOTAConfig,
+    ARCOTAConsumer,
+)
+
+warnings.warn(
+    "horizon_ric.integrations.nvidia_arc is deprecated; "
+    "use horizon_ric.integrations.nvidia_arc_ota for the real-time "
+    "I/Q feed (ARCOTAConsumer). The legacy ARCClient management-plane "
+    "API in this module remains available through 0.2.0.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 logger = structlog.get_logger(__name__)
 
 
 @dataclass
 class ARCClientConfig:
+    """Legacy management-plane client config — kept for compatibility."""
+
     base_url: str = "https://aerial-arc.local"
     api_key: str | None = None
     timeout_seconds: float = 30.0
-    # Path under which the ARC management API is mounted. The default
-    # mirrors the public docs surface; operators override per-deployment.
     api_root: str = "/api/v1"
-    # Model registry path.
     models_path: str = "/models"
-    # PM KPI path.
     pm_kpis_path: str = "/pm/kpis"
 
 
 class ARCClient:
-    """Async client for NVIDIA Aerial Cloud RAN management API.
+    """Legacy async client for NVIDIA Aerial Cloud RAN management API.
 
     Authentication is bearer-token via ``X-NVIDIA-API-KEY`` header (the
-    ARC-published header name). All endpoints accept JSON.
+    ARC-published header name). All endpoints accept JSON. New code
+    SHOULD migrate to the realtime consumer in ``nvidia_arc_ota`` when
+    it needs the I/Q feed; this client remains the right tool for the
+    management plane (model registry + PM KPIs).
     """
 
     def __init__(
@@ -100,29 +113,18 @@ class ARCClient:
         model_path: str | os.PathLike,
         model_card: dict[str, Any],
     ) -> dict[str, Any]:
-        """Upload a checkpoint to ARC's inference model registry.
+        """Upload a checkpoint to ARC's inference model registry."""
 
-        The wire shape used by ARC is a multipart/form-data POST with two
-        parts:
-          * ``model``       — the binary checkpoint file
-          * ``model_card``  — the JSON metadata blob (model_id, framework,
-                              input/output schema, dataset card, etc.)
-
-        Returns the JSON registry record on success.
-        """
         path = Path(model_path)
         if not path.exists():
             raise FileNotFoundError(f"model checkpoint not found: {path}")
 
-        # Hash the checkpoint up-front for the registry record. Real ARC
-        # validates the SHA-256 we send matches the bytes uploaded.
         hasher = hashlib.sha256()
         with path.open("rb") as fh:
             for chunk in iter(lambda: fh.read(1 << 20), b""):
                 hasher.update(chunk)
         sha256 = hasher.hexdigest()
 
-        # Inject the hash into the model card so the registry can match.
         card = dict(model_card)
         card.setdefault("artifact_sha256", sha256)
         card.setdefault("artifact_filename", path.name)
@@ -159,15 +161,8 @@ class ARCClient:
         cell_id: str,
         time_window: tuple[str, str],
     ) -> dict[str, Any]:
-        """Read PM KPIs from ARC's data plane for one cell.
+        """Read PM KPIs from ARC's data plane for one cell."""
 
-        Args:
-            cell_id: ARC cell identifier (matches FAPI cellId).
-            time_window: (start_iso8601, end_iso8601) — inclusive.
-
-        Returns a dict mirroring ARC's PM JSON: ``cell_id``, ``kpis``
-        (list of {name, unit, samples}), and ``window`` echo-back.
-        """
         start, end = time_window
         params = {"start": start, "end": end}
         try:
@@ -195,4 +190,9 @@ class ARCClient:
         await self.close()
 
 
-__all__ = ["ARCClient", "ARCClientConfig"]
+__all__ = [
+    "ARCClient",
+    "ARCClientConfig",
+    "ARCOTAConfig",
+    "ARCOTAConsumer",
+]
