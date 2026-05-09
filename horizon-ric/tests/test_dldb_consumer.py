@@ -24,6 +24,11 @@ from typing import Any, Iterator
 
 import pytest
 
+# Live HTTP-server tests — exclude from CI fast pack (-m "not integration").
+# Local dev runs them via `pytest -m integration`. The hosting uvicorn
+# loop tends to wedge the GitHub-hosted runner under contention.
+pytestmark = pytest.mark.integration
+
 starlette = pytest.importorskip("starlette")
 uvicorn = pytest.importorskip("uvicorn")
 

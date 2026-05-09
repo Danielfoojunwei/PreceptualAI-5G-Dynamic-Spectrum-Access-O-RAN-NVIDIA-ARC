@@ -72,8 +72,10 @@ dev = [
     "matplotlib>=3.7",       # tests/test_diffusion_tail_calibration.py:40
     "hypothesis>=6.100",     # tests/test_fuzz.py:19 (property-based)
     # Tests below use `pytest.importorskip()` and skip gracefully when
-    # absent — included here so the full test pack runs locally:
-    "uvicorn>=0.30",         # tests/test_dldb_consumer.py (live HTTP server)
+    # absent. uvicorn is intentionally NOT here: tests/test_dldb_consumer.py
+    # is `pytest.mark.integration` and excluded from CI's fast pack
+    # because the in-process uvicorn loop wedges the GitHub-hosted runner.
+    # Local dev runs it via `pytest -m integration`.
     "z3-solver>=4.13",       # tests/test_rbac_smt_completeness.py
 ]
 itur = [
