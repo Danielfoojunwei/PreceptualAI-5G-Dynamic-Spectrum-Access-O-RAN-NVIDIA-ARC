@@ -27,10 +27,30 @@ from matplotlib.ticker import MaxNLocator
 
 # ---- Consistent publication style ----
 AGENT_STYLES = {
-    "sac_ltc":  {"color": "#7c3aed", "label": "SAC-LTC (Ours)",  "ls": "-",  "marker": "D"},
-    "sac_lfm":  {"color": "#2563eb", "label": "SAC-LFM",         "ls": "--", "marker": "o"},
-    "sac_lstm": {"color": "#dc2626", "label": "SAC-LSTM",        "ls": "-.", "marker": "s"},
-    "ppo_lstm": {"color": "#16a34a", "label": "PPO-LSTM",        "ls": ":",  "marker": "^"},
+    # RL agents (cool tones)
+    "sac_ltc":              {"color": "#7c3aed", "label": "SAC-LTC (Ours)",       "ls": "-",  "marker": "D"},
+    "sac_lfm":              {"color": "#2563eb", "label": "SAC-LFM",              "ls": "--", "marker": "o"},
+    "sac_lstm":             {"color": "#dc2626", "label": "SAC-LSTM",             "ls": "-.", "marker": "s"},
+    "ppo_lstm":             {"color": "#16a34a", "label": "PPO-LSTM",             "ls": ":",  "marker": "^"},
+    # Traditional baselines — fixed allocation (grays)
+    "random":               {"color": "#9ca3af", "label": "Random",               "ls": ":",  "marker": "x"},
+    "round_robin":          {"color": "#6b7280", "label": "Round-Robin",          "ls": "--", "marker": "+"},
+    "tdma":                 {"color": "#78716c", "label": "TDMA",                 "ls": "-.", "marker": ">"},
+    "fdma":                 {"color": "#a8a29e", "label": "FDMA",                 "ls": ":",  "marker": "1"},
+    # Traditional baselines — heuristic (warm tones)
+    "greedy_sinr":          {"color": "#f59e0b", "label": "Greedy (Max-SINR)",    "ls": "-",  "marker": "v"},
+    "epsilon_greedy":       {"color": "#d97706", "label": "Epsilon-Greedy",       "ls": "--", "marker": "<"},
+    "proportional_fair":    {"color": "#ea580c", "label": "Proportional Fair",    "ls": "-",  "marker": "p"},
+    # Traditional baselines — bandit (teal/blue)
+    "thompson_sampling":    {"color": "#0891b2", "label": "Thompson Sampling",    "ls": "--", "marker": "h"},
+    "ucb":                  {"color": "#0d9488", "label": "UCB",                  "ls": "-.", "marker": "H"},
+    "boltzmann":            {"color": "#4f46e5", "label": "Boltzmann",            "ls": "--", "marker": "d"},
+    # Traditional baselines — model-based (green)
+    "whittle_index":        {"color": "#059669", "label": "Whittle Index",        "ls": "-",  "marker": "*"},
+    # Traditional baselines — standard-inspired (pink/red)
+    "wifi7_mlo":            {"color": "#7e22ce", "label": "WiFi 7 MLO",           "ls": "-.", "marker": "P"},
+    "ofdma":                {"color": "#be185d", "label": "OFDMA",                "ls": ":",  "marker": "X"},
+    "carrier_aggregation":  {"color": "#e11d48", "label": "Carrier Aggregation",  "ls": "--", "marker": "8"},
 }
 DEFAULT_STYLE = {"color": "#6b7280", "label": "Unknown", "ls": ":", "marker": "x"}
 
@@ -169,7 +189,9 @@ def plot_performance_bars(
         ("mean_inference_ms", "Inference Latency", "ms"),
     ]
 
-    fig, axes = plt.subplots(1, len(metrics_to_plot), figsize=(4 * len(metrics_to_plot), 5))
+    n_agents = len(eval_data)
+    width_per_metric = max(4, n_agents * 0.6)  # scale width with agent count
+    fig, axes = plt.subplots(1, len(metrics_to_plot), figsize=(width_per_metric * len(metrics_to_plot), 6))
     if len(metrics_to_plot) == 1:
         axes = [axes]
 

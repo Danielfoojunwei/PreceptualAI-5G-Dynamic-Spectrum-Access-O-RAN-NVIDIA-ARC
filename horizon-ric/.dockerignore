@@ -1,0 +1,47 @@
+# VCS
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.mypy_cache
+.ruff_cache
+*.egg-info
+.coverage
+htmlcov
+
+# Local venv (we rebuild inside the image)
+.venv
+venv
+
+# IDE / OS
+.idea
+.vscode
+.DS_Store
+
+# Local data
+data/
+logs/
+*.npz
+
+# Docs we don't need at runtime
+docs/
+*.md
+!README.md
+
+# Deploy artefacts (avoid copying the helm chart into the image)
+deploy/helm
+deploy/grafana
+deploy/prometheus
+deploy/kubernetes
+
+# Tests aren't shipped in the runtime image
+tests/
+
+# Large checkpoints not needed by rapp container (only edge needs sla_head_v0.4)
+# We selectively COPY needed checkpoints in the Dockerfile.

@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.so
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual envs
+.venv/
+.venv-edge/
+venv/
+env/
+
+# Frontend
+frontend/
+sdk/
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/.cache/
+
+# SDK build artefacts
+sdk/dist/
+sdk/build/
+sdk/node_modules/
+
+# Models / weights binaries
+*.pt
+*.zip
+*.onnx
+*.trt
+*.engine
+
+# Big data assets (kept locally, not on git)
+data/aerial/
+data/itu_r/
+data/orbital/
+data/tle/
+data/deepmimo/*/
+!data/deepmimo/manifest.json
+!data/deepmimo/.gitkeep
+
+# Local logs
+logs/
+*.log
+chaos_test_report.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Runtime state (per-deploy)
+var/evidence/
+var/state/

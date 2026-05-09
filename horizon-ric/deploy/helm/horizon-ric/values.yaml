@@ -1,0 +1,193 @@
+# Default values for horizon-ric.
+# https://github.com/preceptualai/horizon-ric
+
+image:
+  repository: horizonric/rapp
+  tag: "0.2.0"
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# Controller config.
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 2
+
+# Probes — wired to the FastAPI endpoints in horizon_ric.rapp.health.
+healthPort: 8081
+metricsPort: 8082
+
+# Pod-level config.
+podAnnotations: {}
+podLabels: {}
+podSecurityContext:
+  fsGroup: 10000
+  runAsNonRoot: true
+  runAsUser: 10000
+  runAsGroup: 10000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  privileged: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 10000
+  capabilities:
+    drop: ["ALL"]
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+# Autoscaling.
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Pod disruption budget.
+pdb:
+  enabled: true
+  minAvailable: 1
+
+# Service.
+service:
+  type: ClusterIP
+  healthPort: 8081
+  metricsPort: 8082
+  annotations: {}
+
+# Prometheus operator ServiceMonitor.
+serviceMonitor:
+  enabled: true
+  interval: 15s
+  scrapeTimeout: 10s
+  labels: {}
+
+# NetworkPolicy: restrict egress to the SMO + IDP only by default.
+networkPolicy:
+  enabled: true
+  smoCidr: "10.96.0.0/12"
+  idpCidr: "10.96.0.0/12"
+  dnsCidr: "10.96.0.10/32"
+  extraEgressRules: []
+
+# Non-secret runtime config — exposed as a ConfigMap and mounted as env.
+config:
+  rappId: "horizon-ric-rapp"
+  smoUrl: "http://nonrtric.smo.svc.cluster.local:8080"
+  nearRtRicUrl: "http://nearrtric.ricplt.svc.cluster.local:10000"
+  logLevel: "INFO"
+  stateDir: "/var/lib/horizon"
+
+# Secrets — referenced by name. Set existingSecret to skip creation.
+secret:
+  create: true
+  existingSecret: ""
+  data:
+    # Base64-encoded values are NOT used here; we put plaintext under a key
+    # that the chart wraps with `b64enc` in templates/secret.yaml.
+    spaceTrackIdentity: ""
+    spaceTrackPassword: ""
+    a1ClientToken: ""
+
+# Persistent volume for the evidence store. When false, falls back to an
+# emptyDir (suitable only for ephemeral demos — DecisionRecords are lost
+# on pod reschedule).
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: ""
+  accessModes: ["ReadWriteOnce"]
+
+# Liveness / readiness tuning.
+livenessProbe:
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+readinessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Optional sidecar (e.g. for Vault agent injection). Disabled by default.
+sidecars: []
+extraVolumes: []
+extraVolumeMounts: []
+
+# ---------------------------------------------------------------------------
+# Disaster-recovery backing services (Row 38).
+# ---------------------------------------------------------------------------
+# TimescaleDB — primary store for the `decisions` hypertable, 7-day retention,
+# 1-day chunk_time_interval. Hourly backups are pushed to MinIO by the
+# `scripts/backup_and_restore.sh` cron-job.
+timescaledb:
+  enabled: true
+  image:
+    repository: timescale/timescaledb
+    tag: "2.16.1-pg16"
+    pullPolicy: IfNotPresent
+  user: horizon
+  database: decisions
+  retention: "7 days"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  persistence:
+    size: 50Gi
+    storageClass: ""
+
+# MinIO — S3-compatible object storage for hourly evidence-store snapshots.
+# Bucket is created at install time by a Helm post-install Job.
+minio:
+  enabled: true
+  image:
+    repository: minio/minio
+    tag: "RELEASE.2024-09-13T20-26-02Z"
+    pullPolicy: IfNotPresent
+  mcImage:
+    repository: minio/mc
+    tag: "RELEASE.2024-09-09T16-17-43Z"
+  bucket: horizon-evidence-archive
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  persistence:
+    size: 100Gi
+    storageClass: ""
+
+# DR backup CronJob — wraps scripts/backup_and_restore.sh and runs hourly
+# inside the cluster. Disabled by default; enable in prod values.
+backup:
+  enabled: false
+  schedule: "0 * * * *"   # hourly, on the hour
+  image:
+    repository: ghcr.io/preceptualai/horizon-ric-backup
+    tag: "0.2.0"
+    pullPolicy: IfNotPresent
+  retention:
+    daily: 30
+    monthly: 12
+    yearly: 5

@@ -1,0 +1,76 @@
+# Nokia DAC (Digital Automation Cloud) marketplace listing — PreceptualAI rApp.
+#
+# Conforms to the Nokia rApp / xApp marketplace submission template
+# documented in the Nokia Network Solutions developer portal. Fields that
+# require Nokia partner-portal entry (signing keys, ARC artefact ids)
+# are filled in at submission time.
+listing:
+  name: PreceptualAI
+  slug: horizon-ric
+  version: 0.2.0
+  vendor:
+    legalName: Preceptual AI
+    displayName: Preceptual AI
+    contact: danielfoojunwei@gmail.com
+  type: rapp
+  category:
+    - non-rt-ric
+    - intelligent-automation
+    - sla-management
+  shortDescription: >
+    Multi-vendor non-RT RIC rApp with native Nokia MantaRay SDN-R
+    integration and weights-only federated learning across edge sites.
+  longDescription: >
+    PreceptualAI speaks the Nokia MantaRay SDN-R A1 dialect natively:
+    policies are PUT to /sdn-r/api/v1/policies with the camelCase
+    body shape {policyId, policyTypeId, ricId, rappId, policyData}.
+    Keycloak-issued JWT auth is wired through horizon_ric.rapp.auth
+    so no extra middleware is required. The rApp runs unmodified on
+    a Nokia MantaRay-managed near-RT RIC.
+compatibility:
+  smo:
+    - mantaray
+  nokiaProductIntegration:
+    - "Nokia MantaRay SMO"
+    - "Nokia AVA Platform"
+    - "Nokia Digital Automation Cloud"
+  oranWorkingGroups:
+    - WG2
+    - WG11
+deployment:
+  packaging: helm
+  ociChart: oci://ghcr.io/preceptual-ai/horizon-ric
+  ociChartVersion: 0.2.0
+  resources:
+    requests:
+      cpu: "2"
+      memory: 4Gi
+    limits:
+      cpu: "4"
+      memory: 8Gi
+    gpu:
+      required: false
+      preferred:
+        - NVIDIA Jetson Orin Nano
+        - NVIDIA GB10
+licensing:
+  model: subscription
+  trial:
+    available: true
+    durationDays: 30
+  spdx: Apache-2.0
+support:
+  level: business-hours
+  channel: email
+  contact: danielfoojunwei@gmail.com
+security:
+  nokiaSecurityReview: pending
+  auth:
+    - oauth2-jwt
+    - mtls
+  evidenceStore: tamper-evident-sha256-chain
+  dataResidency: customer-controlled
+documentation:
+  integrationGuide: docs/SMO_INTEGRATION.md
+  conformanceStatement: docs/conformance/SoC.yaml
+  api: docs/openapi/horizon-ric.yaml

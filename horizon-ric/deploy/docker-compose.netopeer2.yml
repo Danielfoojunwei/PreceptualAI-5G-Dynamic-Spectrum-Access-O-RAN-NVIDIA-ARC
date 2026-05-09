@@ -1,0 +1,35 @@
+# docker-compose.netopeer2.yml
+#
+# Real upstream netopeer2 (CESNET, BSD-3-clause) — the same NETCONF
+# server used by ONAP / Open vSwitch / OEM appliances. NETCONF 1.1
+# over SSH on port 830, sysrepo-backed YANG datastore.
+#
+# Usage:
+#   docker compose -f deploy/docker-compose.netopeer2.yml up -d
+#   pytest -m integration tests/test_o1_live.py \
+#       -e O1_TEST_PORT=830 -e O1_TEST_USER=netconf -e O1_TEST_KEY=...
+#
+# When the host environment cannot run docker (developer not in the
+# `docker` group, no rootless setup), use the no-docker alternative
+# `deploy/start_netconf_server.sh` which extracts the same upstream
+# netconfd (yuma123) into user-space and fronts it with a non-root
+# OpenSSH `sshd`. The proof at `deploy/NETCONF_PROOF.md` documents
+# both paths and shows the actual rpc-reply XML returned.
+#
+services:
+  netconf:
+    # Pin to a tag once you've verified the digest in your environment;
+    # the upstream registry coordinates here are intentionally generic.
+    image: sysrepo/sysrepo-netopeer2:latest
+    container_name: horizon-ric-netopeer2
+    ports:
+      - "830:830"
+    volumes:
+      - ./yang:/etc/sysrepo/yang:ro
+    healthcheck:
+      # Sanity: confirm the netopeer2 server process is up.
+      test: ["CMD-SHELL", "pgrep -x netopeer2-server >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped

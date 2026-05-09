@@ -252,3 +252,228 @@ class DiffusionAugmenter:
         """Generate synthetic next observations."""
         self.model.eval()
         return self.model.sample(current_obs, num_samples)
+
+
+# ======================================================================
+# Diffusion Trajectory Planning (Paradigm Shift 3)
+# ======================================================================
+
+class TrajectoryDiffusionModel(nn.Module):
+    """
+    Diffusion model for planning entire allocation trajectories.
+
+    Instead of single-step augmentation, generates K-step action-state
+    trajectories conditioned on the current state, then scores them
+    using a value function or world model.
+
+    Inspired by Diffuser (Janner et al., ICML 2022) and Decision
+    Diffusion (Ajay et al., NeurIPS 2023), adapted for spectrum.
+
+    Key insight: Handover decisions are multi-step. Switching from LEO
+    to FR1 costs 0.3 NOW but may save 5.0 over the next 10 steps by
+    avoiding collisions. Trajectory planning captures this.
+    """
+
+    def __init__(
+        self,
+        obs_dim: int,
+        action_dim: int,
+        horizon: int = 10,
+        hidden_dim: int = 256,
+        num_blocks: int = 4,
+        num_diffusion_steps: int = 50,
+    ):
+        super().__init__()
+        self.obs_dim = obs_dim
+        self.action_dim = action_dim
+        self.horizon = horizon
+        self.traj_dim = horizon * (obs_dim + action_dim)  # flattened trajectory
+        self.num_steps = num_diffusion_steps
+
+        # Noise schedule
+        betas = torch.linspace(1e-4, 0.02, num_diffusion_steps)
+        alphas = 1.0 - betas
+        alphas_cumprod = torch.cumprod(alphas, dim=0)
+        self.register_buffer('betas', betas)
+        self.register_buffer('alphas', alphas)
+        self.register_buffer('alphas_cumprod', alphas_cumprod)
+        self.register_buffer('sqrt_alphas_cumprod', torch.sqrt(alphas_cumprod))
+        self.register_buffer('sqrt_one_minus_alphas_cumprod', torch.sqrt(1.0 - alphas_cumprod))
+
+        # Time embedding
+        time_dim = hidden_dim
+        self.time_embed = nn.Sequential(
+            SinusoidalTimeEmbedding(hidden_dim),
+            nn.Linear(hidden_dim, time_dim),
+            nn.SiLU(),
+            nn.Linear(time_dim, time_dim),
+        )
+
+        # State conditioner
+        self.state_encoder = nn.Sequential(
+            nn.Linear(obs_dim, hidden_dim),
+            nn.SiLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+        )
+
+        # Trajectory denoiser
+        self.input_proj = nn.Linear(self.traj_dim + hidden_dim, hidden_dim)
+        self.blocks = nn.ModuleList([
+            DenoisingBlock(hidden_dim, time_dim) for _ in range(num_blocks)
+        ])
+        self.output_proj = nn.Linear(hidden_dim, self.traj_dim)
+
+    def forward(self, traj_noisy, t, state):
+        t_emb = self.time_embed(t)
+        s_emb = self.state_encoder(state)
+        h = self.input_proj(torch.cat([traj_noisy, s_emb], dim=-1))
+        for block in self.blocks:
+            h = block(h, t_emb)
+        return self.output_proj(h)
+
+    def training_loss(self, trajectories, states):
+        """
+        Args:
+            trajectories: (B, horizon * (obs_dim + action_dim)) flattened
+            states: (B, obs_dim) current state conditioning
+        """
+        B = trajectories.shape[0]
+        t = torch.randint(0, self.num_steps, (B,), device=trajectories.device)
+        noise = torch.randn_like(trajectories)
+        sqrt_a = self.sqrt_alphas_cumprod[t].unsqueeze(-1)
+        sqrt_1ma = self.sqrt_one_minus_alphas_cumprod[t].unsqueeze(-1)
+        noisy = sqrt_a * trajectories + sqrt_1ma * noise
+        eps_pred = self.forward(noisy, t, states)
+        return F.mse_loss(eps_pred, noise)
+
+    @torch.no_grad()
+    def plan(self, state, num_candidates=8):
+        """
+        Generate candidate trajectories and return them for scoring.
+
+        Args:
+            state: (B, obs_dim) current state
+            num_candidates: number of candidate trajectories per state
+        Returns:
+            trajectories: (B * num_candidates, horizon, obs_dim + action_dim)
+        """
+        B = state.shape[0]
+        state_expanded = state.repeat_interleave(num_candidates, dim=0)
+        total = state_expanded.shape[0]
+
+        x = torch.randn(total, self.traj_dim, device=state.device)
+
+        for t_idx in reversed(range(self.num_steps)):
+            t = torch.full((total,), t_idx, device=x.device, dtype=torch.long)
+            eps_pred = self.forward(x, t, state_expanded)
+            alpha = self.alphas[t_idx]
+            alpha_bar = self.alphas_cumprod[t_idx]
+            beta = self.betas[t_idx]
+            x = (1.0 / alpha.sqrt()) * (x - (beta / (1 - alpha_bar).sqrt()) * eps_pred)
+            if t_idx > 0:
+                x = x + beta.sqrt() * torch.randn_like(x)
+
+        # Reshape to (B*K, horizon, obs_dim + action_dim)
+        trajs = x.view(total, self.horizon, self.obs_dim + self.action_dim)
+        return trajs
+
+
+class DiffusionTrajectoryPlanner:
+    """
+    Plans multi-step spectrum allocations via diffusion + scoring.
+
+    1. Generate K candidate trajectories via TrajectoryDiffusionModel
+    2. Score each trajectory using cumulative predicted reward
+    3. Execute the first action of the best trajectory
+
+    This enables look-ahead planning for handover decisions where
+    short-term cost leads to long-term gain.
+    """
+
+    def __init__(
+        self,
+        obs_dim: int,
+        action_dim: int,
+        horizon: int = 10,
+        num_candidates: int = 8,
+        device: torch.device = torch.device("cpu"),
+        hidden_dim: int = 256,
+        lr: float = 1e-4,
+    ):
+        self.obs_dim = obs_dim
+        self.action_dim = action_dim
+        self.horizon = horizon
+        self.num_candidates = num_candidates
+        self.device = device
+
+        self.model = TrajectoryDiffusionModel(
+            obs_dim, action_dim, horizon, hidden_dim,
+        ).to(device)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+
+        # Simple reward predictor: (obs, action_onehot) -> scalar reward
+        self.reward_predictor = nn.Sequential(
+            nn.Linear(obs_dim + action_dim, hidden_dim),
+            nn.SiLU(),
+            nn.Linear(hidden_dim, 1),
+        ).to(device)
+        self.reward_optimizer = torch.optim.Adam(
+            self.reward_predictor.parameters(), lr=lr
+        )
+
+    def train_step(self, trajectories, states):
+        """Train the trajectory diffusion model."""
+        self.model.train()
+        loss = self.model.training_loss(trajectories, states)
+        self.optimizer.zero_grad()
+        loss.backward()
+        nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+        self.optimizer.step()
+        return loss.item()
+
+    def train_reward(self, obs, actions_onehot, rewards):
+        """Train reward predictor on real transitions."""
+        self.reward_predictor.train()
+        pred = self.reward_predictor(torch.cat([obs, actions_onehot], dim=-1)).squeeze(-1)
+        loss = F.mse_loss(pred, rewards)
+        self.reward_optimizer.zero_grad()
+        loss.backward()
+        self.reward_optimizer.step()
+        return loss.item()
+
+    @torch.no_grad()
+    def plan_action(self, state):
+        """
+        Plan best first action by generating and scoring trajectories.
+
+        Args:
+            state: (1, obs_dim) current state
+        Returns:
+            best_action: int — action index from best trajectory
+        """
+        self.model.eval()
+        self.reward_predictor.eval()
+
+        # Generate candidates
+        trajs = self.model.plan(state, self.num_candidates)  # (K, H, obs+act)
+        K = trajs.shape[0]
+
+        # Score each trajectory by cumulative predicted reward
+        total_rewards = torch.zeros(K, device=state.device)
+        for t in range(self.horizon):
+            obs_t = trajs[:, t, :self.obs_dim]
+            act_t = trajs[:, t, self.obs_dim:]
+            r_pred = self.reward_predictor(
+                torch.cat([obs_t, act_t], dim=-1)
+            ).squeeze(-1)
+            total_rewards += r_pred * (0.99 ** t)  # discounted
+
+        # Pick best trajectory
+        best_idx = total_rewards.argmax()
+        best_traj = trajs[best_idx]
+
+        # Extract first action (convert continuous to discrete)
+        first_action_cont = best_traj[0, self.obs_dim:]
+        best_action = first_action_cont.argmax().item()
+
+        return best_action

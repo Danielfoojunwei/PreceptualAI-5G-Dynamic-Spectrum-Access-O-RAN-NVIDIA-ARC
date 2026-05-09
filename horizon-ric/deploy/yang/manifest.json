@@ -1,0 +1,173 @@
+{
+  "modules": {
+    "_3gpp-common-filemanagement.yang": {
+      "bytes": 3954,
+      "sha256": "a56af0e32843f79cb9e100e98c0837dd1041435c1df649bf589994d11070e6c8",
+      "source": "3GPP TS 28.541 NRM (transitive)",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-filemanagement.yang"
+    },
+    "_3gpp-common-files.yang": {
+      "bytes": 12766,
+      "sha256": "62a94c67784c4b4345d37ef28c7c5f9d1af9951e4e30850a23e1765162a9f5da",
+      "source": "3GPP TS 28.541 NRM (transitive)",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-files.yang"
+    },
+    "_3gpp-common-fm.yang": {
+      "bytes": 31332,
+      "sha256": "b741b4ebc4c1aae86ad50847f9ff33a7d95c11e9ec4d0d6ea54df85f04dbbde4",
+      "source": "3GPP TS 28.541 NRM (transitive)",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-fm.yang"
+    },
+    "_3gpp-common-managed-element.yang": {
+      "bytes": 12188,
+      "sha256": "ef9152b73a1c857c12cfaf7763fc633e2d8e2f38dba48fe5f24830be585240f8",
+      "source": "3GPP TS 28.541 NRM",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-managed-element.yang"
+    },
+    "_3gpp-common-managed-function.yang": {
+      "bytes": 11786,
+      "sha256": "f1b8f808728cdd674f157032e0225dfed1cf0080a3a9d6d970feb30f22dd41c1",
+      "source": "3GPP TS 28.541 NRM",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-managed-function.yang"
+    },
+    "_3gpp-common-measurements.yang": {
+      "bytes": 23038,
+      "sha256": "b7578cecd131f433feccdec2210e661822012d612acb7d83df0f97d5b4330efa",
+      "source": "3GPP TS 28.541 NRM (transitive)",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-measurements.yang"
+    },
+    "_3gpp-common-mecontext.yang": {
+      "bytes": 3502,
+      "sha256": "4ff38d2875bda23b80b46431acddb7ac18496e6a9ab3b2df16045362ed9f784b",
+      "source": "3GPP TS 28.541 NRM",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-mecontext.yang"
+    },
+    "_3gpp-common-subnetwork.yang": {
+      "bytes": 8444,
+      "sha256": "17e518d8c59c5afd756e3a26b4903425ce014695204c9cf6e5332fa51bceb129",
+      "source": "3GPP TS 28.541 NRM",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-subnetwork.yang"
+    },
+    "_3gpp-common-subscription-control.yang": {
+      "bytes": 14791,
+      "sha256": "2df1a1fc73c79fa3441a55725f4231553f7548e7f825a275a8e49cccc185938f",
+      "source": "3GPP TS 28.541 NRM (transitive)",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-subscription-control.yang"
+    },
+    "_3gpp-common-top.yang": {
+      "bytes": 1126,
+      "sha256": "904a4d1fc0b3f3a17a0c2aefb4c438afb2d83d0685bd6425131e99f4bae2d8dc",
+      "source": "3GPP TS 28.541 NRM",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-top.yang"
+    },
+    "_3gpp-common-trace.yang": {
+      "bytes": 67229,
+      "sha256": "effe983d7b7babc40c33692b85b592aadab1ed8765cb6535f7123f9245305731",
+      "source": "3GPP TS 28.541 NRM (transitive)",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-trace.yang"
+    },
+    "_3gpp-common-yang-extensions.yang": {
+      "bytes": 6976,
+      "sha256": "a404d6134a552b836e9fe965df8728380811283b8743172dbe7706febdb99f56",
+      "source": "3GPP TS 28.623 / TS 28.541 NRM",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-yang-extensions.yang"
+    },
+    "_3gpp-common-yang-types.yang": {
+      "bytes": 34336,
+      "sha256": "a19fc30ec84661cec912a37b8ea68898b1822610ca3635ee55b000ade7d75b55",
+      "source": "3GPP TS 28.623 / TS 28.541 NRM",
+      "url": "https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-18/yang-models/_3gpp-common-yang-types.yang"
+    },
+    "iana-crypt-hash@2014-08-06.yang": {
+      "bytes": 4221,
+      "sha256": "fa9fde408ddec2c16bf2c6b9e4c2f80b813a2f9e48c127016f3fa96da346e02d",
+      "source": "RFC 7317",
+      "url": "https://raw.githubusercontent.com/YangModels/yang/main/standard/ietf/RFC/iana-crypt-hash%402014-08-06.yang"
+    },
+    "ietf-datastores@2018-02-14.yang": {
+      "bytes": 2679,
+      "sha256": "eccd84d4c4831e787b808e0da154aef6b999e81f4380c3272190baf34a9529ce",
+      "source": "RFC 8342",
+      "url": "https://raw.githubusercontent.com/YangModels/yang/main/standard/ietf/RFC/ietf-datastores%402018-02-14.yang"
+    },
+    "ietf-inet-types@2013-07-15.yang": {
+      "bytes": 16830,
+      "sha256": "12d98b0143a5ca5095b36420f9ebc1ffa61cfd2eaa850080244cadf01b86ddf9",
+      "source": "RFC 6991",
+      "url": "https://raw.githubusercontent.com/YangModels/yang/main/standard/ietf/RFC/ietf-inet-types%402013-07-15.yang"
+    },
+    "ietf-interfaces@2018-02-20.yang": {
+      "bytes": 39365,
+      "sha256": "f6faea9938f0341ed48fda93dba9a69aa32ee7142c463342efec3d38f4eb3621",
+      "source": "RFC 8343",
+      "url": "https://raw.githubusercontent.com/YangModels/yang/main/standard/ietf/RFC/ietf-interfaces%402018-02-20.yang"
+    },
+    "ietf-netconf-acm@2018-02-14.yang": {
+      "bytes": 13283,
+      "sha256": "e03f91317f9538a89296e99df3ff0c4003cdfea70bf517407643b3ec13c1ed25",
+      "source": "RFC 8341",
+      "url": "https://raw.githubusercontent.com/YangModels/yang/main/standard/ietf/RFC/ietf-netconf-acm%402018-02-14.yang"
+    },
+    "ietf-netconf-notifications@2012-02-06.yang": {
+      "bytes": 10468,
+      "sha256": "b0658bae03c372ccf03a8cc0b64ebbda91bb0d12c19fdc20020f2f18bd8112ac",
+      "source": "RFC 6470",
+      "url": "https://raw.githubusercontent.com/YangModels/yang/main/standard/ietf/RFC/ietf-netconf-notifications%402012-02-06.yang"
+    },
+    "ietf-netconf@2011-06-01.yang": {
+      "bytes": 26737,
+      "sha256": "6c1d0b39e789b53ea13b7ea6703c2dcb199157a7b011ce30af4ca61b8ba9b13f",
+      "source": "RFC 6241",
+      "url": "https://raw.githubusercontent.com/YangModels/yang/main/standard/ietf/RFC/ietf-netconf%402011-06-01.yang"
+    },
+    "ietf-system@2014-08-06.yang": {
+      "bytes": 24192,
+      "sha256": "8a692ee2521b4ffe87a88303a61a103879ee26bff050c1b05a2027ae23205d3f",
+      "source": "RFC 7317",
+      "url": "https://raw.githubusercontent.com/YangModels/yang/main/standard/ietf/RFC/ietf-system%402014-08-06.yang"
+    },
+    "ietf-x509-cert-to-name@2014-12-10.yang": {
+      "bytes": 11033,
+      "sha256": "54440b401a64c6b42d5f07437dc686d4e4c876e69c901e98dce861e4281b5fef",
+      "source": "RFC 7407",
+      "url": "https://raw.githubusercontent.com/YangModels/yang/main/standard/ietf/RFC/ietf-x509-cert-to-name%402014-12-10.yang"
+    },
+    "ietf-yang-library@2019-01-04.yang": {
+      "bytes": 16437,
+      "sha256": "cb35aaeb74084c2f1857bbfb9f6c28e26c1641da618eb83b5b55275f63ef1119",
+      "source": "RFC 8525",
+      "url": "https://raw.githubusercontent.com/YangModels/yang/main/standard/ietf/RFC/ietf-yang-library%402019-01-04.yang"
+    },
+    "ietf-yang-types@2013-07-15.yang": {
+      "bytes": 17933,
+      "sha256": "a04cdcc875764a76e89b7a0200c6b9d800b10713978093acda7840c7c2907c3f",
+      "source": "RFC 6991",
+      "url": "https://raw.githubusercontent.com/YangModels/yang/main/standard/ietf/RFC/ietf-yang-types%402013-07-15.yang"
+    },
+    "o-ran-common-identity-refs.yang": {
+      "bytes": 5768,
+      "sha256": "b6b26e0a27202c1de36cc01a4538c68613876253e1ec761da57528b0b1975ff8",
+      "source": "O-RAN WG4 M-Plane (mirror)",
+      "url": "https://raw.githubusercontent.com/o-ran-sc/sim-o1-interface/master/ntsimulator/deploy/o-ran-ru-fh/yang/o-ran-common-identity-refs.yang"
+    },
+    "o-ran-common-yang-types.yang": {
+      "bytes": 10817,
+      "sha256": "90f1d78cdb44647e4ec89c9699d15db936638b51882a44663ab47abddcf56b0d",
+      "source": "O-RAN WG4 M-Plane (mirror)",
+      "url": "https://raw.githubusercontent.com/o-ran-sc/sim-o1-interface/master/ntsimulator/deploy/o-ran-ru-fh/yang/o-ran-common-yang-types.yang"
+    },
+    "o-ran-hardware.yang": {
+      "bytes": 13777,
+      "sha256": "822a218b01473b7140471662d9d2daa5c14e62d0ae32554d1abc9be5bdedeec1",
+      "source": "O-RAN WG4 M-Plane (mirror)",
+      "url": "https://raw.githubusercontent.com/o-ran-sc/sim-o1-interface/master/ntsimulator/deploy/o-ran-ru-fh/yang/o-ran-hardware.yang"
+    },
+    "o-ran-wg4-features.yang": {
+      "bytes": 9167,
+      "sha256": "3bbace6a851aec7e80415800e07f2520f1ea6589570d397fa02dddd9b126354b",
+      "source": "O-RAN WG4 M-Plane (mirror)",
+      "url": "https://raw.githubusercontent.com/o-ran-sc/sim-o1-interface/master/ntsimulator/deploy/o-ran-ru-fh/yang/o-ran-wg4-features.yang"
+    }
+  },
+  "retrieved_at": "2026-05-06T22:35:45.568695+00:00"
+}

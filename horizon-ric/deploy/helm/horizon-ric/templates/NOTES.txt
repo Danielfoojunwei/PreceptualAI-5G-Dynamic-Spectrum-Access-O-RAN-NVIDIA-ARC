@@ -1,0 +1,17 @@
+{{ .Chart.Name }} v{{ .Chart.AppVersion }} installed in namespace {{ .Release.Namespace }}.
+
+Service: {{ include "horizon-ric.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  health   : {{ .Values.service.healthPort }}/healthz, {{ .Values.service.healthPort }}/readyz
+  metrics  : {{ .Values.service.metricsPort }}/metrics
+
+Quick check:
+
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "horizon-ric.fullname" . }} 8081:{{ .Values.service.healthPort }}
+  curl -fsS http://localhost:8081/healthz
+  curl -fsS http://localhost:8081/readyz
+
+Logs (JSON, structlog):
+
+  kubectl --namespace {{ .Release.Namespace }} logs -l app.kubernetes.io/name={{ include "horizon-ric.name" . }} -f
+
+Demo runbook: deploy/RUNBOOK.md

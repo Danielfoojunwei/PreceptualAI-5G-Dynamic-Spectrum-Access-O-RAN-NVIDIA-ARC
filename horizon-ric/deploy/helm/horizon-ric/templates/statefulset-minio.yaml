@@ -1,0 +1,177 @@
+{{- if .Values.minio.enabled }}
+---
+# MinIO — S3-compatible object store for hourly evidence-store snapshots.
+# Closes Row 38 (DR backup/restore). The bucket
+# `{{ .Values.minio.bucket }}` is created by a one-shot Job so the chart
+# can be installed cold without an out-of-band `mc mb` step.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "horizon-ric.fullname" . }}-minio
+  labels:
+    {{- include "horizon-ric.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+spec:
+  type: ClusterIP
+  ports:
+    - name: s3
+      port: 9000
+      targetPort: s3
+      protocol: TCP
+    - name: console
+      port: 9001
+      targetPort: console
+      protocol: TCP
+  selector:
+    {{- include "horizon-ric.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "horizon-ric.fullname" . }}-minio
+  labels:
+    {{- include "horizon-ric.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+type: Opaque
+data:
+  # Stable across upgrades: lookup-or-generate.
+  {{- $existingMinio := (lookup "v1" "Secret" .Release.Namespace (printf "%s-minio" (include "horizon-ric.fullname" .))) }}
+  {{- $rootUser := "" }}
+  {{- $rootPass := "" }}
+  {{- if and $existingMinio $existingMinio.data $existingMinio.data.MINIO_ROOT_USER }}
+  {{-   $rootUser = $existingMinio.data.MINIO_ROOT_USER }}
+  {{- else }}
+  {{-   $rootUser = ("horizon-evidence" | b64enc) }}
+  {{- end }}
+  {{- if and $existingMinio $existingMinio.data $existingMinio.data.MINIO_ROOT_PASSWORD }}
+  {{-   $rootPass = $existingMinio.data.MINIO_ROOT_PASSWORD }}
+  {{- else }}
+  {{-   $rootPass = (randAlphaNum 40 | b64enc) }}
+  {{- end }}
+  MINIO_ROOT_USER:     {{ $rootUser | quote }}
+  MINIO_ROOT_PASSWORD: {{ $rootPass | quote }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "horizon-ric.fullname" . }}-minio
+  labels:
+    {{- include "horizon-ric.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+spec:
+  serviceName: {{ include "horizon-ric.fullname" . }}-minio
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "horizon-ric.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: minio
+  template:
+    metadata:
+      labels:
+        {{- include "horizon-ric.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: minio
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsNonRoot: true
+      containers:
+        - name: minio
+          image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}"
+          imagePullPolicy: {{ .Values.minio.image.pullPolicy | default "IfNotPresent" }}
+          args:
+            - server
+            - /data
+            - --console-address=:9001
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "horizon-ric.fullname" . }}-minio
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "horizon-ric.fullname" . }}-minio
+                  key: MINIO_ROOT_PASSWORD
+          ports:
+            - name: s3
+              containerPort: 9000
+              protocol: TCP
+            - name: console
+              containerPort: 9001
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: s3
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: s3
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.minio.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.minio.persistence.storageClass }}
+        storageClassName: {{ .Values.minio.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.minio.persistence.size }}
+---
+# Bucket bootstrap — creates the evidence-archive bucket on install/upgrade.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "horizon-ric.fullname" . }}-minio-bucket
+  labels:
+    {{- include "horizon-ric.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        {{- include "horizon-ric.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: minio-bootstrap
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: "{{ .Values.minio.mcImage.repository }}:{{ .Values.minio.mcImage.tag }}"
+          env:
+            - name: MINIO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "horizon-ric.fullname" . }}-minio
+                  key: MINIO_ROOT_USER
+            - name: MINIO_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "horizon-ric.fullname" . }}-minio
+                  key: MINIO_ROOT_PASSWORD
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              mc alias set local http://{{ include "horizon-ric.fullname" . }}-minio:9000 "$MINIO_USER" "$MINIO_PASS"
+              mc mb --ignore-existing local/{{ .Values.minio.bucket }}
+              mc version enable local/{{ .Values.minio.bucket }} || true
+              mc retention set --default GOVERNANCE 30d local/{{ .Values.minio.bucket }} || true
+{{- end }}
