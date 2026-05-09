@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "horizon-ric.configMapName" . }}
+  labels:
+    {{- include "horizon-ric.labels" . | nindent 4 }}
+data:
+  HORIZON_RAPP_ID: {{ .Values.config.rappId | quote }}
+  HORIZON_SMO_URL: {{ .Values.config.smoUrl | quote }}
+  HORIZON_NEAR_RT_RIC_URL: {{ .Values.config.nearRtRicUrl | quote }}
+  HORIZON_LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  HORIZON_STATE_DIR: {{ .Values.config.stateDir | quote }}
+  HORIZON_HEALTH_PORT: {{ .Values.healthPort | quote }}
+  HORIZON_METRICS_PORT: {{ .Values.metricsPort | quote }}

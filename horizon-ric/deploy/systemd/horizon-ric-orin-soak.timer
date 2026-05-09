@@ -1,0 +1,21 @@
+# PreceptualAI — daily 1-hour soak (24x speed-up = 24 simulated hours).
+#
+# Fires horizon-ric-orin-soak.service every day at 02:30 local time.
+# Persistent=true means a missed run (host was off) catches up on next boot.
+
+[Unit]
+Description=PreceptualAI daily soak (24x speed-up, Orin Nano profile)
+Documentation=https://github.com/preceptualai/horizon-ric
+Requires=horizon-ric-orin-soak.service
+
+[Timer]
+# Daily at 02:30 — well after the 02:00 backup window in deploy/RUNBOOK.md.
+OnCalendar=daily
+OnCalendar=*-*-* 02:30:00
+Persistent=true
+RandomizedDelaySec=300
+AccuracySec=1min
+Unit=horizon-ric-orin-soak.service
+
+[Install]
+WantedBy=timers.target

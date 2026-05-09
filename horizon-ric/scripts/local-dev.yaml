@@ -1,0 +1,20 @@
+# Local development connector config for run_horizon_rapp.py.
+# When the source file is missing the daemon falls back to a synthetic
+# 10-event stream so --once smoke tests succeed on a fresh checkout.
+
+source:
+  type: file
+  path: data/replay.jsonl
+
+sink:
+  audit_path: ./data/evidence/audit.jsonl
+
+health:
+  port: 8081
+
+metrics:
+  port: 8082
+
+state:
+  checkpoint_path: ./data/state.json
+  interval_seconds: 30

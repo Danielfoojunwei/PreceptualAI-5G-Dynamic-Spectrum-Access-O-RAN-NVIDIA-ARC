@@ -1,0 +1,79 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    metersPerUnit = 1.0
+    upAxis = "Z"
+    customLayerData = {
+        string scenario_name = "aodt_test_scene"
+        string scenario_origin = "synthetic_for_horizon_ric_unit_tests"
+    }
+)
+
+def Xform "World"
+{
+    def Xform "BS" (
+        customData = {
+            string aodt_type = "cell"
+        }
+    )
+    {
+        double3 xformOp:translate = (1115000.0, -4843000.0, 3982000.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def Xform "UE"
+    {
+        def Xform "UE_0" (
+            customData = {
+                string aodt_type = "ue"
+            }
+        )
+        {
+            double3 xformOp:translate = (1115050.0, -4843010.0, 3982002.5)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+
+        def Xform "UE_1" (
+            customData = {
+                string aodt_type = "ue"
+            }
+        )
+        {
+            double3 xformOp:translate = (1115100.0, -4843050.0, 3982005.0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+
+        def Xform "UE_2" (
+            customData = {
+                string aodt_type = "ue"
+            }
+        )
+        {
+            double3 xformOp:translate = (1115150.0, -4843100.0, 3982010.0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+
+    def Xform "Sat"
+    {
+        def Xform "Sat_LEO_0" (
+            customData = {
+                string aodt_type = "satellite"
+            }
+        )
+        {
+            double3 xformOp:translate = (1500000.0, -5800000.0, 4400000.0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+
+        def Xform "Sat_LEO_1" (
+            customData = {
+                string aodt_type = "satellite"
+            }
+        )
+        {
+            double3 xformOp:translate = (-1200000.0, 6100000.0, -4500000.0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+}

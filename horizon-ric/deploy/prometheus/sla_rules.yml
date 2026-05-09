@@ -1,0 +1,56 @@
+# Prometheus alerting rules — fires when our /metrics endpoint reports
+# threshold crossings. The companion AlertManagerClient also posts the
+# breach to /api/v2/alerts directly; these rules give operators a
+# Prometheus-native fallback if the rApp is degraded.
+#
+# Mount this file under /etc/prometheus/rules.d/ and include it from
+# prometheus.yml's `rule_files:` list.
+groups:
+  - name: horizon-ric-sla
+    interval: 30s
+    rules:
+      - alert: HorizonSLALatencyP99
+        expr: horizon_ric_latency_p99_ms > 10
+        for: 5m
+        labels:
+          severity: critical
+          sla_id: sla-latency-p99
+        annotations:
+          summary: "Latency p99 over SLO ({{ $value }} ms > 10 ms)"
+          description: "TS 28.554 §6.3.1 user-plane delay p99 sustained > 10 ms for 5m."
+
+      - alert: HorizonSLAA1EmitSuccess
+        expr: horizon_ric_a1_emit_success_ratio < 0.9999
+        for: 1h
+        labels:
+          severity: warning
+          sla_id: sla-a1-emit-success
+        annotations:
+          summary: "A1 emit success ratio below 99.99%"
+
+      - alert: HorizonSLAAuditChainIntegrity
+        expr: horizon_ric_audit_chain_first_bad_index >= 0
+        for: 0s
+        labels:
+          severity: critical
+          sla_id: sla-audit-chain-integrity
+        annotations:
+          summary: "Audit chain corrupted — first bad index {{ $value }}"
+
+      - alert: HorizonSLAEpfdMargin
+        expr: horizon_ric_epfd_margin_dB < 5
+        for: 0s
+        labels:
+          severity: critical
+          sla_id: sla-epfd-margin
+        annotations:
+          summary: "EPFD margin to BO.1444 floor below 5 dB ({{ $value }})"
+
+      - alert: HorizonSLADecisionLatencyP99
+        expr: horizon_ric_decision_latency_p99_ms > 100
+        for: 5m
+        labels:
+          severity: warning
+          sla_id: sla-decision-latency-p99
+        annotations:
+          summary: "Decision-loop latency p99 > 100 ms"

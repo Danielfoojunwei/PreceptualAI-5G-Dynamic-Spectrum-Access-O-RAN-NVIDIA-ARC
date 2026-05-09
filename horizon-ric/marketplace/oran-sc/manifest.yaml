@@ -1,0 +1,61 @@
+# O-RAN SC rApp catalogue submission for PreceptualAI.
+#
+# Conforms to the O-RAN SC rApp catalogue schema published in the
+# O-RAN SC NONRTRIC project (rapp-manager-catalogue, rapp.o-ran-sc.org/v1).
+# When the rApp catalogue API gains additional fields they should be
+# layered on top of this manifest, not in place of it.
+apiVersion: rapp.o-ran-sc.org/v1
+kind: rApp
+metadata:
+  name: horizon-ric
+  version: 0.2.0
+  labels:
+    rapp.o-ran-sc.org/category: closed-loop-optimisation
+    rapp.o-ran-sc.org/risk-class: ai-ml
+spec:
+  vendor: Preceptual AI
+  contact: danielfoojunwei@gmail.com
+  license: Apache-2.0
+  description: >
+    PreceptualAI is a closed-loop, AI/ML-driven non-RT RIC rApp that
+    delivers SLA risk forecasting and policy recommendations across
+    terrestrial and non-terrestrial RAN. Runs on edge (Jetson Orin
+    Nano) for inference and on operator data centre (NVIDIA GB10) for
+    federated training; weights-only federated learning per O-RAN
+    WG2 R1AP §6.
+  oranCompliance:
+    - O-RAN.WG2.R1AP-v06.00
+    - O-RAN.WG2.A1AP-v05.00
+    - O-RAN.WG2.O1-v06.00
+    - O-RAN.WG11.SEC-v05.00
+  capabilities:
+    services:
+      - horizon.policy.recommend
+      - horizon.risk.sla
+      - horizon.evidence.query
+    smoDialects:
+      - legacy   # historical near-RT-RIC A1AP mirror
+      - osc      # OSC NONRTRIC PMS reference
+      - eiap     # Ericsson EIAP rApp SDK
+      - mantaray # Nokia MantaRay SMO via SDN-R
+  resources:
+    cpu: 4
+    memory: 8Gi
+    gpu:
+      required: false
+      preferred: NVIDIA Jetson Orin Nano | NVIDIA GB10
+  conformance:
+    statementOfConformance: docs/conformance/SoC.yaml
+    testReports:
+      - docs/conformance/o2_test_report.md
+      - docs/conformance/a1_test_report.md
+  dataHandling:
+    pii: none
+    networkProvenance: federated-weights-only
+    evidenceStore: tamper-evident-sha256-chain
+  # Deployment hooks for the O-RAN SC rApp manager / dApps onboarding.
+  deployment:
+    helm:
+      chart: oci://ghcr.io/preceptual-ai/horizon-ric
+      version: 0.2.0
+    crds: []

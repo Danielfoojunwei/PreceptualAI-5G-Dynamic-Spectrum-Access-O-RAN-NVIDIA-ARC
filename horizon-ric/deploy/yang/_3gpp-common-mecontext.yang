@@ -1,0 +1,86 @@
+module _3gpp-common-mecontext {
+  yang-version 1.1;
+  namespace "urn:3gpp:sa5:_3gpp-common-mecontext";
+  prefix "mectx3gpp";
+
+  import _3gpp-common-yang-types { prefix types3gpp; }
+  import _3gpp-common-yang-extensions { prefix yext3gpp ; }
+  import _3gpp-common-top { prefix top3gpp; }
+  import _3gpp-common-subnetwork { prefix subnet3gpp; }
+  import ietf-yang-schema-mount { prefix yangmnt; }
+
+  organization "3GPP SA5";
+  contact "https://www.3gpp.org/DynaReport/TSG-WG--S5--officials.htm?Itemid=464";
+
+  description "Defines basic MeContext which will be augmented by other IOCs
+    Copyright 2025, 3GPP Organizational Partners (ARIB, ATIS, CCSA, ETSI, TSDSI,
+    TTA, TTC). All rights reserved.";
+  reference "3GPP TS 28.623
+    Generic Network Resource Model (NRM)
+    Integration Reference Point (IRP);
+    Solution Set (SS) definitions
+
+    3GPP TS 28.622
+    Generic Network Resource Model (NRM)
+    Integration Reference Point (IRP);
+    Information Service (IS)";
+
+  revision 2025-03-24 { reference "CR-0524"; } 
+  revision 2025-03-24 { reference "CR-0517 CR-0516"; }
+  revision 2024-07-17 { reference "CR-0381 CR-0382 CR-0383"; }
+
+  grouping MeContextGrp {
+    description "Represents the MeContext IOC.";
+
+    leaf dnPrefix {
+      type types3gpp:DistinguishedName;
+      yext3gpp:inVariant;      
+      description "It carries the DN Prefix information or no information.
+        The instance of MeContext is the local root instance of the MIB.
+        Otherwise the attribute shall be absent or carry no information.";
+      reference "Annex C of 32.300 ";
+    }
+  }
+
+  augment "/subnet3gpp:SubNetwork" {
+    list MeContext {
+      description "This IOC is introduced for naming purposes. It may support
+        creation of unique DNs in scenarios when some MEs have the same RDNs due
+        to the fact that they have been manufacturer pre-configured.
+
+        If some MEs have the same RDNs (for the above mentioned reason) and they
+        are contained in the same SubNetwork instance, some measure shall be
+        taken in order to assure the global uniqueness of DNs for all IOC
+        instances under those MEs. One way could be to set different dnPrefix
+        for those NEs, but that would require either that:
+
+        a)  all LDNs or DNs are locally modified using the new dnPrefix for the
+        upper portion of the DNs, or
+        b)  a mapping (translation) of the old LDNs or DNs to the new DNs every
+        time they are used externally, e.g. in alarm notifications.
+
+        As both the two alternatives above may involve unacceptable drawbacks
+        (as the old RDNs for the MEs then would have to be changed or mapped to
+        new values), using MeContext offers a new alternative to resolve the DN
+        creation. Using MeContext as part of the naming tree (and thus the DN)
+        means that the dnPrefix, including a unique MeContext for each ME, may
+        be directly concatenated with the LDNs, without any need to change or
+        map the existing ME RDNs to new values.
+
+        MeContext have 0..N instances. It may exist even if no SubNetwork exists.
+        Every instance of MeContext contains exactly one ManagedElement during
+        steady-state operations.";
+
+      key id;
+      uses top3gpp:Top_Grp;
+      container attributes {
+        uses MeContextGrp;
+      }
+
+      yangmnt:mount-point children-of-MeContext {
+        description "Mountpoint for ManagedElement";
+        reference "RFC8528 YANG Schema Mount";
+      }
+    }
+  }
+}

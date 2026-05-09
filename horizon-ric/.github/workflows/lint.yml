@@ -1,0 +1,87 @@
+name: lint
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - run: pip install ruff
+      - run: ruff check src/ tests/
+
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - run: |
+          pip install -e ".[dev]"
+          pip install mypy
+      - run: mypy src/horizon_ric --ignore-missing-imports || true
+        # mypy is informational on first pass; tighten in a follow-up.
+
+  yang-strict:
+    # Real strict YANG validation gate. Closes Row 9: any change to a
+    # vendored YANG module that breaks `pyang --strict --canonical` fails CI.
+    # Modules listed in `deploy/yang/known_strict_violations.md` are
+    # tolerated (upstream RFC / 3GPP defects) — every other module MUST
+    # validate clean. See deploy/yang/manifest.json for SHA-256 + URL.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install pyang
+        run: pip install pyang==2.7.1
+      - name: pyang --strict --canonical (informational, all modules)
+        run: |
+          set +e
+          for f in deploy/yang/*.yang; do
+            echo "=== $(basename $f) ==="
+            pyang --strict --canonical -p deploy/yang/ "$f"
+          done
+          true
+      - name: pyang strict gate on enforced subset
+        run: |
+          # Strict-clean enforcement: parse known_strict_violations.md to
+          # build the skip list, then fail the job if any other module
+          # produces output on stdout/stderr.
+          python - <<'PY'
+          import pathlib, re, subprocess, sys
+          root = pathlib.Path("deploy/yang")
+          violations_doc = (root / "known_strict_violations.md").read_text()
+          # Only count modules listed in the violations section (above
+          # "## Strict-clean"); the trailing table lists modules that DO
+          # pass strict.
+          if "## Strict-clean" in violations_doc:
+              violations_doc = violations_doc.split("## Strict-clean", 1)[0]
+          skip = set(re.findall(r"`([\w@.\-]+\.yang)`", violations_doc))
+          fail = []
+          for mod in sorted(root.glob("*.yang")):
+              if mod.name in skip:
+                  continue
+              proc = subprocess.run(
+                  ["pyang", "--strict", "--canonical", "-p", str(root), str(mod)],
+                  capture_output=True, text=True,
+              )
+              if proc.returncode != 0 or proc.stdout.strip() or proc.stderr.strip():
+                  fail.append((mod.name, proc.stdout + proc.stderr))
+          if fail:
+              for name, out in fail:
+                  print(f"\n=== STRICT FAIL: {name} ===\n{out}", file=sys.stderr)
+              sys.exit(1)
+          print(f"OK: {len(list(root.glob('*.yang'))) - len(skip)} modules strict-clean.")
+          PY

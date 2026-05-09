@@ -1,0 +1,901 @@
+module _3gpp-common-fm {
+  yang-version 1.1;
+  namespace "urn:3gpp:sa5:_3gpp-common-fm";
+  prefix "fm3gpp";
+
+  import ietf-yang-types { prefix yang; }
+  import _3gpp-common-top { prefix top3gpp; }
+  import _3gpp-common-yang-types { prefix types3gpp; }
+  import _3gpp-common-yang-extensions { prefix yext3gpp; }
+
+  organization "3GPP SA5";
+  contact "https://www.3gpp.org/DynaReport/TSG-WG--S5--officials.htm?Itemid=464";
+
+  description "Defines a Fault Management model
+    Copyright 2026, 3GPP Organizational Partners (ARIB, ATIS, CCSA, ETSI, TSDSI, 
+    TTA, TTC). All rights reserved.";
+  reference "3GPP TS 28.111";
+
+  revision 2026-01-24 { reference "CR-0059"; }
+  revision 2025-11-06 { reference "CR-0056"; }
+  revision 2025-08-13 { reference "CR-0053 CR-0054"; }
+  revision 2025-05-01 { reference "CR-0042 CR-0043"; }  // common for R18, R19
+  revision 2025-03-25 { reference "CR-0025 CR-0026"; } 
+  revision 2024-05-12 { 
+    description "The definition of the module was from TS 28.623 to TS 28.111";
+    reference CR-0008 ; 
+  } 
+  revision 2024-03-06 { reference CR-0333 ; } 
+  revision 2024-02-24 { reference CR-0346; } 
+  revision 2024-01-18 {
+    description "The specification of the file is moved from 28.623 to 28.532";
+    reference "28.623 CR-0315"; 
+  }
+  revision 2023-09-18 { reference CR-0271; } 
+  revision 2023-05-10 { reference CR-0250; }
+  revision 2022-10-24 { reference CR-0196;   }
+  revision 2021-08-08 { reference "CR-0132"; }
+  revision 2021-06-02 { reference "CR-0130"; }
+  revision 2020-06-03 { reference "CR-0091"; }
+  revision 2020-02-24 { reference "S5-201365"; }
+
+  feature AcknowledgeByConsumer {
+    description "Indicates whether alarm acknowledgement by the consumer is 
+      supported.";
+  }
+  
+  typedef eventType {
+    type enumeration {
+      enum OTHER {
+        value 1;
+      }
+
+      enum COMMUNICATIONS_ALARM {
+        value 2;
+      }
+
+      enum QUALITY_OF_SERVICE_ALARM {
+        value 3;
+      }
+
+      enum PROCESSING_ERROR_ALARM {
+        value 4;
+      }
+
+      enum EQUIPMENT_ALARM {
+        value 5;
+      }
+
+      enum ENVIRONMENTAL_ALARM {
+        value 6;
+      }
+
+      enum INTEGRITY_VIOLATION {
+        value 7;
+      }
+
+      enum OPERATIONAL_VIOLATION {
+        value 8;
+      }
+
+      enum PHYSICAL_VIOLATION {
+        value 9;
+      }
+
+      enum SECURITY_SERVICE_OR_MECHANISM_VIOLATION {
+        value 10;
+      }
+
+      enum TIME_DOMAIN_VIOLATION {
+        value 11;
+      }
+    }
+
+    description "General category for the alarm.";
+  }
+
+  typedef severity-level {
+    type enumeration {
+      enum CRITICAL { value 3; }
+      enum MAJOR { value 4; }
+      enum MINOR { value 5; }
+      enum WARNING { value 6; }
+      enum INDETERMINATE { value 7; }
+      enum CLEARED { value 8; }
+    }
+
+    description "The possible alarm severities";
+  }
+
+  typedef probable-causes {
+    type enumeration {
+      enum INDETERMINATE { value 0; }
+      enum ALARM_INDICATION_SIGNAL { value 1; }
+      enum CALL_SETUP_FAILURE { value 2; }
+      enum DEGRADED_SIGNAL { value 3; }
+      enum FAR_END_RECEIVER_FAILURE { value 4; }
+      enum FRAMING_ERROR { value 5; }
+      enum LOSS_OF_FRAME { value 6; }
+      enum LOSS_OF_POINTER { value 7; }
+      enum LOSS_OF_SIGNAL { value 8; }
+      enum PAYLOAD_TYPE_MISMATCH { value 9; }
+      enum REMOTE_ALARM_INTERFACE { value 11; }
+      enum EXCESSIVE_BIT_ERROR_RATE { value 12; }
+      enum PATH_TRACE_MISMATCH { value 13; }
+      enum UNAVAILABLE { value 14; }
+      enum SIGNAL_LABEL_MISMATCH { value 15; }
+      enum LOSS_OF_MULTI_FRAME { value 16; }
+      enum COMMUNICATIONS_RECEIVE_FAILURE { value 17; }
+      enum COMMUNICATIONS_TRANSMIT_FAILURE { value 18; }
+      enum MODULATION_FAILURE { value 19; }
+      enum DEMODULATION_FAILURE { value 20; }
+      enum BACK_PLANE_FAILURE { value 51; }
+      enum DATA_SET_PROBLEM { value 52; }
+      enum EQUIPMENT_IDENTIFIER_DUPLICATION { value 53; }
+      enum EXTERNAL_IF_DEVICE_PROBLEM { value 54; }
+      enum LINE_CARD_PROBLEM { value 55; }
+      enum MULTIPLEXER_PROBLEM { value 56; }
+      enum NE_IDENTIFIER_DUPLICATION { value 57; }
+      enum POWER_PROBLEM { value 58; }
+      enum PROCESSOR_PROBLEM { value 59; }
+      enum PROTECTION_PATH_FAILURE { value 60; }
+      enum RECEIVER_FAILURE { value 61; }
+      enum REPLACEABLE_UNIT_MISSING { value 62; }
+      enum REPLACEABLE_UNIT_TYPE_MISMATCH { value 63; }
+      enum SYNCHRONIZATION_SOURCE_MISMATCH { value 64; }
+      enum TERMINAL_PROBLEM { value 65; }
+      enum TIMING_PROBLEM { value 66; }
+      enum TRANSMITTER_FAILURE { value 67; }
+      enum TRUNK_CARD_PROBLEM { value 68; }
+      enum REPLACEABLE_UNIT_PROBLEM { value 69; }
+      enum REAL_TIME_CLOCK_FAILURE { value 70; }
+      enum PROTECTION_MECHANISM_FAILURE { value 81; }
+      enum PROTECTING_RESOURCE_FAILURE { value 82; }
+      enum AIR_COMPRESSOR_FAILURE { value 101; }
+      enum AIR_CONDITIONING_FAILURE { value 102; }
+      enum AIR_DRYER_FAILURE { value 103; }
+      enum BATTERY_DISCHARGING { value 104; }
+      enum BATTERY_FAILURE { value 105; }
+      enum COMMERCIAL_POWER_FAILURE { value 106; }
+      enum COOLING_FAN_FAILURE { value 107; }
+      enum ENGINE_FAILURE { value 108; }
+      enum FIRE_DETECTOR_FAILURE { value 109; }
+      enum FUSE_FAILURE { value 110; }
+      enum GENERATOR_FAILURE { value 111; }
+      enum LOW_BATTERY_THRESHOLD { value 112; }
+      enum PUMP_FAILURE { value 113; }
+      enum RECTIFIER_FAILURE { value 114; }
+      enum RECTIFIER_HIGH_VOLTAGE { value 115; }
+      enum RECTIFIER_LOW_F_VOLTAGE { value 116; }
+      enum VENTILATION_SYSTEM_FAILURE { value 117; }
+      enum ENCLOSURE_DOOR_OPEN { value 118; }
+      enum EXPLOSIVE_GAS { value 119; }
+      enum FIRE { value 120; }
+      enum FLOOD { value 121; }
+      enum HIGH_HUMIDITY { value 122; }
+      enum HIGH_TEMPERATURE { value 123; }
+      enum HIGH_WIND { value 124; }
+      enum ICE_BUILD_UP { value 125; }
+      enum INTRUSION_DETECTION { value 126; }
+      enum LOW_FUEL { value 127; }
+      enum LOW_HUMIDITY { value 128; }
+      enum LOW_CABLE_PRESSURE { value 129; }
+      enum LOW_TEMPERATURE { value 130; }
+      enum LOW_WATER { value 131; }
+      enum SMOKE { value 132; }
+      enum TOXIC_GAS { value 133; }
+      enum EXTERNAL_POINT_FAILURE { value 136; }
+      enum STORAGE_CAPACITY_PROBLEM { value 151; }
+      enum MEMORY_MISMATCH { value 152; }
+      enum CORRUPT_DATA { value 153; }
+      enum OUT_OF_CPU_CYCLES { value 154; }
+      enum SOFTWARE_ENVIRONMENT_PROBLEM { value 155; }
+      enum SOFTWARE_DOWNLOAD_FAILURE { value 156; }
+      enum LOSS_OF_REAL_TIME { value 157; }
+      enum REINITIALIZED { value 158; }
+      enum EXCESSIVE_ERROR_RATE { value 203; }
+      enum ADAPTER_ERROR { value 301; }
+      enum APPLICATION_SUBSYSTEM_FAILURE { value 302; }
+      enum BANDWIDTH_REDUCED { value 303; }
+      enum COMMUNICATIONS_PROTOCOL_ERROR { value 305; }
+      enum COMMUNICATIONS_SUBSYSTEM_FAILURE { value 306; }
+      enum CONFIGURATION_OR_CUSTOMIZATION_ERROR { value 307; }
+      enum CONGESTION { value 308; }
+      enum CPU_CYCLES_LIMIT_EXCEEDED { value 310; }
+      enum DATA_SET_OR_MODEM_ERROR { value 311; }
+      enum DTE_DCE_INTERFACE_ERROR { value 313; }
+      enum EQUIPMENT_MALFUNCTION { value 315; }
+      enum EXCESSIVE_VIBRATION { value 316; }
+      enum FILE_ERROR { value 317; }
+      enum HEATING_OR_VENTILATION_OR_COOLING_SYSTEM_PROBLEM { value 321; }
+      enum HUMIDITY_UNACCEPTABLE { value 322; }
+      enum INPUT_OUTPUT_DEVICE_ERROR { value 323; }
+      enum INPUT_DEVICE_ERROR { value 324; }
+      enum LAN_ERROR { value 325; }
+      enum LEAK_DETECTED { value 326; }
+      enum LOCAL_NODE_TRANSMISSION_ERROR { value 327; }
+      enum MATERIAL_SUPPLY_EXHAUSTED { value 330; }
+      enum OUT_OF_MEMORY { value 332; }
+      enum OUTPUT_DEVICE_ERROR { value 333; }
+      enum PERFORMANCE_DEGRADED { value 334; }
+      enum PRESSURE_UNACCEPTABLE { value 336; }
+      enum QUEUE_SIZE_EXCEEDED { value 339; }
+      enum RECEIVE_FAILURE { value 340; }
+      enum REMOTE_NODE_TRANSMISSION_ERROR { value 342; }
+      enum RESOURCE_AT_OR_NEARING_CAPACITY { value 343; }
+      enum RESPONSE_TIME_EXCESSIVE { value 344; }
+      enum RETRANSMISSION_RATE_EXCESSIVE { value 345; }
+      enum SOFTWARE_ERROR { value 346; }
+      enum SOFTWARE_PROGRAM_ABNORMALLY_TERMINATED { value 347; }
+      enum SOFTWARE_PROGRAM_ERROR { value 348; }
+      enum TEMPERATURE_UNACCEPTABLE { value 350; }
+      enum THRESHOLD_CROSSED { value 351; }
+      enum TOXIC_LEAK_DETECTED { value 353; }
+      enum TRANSMIT_FAILURE { value 354; }
+      enum UNDERLYING_RESOURCE_UNAVAILABLE { value 356; }
+      enum VERSION_MISMATCH { value 357; }
+      enum A_BIS_TO_BTS_INTERFACE_FAILURE { value 501; }
+      enum A_BIS_TO_TRX_INTERFACE_FAILURE { value 502; }
+      enum ANTENNA_PROBLEM { value 503; }
+      enum BATTERY_BREAKDOWN { value 504; }
+      enum BATTERY_CHARGING_FAULT { value 505; }
+      enum CLOCK_SYNCHRONIZATION_PROBLEM { value 506; }
+      enum COMBINER_PROBLEM { value 507; }
+      enum DISK_PROBLEM { value 508; }
+      enum EXCESSIVE_RECEIVER_TEMPERATURE { value 510; }
+      enum EXCESSIVE_TRANSMITTER_OUTPUT_POWER { value 511; }
+      enum EXCESSIVE_TRANSMITTER_TEMPERATURE { value 512; }
+      enum FREQUENCY_HOPPING_DEGRADED { value 513; }
+      enum FREQUENCY_HOPPING_FAILURE { value 514; }
+      enum FREQUENCY_REDEFINITION_FAILED { value 515; }
+      enum LINE_INTERFACE_FAILURE { value 516; }
+      enum LINK_FAILURE { value 517; }
+      enum LOSS_OF_SYNCHRONIZATION { value 518; }
+      enum LOST_REDUNDANCY { value 519; }
+      enum MAINS_BREAKDOWN_WITH_BATTERY_BACKUP { value 520; }
+      enum MAINS_BREAKDOWN_WITHOUT_BATTERY_BACKUP { value 521; }
+      enum POWER_SUPPLY_FAILURE { value 522; }
+      enum RECEIVER_ANTENNA_FAULT { value 523; }
+      enum RECEIVER_MULTICOUPLER_FAILURE { value 525; }
+      enum REDUCED_TRANSMITTER_OUTPUT_POWER { value 526; }
+      enum SIGNAL_QUALITY_EVALUATION_FAULT { value 527; }
+      enum TIMESLOT_HARDWARE_FAILURE { value 528; }
+      enum TRANSCEIVER_PROBLEM { value 529; }
+      enum TRANSCODER_PROBLEM { value 530; }
+      enum TRANSCODER_OR_RATE_ADAPTER_PROBLEM { value 531; }
+      enum TRANSMITTER_ANTENNA_FAILURE { value 532; }
+      enum TRANSMITTER_ANTENNA_NOT_ADJUSTED { value 533; }
+      enum TRANSMITTER_LOW_VOLTAGE_OR_CURRENT { value 535; }
+      enum TRANSMITTER_OFF_FREQUENCY { value 536; }
+      enum DATABASE_INCONSISTENCY { value 537; }
+      enum FILE_SYSTEM_CALL_UNSUCCESSFUL { value 538; }
+      enum INPUT_PARAMETER_OUT_OF_RANGE { value 539; }
+      enum INVALID_PARAMETER { value 540; }
+      enum INVALID_POINTER { value 541; }
+      enum MESSAGE_NOT_EXPECTED { value 542; }
+      enum MESSAGE_NOT_INITIALIZED { value 543; }
+      enum MESSAGE_OUT_OF_SEQUENCE { value 544; }
+      enum SYSTEM_CALL_UNSUCCESSFUL { value 545; }
+      enum TIMEOUT_EXPIRED { value 546; }
+      enum VARIABLE_OUT_OF_RANGE { value 547; }
+      enum WATCH_DOG_TIMER_EXPIRED { value 548; }
+      enum COOLING_SYSTEM_FAILURE { value 549; }
+      enum EXTERNAL_EQUIPMENT_FAILURE { value 550; }
+      enum EXTERNAL_POWER_SUPPLY_FAILURE { value 551; }
+      enum EXTERNAL_TRANSMISSION_DEVICE_FAILURE { value 552; }
+      enum REDUCED_ALARM_REPORTING { value 561; }
+      enum REDUCED_EVENT_REPORTING { value 562; }
+      enum REDUCED_LOGGING_CAPABILITY { value 563; }
+      enum SYSTEM_RESOURCES_OVERLOAD { value 564; }
+      enum BROADCAST_CHANNEL_FAILURE { value 565; }
+      enum CONNECTION_ESTABLISHMENT_ERROR { value 566; }
+      enum INVALID_MESSAGE_RECEIVED { value 567; }
+      enum INVALID_MSU_RECEIVED { value 568; }
+      enum LAPD_LINK_PROTOCOL_FAILURE { value 569; }
+      enum LOCAL_ALARM_INDICATION { value 570; }
+      enum REMOTE_ALARM_INDICATION { value 571; }
+      enum ROUTING_FAILURE { value 572; }
+      enum SS7_PROTOCOL_FAILURE { value 573; }
+      enum TRANSMISSION_ERROR { value 574; }
+      enum AUTHENTICATION_FAILURE { value 701; }
+      enum BREACH_OF_CONFIDENTIALITY { value 702; }
+      enum CABLE_TAMPER { value 703; }
+      enum DELAYED_INFORMATION { value 704; }
+      enum DENIAL_OF_SERVICE { value 705; }
+      enum DUPLICATE_INFORMATION { value 706; }
+      enum INFORMATION_MISSING { value 707; }
+      enum INFORMATION_MODIFICATION_DETECTED { value 708; }
+      enum INFORMATION_OUT_OF_SEQUENCE { value 709; }
+      enum INTRUSION_DETECTED { value 710; }
+      enum KEY_EXPIRED { value 711; }
+      enum NON_REPUDIATION_FAILURE { value 712; }
+      enum OUT_OF_HOURS_ACTIVITY { value 713; }
+      enum OUT_OF_SERVICE { value 714; }
+      enum PROCEDURAL_ERROR { value 715; }
+      enum UNAUTHORISED_ACCESS_ATTEMPT { value 716; }
+      enum UNEXPECTED_INFORMATION { value 717; }
+      enum UNSPECIFIED_REASON { value 718; }
+    }
+    description "Values are from the (informative) Annex B of 3GPP TS 28.111.";
+  }
+
+  grouping AlarmCommentGrp {
+    leaf commentTime {
+      type yang:date-and-time;
+      config false;
+      mandatory true;
+      yext3gpp:inVariant;
+      description "Date and Time the comment was created.";
+    }
+
+    leaf commentUserId {
+      type string;
+      mandatory true;
+      yext3gpp:inVariant;
+      description "It carries the identification of the user who made the
+        comment.";
+    }
+
+    leaf commentSystemId {
+      type string;
+      mandatory true;
+      yext3gpp:inVariant;
+      description "It carries the identification of the system (
+        Management System) from which the comment is made. That system
+        supports the user that made the comment.";
+    }
+
+    leaf commentText {
+      type string;
+      mandatory true;
+      yext3gpp:inVariant;
+      description "It carries the textual comment.";
+    }
+  }
+
+  grouping ThresholdHysteresisGrp {
+    description "The ThresholdHysteresis defines the threshold boundaries to 
+      control the hysteresis mechanism.
+
+      The high attribute of ThresholdHysteresis identifies the higher value of 
+      a threshold with hysteris, the integer type is used for counter 
+      thresholds and the float type for gauge thresholds. The low attribute 
+      of ThresholdHysteresis identifies the lower value of a threshold with 
+      hysteresis, applicable only to gauge thresholds.";
+      
+    leaf high {
+      type union {
+        type int64;
+        type decimal64 {
+          fraction-digits 7;
+        }
+      }
+      mandatory true;
+      description "Higher value of a threshold with hysteris, the integer type 
+        is used for counter thresholds and the float type for gauge 
+        thresholds.";
+    }
+    
+    leaf low {
+      type decimal64 {
+        fraction-digits 7;
+      }
+      description "Lower value of a threshold with hysteresis, applicable 
+        only to gauge thresholds.";
+    }
+  }
+  
+  grouping ThresholdLevelIndGrp {
+    description "The up attribute indicates for counter and gauge thresholds 
+      that the threshold crossing occurred when going up. The down attribute 
+      only indicates for gauge thresholds that the threshold crossing occurred 
+      when going down, applicable only to gauge thresholds.";
+      
+    list up {
+      description "Indicates for counter and gauge thresholds that the 
+        threshold crossing occurred when going up.";
+      max-elements 1;
+      key idx;
+      leaf idx { type int32; }
+      uses ThresholdHysteresisGrp;
+    }
+    
+    list down {
+      description "Indicates for gauge thresholds that the threshold crossing 
+        occurred when going down, applicable only to gauge thresholds.";
+      max-elements 1;
+      key idx;
+      leaf idx { type int32; }
+      uses ThresholdHysteresisGrp;
+    }
+  }
+  
+  grouping ThresholdCrossingGrp {
+    description "The datatype indicates the crossed threshold 
+      information regardless of the gauge threshold, which represents an 
+      instantaneous value that changes over time, or the counter threshold, 
+      which represents monotonically increasing cumulative quantity.
+      
+      The observedMeasurement attribute of TheresholdInfo specifies the name 
+      of the monitored measurement that crossed the threshold and that 
+      caused the notification (Rec. ITU-T X. 733[8]). The observedValue 
+      attribute indicates the value of the gauge or counter which crossed 
+      the threshold. This may be different from the threshold value if, for
+      example, the gauge may only take on discrete values. Integer values 
+      are used for counters and float values for gauges (Rec. ITU-T X. 733). 
+      Note that a 'number' type property can contain both integers and 
+      floating point numbers.
+      
+      For the thresholdLevel attribute, in the case of a gauge, it specifies 
+      a pair of threshold values, the first being the value of the crossed 
+      threshold and the second, its corresponding hysteresis; in the case of 
+      a counter, it specifies only the threshold value (Rec. ITU-T X. 733). 
+
+      For the armTime attribute, for a gauge threshold, it specifies the 
+      time at which the threshold was last re-armed, namely the time after 
+      the previous threshold crossing at which the hysteresis value of the 
+      threshold was exceeded thus again permitting generation of 
+      notifications when the threshold is crossed; for a counter threshold, 
+      the later of the time at which the threshold offset was last applied, 
+      or the time at which the counter was last initialized (for resettable 
+      counters) (Rec. ITU-T X. 733).";
+      
+    leaf observedMeasurement {
+      type string;
+      mandatory true;
+      description "The name of the monitored measurement that crossed the 
+        threshold and that caused the notification (Rec. ITU-T X. 733 ";
+    }
+
+    leaf observedValue {
+      type union {
+        type int64;
+        type decimal64 {
+          fraction-digits 7;
+        }
+      }
+      mandatory true;
+      description "The value of the gauge or counter which crossed the 
+        threshold. This may be different from the threshold value if, for 
+        example, the gauge may only take on discrete values. 
+        Integer values are used for counters and float values for gauges 
+        (Rec. ITU-T X. 733). Note that a 'number' type property can contain 
+        both integers and floating point numbers.";
+    }
+
+    list thresholdLevel {
+      description "In the case of a gauge the threshold level specifies 
+        a pair of threshold values, the first being the value of the crossed 
+        threshold and the second, its corresponding hysteresis; in the case 
+        of a counter the threshold level specifies only the threshold value 
+        (Rec. ITU-T X. 733).";
+      max-elements 1;
+      key idx;
+      leaf idx { type int32; }
+      uses ThresholdLevelIndGrp;
+    }
+
+    leaf armTime {
+      type yang:date-and-time;
+      description "For a gauge threshold, the time at which the threshold 
+        was last re-armed, namely the time after the previous threshold 
+        crossing at which the hysteresis value of the threshold was 
+        exceeded thus again permitting generation of notifications when the 
+        threshold is crossed. For a counter threshold, the later of the time 
+        at which the threshold offset was last applied, or the time at 
+        which the counter was last initialized (for resettable counters) 
+        (Rec. ITU-T X. 733)";
+    }
+  }  
+  
+  grouping AlarmRecordGrp {
+    description "Contains alarm information of an alarmed object instance.
+      A new record is created in the alarm list when an alarmed object
+      instance generates an alarm and no alarm record exists with the same
+      values for objectInstance, alarmType, probableCause and specificProblem.
+      When a new record is created the MnS producer creates an alarmId, that
+      unambiguously identifies an alarm record in the AlarmList.
+
+      Alarm records are maintained only for active alarms. Inactive alarms are
+      automatically deleted by the MnS producer from the AlarmList.
+      Active alarms are alarms whose
+      a)  perceivedSeverity is not CLEARED, or whose
+      b)  perceivedSeverity is CLEARED and its ackState is not ACKNOWLEDED.";
+
+    leaf alarmId {
+      type string;
+      mandatory true;
+      description "Identifies the alarmRecord";
+      yext3gpp:notNotifyable;
+      yext3gpp:inVariant;
+    }
+
+    leaf objectInstance {
+      type types3gpp:DistinguishedName;
+      config false ;
+      mandatory true;
+      yext3gpp:notNotifyable;
+      yext3gpp:inVariant;
+    }
+
+    leaf notificationId {
+      type int32;
+      config false ;
+      mandatory true;
+      description "The Id of the last notification updating the AlarmRecord.";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf alarmRaisedTime {
+      type yang:date-and-time ;
+      mandatory true;
+      config false ;
+      yext3gpp:notNotifyable;
+      yext3gpp:inVariant;
+    }
+
+    leaf alarmChangedTime {
+      type yang:date-and-time ;
+      config false ;
+      description "not applicable if related alarm has not changed";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf alarmClearedTime {
+      type yang:date-and-time ;
+      config false ;
+      description "not applicable if related alarm was not cleared";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf alarmType {
+      type eventType;
+      config false ;
+      mandatory true;
+      description "General category for the alarm.";
+      yext3gpp:notNotifyable;
+      yext3gpp:inVariant;
+    }
+
+    leaf probableCause {
+      type union {
+        type probable-causes;
+        type int32;
+        type string;
+      }
+      config false ;
+      mandatory true;
+      yext3gpp:notNotifyable;
+      yext3gpp:inVariant;
+    }
+
+    leaf specificProblem {
+      type union {
+        type int32;
+        type string;
+      }
+      config false ;
+      reference "ITU-T Recommendation X.733 clause 8.1.2.2.";
+      yext3gpp:notNotifyable;
+      yext3gpp:inVariant;
+    }
+
+    leaf perceivedSeverity {
+      type severity-level;
+      mandatory true;
+      description "This is Writable only if producer supports consumer
+        to set perceivedSeverity to CLEARED";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf backedUpStatus {
+      type boolean;
+      config false ;
+      description "Indicates if an object (the MonitoredEntity) has a back
+        up. See definition in ITU-T Recommendation X.733 clause 8.1.2.4.";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf backUpObject {
+      type types3gpp:DistinguishedName;
+      config false ;
+      description "Backup object of the alarmed object as defined in 
+        ITU-T Rec. X. 733";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf trendIndication {
+      type enumeration {
+        enum MORE_SEVERE;
+        enum NO_CHANGE;
+        enum LESS_SEVERE;
+      }
+      config false ;
+      description "Indicates if some observed condition is getting better,
+        worse, or not changing. ";
+      reference "ITU-T Recommendation X.733 clause 8.1.2.6.";
+      yext3gpp:notNotifyable;
+    }
+
+    list thresholdInfo {
+      config false ;
+      yext3gpp:notNotifyable;
+      description "Indicates the crossed threshold";
+      key idx;
+      leaf idx { type int32; }
+      uses ThresholdCrossingGrp;
+    }
+
+    list stateChangeDefinition {
+      key attributeName;
+      config false ;
+      description "Indicates MO attribute value changes associated with the 
+        alarm for state attributes of the monitored entity (state transitions). 
+        The change is reported with the name of the state attribute, the new 
+        value and an optional old value. 
+        See definition in ITU-T Recommendation X.733 [4] clause 8.1.2.10.";
+      yext3gpp:notNotifyable;
+      
+      leaf attributeName {
+        type string;
+      }
+        
+      anydata newValue {
+        mandatory true;
+        description "The new value of the attribute. The content of this data 
+          node shall be in accordance with the data model for the attribute.";
+      }
+        
+      anydata oldValue{
+        description "The old value of the attribute. The content of this data 
+          node shall be in accordance with the data model for the attribute.";
+      }
+    }
+
+    list monitoredAttributes {
+      key attributeName;
+      config false ;
+      yext3gpp:notNotifyable;
+      description "Attributes of the monitored entity and their 
+        values at the time the alarm occurred that are of interest for the 
+        alarm report.";
+      reference "ITU-T Recommendation X.733 clause 8.1.2.11.";
+
+      leaf attributeName {
+        type string;
+      }
+        
+      anydata value {
+        mandatory true;
+        description "The value of the attribute. The content of this data 
+          node shall be in accordance with the data model for the attribute.";
+      }
+    }
+
+    leaf proposedRepairActions {
+      type string;
+      config false ;
+      description "Indicates proposed repair actions. See definition in
+        ITU-T Recommendation X.733 clause 8.1.2.12.";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf additionalText {
+      type string;
+      config false ;
+      yext3gpp:notNotifyable;
+    }
+
+    list additionalInformation {
+      key name;
+      config false ;
+      yext3gpp:notNotifyable;
+      description "Vendor specific alarm information in the alarm.";
+      uses types3gpp:nameValuePair;
+    }
+
+    leaf rootCauseIndicator {
+      type boolean;
+      default false;
+      config false ;
+      description "It indicates that this AlarmInformation is the root cause
+        of the events captured by the notifications whose identifiers are in
+        the related CorrelatedNotification instances.";
+      yext3gpp:notNotifyable;
+    }
+
+    list comments {
+      yext3gpp:notNotifyable;
+      description "List of comments and data about the comments.";
+      key idx;
+      leaf idx { type uint32; }
+
+      uses AlarmCommentGrp;
+    }
+
+    leaf ackTime  {
+      if-feature AcknowledgeByConsumer;
+      type yang:date-and-time ;
+      config false ;
+      description "It identifies the time when the alarm has been
+        acknowledged or unacknowledged the last time, i.e. it registers the
+        time when ackState changes.";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf ackUserId  {
+      if-feature AcknowledgeByConsumer;
+      type string;
+      description "It identifies the last user who has changed the
+        Acknowledgement State.";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf ackSystemId  {
+      if-feature AcknowledgeByConsumer;
+      type string;
+      description "It identifies the system (Management System) that last
+        changed the ackState of an alarm, i.e. acknowledged or unacknowledged
+        the alarm.";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf ackState  {
+      if-feature AcknowledgeByConsumer;
+      type enumeration {
+        enum ACKNOWLEDGED {
+          description "The alarm has been acknowledged.";
+        }
+        enum UNACKNOWLEDGED {
+          description "The alarm has unacknowledged or the alarm has never
+            been acknowledged.";
+        }
+      }
+      yext3gpp:notNotifyable;
+    }
+
+    leaf clearUserId {
+      type string;
+      description "Carries the identity of the user who invokes the
+        clearAlarms operation.";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf clearSystemId {
+      type string;
+      yext3gpp:notNotifyable;
+    }
+
+    leaf serviceUser {
+      type string;
+      config false ;
+      description "It identifies the service-user whose request for service
+        provided by the serviceProvider led to the generation of the
+        security alarm.";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf serviceProvider {
+      type string;
+      config false ;
+      description "It identifies the service-provider whose service is
+        requested by the serviceUser and the service request provokes the
+        generation of the security alarm.";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf securityAlarmDetector {
+      type string;
+      config false ;
+      yext3gpp:notNotifyable;
+      description "It carries the identity of the detector of the security alarm.";
+    }
+    
+    list correlatedNotifications {
+      key sourceObjectInstance;
+      config false ;
+      yext3gpp:notNotifyable;
+      description "List of correlated notifications";
+      
+      leaf sourceObjectInstance {
+        type types3gpp:DistinguishedName;
+      }
+      
+      leaf-list notificationIds {
+        type int32;
+        min-elements 1;
+      }
+    }
+  }
+
+  grouping AlarmListGrp {
+    description "Represents the AlarmList IOC.";
+
+    leaf administrativeState {
+      type types3gpp:BasicAdministrativeState ;
+      default LOCKED;
+      description "When set to UNLOCKED, the alarm list is updated.
+        When the set to LOCKED, the existing alarm records are not
+        updated, and new alarm records are not added to the alarm list.";
+    }
+
+    leaf operationalState {
+      type types3gpp:OperationalState ;
+      default DISABLED;
+      config false;
+      description "The producer sets this attribute to ENABLED, indicating
+        that it has the resource and ability to record alarm in AlarmList
+        else, it sets the attribute to DISABLED.";
+    }
+
+    leaf numOfAlarmRecords {
+      type uint32 ;
+      config false;
+      mandatory true;
+      description "The number of alarm records in the AlarmList";
+      yext3gpp:notNotifyable;
+    }
+
+    leaf lastModification {
+      type yang:date-and-time ;
+      config false;
+      description "The last time when an alarm record was modified";
+      yext3gpp:notNotifyable;
+    }
+
+    list alarmRecords {
+      key alarmId;
+      description "List of alarmRecords";
+      yext3gpp:notNotifyable;
+      uses AlarmRecordGrp;
+    }
+
+    leaf-list unreliableAlarmScope {
+      type types3gpp:DistinguishedName;
+      config false;
+      yext3gpp:notNotifyable;
+      description "Identifies, the part of the alarm scope that may not be 
+        reliable.
+
+        If this parameter is equal to the instance carried in systemDN, 
+        then all AlarmRecord instances in the AlarmList may not be reliable.
+
+        If this parameter is equal to some instance represented by 
+        MonitoredEntity, then only AlarmRecord related to this instance and 
+        its descendants may not be reliable.";
+    }
+  }
+
+  grouping FmSubtree {
+    description "Contains FM related classes.
+      Should be used in all classes (or classes inheriting from)
+      - SubNetwork
+      - ManagedElement
+
+      If some YAM wants to augment these classes/list/groupings they must
+      augment all user classes!";
+
+    list AlarmList {
+      key id;
+      max-elements 1;
+      yext3gpp:only-system-created;
+      description "The AlarmList represents the capability to store and manage
+        alarm records. The management scope of an AlarmList is defined by all
+        descendant objects of the base managed object, which is the object
+        name-containing the AlarmList, and the base object itself.
+
+        AlarmList instances are created by the system or are pre-installed.
+        They cannot be created nor deleted by MnS consumers.
+
+        When the alarm list is locked or disabled, the existing alarm records
+        are not updated, and new alarm records are not added to the alarm list";
+
+
+      uses top3gpp:Top_Grp ;
+      container attributes {
+        uses AlarmListGrp ;
+      }
+    }
+  }
+
+}

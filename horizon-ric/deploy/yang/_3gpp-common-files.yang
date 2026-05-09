@@ -1,0 +1,325 @@
+module _3gpp-common-files {
+  yang-version 1.1;
+  namespace "urn:3gpp:sa5:_3gpp-common-files";
+  prefix "files3gpp";
+
+  import _3gpp-common-top { prefix top3gpp; }
+  import _3gpp-common-yang-types { prefix types3gpp; }
+  import _3gpp-common-yang-extensions { prefix yext3gpp; }
+  import ietf-yang-types { prefix yang; }
+  import ietf-inet-types { prefix inet; }
+
+  organization "3GPP SA5";
+  contact "https://www.3gpp.org/DynaReport/TSG-WG--S5--officials.htm?Itemid=464";
+  description "Defines the YANG mapping of File retrieval NRM fragment 
+    including the IOCs File and Files.
+    Copyright 2025, 3GPP Organizational Partners (ARIB, ATIS, CCSA, ETSI, TSDSI, 
+    TTA, TTC). All rights reserved.";
+  reference "3GPP TS 28.623
+      Generic Network Resource Model (NRM)
+      Integration Reference Point (IRP);
+      Solution Set (SS) definitions
+
+      3GPP TS 28.622
+      Generic Network Resource Model (NRM)
+      Integration Reference Point (IRP);
+      Information Service (IS)";
+   
+  // the file is common for r17,18,19 
+  revision 2025-07-01 { reference "CR-0557 CR-0558 CR-0559"; } 
+  revision 2024-05-25 { reference "CR-0361 CR-0362"; } 
+  revision 2023-09-18 { reference "CR-0270 CR-0271"; } 
+  revision 2022-09-28 { reference CR-0191; }
+  
+  grouping FileGrp {
+    description "Represents the File IOC.";
+
+    choice fileRetrievalMethod {
+      mandatory true;
+      leaf fileLocation {
+        type inet:uri ;
+        config false;
+        yext3gpp:notNotifyable ;
+        yext3gpp:inVariant ;
+        description "Location of the file incl. the file transfer protocol, 
+          and the file name.
+          
+          The allowed file transfer protocols are:
+          - sftp
+          - ftpes
+          - https
+          
+          Examples:
+          'sftp://companyA.com/datastore/fileName.xml',
+          'https://companyA.com/ManagedElement=1/Files=1/File=1'
+          ";
+      }
+    
+      leaf fileContent {
+        type binary ; 
+        config false;
+        yext3gpp:notNotifyable ;
+        yext3gpp:inVariant ;
+        description "File content as a Base64 encoded string according to 
+          RFC 4648 section 4.";  
+      }
+    }
+    
+    leaf fileCompression {
+      type string ;
+      config false;
+      yext3gpp:notNotifyable ;
+      yext3gpp:inVariant ;
+      description "Name of the algorithm used for compressing the file. 
+        An absent 'fileCompression' parameter indicates the file is 
+        not compressed. The MnS producer selects the compression algorithm. 
+        It is encouraged to use popular algorithms such as GZIP.";
+    }
+
+    leaf fileSize {
+      type uint64 ;
+      mandatory true;
+      units bytes;
+      config false;
+      yext3gpp:notNotifyable ;
+      yext3gpp:inVariant ;
+      description "Size of the file";
+    }
+    
+    leaf fileDataType {
+      type enumeration {
+        enum PERFORMANCE {
+          description "The value 'PERFORMANCE' refers to measurements and KPIs";
+        }
+        enum TRACE;
+        enum ANALYTICS;
+        enum PROPRIETARY;
+      }
+      mandatory true;
+      config false;
+      yext3gpp:notNotifyable ;
+      yext3gpp:inVariant ;
+      description "Type of the management data stored in the file.";
+    }
+    
+    leaf fileFormat {
+      type string ;
+      config false;
+      yext3gpp:notNotifyable ;
+      yext3gpp:inVariant ;
+      description "Identifier of the schema (incl. its version) 
+        used to produce the file content. If there is no schema for the file 
+        or it is not available, the fileFormat parameter is absent.";
+    }
+    
+    leaf fileReadyTime {
+      type yang:date-and-time ;
+      mandatory true;
+      config false;
+      yext3gpp:notNotifyable ;
+      yext3gpp:inVariant ;
+      description "Date and time, when the file was closed (the last time) 
+        and made available on the MnS producer. 
+        The file content will not be changed anymore.";
+    }
+    
+    leaf fileExpirationTime {
+      type yang:date-and-time ;
+      config false;
+      yext3gpp:notNotifyable ;
+      yext3gpp:inVariant ;
+      description "Date and time after which the file may be deleted.";
+    }
+
+    leaf-list jobRef {
+      type types3gpp:DistinguishedName ;
+      config false;
+      yext3gpp:notNotifyable ;
+      yext3gpp:inVariant ;
+      description "Object instance of the 'PerfMetricJob' or 'TraceJob' 
+        that produced the file.";
+    }
+    
+    leaf jobId {
+      type string ;
+      config false;
+      yext3gpp:notNotifyable ;
+      yext3gpp:inVariant ;
+      description "Identifier of a PerfMetricJob job or a TraceJob.";
+    }
+  }
+  
+  grouping FilesGrp {
+    description "Represents the Files IOC.";
+    leaf numberOfFiles {
+      type uint64 ;
+      config false;
+      yext3gpp:notNotifyable ;
+      description "Number of files in a file collection.";    
+    }
+
+    leaf-list jobRef {
+      type types3gpp:DistinguishedName ;
+      config false;
+      yext3gpp:notNotifyable ;
+      yext3gpp:inVariant ;
+      description "Object instance of the 'PerfMetricJob' or 'TraceJob' 
+        that produced the file.";
+    }
+    
+    leaf jobId {
+      type string ;
+      config false;
+      yext3gpp:notNotifyable ;
+      yext3gpp:inVariant ;
+      description "Identifier of a PerfMetricJob job or a TraceJob.";
+    }
+  }
+  
+  grouping FilesSubtree {
+    description "Contains classes of the File retrieval NRM fragment.
+      Should be used in classes (or classes inheriting from)
+      - SubNnetwork
+      - ManagedElement
+      - PerfMetricJob
+      - TraceJob
+
+      If a YANG module wants to augment these classes/list/groupings they must
+      augment all user classes!";
+      
+    list Files {    
+      description "This IOC represents a collection of files. It can be 
+        name-contained by 'SubNetwork', 'ManagedElement', 'PerfMetricJob' or 
+        'TraceJob'. The 'Files' object name-contains 'File' objects, that 
+        represent the files of the collection. File collections allow to 
+        structure related files under a common root.
+
+        Instances of 'Files' are created by MnS producers. They shall be 
+        created at latest when the first file of the collection becomes 
+        available for retrieval by MnS consumers.
+
+        The attributes of 'Files' represent properties of the file collection 
+        and not properties of individual files.
+
+        When the file retrieval NRM fragment is used together with a data 
+        collection job ('PerfMetricJob' or 'TraceJob') the following 
+        provisions shall apply:
+        - The 'Files' object shall be created at the same time as the object 
+        representing the data collection job.
+        - The attributes 'jobRef' and 'jobId' shall be supported and present 
+        in a 'Files' instance. They shall identify the job that the files in 
+        the file collection relate to.
+        - A 'Files' instance shall contain files related to one and only one 
+        job.
+        - The files produced by one job shall be contained in one and only 
+        one 'Files' instance.
+        - The job object shall support an attribute with a link to the 
+        created 'Files' instance ('_linkToFiles').
+        - The attribute '_linkToFiles' shall be returned in the job creation 
+        response, if the stage 3 protocol supports returning attributes in an 
+        object creation response.
+        - The MnS producer decides where to name-contain the 'Files' instance 
+        related to a job.
+
+        The attribute '_linkToFiles' allows a MnS consumer to create simple 
+        and targeted subscriptions for 'notifyFileReady'and  
+        'notifyFilePreparationError', or 
+        'notifyMOICreation', 'notifyMOIChanges' and 'notifyFilePreparationError' 
+         related to 'File' instances created or deleted 
+        under the 'Files' instance of a specific job. The subscription needs 
+        to scope simply objects one level below the 'Files' object.
+
+        In addition, the attribute '_linkToFiles' allows for simple 
+        deployments not relying on notifications for reporting the 
+        availability of new files, where the MnS consumer polls regularly 
+        for new files under 'Files'.";
+        
+      key id;
+      config false;
+      uses top3gpp:Top_Grp ;
+      container attributes {
+        uses FilesGrp ;
+      }
+      
+      list File {
+        description "Represents a file. It is name-contained by 'Files'.
+
+        When a file becomes available on a MnS producer for retrieval by a 
+        MnS consumer, the MnS producer shall create a 'File' instance 
+        representing that file.
+
+        The time of creation shall be captured by the MnS producer in the 
+        'fileReadyTime' attribute. The MnS producer shall keep the file at 
+        least until the time specified by 'fileExpirationTime'. After that 
+        time the MnS producer may delete the 'File' instance. 
+        The 'fileExpirationTime' is determined by the MnS producer based on 
+        considerations such as available storage space or file retention 
+        policies.
+
+        The attributes 'fileSize', 'fileCompression', 'fileDataType' and 
+        'fileFormat' describe the file properties.
+        
+        The MnS producer makes the file available by one of the following means:
+        - For retrieval via a file transfer protocol. The fileLocation attribute 
+        indicates the address from where the file can be retrieved. The 
+        address includes the file transfer protocol (schema). Allowed file 
+        transfer protocols are 'sftp', 'ftpes' and 'https'.
+        - For retrieval of the file contents via a CM read operation. The 
+        attribute fileContent is provided for retrieving the actual file 
+        content. In this case, the name of the file is equal to the identity 
+        of the File instance.
+
+        When the file retrieval NRM fragment is used together with a data 
+        collection job (PerfMetricJob or TraceJob) the following provisions 
+        shall apply:
+          - The attributes 'jobRef' and 'jobId' shall be supported and 
+          present. They shall identify the job that the file is related to.
+
+        The attributes 'jobRef' and 'jobId' allow to set notification filters 
+        in the subscription in such a way that only 'notifyMOICreation', 
+        notifyMOIChanges and 
+        'notifyMOIDeletion' notifications are sent to subscribed MnS consumers 
+        if the created or deleted 'File' instance represents data related to 
+        jobs the subscribed MnS consumer created or is interested in.
+
+        Upon creation of a 'File' instance, a notification of type 
+        'notifyMOICreation' or 'notifyMOIChanges' shall be emitted to 
+        subscribed MnS consumers as 
+        usual. For the case that the file contains performance metric data 
+        ('fileDataType' is 'PERFORMANCE') the MnS producer shall emit either 
+        a notification of type 'notifyMOICreation', 'notifyMOICreation' or 
+        of type 
+        'notifyFileReady'. The MnS consumer selects the notification type he 
+        wishes to receive with the subscription created on the MnS producer.
+
+        The 'objectClass' and 'objectInstance' parameters in the notification 
+        header of 'notifyFileReady' shall identify the new 'File' instance, 
+        instead of the related 'PerfMetricJob', 'TraceJob', 'ManagedElement' 
+        or 'ManagementNode'as described in 3GPP TS 28.532, 
+        clause 11.6.1.1.1 for the case that 'notifyFileReady' is used as 
+        part of the file data reporting MnS.
+
+        The notification 'notifyFilePreparationError' shall be supported as 
+        well by the 'File' object. It shall be sent when an error occurs 
+        during the preparation of the file. No 'notifyFileReady' or 
+        'notifMOICreation shall be sent in that case. The 'objectClass' 
+        and 'objectInstance' parameters of the notification header shall 
+        identify the new 'File' instance representing the corrupted file, 
+        instead of the related 'PerfMetricJob', 'TraceJob', 'ManagedElement' 
+        or 'ManagementNode'as described in 3GPP TS 28.532, clause 11.6.1.1.1 
+        for the case that 'notifyFilePreparationError' is used as part of 
+        the file data reporting MnS. When the file is not created at all or 
+        deleted, the 'objectClass' and 'objectInstance' parameters of the 
+        notification header are populated as described in 3GPP TS 28.532, 
+        clause 11.6.1.1.1. Note that to receive 'notifyFilePreparationError' 
+        in that case the notification subscription needs to include these 
+        objects in its scope.";
+          key id;
+          uses top3gpp:Top_Grp ;
+          container attributes {
+            uses FileGrp ;
+        }
+      }
+    }
+  }  
+}

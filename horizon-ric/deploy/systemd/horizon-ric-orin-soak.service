@@ -1,0 +1,36 @@
+# PreceptualAI — soak oneshot (called by horizon-ric-orin-soak.timer).
+#
+# Runs the 1-hour wall × 24× speed-up soak (= 24 simulated hours) under the
+# same 2-CPU envelope as the main service. Output JSON lands in
+# /var/log/horizon-ric/soak-YYYYMMDD.json.
+
+[Unit]
+Description=PreceptualAI daily 1h soak runner (Orin Nano profile)
+After=horizon-ric-orin.service
+Wants=horizon-ric-orin.service
+
+[Service]
+Type=oneshot
+User=horizon
+Group=horizon
+
+ExecStart=/usr/local/bin/horizon-soak-1h.sh
+
+# Cap the soak at 90 min wall (60 min nominal + 30 min slack).
+TimeoutStartSec=5400
+
+# Same Orin envelope as the main unit.
+CPUAffinity=0 1
+MemoryHigh=7G
+MemoryMax=8G
+
+# Hardening.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/horizon-ric /var/log/horizon-ric
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=horizon-ric-orin-soak

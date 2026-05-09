@@ -1,0 +1,154 @@
+module _3gpp-common-yang-extensions {
+  yang-version 1.1;
+  namespace urn:3gpp:sa5:_3gpp-common-yang-extensions ;
+  prefix yext3gpp ;
+
+  organization "3GPP SA5";
+  contact "https://www.3gpp.org/DynaReport/TSG-WG--S5--officials.htm?Itemid=464";
+
+  description "The module defines YANG extensions needed 
+    3GPP YANG modeling.
+
+    Extensions MUST be defined with the following structure in the
+    description statement:
+        - What is this statement.
+        - Newline,
+        - This statement can be a substatement of the xxx statements with
+        cardinality x..y.
+        - This statement can have the following substatements with
+        cardinality x..y.
+        - Newline
+        - Is changing this statement an editorial, BC(backwards compatible) 
+        or NBC(non-BC) change?
+        - Newline.
+        - The argument its meaning and type. Preferably use YANG types and
+          constraints to define the argument's type.
+
+    Any extension statement can be added with a
+    deviation/deviate add statement. In this case the restriction about
+    the parent statement of the extension SHALL be evaluated based on the
+    target of the deviation statement.
+
+    Support for this module does not mean that a YANG server implements
+    support for each of these extensions.
+    Implementers of each specific module using an extensions MUST check
+    if the server implements support for the used extension.
+    Note: modules use many extensions which individual
+    implementations MAY or MAY NOT support.
+    If support for an extension is missing the extension statement needs
+    individual handling or it SHOULD be removed from the module using
+    the extension e.g. with a deviation.
+    Copyright 2025, 3GPP Organizational Partners (ARIB, ATIS, CCSA, ETSI, TSDSI, 
+    TTA, TTC). All rights reserved.";
+  reference "3GPP TS 28.623
+      Generic Network Resource Model (NRM)
+      Integration Reference Point (IRP);
+      Solution Set (SS) definitions
+      3GPP TS 28.623";
+
+  revision 2025-02-06{ reference "CR-0507, 0507" ; } 
+  revision 2024-04-05 { reference "CR-0332, 0333" ; } 
+  revision 2023-09-17 { reference "CR-0270, 0271" ; } 
+  revision 2022-10-31 { reference "CR-0195, 0196";   }
+  revision 2019-06-23 { reference "Initial version";   }
+
+  extension only-system-created {
+    description
+      "Indicates that the MOI can only be created and deleted by the 
+       MnS producer. 
+       System created MOIs can have both read-only and read-write data
+       node children. Implementers shall add the extension to standard 
+       models if they restrict creation/deletion of an IOC.
+       
+       The statement MUST only be a sub-statement of the list statement,
+       with the parent list statement representing an IOC.
+
+       Zero or one only-system-created statement per parent statement is
+       allowed. No sub-statements are allowed.
+            
+       Adding this statement is an NBC change, 
+       removing it is BC, however if the system behavior is also changed in 
+       parallel (the system stops creating the MOIs), this behavior is NBC.";
+  }
+
+  extension notNotifyable {
+    description
+      "Indicates that data change notifications shall not be sent 
+      for this attribute. If the extension is not present and other 
+      conditions are fulfilled data change notification should be sent.
+      
+      If a list or container already has the notNotifyable 
+      extension, that is also valid for all contained data nodes.
+
+      The statement MUST only be a substatement of a leaf, leaf-list, list,
+      container statement that is contained within the 'attributes' 
+      container of an IOC and that represents an attribute or sub-parts of 
+      an attribute. If the attribute is represented by a container or list, 
+      the statement shall be put on these, not on data nodes inside the 
+      list/container.
+      Zero or one notNotifyable statement is allowed per parent statement.
+      NO substatements are allowed.
+            
+      Adding this statement is an NBC change, removing it is BC.";
+  }
+
+  extension inVariant {
+    description
+      "Indicates that the value for the data node can only be set when the list 
+      data node representing the containing object(MOI) is created.
+      The above statement in YANG terms means, that the value for the data 
+      node can only be set when the list entry that is the parent of the 
+      restricted node's ancestor container named 'attributes' is being created. 
+      To change the value after that, the mentioned 
+      list data node must be deleted and recreated with the restricted data node
+      having the new value.
+
+      If a list or container already has the inVariant 
+      extension, that is also valid for all contained data nodes.
+
+      It is unnecessary to use and MUST NOT be used for key leafs.
+
+      The statement MUST only be a substatement of a leaf, leaf-list, list,
+      container statement that is contained within the 'attributes' 
+      container of an IOC and that represents an attribute or sub-parts of 
+      an attribute and is config=true. If the attribute is represented by a 
+      container or list, the statement shall be put on these, not on data 
+      nodes inside the list/container.
+      Zero or one inVariant statement is allowed per parent statement.
+      NO substatements are allowed.
+            
+      Adding this statement is an NBC change, removing it is BC.";
+  }
+
+  extension initial-value {
+    description "Specifies a value that the system will set for a leaf
+      leaf-list if a value is not specified for it when its parent list
+      or container is created. The value has no effect in any other
+      modification e.g. changing or removing the value.
+
+      The description statement of the parent statement SHOULD contain
+      the label 'Initial-value: ' followed by the text from the argument.
+
+      The statement MUST only be a substatement of a leaf or leaf-list.
+      The statement MUST NOT be present if the leaf or the leaf-list 
+      has a default statement or the type used for the data node 
+      has a default value.
+      The statement MUST NOT be used for config=false data or in an 
+      action, rpc or notification.
+      Zero or one initial-value statements are allowed for a leaf parent
+      statement. Zero or more initial-value statements are allowed for a
+      leaf-list parent statement. If the leaf-list is ordered-by user, the
+      initial values are stored in the order they appear in the YANG definition.
+      NO substatements are allowed.
+
+      Always consider using a YANG-default statement instead.
+
+      Modification of the initial-value is a non-backwards-compatible change.
+
+      The argument specifies a single initial value for a leaf or leaf-list.
+      The value MUST be part of the valuespace of the leaf/leaf-list.
+      It follows the same rules as the argument of the default statement.";
+
+    argument "initial-value";
+  }
+}

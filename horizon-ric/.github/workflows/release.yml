@@ -1,0 +1,68 @@
+name: release
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install build deps
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install cyclonedx-bom==7.3.0
+
+      - name: Generate CycloneDX 1.5 SBOM
+        run: |
+          mkdir -p deploy/sbom
+          cyclonedx-py environment --sv 1.5 --of JSON \
+            --output-file deploy/sbom/horizon-ric-sbom.json \
+            --pyproject pyproject.toml
+          python deploy/sbom/validate_sbom.py
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: "v2.4.1"
+
+      - name: Sign image (tag)
+        env:
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          echo "${{ secrets.COSIGN_KEY }}" > /tmp/cosign.key
+          cosign sign --yes --key /tmp/cosign.key \
+            horizonric/rapp:${GITHUB_REF_NAME#v}
+          cosign attach sbom --type cyclonedx \
+            --sbom deploy/sbom/horizon-ric-sbom.json \
+            horizonric/rapp:${GITHUB_REF_NAME#v}
+          rm /tmp/cosign.key
+
+      - name: Helm package + publish
+        run: |
+          if [[ -d deploy/helm ]]; then
+            curl -sSL https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz | tar xz
+            ./linux-amd64/helm package deploy/helm/horizon-ric -d dist/
+          fi
+
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tgz
+            deploy/sbom/horizon-ric-sbom.json
+            docs/openapi/horizon-ric-rapp.yaml
