@@ -22,6 +22,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from horizon_ric._scaffold import TrainedMarkerMixin, warn_untrained
+
 
 @dataclass
 class PerceiverConfig:
@@ -86,11 +88,23 @@ class _Block(nn.Module):
         return x + self.ff(x)
 
 
-class PerceiverFusion(nn.Module):
-    """Variable-cardinality cross-attention into a fixed latent."""
+class PerceiverFusion(nn.Module, TrainedMarkerMixin):
+    """Variable-cardinality cross-attention into a fixed latent.
+
+    .. warning::
+
+        Bare instantiation produces **random projections** (the latent
+        ``nn.Parameter`` is randn-init, the cross-attention KV
+        projections are kaiming-init, no pretraining has occurred).
+        Use ``PerceiverFusion.from_pretrained(path)`` once a real
+        Perceiver-IO checkpoint is available, or train it via the JEPA
+        pipeline (``scripts/train_jepa_full.py``). Until then,
+        ``UntrainedScaffoldWarning`` fires at construction.
+    """
 
     def __init__(self, config: PerceiverConfig | None = None):
         super().__init__()
+        warn_untrained("PerceiverFusion", "checkpoints/jepa_encoder_v0.1.pt")
         self.cfg = config or PerceiverConfig()
         self.latents = nn.Parameter(
             torch.randn(self.cfg.n_latents, self.cfg.d_latent) * 0.02

@@ -34,6 +34,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from horizon_ric._scaffold import TrainedMarkerMixin, warn_untrained
+
 
 @dataclass
 class GraphJEPAConfig:
@@ -80,8 +82,19 @@ class _Predictor(nn.Module):
         return out[:, Lc:, :]
 
 
-class GraphJEPA(nn.Module):
-    """Joint-Embedding Predictive Architecture over Perceiver latents."""
+class GraphJEPA(nn.Module, TrainedMarkerMixin):
+    """Joint-Embedding Predictive Architecture over Perceiver latents.
+
+    .. warning::
+
+        Bare instantiation produces **random projections**. The I-JEPA
+        recipe (Assran 2023) is faithfully implemented but the target /
+        context encoders are not pretrained until you run
+        ``scripts/train_jepa_full.py`` or load via
+        ``GraphJEPA.from_pretrained("checkpoints/jepa_encoder_v0.1.pt", ...)``.
+        Until then, ``UntrainedScaffoldWarning`` fires at construction
+        and ``is_trained()`` returns ``False``.
+    """
 
     def __init__(
         self,
@@ -100,6 +113,9 @@ class GraphJEPA(nn.Module):
             self.cfg.predictor_hidden,
             self.cfg.predictor_layers,
         )
+        # Honest disclosure: this module is a real PyTorch architecture
+        # but produces random projections until a checkpoint loads.
+        warn_untrained("GraphJEPA", "checkpoints/jepa_encoder_v0.1.pt")
 
     @torch.no_grad()
     def update_target(self) -> None:

@@ -1016,4 +1016,60 @@ Five concessions we lead with in the first 60 seconds of any customer pitch:
 
 ---
 
+---
+
+## 50. Honest scope of the AI / "world-model" claims (v3 audit-pass disclosure)
+
+A code-review audit on 2026-05-09 produced an honest re-classification of every "AI / world-model / neural / DreamerV3-style / FedProx" claim in the codebase. Customer-facing tier:
+
+### 50.1 ENGINEERING-GRADE (real ML, math correct, paper-faithful)
+
+| Module | Claim | Evidence |
+|---|---|---|
+| [`heads/_two_hot.py`](src/horizon_ric/heads/_two_hot.py) | DreamerV3 §3.4 two-hot symlog regression | `symlog`/`symexp` verbatim per Hafner 2023 §3.4; round-trip property holds; CE loss matches DreamerV3 |
+| [`continual/lora_adapter.py`](src/horizon_ric/continual/lora_adapter.py) | LoRA per-site adapters | Hu 2021 verbatim — `B` zero-init, `A` Kaiming-init, `α/r` scaling, base frozen |
+| [`federated/secure_aggregation.py`](src/horizon_ric/federated/secure_aggregation.py) | Shamir SS over GF(2¹²⁷-1), additive-homomorphic | Lagrange interpolation at x=0 via Fermat-inverse; `secrets.randbelow` CSPRNG; sound, with explicit Phase-2 caveats |
+
+### 50.2 SCAFFOLD — real PyTorch architecture, **untrained without a checkpoint**
+
+These modules are faithful implementations of their cited papers but require a `from_pretrained()` checkpoint to do anything meaningful. Local dev has the checkpoints; CI does not (gitignored `*.pt`). All instantiate with an `UntrainedScaffoldWarning` to surface this honestly.
+
+| Module | Cited paper | Checkpoint produced by | `from_pretrained()` |
+|---|---|---|---|
+| [`encoder/graph_jepa.py`](src/horizon_ric/encoder/graph_jepa.py) | Assran 2023 (I-JEPA) | `scripts/train_jepa_full.py` | ✓ |
+| [`encoder/perceiver_fusion.py`](src/horizon_ric/encoder/perceiver_fusion.py) | Jaegle 2022 (Perceiver IO) | same | ✓ |
+| [`encoder/entity_tokenizer.py`](src/horizon_ric/encoder/entity_tokenizer.py) | NeRF-style positional encoding | same | ✓ |
+| [`core/cfc_core.py`](src/horizon_ric/core/cfc_core.py) | Hasani 2022 (Liquid CfC) | `scripts/train_liquid_models.py` | (load via `torch.load`) |
+| [`core/liquid_s4.py`](src/horizon_ric/core/liquid_s4.py) | Hasani 2023 (Liquid-S4) | same | (load via `torch.load`) |
+| [`core/latent_ode.py`](src/horizon_ric/core/latent_ode.py) | Rubanova 2019 (Latent-ODE) | same | (load via `torch.load`) |
+| [`core/latent_dynamics.py`](src/horizon_ric/core/latent_dynamics.py) | Mamba selective scan | `scripts/train_jepa_full.py` Phase 2 | (load via `torch.load`) |
+
+A bare `Module()` constructor produces **random projections** of the input. The honesty layer (`src/horizon_ric/_scaffold.py`) emits `UntrainedScaffoldWarning` so a downstream consumer cannot silently pipe random features into the audit chain.
+
+### 50.3 RULE-BASED policies (NOT neural — renamed in v3 audit pass)
+
+These three modules historically had "AI-PHY decision" in their docstrings. They contain **zero learned parameters** and are deterministic if/else gates that route to AI-PHY backends. Renamed in v3 with backwards-compat aliases:
+
+| Honest name (canonical) | Legacy alias | What it actually is |
+|---|---|---|
+| `NeuralRxArbiterPolicy` | `NeuralRxDecision` | 3-condition `if` over PA backoff / SNR / mobility, routes to neural-RX backend |
+| `DPoDActivationPolicy` | `DPoDActivation` | ON/OFF state machine over PA backoff / SLA risk / EVM target |
+| `LearnedConstellationGate` | `LearnedConstellationDecision` | mobility-class lookup gate; the "predicted" gain is now honestly named `published_vendor_benchmark_gain_pct` (the value is a Nokia + R&S MWC slide constant, not a model prediction) |
+
+### 50.4 FedProx server-side aggregation = FedAvg
+
+`aggregate_fedprox()` and `default_aggregator() → FedProx(mu=0.01)` are **mathematically identical to FedAvg** server-side. The FedProx contribution (Li 2020) is the **client-side** proximal regulariser `μ/2 · ‖w_local − w_global‖²`. v3 ships [`fedprox_client_proximal_loss()`](src/horizon_ric/federated/aggregator.py) — a real torch helper the client trainer must call to actually be running FedProx. Using only the server-side `FedProx()` aggregator without that client-side wiring = FedAvg.
+
+### 50.5 What this means for the customer pitch
+
+The headline differentiators (per-decision counterfactual envelope, SHA-256 hash chain + RFC 3161 anchor, ITU-R S.1503 EPFD in-loop, TS 28.105 §7.4 model card lineage) **do not depend on the trained-AI claims** above. They are deterministic crypto + closed-form physics + audit-chain mechanics, and they are real (Section 7).
+
+The honest pitch update: PreceptualAI ships the **trust + audit + lifecycle layer** for AI-RAN deployments. We **also** ship reference scaffolds for the AI primitives the operator's training team can fine-tune on their own data via the published `scripts/train_*.py` recipes. We do **not** claim our pre-trained weights are operator-deployment-ready — that's the operator's training run, on the operator's data corpus.
+
+### 50.6 Bug fixed in v3 audit pass
+
+`encoder/entity_tokenizer.py` defaulted `attr_dims[SAT_NGSO] = 8` while `encoder/link_state.py` produces 12-dimensional vectors (`LINK_STATE_DIM = 12`). The documented "wire link_state into the satellite token" path crashed at runtime. Fixed by sourcing the default from `LINK_STATE_DIM` directly.
+
+---
+
 *End of README.md. For a 5-minute customer demo, see [CUSTOMER_DEMO_PACKET.md](CUSTOMER_DEMO_PACKET.md). For pilot conversations or RFP responses, the canonical state is `FINAL_PROGRESS.md` + `GAPS_TO_PILOT.md` §F. For sales positioning, the canonical state is `MARKETPLACE_POSITIONING.md` §7. The plan of record is `~/.claude/plans/preceptualai-airan-alliance-integration.md` v3.*

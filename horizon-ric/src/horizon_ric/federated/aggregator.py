@@ -110,15 +110,66 @@ def aggregate_fedavg(
 def aggregate_fedprox(
     updates: list[ClientUpdate],
 ) -> dict[str, torch.Tensor]:
-    """FedProx server-side aggregation.
+    """FedProx server-side aggregation — IDENTICAL to FedAvg by design.
 
-    FedProx differs from FedAvg only on the *client* (proximal term added
-    to the local loss). The server-side aggregation is the same weighted
-    mean. We expose it under a separate name so call-sites declare intent
-    and so we can add Li-2020 re-weightings (e.g. drop very-divergent
-    updates) here in future without touching the FedAvg path.
+    .. important::
+        FedProx (Li 2020) differs from FedAvg **only on the client**:
+        the local loss is augmented with the proximal regulariser
+        ``μ/2 · ‖w_local − w_global‖²``. The server-side aggregator is
+        unchanged. Calling this function instead of ``aggregate_fedavg``
+        is **purely a code-clarity intent signal**; the math is the
+        same weighted mean. To get the actual FedProx behaviour, the
+        client trainer must use :func:`fedprox_client_proximal_loss`
+        (see below) when computing the local update.
+
+    This was historically over-claimed in the docstring; the function
+    body has always just delegated to FedAvg. Honest disclosure landed
+    in the v3 audit pass.
     """
     return aggregate_fedavg(updates)
+
+
+def fedprox_client_proximal_loss(
+    local_state_dict: dict[str, torch.Tensor],
+    global_state_dict: dict[str, torch.Tensor],
+    mu: float = 0.01,  # = DEFAULT_FEDPROX_MU; literal here for forward-ref
+) -> torch.Tensor:
+    """Compute the FedProx **client-side** proximal regulariser.
+
+    Returns the scalar ``μ/2 · Σ_k ‖w_local_k − w_global_k‖²`` that the
+    client trainer must add to its local loss before backprop. Without
+    this, the system is FedAvg, regardless of which server aggregator
+    name is used.
+
+    Reference
+    ---------
+    Li et al. *Federated Optimization in Heterogeneous Networks*,
+    MLSys 2020. See §3 algorithm 2 (FedProx local objective):
+
+        h_k(w; w^t) = F_k(w) + (μ/2) · ‖w − w^t‖²
+
+    Example
+    -------
+    >>> # in the client trainer's optimisation step:
+    >>> task_loss = criterion(model(x), y)
+    >>> prox = fedprox_client_proximal_loss(
+    ...     local_state_dict=model.state_dict(),
+    ...     global_state_dict=last_global_round_state_dict,
+    ...     mu=0.01,
+    ... )
+    >>> total = task_loss + prox
+    >>> total.backward()
+    """
+    if mu < 0:
+        raise ValueError(f"mu must be ≥ 0, got {mu}")
+    keys = set(local_state_dict.keys()) & set(global_state_dict.keys())
+    if not keys:
+        raise ValueError("local and global state dicts share no keys")
+    sq_norm = torch.tensor(0.0)
+    for k in keys:
+        diff = local_state_dict[k].to(torch.float64) - global_state_dict[k].to(torch.float64)
+        sq_norm = sq_norm + (diff * diff).sum()
+    return (mu / 2.0) * sq_norm.to(torch.float32)
 
 
 # ─── Functor-style aggregators (object form) ────────────────────────────
@@ -176,10 +227,23 @@ aggregator" for justification (Devil-C #37)."""
 def default_aggregator() -> "_BaseAggregator":
     """The system-wide default federated aggregator.
 
-    Returns ``FedProx(mu=DEFAULT_FEDPROX_MU)`` — NOT FedAvg.
-    Closes Devil-C Finding 37: FedAvg under heterogeneous client data
-    has known drift (SCAFFOLD ICML 2020); FedProx with μ=0.01 is the
-    robust default. See module docstring + RELIABILITY.md for the rationale.
+    Returns ``FedProx(mu=DEFAULT_FEDPROX_MU)`` — but **note** that this
+    server-side ``FedProx`` is mathematically identical to ``FedAvg``:
+    the FedProx contribution is the **client-side proximal regulariser**
+    ``μ/2 · ‖w_local − w_global‖²`` (Li 2020), which must be added to
+    the local trainer's loss via :func:`fedprox_client_proximal_loss`.
+    Without that client-side wiring, ``FedProx(mu=0.01)`` and
+    ``FedAvg()`` produce bit-identical aggregations.
+
+    Returning ``FedProx`` here documents *intent* (we want clients to
+    use the proximal term), not behaviour. The default remains FedProx
+    because the server contract is forward-compatible: the day a client
+    trainer wires in :func:`fedprox_client_proximal_loss`, the
+    aggregator's name no longer needs to change.
+
+    Closes Devil-C Finding 37 (FedAvg drift under heterogeneous data,
+    SCAFFOLD ICML 2020) IF AND ONLY IF the client trainer adds the
+    proximal term. See ``RELIABILITY.md`` for the operational gate.
     """
     return FedProx(mu=DEFAULT_FEDPROX_MU)
 
@@ -193,4 +257,5 @@ __all__ = [
     "aggregate_fedprox",
     "apply_state_dict",
     "default_aggregator",
+    "fedprox_client_proximal_loss",   # NEW: required for real FedProx
 ]

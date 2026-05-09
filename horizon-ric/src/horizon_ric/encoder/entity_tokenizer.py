@@ -22,6 +22,8 @@ from enum import Enum
 import torch
 import torch.nn as nn
 
+from horizon_ric._scaffold import TrainedMarkerMixin, warn_untrained
+
 
 class EntityType(str, Enum):
     SAT_NGSO = "sat_ngso"
@@ -45,10 +47,19 @@ class EntityTokenizerConfig:
 
     def __post_init__(self):
         if self.attr_dims is None:
-            # Reasonable defaults — every type has *some* attributes.
+            # Defaults — must match the upstream feature producers:
+            #   SAT_NGSO / SAT_GSO  → encoder/link_state.LINK_STATE_DIM (12)
+            #   the rest are reasonable scratch defaults pending real
+            #   per-type feature producers landing in Phase-2.
+            #
+            # Bug fix (v3 honest-audit pass): SAT_NGSO=8 mismatched
+            # LINK_STATE_DIM=12 and the documented "wire link_state
+            # into the satellite token" path crashed at runtime. Now
+            # both satellite types match the LinkState width.
+            from horizon_ric.encoder.link_state import LINK_STATE_DIM
             self.attr_dims = {
-                EntityType.SAT_NGSO: 8,
-                EntityType.SAT_GSO: 6,
+                EntityType.SAT_NGSO: LINK_STATE_DIM,   # was 8 — broken
+                EntityType.SAT_GSO: LINK_STATE_DIM,    # was 6 — broken
                 EntityType.CELL: 12,
                 EntityType.AP_WIFI: 8,
                 EntityType.UE: 16,
@@ -105,13 +116,26 @@ class _PositionEncoder(nn.Module):
         return torch.cat(out, dim=-1)
 
 
-class EntityTokenizer(nn.Module):
-    """Typed tokeniser producing one (d_model,) token per asset."""
+class EntityTokenizer(nn.Module, TrainedMarkerMixin):
+    """Typed tokeniser producing one (d_model,) token per asset.
+
+    .. warning::
+
+        Bare instantiation produces **random projections** (Kaiming-init
+        ``nn.Linear`` + NeRF-style positional encoding). Production
+        deployments must load a checkpoint produced by
+        ``scripts/train_jepa_full.py`` via
+        ``EntityTokenizer.from_pretrained(path, config=...)`` —
+        otherwise the typed-token embeddings are random and the
+        downstream encoder is meaningless. ``UntrainedScaffoldWarning``
+        fires at construction.
+    """
 
     def __init__(self, config: EntityTokenizerConfig | None = None):
         super().__init__()
         self.cfg = config or EntityTokenizerConfig()
         self.pos_enc = _PositionEncoder(self.cfg.pos_freqs)
+        warn_untrained("EntityTokenizer", "checkpoints/jepa_encoder_v0.1.pt")
 
         # Per-type attribute MLP.
         self.attr_mlps = nn.ModuleDict(

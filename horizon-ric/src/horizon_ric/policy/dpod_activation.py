@@ -1,4 +1,15 @@
-"""Digital Post-Distortion (DPoD) activation decision.
+"""DPoD activation **policy** — deterministic rule-based gate (NOT itself AI).
+
+> **Honest scope.** This module contains **zero neural network weights**
+> and zero learned parameters. It is a deterministic if/else state
+> machine that decides *when to enable* the AI-RAN Alliance HybridDeepRx
+> digital post-distortion (DPoD) backend at the gNB receiver. The
+> backend is the AI; this file is the regulator-readable arbiter that
+> routes traffic to it. Class is named `DPoDActivation` for backward
+> compatibility but is more accurately characterised as
+> ``DPoDActivationPolicy``. The audit-chain envelope it emits is a
+> regulator-replayable trace of the rule firing — not a model
+> prediction.
 
 Decides whether to enable the AI-RAN Alliance HybridDeepRx digital
 post-distortion module on the gNB receiver, based on PA backoff, EVM
@@ -186,8 +197,15 @@ class DPoDActivation:
             return t
 
 
+# Honest-name alias. `DPoDActivationPolicy` is the canonical name going
+# forward; `DPoDActivation` is preserved for backwards compatibility
+# (test surface, M1 audit chain).
+DPoDActivationPolicy = DPoDActivation
+
+
 __all__ = [
-    "DPoDActivation",
+    "DPoDActivation",            # legacy
+    "DPoDActivationPolicy",      # canonical (rule-based, not AI)
     "DPoDInputs",
     "DPoDState",
     "DPoDTransition",

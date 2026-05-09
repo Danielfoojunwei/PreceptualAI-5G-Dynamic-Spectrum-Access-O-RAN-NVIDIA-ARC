@@ -110,7 +110,9 @@ class TestEntityTokenizer:
         tok = EntityTokenizer(EntityTokenizerConfig(d_model=64))
         assets = [
             AssetAttributes(EntityType.UE, torch.randn(16), (1e6, 0.0, 0.0)),
-            AssetAttributes(EntityType.SAT_NGSO, torch.randn(8), (7e6, 0.0, 0.0)),
+            # v3 audit fix: SAT_NGSO default attr_dim is now LINK_STATE_DIM=12
+            # (was 8, mismatched with link_state.py producer width).
+            AssetAttributes(EntityType.SAT_NGSO, torch.randn(12), (7e6, 0.0, 0.0)),
             AssetAttributes(EntityType.CELL, torch.randn(12), (6.4e6, 0.0, 0.0)),
             AssetAttributes(EntityType.BEAM, torch.randn(10), (6.4e6, 0.0, 1.0)),
         ]

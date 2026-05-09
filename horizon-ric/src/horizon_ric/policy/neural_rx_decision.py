@@ -1,4 +1,17 @@
-"""Neural-RX vs LMMSE decision module (M1, AI-PHY).
+"""Neural-RX vs LMMSE **arbiter policy** — deterministic rule (NOT itself AI).
+
+> **Honest scope.** This module contains **zero neural network weights**
+> and **zero learned parameters**. It is a deterministic if/else gate
+> that decides *whether to route a UE's PUSCH* through the AI-RAN
+> Alliance HybridDeepRx neural-receiver backend or the classical LMMSE
+> path. The neural receiver itself lives downstream (in Aerial / cuBB /
+> the AI-RAN Alliance reference implementation); this file is the
+> regulator-readable arbiter that fires the routing decision and emits
+> the audit envelope. The TBLER curve used in the envelope is a 2-point
+> linear interpolation calibrated to the AI-RAN Alliance HybridDeepRx
+> published operating point (Nokia + R&S, MWC 2026) — it is NOT a
+> learned predictor. Class is canonically named ``NeuralRxArbiterPolicy``;
+> ``NeuralRxDecision`` is the backwards-compatible alias.
 
 Per the PreceptualAI AI-RAN integration plan §3 M1, this module emits a
 deterministic, regulator-readable choice between neural-RX (learned
@@ -296,10 +309,15 @@ class NeuralRxDecision:
         )
 
 
+# Honest-name alias.
+NeuralRxArbiterPolicy = NeuralRxDecision
+
+
 __all__ = [
     "MobilityClass",
     "NEURAL_RX_MODEL_CARD",
-    "NeuralRxDecision",
+    "NeuralRxArbiterPolicy",     # canonical (rule-based, not AI)
+    "NeuralRxDecision",          # legacy
     "NeuralRxEnvelope",
     "NeuralRxState",
     "RxKind",

@@ -1,4 +1,16 @@
-"""Learned-constellation vs classical-QAM decision.
+"""Learned-constellation vs classical-QAM **gate** — deterministic rule (NOT AI).
+
+> **Honest scope.** This module contains **zero learned parameters**.
+> It is a deterministic if/else gate that decides *when to route* to an
+> AI-RAN-Alliance-learned-constellation backend (the backend is the AI;
+> this file is the regulator-readable arbiter). The
+> ``predicted_throughput_gain_pct`` field on the emitted envelope is
+> **not a model prediction** — it is the **vendor-published benchmark
+> constant** from Nokia + R&S MWC slides, looked up by mobility class.
+> Renamed for honesty as ``published_vendor_benchmark_gain_pct`` with
+> the legacy name kept as an alias. Class is canonically named
+> ``LearnedConstellationGate``; ``LearnedConstellationDecision`` is the
+> backwards-compatible alias.
 
 Decides whether to switch this UE's modulation from classical 16-QAM /
 64-QAM to an AI-RAN-Alliance-learned constellation that doubles as a
@@ -66,8 +78,22 @@ class LearnedConstellationEnvelope:
     reason_human: str
     pinned_seed: int
     state: dict
-    predicted_throughput_gain_pct: float
+    # Renamed for honesty: the value is a vendor-published benchmark
+    # constant (Nokia + R&S MWC 2026 slides) looked up by mobility
+    # class. It is NOT a model prediction; the regulator-replayable
+    # envelope must surface that distinction. The legacy alias
+    # `predicted_throughput_gain_pct` is preserved on `to_dict()` so
+    # downstream consumers don't break, but is also flagged with a
+    # `published_vendor_benchmark_gain_pct` mirror.
+    published_vendor_benchmark_gain_pct: float
     envelope_kind: str = "learned_constellation_decision"
+
+    # Legacy attribute alias (read-only) — present so existing tests
+    # accessing `.predicted_throughput_gain_pct` keep working. New
+    # code should use `published_vendor_benchmark_gain_pct`.
+    @property
+    def predicted_throughput_gain_pct(self) -> float:
+        return self.published_vendor_benchmark_gain_pct
 
     def to_dict(self) -> dict:
         return {
@@ -79,7 +105,17 @@ class LearnedConstellationEnvelope:
             "reason_human": self.reason_human,
             "pinned_seed": self.pinned_seed,
             "state": self.state,
-            "predicted_throughput_gain_pct": self.predicted_throughput_gain_pct,
+            # Honest, source-attributed primary field:
+            "published_vendor_benchmark_gain_pct":
+                self.published_vendor_benchmark_gain_pct,
+            # Legacy mirror (DEPRECATED) for downstream JSON consumers
+            # that read the old key. Audit consumers should migrate.
+            "predicted_throughput_gain_pct":
+                self.published_vendor_benchmark_gain_pct,
+            "_deprecation_note":
+                "predicted_throughput_gain_pct is the deprecated alias "
+                "for published_vendor_benchmark_gain_pct; the value is a "
+                "vendor-slide constant, not a model prediction.",
         }
 
     def sha256(self) -> str:
@@ -196,14 +232,19 @@ class LearnedConstellationDecision:
                 "mcs_index": state.mcs_index,
                 "prb_count": state.prb_count,
             },
-            predicted_throughput_gain_pct=float(gain),
+            published_vendor_benchmark_gain_pct=float(gain),
         )
         return chosen, env
 
 
+# Honest-name alias.
+LearnedConstellationGate = LearnedConstellationDecision
+
+
 __all__ = [
     "ConstellationKind",
-    "LearnedConstellationDecision",
+    "LearnedConstellationDecision",      # legacy
+    "LearnedConstellationGate",          # canonical (rule-based, not AI)
     "LearnedConstellationEnvelope",
     "LearnedConstellationState",
 ]
