@@ -66,6 +66,15 @@ dev = [
     "mypy>=1.8",
     "bandit>=1.7",
     "syft",  # SBOM generator (binary, not python lib — referenced for docs)
+    # Test-only deps (collection-blocking when missing in CI; the
+    # hypothesis + matplotlib imports are at module top-level so
+    # without these the parametrize fails at collection, not runtime).
+    "matplotlib>=3.7",       # tests/test_diffusion_tail_calibration.py:40
+    "hypothesis>=6.100",     # tests/test_fuzz.py:19 (property-based)
+    # Tests below use `pytest.importorskip()` and skip gracefully when
+    # absent — included here so the full test pack runs locally:
+    "uvicorn>=0.30",         # tests/test_dldb_consumer.py (live HTTP server)
+    "z3-solver>=4.13",       # tests/test_rbac_smt_completeness.py
 ]
 itur = [
     "itur>=0.5",  # ITU-R reference Python implementation for validation
@@ -132,6 +141,7 @@ asyncio_mode = "auto"
 markers = [
     "asyncio: mark test as an async coroutine",
     "integration: requires a live external service (e.g. real NETCONF server on 8830)",
+    "slow: mark test as slow (excluded from fast pack via -m 'not slow'). Used by tests/test_diffusion_tail_calibration.py.",
 ]
 
 [tool.coverage.run]
