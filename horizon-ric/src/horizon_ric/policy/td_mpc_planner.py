@@ -1,4 +1,20 @@
-"""TD-MPC2 model-predictive planner with constraint costs.
+"""Constraint-aware MPPI / CEM planner — "TD-MPC2-style" historically; honest disclosure below.
+
+> **Honest scope (v3 audit pass).** The class name and the historical
+> filename reference Hansen 2024 TD-MPC2, but the **runtime planner that
+> ships in production is the trained-value-head-OFF variant** — i.e.
+> CEM (Williams 2017 / de Boer 2005) with softmax-elite refit over the
+> learned latent dynamics, plus pluggable Lagrangian constraint
+> penalties. The training script ``scripts/train_tdmpc_planner.py``
+> attempted to fit a TD-bootstrap value head; it diverged in repeated
+> runs (the model-card notes are verbatim) and was shipped disabled
+> because trained MPPI lost to random MPPI on the validation set. The
+> Hansen 2024 paper requires the TD-bootstrap to claim the "TD-MPC2"
+> result; without it, this file is honestly characterised as **CEM with
+> MPPI-elite refit and constraint costs**. The constraint-cost
+> machinery (PFD / EPFD / spectrum-mask / LI penalties pluggable into
+> the rollout score) IS engineering-grade and works against any
+> underlying dynamics model.
 
 MPPI (Model Predictive Path Integral) over the learned latent dynamics:
     1. Sample N candidate action sequences from a Gaussian proposal.

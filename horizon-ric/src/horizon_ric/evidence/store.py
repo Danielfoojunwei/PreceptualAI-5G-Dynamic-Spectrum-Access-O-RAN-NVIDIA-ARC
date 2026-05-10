@@ -177,17 +177,47 @@ class JsonlEvidenceStore(EvidenceStore):
         # and both write rows whose `prev` is identical → chain breaks at
         # the second row. (See test_known_bugs::CRIT-01.)
         self._append_lock = threading.Lock()
+        # In-memory cache of the latest chain hash per tenant.
+        # Invariant: invalidated when the file's stat changes (size or
+        # mtime_ns) — another process may have appended between calls,
+        # in which case we re-walk. Within this process the cache turns
+        # append from O(n²) → O(n) over a chain of length n.
+        self._cache_last_hash: dict[str, str] = {}
+        self._cache_file_size: int = -1
+        self._cache_file_mtime_ns: int = -1
+
+    def _file_signature(self) -> tuple[int, int]:
+        """(size, mtime_ns) snapshot used as cache invalidation key."""
+        try:
+            st = self._path.stat()
+            return (st.st_size, st.st_mtime_ns)
+        except OSError:
+            return (-1, -1)
+
+    def _invalidate_cache_if_file_changed(self) -> None:
+        size, mtime_ns = self._file_signature()
+        if size != self._cache_file_size or mtime_ns != self._cache_file_mtime_ns:
+            self._cache_last_hash.clear()
+            self._cache_file_size = size
+            self._cache_file_mtime_ns = mtime_ns
 
     def _last_hash_for_tenant(self, tenant_id: str) -> str:
-        """Walk the file once and return the latest chain hash for `tenant_id`.
+        """Latest chain hash for ``tenant_id``, with mtime-validated cache.
 
-        We deliberately re-scan the file rather than caching: the file is
-        the source of truth, and another process (the audit-rotate CLI)
-        may have appended in between calls. For high-throughput rApps we
-        cache in memory in a follow-up; today this is correct."""
-        if self._path.stat().st_size == 0:
+        The file is the source of truth: another process (the audit-rotate
+        CLI) may have appended between calls. We invalidate the cache
+        whenever the file's (size, mtime_ns) signature changes; otherwise
+        return the cached value. This turns append from O(n²) → O(n).
+        """
+        self._invalidate_cache_if_file_changed()
+        if tenant_id in self._cache_last_hash:
+            return self._cache_last_hash[tenant_id]
+        if self._cache_file_size == 0:
+            self._cache_last_hash[tenant_id] = _ZERO_HASH_HEX
             return _ZERO_HASH_HEX
-        last_for_tenant = _ZERO_HASH_HEX
+        # Cold cache — walk the file once and populate ALL tenants we
+        # see in one pass, so subsequent get-other-tenant calls are O(1).
+        last_for_tenant: dict[str, str] = {}
         with self._path.open("r", encoding="utf-8") as f:
             for line in f:
                 if not line.strip():
@@ -196,9 +226,9 @@ class JsonlEvidenceStore(EvidenceStore):
                 rec_tenant = obj.get("tenant_id") or obj.get("record", {}).get(
                     "tenant_id"
                 ) or _UNSCOPED_TENANT
-                if rec_tenant == tenant_id:
-                    last_for_tenant = obj["hash"]
-        return last_for_tenant
+                last_for_tenant[rec_tenant] = obj["hash"]
+        self._cache_last_hash.update(last_for_tenant)
+        return self._cache_last_hash.get(tenant_id, _ZERO_HASH_HEX)
 
     def append(self, record: DecisionRecord) -> str:
         # Stamp the record with the active tenant if it lacks one.
@@ -225,6 +255,13 @@ class JsonlEvidenceStore(EvidenceStore):
             with self._path.open("a", encoding="utf-8") as f:
                 f.write(line + "\n")
                 f.flush()
+            # Update cache atomically with the file write so the next
+            # append() doesn't have to re-walk. _file_signature() is
+            # captured AFTER the write so a subsequent
+            # _invalidate_cache_if_file_changed() doesn't blow this away.
+            self._cache_last_hash[tenant_id] = chain_hash
+            sig = self._file_signature()
+            self._cache_file_size, self._cache_file_mtime_ns = sig
         return chain_hash
 
     def __iter__(self) -> Iterator[tuple[DecisionRecord, str]]:

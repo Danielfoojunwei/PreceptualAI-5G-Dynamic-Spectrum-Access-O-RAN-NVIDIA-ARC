@@ -100,7 +100,7 @@ roll-up, this session) and [`CUSTOMER_DEMO_PACKET.md`](CUSTOMER_DEMO_PACKET.md)
 | Cosign-signed images + CycloneDX SBOM | shipped | `deploy/cosign/`, `deploy/sbom/` |
 | O-RAN.WG10 X.733 alarm schema | shipped | `src/horizon_ric/observability/x733_alarms.py` |
 | NIS2 Article 23 24-h reporter daemon | shipped | `src/horizon_ric/security/nis2_reporter.py` |
-| RBAC SMT decidability proof (Z3) | proven | `tests/test_rbac_smt_completeness.py` (5 / 5 SMT theorems) |
+| RBAC SMT decidability proof (Z3) | proven | `tests/test_rbac_smt_completeness.py` (4 SMT theorems + 1 shape sanity test = 5/5 green) |
 | Code-quality polish | pyflakes 55 → 18, ruff 67 → 8, smoke 67 / 67 green | `CODE_QUALITY_REPORT.md` |
 
 ### 1.4 Differentiators the buyer will pay for

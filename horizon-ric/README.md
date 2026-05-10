@@ -38,7 +38,7 @@
 21. SLA tail calibration (ECE, Brier, bootstrap CI)
 22. Drift detector behaviour
 23. Atomic A→B promotion under load
-24. Audit chain verify timing (18 µs / record)
+24. Audit chain verify timing (51 µs / record honest; 18 µs claim retracted in v3 audit pass)
 25. Federated + crypto micro-bench
 26. Chaos test recovery (SIGKILL / SIGSTOP / file corrupt / UDP flood)
 
@@ -155,7 +155,7 @@ The feature surface, in 13 lines:
 | 7 | Federated FedProx + Shamir Secret Sharing | `federated/{aggregator,secure_aggregation}.py` |
 | 8 | Cross-operator Vickrey auction + Paillier additive HE + DGK MPC blind ranking | `trading/*.py` |
 | 9 | LCM atomics — atomic promotion, shadow executor, artefact vault, LoopState | `runtime/{atomic_promotion,shadow_executor,artefact_vault,loop_state}.py` |
-| 10 | AI-PHY decisions — neural-RX, DPoD, learned constellation | `policy/{neural_rx_decision,dpod_activation,learned_constellation_decision}.py` |
+| 10 | AI-PHY **arbiter policies** (rule-based, not AI) — neural-RX, DPoD, learned-constellation gates that route to AI-PHY backends | `policy/{neural_rx_decision,dpod_activation,learned_constellation_decision}.py` (canonical names: `NeuralRxArbiterPolicy`, `DPoDActivationPolicy`, `LearnedConstellationGate` — see §50.3 for honest disclosure) |
 | 11 | NVIDIA Aerial cuBB FAPI / DLDB live consumer / ARC-OTA | `data/aerial.py` + `integrations/nvidia_arc_ota.py` |
 | 12 | VIAVI D4AI sandbox (TM500 functional + 3 documented stubs) + digital twin | `integrations/{viavi_d4ai,viavi_digital_twin}.py` |
 | 13 | Continual learning — LoRA per-site + KS + Page-Hinkley drift detectors | `continual/{lora_adapter,drift_detector}.py` |
@@ -179,7 +179,7 @@ The four lines on a Tier-1 RFP scorecard where we score 4 / 4 against incumbents
 | # | Differentiator | Empirical claim | Source |
 |---:|---|---|---|
 | 1 | **Per-policy counterfactual envelope** | Every decision carries rejected alternatives + reason + pinned random seed. Reproducible. | `src/horizon_ric/evidence/explanation.py:16-56`, `policy/counterfactual.py:47-100`, `tests/test_counterfactual_reproducibility.py` |
-| 2 | **SHA-256 tamper-evident chain + RFC 3161 anchor** | **18 µs verify per record**; linear scaling. Combined audit chain integrity over both 24-hour soaks: 2 880 / 2 880 verifies intact. | `evidence/store.py:48-79`, `evidence/rfc3161.py:60-110`, `benchmarks/bench_audit_verify.py` |
+| 2 | **SHA-256 tamper-evident chain + RFC 3161 anchor** | **51 µs verify per record**; linear scaling. Combined audit chain integrity over both 24-hour soaks: 2 880 / 2 880 verifies intact. | `evidence/store.py:48-79`, `evidence/rfc3161.py:60-110`, `benchmarks/bench_audit_verify.py` |
 | 3 | **ITU-R S.1503 EPFD in-loop** | **0.19 % violation rate** (19 / 10 000 scenarios) on real Starlink TLEs at the −160 dBW/m² floor; **725 scenarios/s** evaluation throughput. | `benchmarks/epfd_10k.json` |
 | 4 | **TS 28.105 §7.4 model card on every promotion** | 4 mandatory fields + AI-PHY block lineage; **34 / 34 model card tests green**. AI-PHY extension shipped: 6 PHY block kinds (channel_estimation, equalization, symbol_demapping, constellation_mapping, papr_shaping, sic_decoder). | `observability/model_card.py:153`, `evidence/ai_phy_lineage.py`, `tests/test_ts28105_model_card_emit.py`, `tests/test_ai_phy_lineage.py` |
 
@@ -201,7 +201,7 @@ Full enumeration. Status: **SHIPPED** = working code + tests; **PARTIAL** = work
 | Monitoring | Per-decision counterfactual envelope with pinned RNG seed | SHIPPED | `evidence/explanation.py`, `policy/counterfactual.py` |
 | Monitoring | SLA tail risk head — multi-horizon two-hot symlog | SHIPPED | `heads/sla_risk.py`, `heads/_two_hot.py` |
 | Monitoring | X.733 alarm vocabulary with O-RAN WG10 ML-failure extension | SHIPPED | `observability/x733_alarms.py` |
-| Monitoring | Calibrated SLA risk: ECE 0.048 / 0.079 / 0.054 (30/60/300 s horizons) | SHIPPED | `benchmarks/sla_tail_calibration.json` |
+| Monitoring | Calibrated SLA risk: ECE 0.048 / 0.079 / 0.054 on **synthetic** test set (real-corpus ECE is operator-data-dependent — see §21) | SHIPPED | `benchmarks/sla_tail_calibration.json` |
 | Rollback | Bit-identical retrieve via SHA-256 verify + `IntegrityError` on tamper | SHIPPED | `runtime/artefact_vault.py:83-110` |
 | Rollback | Atomic rollback under drain timeout < 1 slot | SHIPPED | `runtime/atomic_promotion.py:115-160` |
 | Decommissioning | 7-year retention via JSONL or SQLite evidence store | SHIPPED | `evidence/store.py` |
@@ -324,7 +324,7 @@ A hybrid model: closed-form physics where the equations are well-known (ITU-R / 
 | Encoder | `encoder/spatial_prior.py`, `entity_tokenizer.py`, `graph_jepa.py`, `perceiver_fusion.py` | Hetero-graph + temporal encoder; lifts (UE, gNB, NTN, link) tuples into a 128-d latent state. Pre-trained checkpoint `jepa_encoder_v0.1` ships. |
 | Dynamics | `core/cfc_core.py`, `liquid_s4.py`, `latent_ode.py`, `latent_dynamics.py` | Continuous-time Liquid-CfC (Hasani 2022) + Liquid-S4 (Smith 2022) + Latent-ODE (Rubanova 2019). Three alternatives so the operator can pick the right inductive bias for their channel regime. |
 | Physics residual | `core/physics_residual.py` | Hybrid: classical SGP4 / TR 38.811 / P.838 produces a physics prediction; the network learns the residual on top. Falls back to pure physics when the residual head is absent. |
-| Heads | `heads/sla_risk.py`, `heads/_two_hot.py` | Two-hot symlog SLA risk head (DreamerV3-style); multi-horizon (30 / 60 / 300 s); calibrated to ECE 0.048 / 0.079 / 0.054. |
+| Heads | `heads/sla_risk.py`, `heads/_two_hot.py` | Two-hot logit-space SLA risk head (DreamerV3-`_two_hot.py` is verbatim Hafner 2023 §3.4; SLA head intentionally sets `apply_symlog=False` because P(breach) ∈ [0,1] doesn't span decades); multi-horizon (30 / 60 / 300 s); ECE 0.048 / 0.079 / 0.054 on synthetic data (real-corpus number is operator-data-dependent — see §21). |
 
 ## 12. The constraint layer
 
@@ -339,7 +339,7 @@ Every emitted A1 policy passes through a hard constraint chain before the wire s
 | LI jurisdiction (lawful interception) | `policy/li_constraint.py` | TS 33.127 §5.4, TS 33.128 | **Fail-closed default** — if LI scope cannot be determined, REJECT the policy |
 | Counterfactual envelope | `policy/counterfactual.py` | (PreceptualAI; AI-RAN Alliance WG1 candidate) | Top-K (default K=8) rejected alternatives + reason + pinned RNG seed |
 
-Constraint convergence: the projection step terminates in ≤ 2 iterations on 100 random infeasible actions (`tests/test_constraint_projection_convergence.py`). CfC cell empirical Lipschitz bound: L̂_x p99 = 0.059 (input-space), L̂_h p99 = 0.895 (hidden-state-space), `tests/test_cfc_lipschitz_bound.py`.
+Constraint convergence: under a `max_iter=30` cap, the projection step **observed ≤ 2 iterations on 100 random infeasible actions on seed=42** (`tests/test_constraint_projection_convergence.py`). The "≤ 2" is an empirical observation on that sample, NOT a proven upper bound. CfC cell empirical Lipschitz bound: L̂_x p99 = 0.059 (input-space), L̂_h p99 = 0.895 (hidden-state-space) over 10 000 random samples (`tests/test_cfc_lipschitz_bound.py`); also empirical, not a Lyapunov-formal bound.
 
 ## 13. The evidence chain
 
@@ -354,7 +354,7 @@ Properties:
 
 - **Append-only**: no UPDATE / DELETE; tamper of any record breaks the chain at that index and every later index.
 - **Per-tenant chains**: `tenant_id` resolved from `TenantScope` at append time; chains are independent so tamper of tenant A does not affect tenant B's `verify_tenant()`.
-- **18 µs verify per record** (linear scaling): `benchmarks/bench_audit_verify.py` measures 17.95 µs / record over a 1 000-record chain.
+- **51 µs verify per record** (linear scaling): `benchmarks/bench_audit_verify.py` measures 17.95 µs / record over a 1 000-record chain.
 - **RFC 3161 anchor**: every chain head is timestamped against a TSA (DigiCert by default; documented Sigstore Rekor mode is Phase-2). The anchor binds the chain to wall-clock time so an auditor can verify "this record existed before this date" cryptographically.
 - **X.733 alarm on tamper**: a verify failure emits `processingErrorAlarm` / `softwareError` (CRITICAL) onto the default alarm bus.
 
@@ -423,17 +423,21 @@ Latency distribution: `n=17 248 · mean=37.87 · stdev=23.52 · p50=36.82 · p95
 
 `taskset -c 0-1 python scripts/soak_24h.py --duration-min 12 --speedup 120` produces 12 wall-clock min × 120× = 24 simulated hours under a 2-core compute pin (~33 % stricter than a real Orin Nano). Output: `deploy/ORIN_CONSTRAINED_SOAK_PROOF.md`.
 
-Headline:
+Headline (the proof file's own headline reads "**4 of 5 acceptance bars PASS, 1 FAIL** under the *cluster* bar; PASS under the relaxed Orin envelope bar" — restated honestly here):
 
-| Metric | Value | Cluster bar | Orin bar | Status (Orin) |
+| Metric | Value | Cluster bar | Orin envelope bar | Status |
 |---|---:|---|---|:---:|
-| A1 emit success rate | **99.60 %** over 7 796 emits | ≥ 99.9 % | ≥ 99.5 % | ✅ PASS |
-| Decision latency p99 | **205.07 ms** | ≤ 200 ms | ≤ 250 ms | ✅ PASS |
-| Audit chain integrity | **1 440 / 1 440** verifies intact | 100 % | 100 % | ✅ PASS |
-| Max watchdog silence | **1.04 s** | ≤ 30 s | ≤ 30 s | ✅ PASS |
+| A1 emit success rate | **99.60 %** over 7 796 emits | ≥ 99.9 % ❌ FAIL | ≥ 99.5 % ✅ PASS | ⚠ PARTIAL — passes only relaxed Orin bar |
+| Decision latency p99 | **205.07 ms** | ≤ 200 ms ❌ FAIL (5 ms over) | ≤ 250 ms ✅ PASS | ⚠ PARTIAL — passes only relaxed Orin bar |
+| Audit chain integrity | **1 440 / 1 440** verifies intact | 100 % ✅ | 100 % ✅ | ✅ PASS |
+| Max watchdog silence | **1.04 s** | ≤ 30 s ✅ | ≤ 30 s ✅ | ✅ PASS |
 | Fault injections survived | **145** | — | — | ✅ |
 
+> **Honest disclosure** (per `deploy/ORIN_CONSTRAINED_SOAK_PROOF.md` §"Honest disclosure"): the constrained envelope misses two cluster-path bars by small margins (0.30 % A1 success, 5 ms p99). The relaxed Orin-envelope bars (99.5 % / 250 ms) reflect the legitimately stricter compute budget and the 2.5× higher fault-injection rate (120× speedup vs 48×). The chain integrity, watchdog silence, and fault survival bars hold against the unrelaxed cluster bars.
+
 Combined audit chain integrity over both soaks: **2 880 / 2 880 verifies intact, 0 corruption events.** Combined fault survival: **288 / 288.**
+
+> **24-hour framing.** Both "24-hour soaks" are wall-clock-compressed: the full GB10 soak is 30 min × 48× = 24 sim h; the constrained-Orin soak is 12 min × 120× = 24 sim h. The compression speeds up the simulated event loop (timer ticks, fault injection, audit emit cadence) but does NOT skip steps — a 24-h timeline of events is fully exercised. A real wall-clock 24-h soak is part of the Phase-2 commitment and is gated on a physical Jetson Orin Nano box.
 
 ## 19. Edge benchmark — 10 000 decisions
 
@@ -467,15 +471,15 @@ The 0.19 % residual violation rate is the BR-IFIC reference set behaviour; this 
 
 ## 21. SLA tail calibration (ECE, Brier, bootstrap CI)
 
-`benchmarks/run_sla_tail_calibration.py` trains the SLA risk head for 100 epochs on 5 000 synthetic samples; held-out test = 1 000; bootstrap = 1 000 resamples for 95 % CI. Output: `benchmarks/sla_tail_calibration.json` + `.png`.
+`benchmarks/run_sla_tail_calibration.py` trains the SLA risk head for 100 epochs on **synthetic** samples (5 000 train, 1 000 test); bootstrap = 1 000 resamples for 95 % CI. Output: `benchmarks/sla_tail_calibration.json` + `.png`.
 
 | Horizon | ECE | 95 % CI | Brier | Status (≤ 0.10 bar) |
 |---|---:|---|---:|:---:|
-| 30 s | **0.0484** | [0.0375, 0.0731] | 0.1198 | ✅ PASS |
-| 60 s | **0.0788** | [0.0579, 0.1090] | 0.1816 | ✅ PASS (CI grazes) |
-| 300 s | **0.0540** | [0.042, 0.087] | 0.183 | ✅ PASS |
+| 30 s | **0.0484** | [0.0375, 0.0731] | 0.1198 | ✅ PASS (synthetic data) |
+| 60 s | **0.0788** | [0.0579, 0.1090] | 0.1816 | ⚠ PASS (synthetic; CI grazes 0.10) |
+| 300 s | **0.0540** | [0.042, 0.087] | 0.183 | ✅ PASS (synthetic data) |
 
-The 60 s upper-CI of 0.109 grazes the 0.10 bar; documented honestly in `docs/sla_calibration.md` as calibration debt ticket TD-MPC2-CAL-1. Reliability diagram with Wilson 95 % CI ribbon at `benchmarks/sla_tail_calibration.png`.
+> **Honest scope (v3 audit pass).** These ECE numbers are on a **synthetic** target distribution generated by the calibration script itself. The same SLA-risk head architecture, when trained on the real corpus (UCC-MISL + DeepMIMO + Aerial — see `checkpoints/sla_head_v0.2_nvidia.md`), reports test ECE in the **0.23 – 0.30** range across the 30/60/300 s horizons. That gap (synthetic 0.05 ↔ real 0.30) reflects: (a) the synthetic target is well-separated by design, and (b) the v0.2 checkpoint was trained on a 4 000-sample subset of the real corpus for budget reasons. The honest customer-facing claim is: **the calibration *machinery* — two-hot symlog regression head, ECE estimator, bootstrap CI — is engineering-grade and independently verifiable; the *production calibration number* is operator-corpus-dependent and the operator runs `benchmarks/run_sla_tail_calibration.py` against their own data to obtain the deployed ECE.** Calibration debt ticket is TD-MPC2-CAL-1 in `docs/sla_calibration.md`. Reliability diagram with Wilson 95 % CI ribbon at `benchmarks/sla_tail_calibration.png`.
 
 ## 22. Drift detector behaviour
 
@@ -506,7 +510,7 @@ Performance: empirically, the swap pointer flip is < 50 µs on the GB10 host. Dr
 | 10 000 | 179.1 ms | 17.91 |
 | 100 000 | 1.79 s | 17.91 |
 
-**Linear scaling.** 18 µs / record is the canonical number to quote — it's the cost of one SHA-256 compute over a ~500-byte canonical JSON.
+**Linear scaling.** **51 µs / record is the honest 2026-05-09 measurement** (`benchmarks/bench_audit_verify.py` on the dev box). The earlier "18 µs" claim was a phantom — the v3 audit re-ran the benchmark and found the per-record cost is dominated by Pydantic v2 JSON parse + canonical-JSON re-serialise + SHA-256, not the chain walk itself. Append speed was separately fixed in commit `<this commit>`: per-tenant last-hash cache turned append from O(n²) to O(n) (1 000-record append: 4 897 ms → 97 ms, 50× speedup; per-record append is now ~100 µs amortised). Verify is genuinely linear in chain length at 51 µs / record.
 
 ## 25. Federated + crypto micro-bench
 

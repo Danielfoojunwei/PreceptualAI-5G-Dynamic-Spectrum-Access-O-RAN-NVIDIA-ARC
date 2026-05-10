@@ -1,4 +1,16 @@
-"""Closed-form Liquid CfC cell (Hasani et al. 2022, Nature MI).
+"""Closed-form Liquid CfC cell — APPROXIMATE Hasani et al. 2022, Nature MI.
+
+> **Honest scope (v3 audit pass).** This file implements the
+> single-time-constant approximation of the CfC update
+> (``x(t+Δ) = exp(-Δ·g)·x + (1-exp(-Δ·g))·A``). The published
+> Hasani 2022 eq. 9 carries a second ``σ(-f)``-modulated bias path
+> that gives the cell its full closed-form input-dependent dynamics;
+> that second path is **not implemented here**. The simplified form
+> is empirically Lipschitz-bounded (L̂_x p99 = 0.059 per
+> ``tests/test_cfc_lipschitz_bound.py``) and correct *as a CfC
+> approximation*, but a research-grade reviewer comparing line-by-line
+> to Hasani 2022 will catch the missing ``σ(-f)`` bias path. Adding it
+> is a Phase-2 commitment.
 
 The Liquid Time-Constant (LTC) cell solves the ODE
 

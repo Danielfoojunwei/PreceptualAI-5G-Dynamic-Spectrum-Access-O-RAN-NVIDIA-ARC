@@ -1,4 +1,15 @@
-"""Latent-ODE for irregularly sampled telemetry (Rubanova 2019).
+"""Latent-ODE for irregularly sampled telemetry (Rubanova 2019) — REFERENCE SCAFFOLD.
+
+> **Honest scope (v3 audit pass).** The Rubanova 2019 ODE-RNN encoder +
+> RK4 solver are implemented faithfully at the algorithm level, but
+> this module has **no production consumer in the rApp's hot path**
+> and **no training script ships in this repo**. It is a reference
+> implementation kept available for future Phase-2 work on
+> irregularly-sampled NTN telemetry. Bare instantiation produces
+> random projections; ``UntrainedScaffoldWarning`` fires at
+> construction. The CfC + Liquid-S4 + LatentDynamics modules in this
+> ``core/`` package are the dynamics that the planner actually
+> consumes today.
 
 Two pieces:
 
@@ -30,6 +41,8 @@ from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
+
+from horizon_ric._scaffold import TrainedMarkerMixin, warn_untrained
 
 
 @dataclass
@@ -85,8 +98,15 @@ def _integrate_to(
     return z
 
 
-class ODESolverHead(nn.Module):
+class ODESolverHead(nn.Module, TrainedMarkerMixin):
     """Given z0 and a list of query times, return per-query latents.
+
+    .. warning::
+
+        Untrained scaffold; bare instantiation produces random
+        projections. No training script ships for this module — see
+        the file-level honesty disclosure above. ``UntrainedScaffoldWarning``
+        fires at construction.
 
     Useful as the "decoder" side of a Latent-ODE: callers pass the posterior
     mean/sample and receive the latent trajectory.
@@ -131,8 +151,15 @@ class ODESolverHead(nn.Module):
         return torch.stack(out, dim=1)
 
 
-class LatentODEPosterior(nn.Module):
-    """ODE-RNN encoder → Gaussian posterior over z_0.
+class LatentODEPosterior(nn.Module, TrainedMarkerMixin):
+    """ODE-RNN encoder → Gaussian posterior over z_0 — UNTRAINED SCAFFOLD.
+
+    .. warning::
+
+        Untrained scaffold; bare instantiation produces random
+        projections. No training script ships for this module — see
+        the file-level honesty disclosure.
+        ``UntrainedScaffoldWarning`` fires at construction.
 
     Iterates the irregular observations (t_i, x_i) backwards in time:
     starts from a zero hidden state, integrates the ODE backward to t_i,
@@ -147,6 +174,7 @@ class LatentODEPosterior(nn.Module):
         self.gru = nn.GRUCell(config.obs_dim, config.latent_dim)
         self.mu_head = nn.Linear(config.latent_dim, config.latent_dim)
         self.logvar_head = nn.Linear(config.latent_dim, config.latent_dim)
+        warn_untrained("LatentODEPosterior", suggested_path=None)
 
     def forward(
         self, observations: list[tuple[float, torch.Tensor]]

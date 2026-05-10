@@ -32,6 +32,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from horizon_ric._scaffold import TrainedMarkerMixin, warn_untrained
+
 
 @dataclass
 class DiffusionConfig:
@@ -99,8 +101,20 @@ class _Denoiser(nn.Module):
         return out.reshape(B, self.cfg.horizon, self.cfg.d_latent)
 
 
-class DiffusionTailSampler(nn.Module):
+class DiffusionTailSampler(nn.Module, TrainedMarkerMixin):
     """Latent-space DDPM for tail-risk rollouts.
+
+    .. warning::
+
+        Bare instantiation produces **random samples** — the denoiser is
+        Kaiming-init and **no training script ships in this repo**
+        (no ``scripts/train_diffusion_tail.py``, no
+        ``checkpoints/diffusion_tail_*.pt``). The ε-prediction MSE
+        ``loss()`` entry point is implemented and correct; running it
+        against real DeepMIMO rollouts is a Phase-2 commitment.
+        ``UntrainedScaffoldWarning`` fires at construction so the
+        constraint layer cannot silently consume random tail samples
+        as "predicted worst-case rollouts".
 
     Two public entry points:
         loss(z0, traj, actions)            ε-prediction MSE for training.
@@ -111,6 +125,7 @@ class DiffusionTailSampler(nn.Module):
     def __init__(self, config: DiffusionConfig | None = None):
         super().__init__()
         self.cfg = config or DiffusionConfig()
+        warn_untrained("DiffusionTailSampler", "checkpoints/diffusion_tail_v0.1.pt")
         betas = _make_betas(
             self.cfg.n_steps, self.cfg.beta_min, self.cfg.beta_max
         )
