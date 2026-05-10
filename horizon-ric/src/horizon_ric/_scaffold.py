@@ -36,8 +36,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover
-    import torch
-    from torch import nn
+    # Forward references for type-checkers only; not used at runtime.
+    import torch  # noqa: F401
+    from torch import nn  # noqa: F401
 
 
 class UntrainedScaffoldWarning(UserWarning):
