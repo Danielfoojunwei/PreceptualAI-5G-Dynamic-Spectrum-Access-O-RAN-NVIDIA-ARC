@@ -64,3 +64,8 @@ Thumbs.db
 # Runtime state (per-deploy)
 var/evidence/
 var/state/
+
+# Cosign signing keys — private key MUST never be committed
+# (gated by tests/test_conformance.py::test_cosign_public_key_present_and_private_gitignored).
+deploy/cosign/cosign.key
+deploy/cosign/*.key
