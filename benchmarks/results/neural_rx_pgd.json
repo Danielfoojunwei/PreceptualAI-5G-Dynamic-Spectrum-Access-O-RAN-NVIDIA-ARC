@@ -1,0 +1,33 @@
+{
+  "regime": {
+    "M": 16,
+    "snr_dB": 22.0,
+    "pgd_epsilon_Linf": 0.12,
+    "block_symbols": 100,
+    "crc_window_blocks": 20
+  },
+  "clean_ser": {
+    "neural": 0.0,
+    "classical": 0.0
+  },
+  "pgd_ser": {
+    "neural": 0.01465,
+    "classical": 0.000675,
+    "neural_vs_classical_x": 21.703703703703702
+  },
+  "pgd_tbler": {
+    "neural": 0.7625,
+    "classical": 0.065
+  },
+  "shield": {
+    "effective_tbler": 0.065,
+    "fallback_rate": 1.0,
+    "attack_reduction_x": 11.73076923076923
+  },
+  "interpretation": [
+    "Real white-box PGD on a real numpy neural receiver (gradient check in tests/test_neural_rx_pgd.py).",
+    "Clean: both receivers error-free. Under PGD the neural receiver is ~22x more error-prone than the max-margin classical ML demapper.",
+    "The Shield is attack-agnostic: it watches the independently measured (CRC/HARQ) block-error rate, detects the neural receiver leaving its envelope, and falls back to the certified classical demapper \u2014 cutting attack TBLER ~12x to the classical level.",
+    "Honest scope: classical ML demap is near-optimal for AWGN; this shows the Shield guarantees no-worse-than-the-certified-baseline under an attack it was not hand-coded against, not that any receiver is immune."
+  ]
+}

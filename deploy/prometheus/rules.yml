@@ -1,0 +1,109 @@
+# Horizon-RIC alert rules.
+# Tuned to the SLOs in deploy/SLO.md.
+
+groups:
+  - name: horizon-availability
+    interval: 30s
+    rules:
+      - alert: HorizonRAppDown
+        expr: up{job="horizon-rapp"} == 0
+        for: 60s
+        labels:
+          severity: critical
+          service: horizon-rapp
+        annotations:
+          summary: "Horizon-RIC rApp metrics endpoint unreachable"
+          description: |
+            Prometheus has been unable to scrape /metrics on horizon-rapp for
+            60s. This breaches the availability SLO (99.999%, 26s/month).
+            Runbook: deploy/RUNBOOK.md#rapp-down
+          runbook_url: https://github.com/preceptualai/horizon-ric/blob/main/deploy/RUNBOOK.md#rapp-down
+
+      - alert: HorizonRAppDegraded
+        expr: max(horizon_rapp_state{state="degraded"}) by (rapp_id) == 1
+        for: 5m
+        labels:
+          severity: warning
+          service: horizon-rapp
+        annotations:
+          summary: "Horizon-RIC rApp has been DEGRADED for 5m"
+          description: |
+            The rApp lifecycle has been in DEGRADED state for >5 minutes.
+            Likely causes: SMO unreachable, A1 endpoint flapping, repeated
+            registration retries.
+            Runbook: deploy/RUNBOOK.md#rapp-degraded
+          runbook_url: https://github.com/preceptualai/horizon-ric/blob/main/deploy/RUNBOOK.md#rapp-degraded
+
+  - name: horizon-a1-emit
+    interval: 30s
+    rules:
+      - alert: HorizonA1EmitFailureRate
+        expr: |
+          (
+            sum(rate(horizon_a1_policies_rolled_back_total[5m]))
+            /
+            clamp_min(sum(rate(horizon_a1_policies_emitted_total[5m])), 1e-9)
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          service: horizon-rapp
+        annotations:
+          summary: "A1 emit rollback rate >1% over 5m"
+          description: |
+            Rolled-back A1 policies exceed 1% of emitted in the last 5
+            minutes. Breaches the A1 emit success-rate SLO (>=99.99%).
+            Runbook: deploy/RUNBOOK.md#a1-emit-failure
+          runbook_url: https://github.com/preceptualai/horizon-ric/blob/main/deploy/RUNBOOK.md#a1-emit-failure
+
+  - name: horizon-audit
+    interval: 60s
+    rules:
+      - alert: HorizonAuditChainBroken
+        expr: horizon_audit_chain_first_broken_index >= 0
+        for: 1m
+        labels:
+          severity: critical
+          service: horizon-rapp
+        annotations:
+          summary: "Audit chain integrity check failed"
+          description: |
+            EvidenceStore.verify() returned a non-(-1) index — a record was
+            tampered or corrupted. This is a regulatory breach.
+            Runbook: deploy/RUNBOOK.md#audit-chain-broken
+          runbook_url: https://github.com/preceptualai/horizon-ric/blob/main/deploy/RUNBOOK.md#audit-chain-broken
+
+  - name: horizon-latency
+    interval: 30s
+    rules:
+      - alert: HorizonDecisionLatencyP99High
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (le) (rate(horizon_decision_latency_seconds_bucket[5m]))
+          ) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          service: horizon-rapp
+        annotations:
+          summary: "Decision latency p99 >200ms"
+          description: |
+            p99 end-to-end decision latency has exceeded 200ms over 5m.
+            SLO target is p99 <=100ms; sustained breach above 200ms indicates
+            queue saturation or planner hot-path regression.
+            Runbook: deploy/RUNBOOK.md#decision-latency
+          runbook_url: https://github.com/preceptualai/horizon-ric/blob/main/deploy/RUNBOOK.md#decision-latency
+
+      - alert: HorizonTelemetryQueueDepthGrowing
+        expr: max_over_time(horizon_telemetry_queue_depth[5m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: horizon-rapp
+        annotations:
+          summary: "Telemetry queue depth >1000 sustained"
+          description: |
+            Backpressure: the planner is not draining the queue fast enough.
+            Runbook: deploy/RUNBOOK.md#queue-backpressure
+          runbook_url: https://github.com/preceptualai/horizon-ric/blob/main/deploy/RUNBOOK.md#queue-backpressure

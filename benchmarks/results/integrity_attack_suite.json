@@ -1,0 +1,75 @@
+{
+  "all_defended": true,
+  "attacks": [
+    {
+      "attack_id": "1_model_swap_untrusted_signer",
+      "attempted": true,
+      "detail": "genuine_ok=True attacker_self_consistent=True pinned_reject=True",
+      "detected_or_blocked": true,
+      "mechanism": "verify_model: pinned trusted_public_key_der != embedded signer key",
+      "name": "model-swap / untrusted signer"
+    },
+    {
+      "attack_id": "2_weight_byte_tamper",
+      "attempted": true,
+      "detail": "vault_IntegrityError=True verify_sha_fail=True",
+      "detected_or_blocked": true,
+      "mechanism": "ArtefactVault.retrieve IntegrityError + verify_model sha256 mismatch",
+      "name": "weight-byte tamper"
+    },
+    {
+      "attack_id": "3_manifest_tamper",
+      "attempted": true,
+      "detail": "clean_ok=True forged_rejected=True",
+      "detected_or_blocked": true,
+      "mechanism": "verify_model: RSA-PSS signature covers manifest_sha256 \u2014 tamper invalidates it",
+      "name": "training-manifest tamper"
+    },
+    {
+      "attack_id": "4_evidence_chain_tamper",
+      "attempted": true,
+      "detail": "first_broken_index=1 (expected 1)",
+      "detected_or_blocked": true,
+      "mechanism": "EvidenceStore.verify: sha256(prev || canonical_json(record)) chain break",
+      "name": "evidence-chain field tamper"
+    },
+    {
+      "attack_id": "5_evidence_reorder_replay",
+      "attempted": true,
+      "detail": "reorder_break_idx=1 replay_break_idx=4",
+      "detected_or_blocked": true,
+      "mechanism": "EvidenceStore.verify: per-tenant chain order/replay inconsistency",
+      "name": "evidence reorder / replay"
+    },
+    {
+      "attack_id": "6_shield_self_report_spoof",
+      "attempted": true,
+      "detail": "spoof_fell_back=True unverified_fell_back=True spoof_detail='neural TBLER 0.5 [measured CRC/HARQ] vs baseline 0.001 (conf 1.00 \u2265 0.2)'",
+      "detected_or_blocked": true,
+      "mechanism": "NeuralRxEnvelopeInvariant: grades on independent measured_tbler, not self-report; fail-closed when unverified",
+      "name": "shield self-report spoofing"
+    },
+    {
+      "attack_id": "7_illegal_emit_attempt",
+      "attempted": true,
+      "detail": "illegal_emits=0; block=ric_policy emit_blocked=False safe=True violated=[] safe_freq=3310000000.0 safe_tx=20.0 safe_order=None | block=ric_policy emit_blocked=False safe=True violated=[] safe_freq=3550000000.0 safe_tx=13.0 safe_order=None | block=learned_constellation emit_blocked=False safe=True violated=[] safe_freq=3550000000.0 safe_tx=20.0 safe_order=4",
+      "detected_or_blocked": true,
+      "mechanism": "Shield.dispose: project-to-safe-set / fail-closed (emit_blocked) \u2014 0 illegal emits",
+      "name": "illegal-emit attempt"
+    },
+    {
+      "attack_id": "8_li_fail_closed_bypass",
+      "attempted": true,
+      "detail": "raw_blocks=True shield_emit_blocked=True populated_allows=True unaudited_optout_raised=True audited_optout_ok=True",
+      "detected_or_blocked": true,
+      "mechanism": "LIConstraint fail-closed gate (li_fail_closed) + ValueError on unaudited opt-out",
+      "name": "LI fail-closed bypass"
+    }
+  ],
+  "bypassed": 0,
+  "bypasses": [],
+  "detected_or_blocked": 8,
+  "generated_at": "2026-06-21T10:47:09.140566+00:00",
+  "suite": "integrity_attack_suite",
+  "total_attacks": 8
+}

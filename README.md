@@ -1,215 +1,354 @@
-# PreceptualAI UHCI: Universal Heterogeneous Connectivity Intelligence
+# Horizon-RIC — an AI-for-RAN trust & audit enabler
 
-**PreceptualAI** is best understood as a repository for **Universal Heterogeneous Connectivity Intelligence (UHCI)**: a software-defined intelligence layer for making connectivity, spectrum, and control decisions across **terrestrial, non-terrestrial, and hybrid wireless systems**. The codebase is broader than a narrow reinforcement-learning benchmark. A repository-wide audit shows a layered architecture that combines **provider-aware world modeling, telecom-physics-aware propagation, heterogeneous graph encoding, adaptive continuous-time temporal reasoning, learned decision policies, low-latency serving, O-RAN-facing control integration, and lifecycle governance** into one system.[1] [2] [3] [4] [5] [6] [7] [8] [9] [10] [11] [12] [13] [14] [15] [16]
+> O-RAN Non-RT-RIC **rApp** that makes a federated AI-RAN spectrum agent's
+> decisions **auditable by construction**: every decision a poisoned, drifted,
+> or adversarial agent emits is projected onto enumerated, independently-measured
+> radio invariants and bound to a per-decision, tamper-evident, replayable
+> evidence record a regulator can verify.
 
-This README has been redesigned so that a technical reader, operator, researcher, or collaborator can understand **what problem UHCI addresses, why the timing matters, what each subsystem does, how the technologies interact, what empirical evidence is already present in the repository, and which standards and research references anchor the design**.[17] [18] [19] [20] [21] [22] [23] [24] [25] [26] [27] [28] [29] [30] [31] [32] [33] [34]
+**Status:** torch-free, installs on stock Python 3.10+ with no accelerator ·
+the full suite (300+ tests) is green in CI (ruff + mypy + pytest + docker +
+yang-strict) · benchmark + threat model committed · Apache-2.0.
 
-| Reader | Best starting path |
+> Naming: the project is **Horizon-RIC** everywhere; the GitHub repository is
+> being renamed to **horizon-ric**.
+
+This README is also the AI-RAN Alliance *Call for Innovation* proposal
+(deadline 31 July 2026; no membership required). See the companion documents:
+- [`docs/EVALUATION_CRITERIA.md`](docs/EVALUATION_CRITERIA.md) — our anticipated,
+  weighted evaluation rubric with honest self-scores.
+- [`docs/RESEARCH_ALIGNMENT.md`](docs/RESEARCH_ALIGNMENT.md) — the NTU / SCRIPTS /
+  DTC research lineage, the team, and the FCP funding context.
+
+---
+
+## Executive summary
+
+The AI-RAN field is shipping learned control onto live spectrum: neural
+physical-layer blocks and, central to this proposal, **federated deep-RL
+dynamic-spectrum-access (DSA) agents** that decide which channel and which power
+a cell or satellite link should use. The open problem is **not** the
+decision-making capability — that is being solved by groups like the NTU/SCRIPTS
+team this project builds on (see [`docs/RESEARCH_ALIGNMENT.md`](docs/RESEARCH_ALIGNMENT.md)).
+The open problem is **trust**: when a federated agent is poisoned, drifted, or
+adversarially driven, what bounds it from steering a cell out of band, over its
+power licence, or — for a satellite link — over a power-flux-density ceiling, and
+how does an operator *prove* to a regulator what the agent actually did?
+
+**Horizon-RIC is an AI-for-RAN trust & audit layer.** It does not train or run
+the agent; it sits beside the SMO / Non-RT RIC and wraps every decision the agent
+emits in four mechanisms:
+
+1. **Decision Safety Shield** — projects each proposed action onto enumerated,
+   independently-measured radio invariants (spectral mask, EIRP, NTN/LEO PFD
+   ceiling, AI-PHY envelope, lawful-intercept), emitting a signed
+   `SafetyCertificate`.
+2. **At-decision-time evidence** — a SHA-256 hash-chained, RFC-3161-anchored
+   `DecisionRecord` with a replayable counterfactual.
+3. **Model provenance** — a signature over `(weights ‖ training-manifest)`,
+   verified on promotion.
+4. **Federated aggregation** — robust aggregation (Krum / median / trimmed-mean)
+   bounding a poisoning client's pull on the shared DSA policy, plus Shamir
+   secure aggregation for update privacy.
+
+**Measured result (`benchmarks/results/poisoning_shield.json`):** on a
+10,000-decision stream that is 30% poisoned, an unguarded emit path would put
+**2,366** illegal policies on the air interface; with the Shield, **0**, and
+every decision carries a certificate. Under a (naive) Byzantine federation, the
+global-model distance from the honest mean drops from **202** (FedAvg) to
+**8–12** (robust aggregators). *Caveat: these robust-aggregation numbers are
+against a naive Byzantine model and would not survive an adaptive ALIE/Fang
+attack — see "Honest status and gaps".*
+
+**Adversarial-robustness result (`benchmarks/results/neural_rx_pgd.json`):** the
+Shield faces an attack it was *not* hand-coded against — a real white-box **PGD**
+perturbation of the received signal, crafted on a real numpy neural receiver's
+input gradient (gradient verified against finite differences in
+`tests/test_neural_rx_pgd.py`). At 16-QAM / 22 dB / ε=0.12, both receivers are
+error-free on clean input; under the attack the neural receiver's symbol-error
+rate is **~22×** the certified classical demapper's. The Shield watches the
+*independently measured* (CRC/HARQ) block-error rate, detects the neural receiver
+leaving its envelope, and falls back to the classical demapper — cutting the
+attack's block-error impact **~12×**. (Honest scope: no-worse-than-the-certified-
+baseline under an unseen attack, not "immune".)
+
+---
+
+## What is actually new — prior art & honest novelty scoping
+
+We make **exactly one** novelty claim, and we state the prior art for everything
+else plainly.
+
+**The genuine contribution — and the only place we claim state-of-the-art — is
+the decision-level evidence / audit binding:** a per-decision `SafetyCertificate`
+bound to a SHA-256 hash chain, an RFC-3161 timestamp anchor, a replayable
+counterfactual, and model-provenance threading, composed around a federated
+AI-RAN agent's decisions so a regulator can replay and verify them.
+
+What is **not** novel here, with prior art:
+
+- **The safety shield itself is prior art.** Two-stage O-RAN action shielding is
+  done by DeRAN (arXiv:2605.10648); shielded RL was introduced by Alshiekh et al.
+  (AAAI-18, *"Safe Reinforcement Learning via Shielding"*); provably safe RL via
+  reachable-set propagation is Kochdumper et al. (arXiv:2210.10691). Our Shield
+  is an engineering composition of this established idea, specialised to RAN
+  spectrum invariants — not a new safety method.
+- **The aggregators are not novel and are known-defeated.** Krum, coordinate-wise
+  median, and trimmed-mean are all pre-2019. They are explicitly broken by
+  Baruch et al. (NeurIPS-19, *"A Little Is Enough"*) and Fang et al.
+  (USENIX Security-20). We use them as a baseline, not a frontier, and we do not
+  claim robustness against adaptive attackers.
+- **The crypto is standard.** SHA-256, RSA-PSS, Shamir secret sharing, and
+  RFC-3161 are off-the-shelf. We compose them; we do not invent them.
+
+So: **no "SOTA" claim anywhere except, narrowly, the audit / certificate
+binding.** The reframing is deliberate — Horizon-RIC is an AI-for-RAN *enabler
+and benchmark* for the trust gap, building on the NTU/SCRIPTS federated-DSA line,
+not a new safety or aggregation algorithm. The criterion-by-criterion honest
+self-assessment is in [`docs/EVALUATION_CRITERIA.md`](docs/EVALUATION_CRITERIA.md).
+
+---
+
+## Problem statement and regulatory relevance
+
+**The trust gap is the binding constraint on deploying federated AI-RAN agents on
+licensed spectrum, not the decision-making gap.**
+
+- **Singapore / IMDA (primary).** Singapore's Infocomm Media Development
+  Authority (IMDA) licenses spectrum and sets emission / EIRP conditions. A
+  federated DSA agent operating on licensed bands must demonstrably stay within
+  those licence conditions — and, for the satellite case, within a
+  power-flux-density (PFD) ceiling protecting co-channel terrestrial services.
+  The Shield's per-decision projection plus a replayable evidence record is the
+  artefact such a regulator would require. This framing matches the funder: the
+  research lineage (see [`docs/RESEARCH_ALIGNMENT.md`](docs/RESEARCH_ALIGNMENT.md))
+  is funded under Singapore's **FCP** (Future Communications R&D Programme,
+  IMDA + NRF), whose thrusts include NTN, network orchestration, MEC, and
+  security.
+- **NTN / LEO (first-class scenario).** The satellite power-control line this
+  project builds on drives a **PFD-ceiling invariant** in the Shield. Non-
+  terrestrial links are treated as a first-class scenario, not an afterthought.
+- **EU (secondary, illustrative analogue).** The same trust gap surfaces in the
+  EU: the EU AI Act classifies AI in critical infrastructure as high-risk
+  (Art. 6 + Annex III → Art. 9–15 controls); NIS2 Art. 23 mandates 24-hour
+  incident notification; Ofcom's 2025/26 AI approach asks for explainability
+  "sufficient to support post-incident regulatory review." We retain this as a
+  *secondary* demonstration that the gap is multi-jurisdictional; details in
+  `docs/compliance/eu_ai_act.md`.
+- **Security.** O-RAN WG11 added AI/ML-specific threats (data / model poisoning,
+  adversarial input, model inversion / extraction, supply-chain) to its Threat
+  Model; 3GPP TR 33.898 studies AI/ML security for the RAN. These threats
+  currently have no shipped rApp-level control.
+
+> **Illustrative market note (not a sourced figure).** Industry commentary
+> suggests Tier-1 operators are likely to under-deploy AI-RAN in the near term
+> because capex follows the *trust* curve, not the technology curve. We previously
+> cited a specific "Dell'Oro 30–40%" figure; we cannot link an exact public
+> source for that number, so we **label it illustrative** and do not use it as
+> evidence. The qualitative point — that the decision-level evidence layer is the
+> missing piece in today's SMOs — is what we stand behind.
+
+---
+
+## Innovative solution and technical approach
+
+The core idea is **AI-RAN-native runtime assurance**: bind a federated agent's
+*output* to the RAN's own physical and regulatory invariants, at the RAN's own
+timescales, and to a replayable evidence record.
+
+**The Shield** (`src/horizon_ric/shield/`) — `Shield.dispose(action) →
+(safe_action, SafetyCertificate)` runs an ordered, model-independent invariant
+chain:
+
+| Invariant | Basis | Action on violation |
+|---|---|---|
+| Lawful intercept | 3GPP TS 33.127, **fail-closed** | refuse emit if LI scope unknown |
+| Spectral mask | 3GPP TS 38.104 (band-specific numbers calibrated per-deployment in M1–2) | clip carrier inside the licensed channel |
+| Max EIRP / Tx power | block-edge / licence limit (calibrated per-deployment in M1–2) | reduce power to the ceiling |
+| NTN / LEO PFD ceiling | power-flux-density limit at the surface | reduce satellite-link power below the PFD bound |
+| Neural-RX envelope | TBLER vs classical LMMSE baseline + demap confidence | **fall back to the certified classical receiver** |
+| Constellation legality + PAPR | legal M-QAM orders, PAPR ceiling | snap to nearest legal order / classical QAM |
+
+Because the gate is mathematical and **independent of the agent**, a
+poisoned / backdoored / adversarial agent **cannot violate the enumerated,
+independently-measured invariants** — every disposition yields a certificate
+recording the invariants checked, the margin to each bound, and any fallback.
+*Coverage caveat:* this guarantees only the **enumerated** invariants; an unsafe
+behaviour that is not expressible as one of the listed invariants is outside the
+guarantee. The invariant set is a living register, not a completeness claim.
+
+**The trust chain runs agent → decision → evidence end-to-end:** `provenance/`
+signs and verifies the model artefact (RSA-PSS over weights ‖ manifest, HSM-held
+key); `federated/robust.py` bounds a poisoning client's influence (Krum / median
+/ trimmed-mean — *baseline only, see novelty scoping*); `federated/secure.py`
+hides individual updates (Shamir `(t,n)` over GF(2¹²⁷−1)); `evidence/`
+hash-chains every `DecisionRecord` and anchors the chain head to **real public
+RFC-3161 TSAs** (freetsa, DigiCert) with nonce + imprint verification.
+
+> **Secure-aggregation caveat.** The Shamir secure-aggregation scheme is
+> **honest-but-curious only** (cf. Bonawitz et al., CCS-17): it hides individual
+> updates from a curious-but-non-deviating server, not from a malicious one. It
+> also sits in tension with robustness — **secure aggregation hides exactly the
+> per-client information a robust aggregator needs to detect a poisoning client**
+> (the secure-agg ⊥ robustness tension). Reconciling the two (e.g. via verifiable
+> secret sharing) is a roadmap item (M3–4), not a solved problem here.
+
+What's novel: not the individual mechanisms, but **composing a model-independent
+invariant projection + at-decision-time, replayable evidence around a federated
+AI-RAN spectrum agent** — and binding each decision to a regulator-verifiable
+record. The demonstrator that exercises this end-to-end is the federated-DSA
+bridge below.
+
+### Demonstrator — federated DSA on licensed / NTN spectrum
+
+To make the AI-for-RAN story concrete, a parallel work-stream is building a
+demonstrator that runs a federated DSA agent (in the spirit of the NTU/SCRIPTS
+publications) through the Horizon-RIC trust layer:
+
+- Federated DSA agent — `src/horizon_ric/spectrum/`.
+- Benchmark — `benchmarks/secure_dsa_benchmark.py`, results
+  `benchmarks/results/secure_dsa.json`.
+- Committed dataset — `datasets/spectrum_dsa/` with `DATASHEET.md`.
+- An **LEO PFD invariant** in the Shield.
+
+These artefacts are **in build**; the underlying trust mechanisms they depend on
+(Shield, robust / secure aggregation, evidence store) are already working code
+with tests. See [`docs/RESEARCH_ALIGNMENT.md`](docs/RESEARCH_ALIGNMENT.md) for the
+built-vs-roadmap breakdown.
+
+---
+
+## Deployment feasibility
+
+- **Drops in beside any O-RAN SMO.** Real R1 (registration), A1 (policy emit,
+  OSC / EIAP / MantaRay dialects), and O1 (NETCONF / YANG via `ncclient`)
+  adapters, behind circuit breakers, mTLS, OAuth2, and Casbin RBAC with tenant
+  domains.
+- **No accelerator, no lock-in.** Torch-free (numpy + pydantic); the Shield
+  validates the *data* an agent emits (in production, from O-RAN E2 KPM / vendor
+  telemetry), so it never needs to run the model. `pip install -e .` completes in
+  seconds on a stock host.
+- **Runs where AI-RAN runs.** Three shapes: Helm-on-Kubernetes, systemd
+  edge-envelope (aarch64), or bare-metal Docker. Prometheus `/metrics`, Grafana
+  dashboards, RFC-3161-anchored JSONL / SQLite evidence store.
+- **Operationally safe.** Hash-chained audit, atomic A→B model promotion with
+  bit-identical rollback, graceful degradation, systemd watchdog.
+
+```bash
+pip install -e ".[dev]"
+pytest tests/ -m "not integration and not slow" -q          # full suite (300+ tests) green
+python benchmarks/poisoning_shield_benchmark.py --decisions 10000 --poison-rate 0.30
+horizon-rapp --once                                          # boot + readiness smoke
+```
+
+---
+
+## 12-month timeline with milestones
+
+| Months | Milestone | Output |
+|---|---|---|
+| **M1–2** | Per-band invariant calibration — calibrate band-specific TS 38.104 emission masks and EIRP limits for FR1/FR3 target bands per deployment; land the federated-DSA demonstrator (`src/horizon_ric/spectrum/`), the committed `datasets/spectrum_dsa/` + `DATASHEET.md`, and the LEO PFD invariant; live R1/A1 against OSC NONRTRIC. | Calibrated Shield configs + DSA demonstrator + dataset |
+| **M3–4** | Strengthen FL security & benchmark — verifiable secret sharing (Feldman / Pedersen) toward malicious-server resistance; differential-privacy accountant for membership-inference / inversion; **add adaptive ALIE (Baruch) and Fang attackers to the benchmark**. | Upgraded `federated/`; adaptive-attack benchmark |
+| **M5–6** | Live AI-PHY integration — run a real neural receiver / learned constellation through the Shield on real I/Q telemetry. | End-to-end demo against real I/Q |
+| **M7–8** | Loop-tiered evidence — dApp (sub-ms sampled), Near-RT (per-decision), Non-RT (full counterfactual); inference-API extraction rate-limiting. | Evidence architecture + extraction defence |
+| **M9–10** | Operator / testbed pilot — deploy alongside an SMO; 24-h soak; production PKCS#11 HSM custody; conformance dossier. | Pilot report + signed attestation packet |
+| **M11–12** | Standardization + public benchmark — submit the AI/ML threat→control mapping as **candidate input to O-RAN WG11**; release the poisoning / robustness / DSA benchmark + dataset. | Candidate standards input + public benchmark |
+
+---
+
+## Expected deliverables and impact
+
+**Deliverables**
+- A production-grade, open-source **AI-for-RAN trust & audit rApp** (this repo).
+- The **decision-level evidence / audit binding** — `SafetyCertificate` + hash
+  chain + RFC-3161 anchor + counterfactual + provenance threading (the novel part).
+- The **Decision Safety Shield** invariant projection (an engineering
+  composition of prior-art shielding).
+- **Robust + secure federated aggregation** baselines.
+- **Benchmarking-ready code + committed results** (`benchmarks/`), with the
+  federated-DSA demonstrator in build.
+- A **poisoned-AI-PHY-decision / DSA dataset** for reproducible evaluation
+  (`datasets/spectrum_dsa/`, in build).
+- A **threat-model → control mapping** (`docs/THREAT_MODEL.md`) as a candidate
+  WG11 input.
+
+**Impact**
+- **Safety:** illegal air-interface emits from a 30%-poisoned decision stream
+  reduced from 2,366 → **0** (10k-decision benchmark,
+  `benchmarks/results/poisoning_shield.json`).
+- **Poisoning resilience (baseline):** Byzantine pull on the global model cut
+  **~20×** against a *naive* attacker (202 → 8–12); adaptive-attack hardening is
+  M3–4 work.
+- **Deployability:** gives operators and regulators (IMDA-style, NTN/LEO
+  included) the replayable evidence layer their SMO lacks for federated AI-RAN
+  agents on licensed spectrum.
+
+### Expected outputs (mapping to the Call)
+
+| Call output | What we provide |
 |---|---|
-| Executive, partner, or first-time reader | Read this README, then `docs/UHCI_ARCHITECTURE_REFERENCE_EN.md`. |
-| Researcher or ML engineer | Read this README, then `docs/ARCHITECTURE.md`, `docs/TRAINING_AND_EVALUATION.md`, and `docs/UHCI_ARCHITECTURE_REFERENCE_EN.md`. |
-| Telecom integrator or deployment engineer | Read this README, then `docs/API_AND_INTERFACES.md`, `docs/DEPLOYMENT_AND_XAPP_GUIDE.md`, and `docs/UHCI_ARCHITECTURE_REFERENCE_EN.md`. |
-| Chinese-speaking reader | Read `docs/UHCI_ARCHITECTURE_REFERENCE_ZH.md` after this README. |
+| **Prototypes** | The runnable rApp + R1/A1/O1 adapters + `horizon-rapp` daemon; federated-DSA demonstrator in build. |
+| **Algorithms or models** | The novel audit / certificate binding; the Shield invariant projection; Krum / median / trimmed-mean baselines; Shamir secure aggregation; RSA-PSS model-provenance. |
+| **Benchmarking-ready code** | `benchmarks/poisoning_shield_benchmark.py` + committed `results/`; `benchmarks/secure_dsa_benchmark.py` in build. |
+| **Datasets** | `datasets/spectrum_dsa/` + `DATASHEET.md` (in build); a synthetic poisoned-decision generator in the existing benchmark. |
+| **Standardization contributions** | `docs/THREAT_MODEL.md` threat→control mapping as a **candidate input to O-RAN WG11** (not adopted). |
 
-## Executive Summary
+A transparent, weighted self-assessment of these outputs — including where we
+score a **Gap** — is in [`docs/EVALUATION_CRITERIA.md`](docs/EVALUATION_CRITERIA.md).
 
-Modern wireless control is no longer a single-base-station, single-band optimization problem. Real deployments increasingly span **FR1, FR3, Wi-Fi 7, HAPS, ISAC, and non-terrestrial options such as LEO, MEO, and GEO**, each with different latency envelopes, propagation behavior, mobility dynamics, and operational constraints.[1] [7] [8] [22] [23] [24] The core architectural question is therefore larger than channel selection alone. The question is how to build **one intelligence layer** that can reason across heterogeneous connectivity options, preserve structural relationships, adapt over irregular timescales, and still fit programmable telecom execution surfaces such as **O-RAN** and **AI-RAN**.[12] [13] [14] [25] [26] [27] [31] [32]
+---
 
-UHCI answers that problem with a layered system. At the bottom, a provider registry and propagation modules define the physical and operational world. In the middle, a unified environment and data pipeline transform that world into a structured decision process. On top of that, heterogeneous graph encoding and continuous-time temporal models compress the state into actionable representations for a universal decision policy. Around the policy, the repository provides serving interfaces, near-real-time execution paths, E2-oriented integration surfaces, lifecycle governance, and an optional federated-learning extension.[1] [2] [3] [4] [5] [6] [7] [8] [9] [10] [11] [12] [13] [14] [15] [16] [18] [19] [20]
+## Honest status and gaps
 
-> “Native Artificial Intelligence (AI) is the enabler technology for 6G. The RAN Intelligence Controller (RIC) of O-RAN is the potential approach for native AI.” — *O-RAN next Generation Research Group, RR-2023-02* [25]
+Real, not mocked: the Shield, provenance signing / verify, robust / secure
+aggregation, hash-chained evidence store, RFC-3161 TSA anchoring (real public
+TSAs), and the R1/A1/O1 wire adapters are all working code with tests. The full
+suite (300+ tests) is green in CI.
 
-> “A unified data ingestion model is emerging as a key requirement.” — *O-RAN next Generation Research Group, RR-2023-03* [26]
+Known limitations (also in `docs/THREAT_MODEL.md`):
 
-These statements align closely with the repository design: the codebase includes a unified data pipeline, O-RAN-facing surfaces, model lifecycle control, and runtime execution paths intended for programmable network intelligence rather than offline experimentation only.[9] [10] [11] [12] [13] [14]
+- **Aggregator robustness is baseline only — and we prove it.** Krum / median /
+  trimmed-mean are defeated by adaptive ALIE (Baruch, NeurIPS-19), Fang (USENIX
+  Security-20), and Min-Max/Min-Sum (Shejwalkar, NDSS-21) attacks. A committed
+  **five-family adversarial campaign** (`benchmarks/results/`, 68 adversarial
+  tests) demonstrates exactly where our defenses fail *and* where they hold — see
+  `docs/THREAT_MODEL.md` §7. Robust aggregation is a *bound*, not a cure; the
+  deterministic Shield + audit layer is the guarantee — it bounds the emitted
+  action to legal spectrum even from a fully compromised model (0 illegal emits
+  from a backdoored DSA policy), and the integrity/audit perimeter is unbroken
+  (8/8 probes blocked).
+- **Secure aggregation is honest-but-curious only** (Bonawitz et al., CCS-17) and
+  is in tension with robustness (secure-agg ⊥ robustness). Verifiable secret
+  sharing for the malicious-server case is M3–4.
+- **Invariant coverage is enumerated, not complete.** The Shield guarantees only
+  the listed, independently-measured invariants; behaviours not expressible as an
+  invariant are outside the guarantee.
+- **Band numbers are calibrated, not byte-verified.** TS 38.104 EIRP / spectral-
+  mask thresholds are pinned per licensed band in M1–2; we do not claim the spec
+  numbers are byte-verified in this repo.
+- **No DP accountant yet; no Sigstore transparency log yet;** inference-API
+  extraction rate-limiting is roadmap (M7–8).
+- **HSM custody** ships with in-memory (RSA-2048) and SoftHSM2 (PKCS#11)
+  backends; production CloudHSM / Luna wire in through the same PKCS#11 path
+  (M9–10).
+- **The federated-DSA demonstrator** (`src/horizon_ric/spectrum/`,
+  `benchmarks/secure_dsa_benchmark.py`, `datasets/spectrum_dsa/`) is in build by
+  a parallel work-stream.
 
-## The Problem UHCI Solves
+## AI-RAN Alliance positioning
 
-Wireless systems are becoming **heterogeneous by construction**. Networks increasingly blend terrestrial radio, non-terrestrial assets, edge compute, and software-controlled orchestration. The result is that a controller must reason not only about spectrum occupancy and interference, but also about provider identity, coverage geometry, propagation regime, mobility, latency, coexistence, and deployment surface.[1] [2] [7] [8] [22] [23] [24]
+An **AI-for-RAN** trust & audit contribution: an open, pre-competitive innovation
+and benchmark for the trust gap that blocks federated AI-RAN agents on licensed
+and NTN/LEO spectrum. It builds on the NTU/SCRIPTS federated-DSA research line
+(see [`docs/RESEARCH_ALIGNMENT.md`](docs/RESEARCH_ALIGNMENT.md)) and is
+complementary to — not competitive with — the vendors and groups shipping the AI
+capability. The normative security specification is owned by O-RAN WG11 / 3GPP;
+this project is a reference implementation, benchmark, and **candidate WG11
+input**, not a competing standard.
 
-Classical formulations become brittle in this setting because they flatten the world too early. If all links are treated as interchangeable channels, the system loses the distinctions that determine whether a decision is actually deployable. UHCI instead treats heterogeneity as a first-class modeling assumption. It preserves multiple provider types, explicit propagation modules, structural relationships among entities, and mixed-timescale temporal behavior before producing actions.[1] [2] [4] [5] [6] [7] [8]
+---
 
-| Structural challenge | Why it matters operationally | How UHCI addresses it |
-|---|---|---|
-| Connectivity classes differ | LEO, GEO, HAPS, FR1, FR3, and Wi-Fi expose different coverage, latency, and interference patterns | A provider ontology formalizes the heterogeneous world before learning begins.[1] |
-| Propagation is regime-dependent | NTN and terrestrial links obey different physical assumptions | Dedicated propagation modules keep telecom physics inside the control loop.[7] [8] [23] [24] |
-| State is relational | Network entities, links, and contexts interact through typed relationships | A heterogeneous graph encoder preserves node and relation structure.[4] [30] |
-| Time is irregular | Wireless dynamics evolve across fast and slow timescales | LTC and CfC-capable temporal modules support adaptive continuous-time memory.[5] [6] [28] [29] |
-| Deployment is programmable | O-RAN and AI-RAN create live insertion points for intelligence | Runtime, gRPC, E2, and lifecycle modules bridge training to operations.[10] [11] [12] [13] [14] [25] [26] [27] [31] [32] |
-| Continuous improvement matters | Models must be monitored, retrained, and redeployed safely | Non-RT lifecycle services and federated interfaces are explicit in the repository.[14] [18] [19] [20] |
-
-## Overall System Architecture
-
-The architecture below summarizes how the repository organizes the full UHCI stack from operating context to runtime control and learning lifecycle.
-
-![UHCI Overall Architecture](docs/assets/uhci_overall_architecture.png)
-
-UHCI is organized as a **stack of cooperating layers** rather than a single monolithic model. The lower layers define what the world is, the middle layers define how the world is encoded and predicted, and the upper layers define how intelligence is served, integrated, and maintained. This is important because telecom intelligence fails in practice when any of these layers is absent. A policy without a realistic world model is not trustworthy, and a model without a deployment surface is not operationally useful.[1] [2] [3] [4] [5] [7] [8] [10] [11] [12] [14] [25] [26] [27]
-
-| Architecture layer | Primary responsibility | Principal repository anchors |
-|---|---|---|
-| World model and provider ontology | Define provider classes, priors, and heterogeneous connectivity categories | `src/preceptualai/env/provider_registry.py` [1] |
-| Telecom physics | Model NTN and terrestrial propagation behavior | `src/preceptualai/env/itu_propagation.py`, `src/preceptualai/env/fr3_propagation.py` [7] [8] |
-| Unified environment | Transform the wireless world into observations, actions, rewards, and transitions | `src/preceptualai/env/unified_connectivity_env.py` [2] |
-| Data ingestion and normalization | Feed empirical telecom signals and measurements into the environment | `src/preceptualai/env/data_pipeline.py` [9] |
-| Structural representation | Encode typed entities and relations without flattening heterogeneity away | `src/preceptualai/core/hetero_gnn_encoder.py` [4] |
-| Temporal intelligence | Model irregular and continuous-time dynamics | `src/preceptualai/core/ltc_cell.py`, `src/preceptualai/core/ltc_cell_cfc.py` [5] [6] |
-| Universal decision layer | Learn and execute connectivity or spectrum actions | `src/preceptualai/core/universal_spectrum_agent.py` [3] |
-| Serving and real-time runtime | Expose the learned intelligence as a callable system | `src/preceptualai/xapp/inference_engine.py`, `src/preceptualai/xapp/dapp_engine.py`, `src/preceptualai/xapp/server.py` [10] [11] [12] |
-| O-RAN integration | Connect control logic to O-RAN semantics and E2 surfaces | `src/preceptualai/env/oran.py`, `src/preceptualai/xapp/e2_adapter.py` [13] [14] |
-| Lifecycle governance | Monitor, approve, retrain, and redeploy models | `src/preceptualai/xapp/rapp_trainer.py` [15] |
-| Federated extension | Support distributed training and model exchange across sites | `src/preceptualai/federated/aggregator.py`, `proto/preceptualai_fl.proto` [19] [20] |
-
-## How the Technologies Work Together
-
-The key to understanding UHCI is to follow the **end-to-end transformation of information**. The system does not begin with a neural network. It begins with a formal description of which kinds of connectivity resources exist and what their engineering priors look like. The provider registry expresses that ontology and assigns structured characteristics to provider categories such as LEO, MEO, GEO, HAPS, FR1, FR3, ISAC, and Wi-Fi 7.[1] That registry is then paired with propagation logic so that any downstream control logic remains tethered to link realism rather than only to abstract reward shaping.[7] [8] [23] [24]
-
-Once the world has been defined, the unified environment turns it into a decision process with explicit state, action, reward, and transition semantics. The data pipeline expands the same environment into a more empirical operating mode by supporting richer telemetry and dataset ingestion.[2] [9] This design is important because O-RAN-native and AI-native architectures increasingly depend on large, multi-layer data flows, and O-RAN’s own research reports describe unified data ingestion and distributed intelligence as central architectural requirements.[25] [26]
-
-The representation stage then preserves structure instead of discarding it. The heterogeneous graph encoder is well aligned with this need because heterogeneous graph research explicitly addresses settings in which entities and links have different types and semantic roles.[4] [30] For wireless intelligence, that means providers, links, nodes, and contexts can be encoded as a relational system instead of being collapsed into a flat vector too early.
-
-Temporal modeling sits alongside structural modeling because wireless control is not only relational; it is also dynamic across mixed timescales. Liquid Time-constant Networks and Closed-form Continuous-time Neural Models provide the research basis for the repository’s LTC and CfC-capable temporal backends. These model classes are designed for time-continuous sequence processing, stable bounded dynamics, and efficient continuous-time reasoning, which makes them relevant when network state evolves irregularly rather than at one fixed step size.[5] [6] [28] [29]
-
-Finally, the universal agent consumes the encoded state and produces actions over the broader heterogeneous connectivity space. Around the agent, the repository provides an inference engine, a low-latency dApp engine, a gRPC serving surface, O-RAN-facing adapters, lifecycle services, and federated-learning contracts. In other words, the model is not treated as the whole system. It is treated as one component inside an operational intelligence architecture.[3] [10] [11] [12] [13] [14] [15] [18] [19] [20]
-
-| Technology | What it does in UHCI | Why it is technically appropriate |
-|---|---|---|
-| Provider registry | Encodes heterogeneous resource classes and priors | Prevents the controller from assuming all links are equivalent.[1] |
-| ITU and FR3 propagation modules | Constrain behavior using telecom propagation logic | Keeps decisions physically grounded.[7] [8] [23] [24] |
-| Unified environment | Converts the wireless system into a learnable control process | Provides the operational abstraction on which training and inference depend.[2] |
-| Data pipeline | Normalizes and feeds richer telecom data sources | Aligns with O-RAN’s emphasis on unified data ingestion.[9] [26] |
-| Heterogeneous GNN | Encodes typed entities and relations | Matches the relational structure of heterogeneous wireless systems.[4] [30] |
-| LTC and CfC | Model irregular continuous-time dynamics | Matches multi-timescale network behavior and offers efficient sequence modeling.[5] [6] [28] [29] |
-| Universal policy agent | Produces decisions over the full heterogeneous space | Generalizes beyond one narrow benchmark policy.[3] |
-| dApp and inference runtime | Enable near-real-time execution | Makes the controller operationally usable.[10] [11] |
-| gRPC and E2 surfaces | Expose the model to external systems and control planes | Support deployable software integration.[12] [14] |
-| rApp lifecycle services | Govern training, approval, deployment, and degradation response | Treat model management as part of the architecture, not an afterthought.[15] |
-| Federated contracts and aggregator | Extend learning across distributed sites | Support multi-site model improvement under heterogeneous deployment conditions.[19] [20] |
-
-## Runtime, Control, and Lifecycle View
-
-The second architecture view focuses on how UHCI behaves across online control, O-RAN interaction, offline learning, and optional federated updates.
-
-![UHCI Control and Lifecycle](docs/assets/uhci_control_lifecycle.png)
-
-This control-lifecycle view shows that UHCI contains **two tightly linked loops**. The first is an online loop in which telemetry becomes state, state becomes encoded representation, and the policy produces actions that affect the network. The second is a slower learning and governance loop in which observations are accumulated, models are trained and benchmarked, deployment decisions are made, and updated models are pushed back into runtime. This separation matches how O-RAN research describes near-real-time and non-real-time functions, and it helps explain why the repository contains both execution-focused modules and lifecycle-focused modules.[10] [11] [12] [13] [14] [15] [25] [26] [27]
-
-| Loop | Main purpose | Main repository anchors |
-|---|---|---|
-| Online control loop | Observe, encode, infer, and act on current wireless conditions | `oran.py`, `hetero_gnn_encoder.py`, `ltc_cell_cfc.py`, `universal_spectrum_agent.py`, `inference_engine.py`, `dapp_engine.py`, `e2_adapter.py` [4] [6] [10] [11] [13] [14] |
-| Service interface loop | Expose inference and metrics to external systems | `server.py`, `proto/preceptualai.proto` [12] [18] |
-| Offline learning loop | Train, evaluate, and select model variants | `scripts/train_uhci.py`, `benchmarks/benchmark.py`, benchmark artifacts [16] [17] |
-| Governance loop | Approve, monitor, and redeploy models through non-RT workflows | `rapp_trainer.py` [15] |
-| Federated loop | Collect distributed updates and aggregate models across sites | `aggregator.py`, `proto/preceptualai_fl.proto` [19] [20] |
-
-## Subsystems and Their Roles
-
-UHCI is easier to understand when each subsystem is separated by responsibility instead of by directory name alone. The table below summarizes the major subsystems, what they own, and why they are necessary to the whole architecture.
-
-| Subsystem | What it owns | Why it matters to the full system |
-|---|---|---|
-| Provider and ontology subsystem | Provider categories, priors, heterogeneity assumptions | Defines the design space of connectivity choices.[1] |
-| Propagation subsystem | NTN and terrestrial radio behavior | Prevents learning from diverging from telecom reality.[7] [8] |
-| Environment subsystem | State, action, reward, transition logic | Converts physics and provider logic into a controllable problem.[2] |
-| Data subsystem | Ingestion, normalization, and empirical pathways | Connects the intelligence layer to operational measurements.[9] |
-| Graph representation subsystem | Typed node and edge encoding | Captures multi-entity relations in a structured form.[4] [30] |
-| Temporal subsystem | LTC and CfC-capable recurrent logic | Preserves evolving context over irregular timescales.[5] [6] [28] [29] |
-| Decision subsystem | Universal policy and critic logic | Produces actions over the heterogeneous action space.[3] |
-| Runtime subsystem | Inference engine, dApp, serving | Makes the learned controller callable and low-latency.[10] [11] [12] |
-| O-RAN interface subsystem | O-RAN environment surface and E2 adapter | Bridges the model to programmable RAN control semantics.[13] [14] [25] [26] [27] |
-| Lifecycle subsystem | rApp-style monitoring, approval, retraining | Makes model governance explicit.[15] |
-| Federated subsystem | Aggregation and distributed contracts | Extends the architecture across multiple sites and clients.[19] [20] |
-
-## Benchmarks and Measured Evidence
-
-The benchmark suite included in the repository already provides useful evidence, but the evidence is **multi-dimensional**, not one-dimensional. Different models lead on different criteria. That distinction matters for honest documentation.[16] [17]
-
-In the included `benchmark_summary.json`, **`sac_ltc`** is the strongest model on **success rate**, **collision rate** when lower is better, and **spectral efficiency**. **`sac_lstm`** is strongest on **mean reward** and **inference latency**. **`sac_lfm`** is strongest on **Jain fairness**. These results suggest that the repository already supports a meaningful trade-space across operational performance, fairness, and runtime cost rather than a single universal winner.[17]
-
-| Model | Mean reward | Success rate | Collision rate | Spectral efficiency | Jain fairness | Mean inference (ms) | P99 inference (ms) |
-|---|---|---|---|---|---|---|---|
-| `sac_lfm` | 35.8460 ± 2.3739 | 0.6273 ± 0.0056 | 0.3727 ± 0.0056 | 0.6273 ± 0.0056 | **0.99636 ± 0.00008** | 1.2802 ± 0.0539 | 6.8623 ± 0.0781 |
-| `sac_lstm` | **50.0267 ± 1.8831** | 0.6251 ± 0.0047 | 0.3749 ± 0.0047 | 0.6251 ± 0.0047 | 0.99495 ± 0.00076 | **0.8276 ± 0.0200** | **2.2159 ± 0.2607** |
-| `ppo_lstm` | 49.5080 ± 1.3341 | 0.6262 ± 0.0055 | 0.3738 ± 0.0055 | 0.6262 ± 0.0055 | 0.99518 ± 0.00044 | 4.1140 ± 0.0565 | 6.1734 ± 0.0942 |
-| `sac_ltc` | 38.3313 ± 2.1778 | **0.6337 ± 0.0044** | **0.3663 ± 0.0044** | **0.6337 ± 0.0044** | 0.99618 ± 0.00105 | 1.5829 ± 0.0261 | 2.5141 ± 0.1348 |
-
-A careful reading of these numbers supports three claims. First, the repository already contains **low-latency viable controllers**, because all listed mean inference times are in the millisecond range and the strongest latency result is below one millisecond.[17] Second, the temporal architecture family is meaningful, because LSTM-, LTC-, and related variants expose different operating points rather than collapsing into equivalent performance.[5] [6] [17] Third, benchmark interpretation must remain honest: the repository supports a strong architecture story, but different deployment goals may favor different model families.[17]
-
-## Why UHCI Is Timely
-
-The timing for UHCI is unusually strong because infrastructure, standards, and policy are converging. The joint 3GPP and O-RAN perspective on AI adoption argues that standardization is essential for industry alignment in 5G-Advanced and 6G, while O-RAN research reports frame native AI, distributed intelligence, unified data ingestion, and RIC-centered execution as core architectural themes.[25] [26] [27] NVIDIA’s AI-RAN framing reinforces the infrastructure side by highlighting a world in which AI and RAN workloads coexist on accelerated platforms.[31] Public-spectrum policy documents and NTIA’s AI-RAN-focused direction reinforce the operational pressure for more adaptive, programmable, and auditable wireless intelligence.[33] [34]
-
-| Timing driver | External signal | Why it matters for this repository |
-|---|---|---|
-| AI-native RAN standardization | Joint 3GPP and O-RAN perspective on AI adoption [27] | UHCI already combines learning with programmable RAN control surfaces |
-| Native and cross-domain AI in O-RAN | O-RAN nGRG reports [25] [26] | The repository includes data ingestion, lifecycle control, and distributed intelligence elements |
-| AI-RAN infrastructure readiness | NVIDIA AI-RAN materials [31] | The repository includes serving, runtime, and accelerator-oriented adapters |
-| NTN and heterogeneous connectivity pressure | 3GPP NTN and channel modeling anchors [22] [23] | UHCI models terrestrial and non-terrestrial providers together |
-| Earth-space propagation realism | ITU-R propagation guidance [24] | The propagation subsystem is explicitly part of the architecture |
-| Public-sector push for adaptive spectrum systems | National Spectrum R&D Plan and NTIA direction [33] [34] | Auditability and dynamic control become more strategically important |
-
-## Repository Map
-
-The repository is already organized like a multi-layer system. The redesigned documentation makes that structure easier to read at a glance.
-
-| Path | Purpose |
-|---|---|
-| `src/preceptualai/core/` | Decision models, structural encoders, and temporal backends |
-| `src/preceptualai/env/` | Provider ontology, propagation, environments, and data ingestion |
-| `src/preceptualai/xapp/` | Inference runtime, serving, O-RAN adapters, and lifecycle services |
-| `src/preceptualai/federated/` | Federated aggregation logic |
-| `proto/` | Formal inference and federated-learning contracts |
-| `scripts/` | Training entry points and orchestration scripts |
-| `benchmarks/` | Evaluation harnesses and result artifacts |
-| `docs/` | System-level documentation, deployment guides, and architecture references |
-| `docs/assets/` | Architecture visuals and diagrams embedded in documentation |
-
-## Recommended Reading Order
-
-This README is now the top-level entry point, but the repository also contains deeper references for architecture, training, deployment, and API-level integration.
-
-| If you want to understand... | Read next |
-|---|---|
-| The full architecture explanation in English | `docs/UHCI_ARCHITECTURE_REFERENCE_EN.md` |
-| The full Chinese translation | `docs/UHCI_ARCHITECTURE_REFERENCE_ZH.md` |
-| Repository internals directory by directory | `docs/REPOSITORY_MAP.md` |
-| Training and evaluation details | `docs/TRAINING_AND_EVALUATION.md` |
-| Deployment and xApp integration | `docs/DEPLOYMENT_AND_XAPP_GUIDE.md` |
-| APIs and service contracts | `docs/API_AND_INTERFACES.md` |
-
-## References
-
-[1]: [Provider taxonomy in `src/preceptualai/env/provider_registry.py`](src/preceptualai/env/provider_registry.py)
-[2]: [Unified connectivity environment in `src/preceptualai/env/unified_connectivity_env.py`](src/preceptualai/env/unified_connectivity_env.py)
-[3]: [Universal spectrum agent in `src/preceptualai/core/universal_spectrum_agent.py`](src/preceptualai/core/universal_spectrum_agent.py)
-[4]: [Heterogeneous GNN encoder in `src/preceptualai/core/hetero_gnn_encoder.py`](src/preceptualai/core/hetero_gnn_encoder.py)
-[5]: [LTC module in `src/preceptualai/core/ltc_cell.py`](src/preceptualai/core/ltc_cell.py)
-[6]: [CfC temporal backend in `src/preceptualai/core/ltc_cell_cfc.py`](src/preceptualai/core/ltc_cell_cfc.py)
-[7]: [ITU propagation module in `src/preceptualai/env/itu_propagation.py`](src/preceptualai/env/itu_propagation.py)
-[8]: [FR3 propagation module in `src/preceptualai/env/fr3_propagation.py`](src/preceptualai/env/fr3_propagation.py)
-[9]: [Unified real-data pipeline in `src/preceptualai/env/data_pipeline.py`](src/preceptualai/env/data_pipeline.py)
-[10]: [Inference engine in `src/preceptualai/xapp/inference_engine.py`](src/preceptualai/xapp/inference_engine.py)
-[11]: [RT-oriented dApp engine in `src/preceptualai/xapp/dapp_engine.py`](src/preceptualai/xapp/dapp_engine.py)
-[12]: [gRPC serving module in `src/preceptualai/xapp/server.py`](src/preceptualai/xapp/server.py)
-[13]: [O-RAN environment surface in `src/preceptualai/env/oran.py`](src/preceptualai/env/oran.py)
-[14]: [E2 adapter in `src/preceptualai/xapp/e2_adapter.py`](src/preceptualai/xapp/e2_adapter.py)
-[15]: [Non-RT RIC lifecycle service in `src/preceptualai/xapp/rapp_trainer.py`](src/preceptualai/xapp/rapp_trainer.py)
-[16]: [Benchmark harness in `benchmarks/benchmark.py`](benchmarks/benchmark.py)
-[17]: [Aggregated benchmark summary in `benchmarks/results/benchmark_results_full/benchmark_summary.json`](benchmarks/results/benchmark_results_full/benchmark_summary.json)
-[18]: [Training entry point in `scripts/train_uhci.py`](scripts/train_uhci.py)
-[19]: [Federated aggregator in `src/preceptualai/federated/aggregator.py`](src/preceptualai/federated/aggregator.py)
-[20]: [Federated-learning service contract in `proto/preceptualai_fl.proto`](proto/preceptualai_fl.proto)
-[21]: [Inference service contract in `proto/preceptualai.proto`](proto/preceptualai.proto)
-[22]: [3GPP TR 38.821, "Solutions for NR to support Non-Terrestrial Networks (NTN)"](https://www.3gpp.org/dynareport/38821.htm)
-[23]: [3GPP TR 38.901, "Study on channel model for frequencies from 0.5 to 100 GHz"](https://www.3gpp.org/dynareport/38901.htm)
-[24]: [ITU-R P.618, "Propagation data and prediction methods required for the design of Earth-space telecommunication systems"](https://www.itu.int/rec/R-REC-P.618)
-[25]: [O-RAN next Generation Research Group, "O-RAN Native AI Architecture Description," RR-2023-02](https://mediastorage.o-ran.org/ngrg-rr/nGRG-RR-2023-02-Native%20AI%20Architecture%20Description-v1.2.pdf)
-[26]: [O-RAN next Generation Research Group, "Research Report on Native and Cross-domain AI: State of the art and future outlook," RR-2023-03](https://mediastorage.o-ran.org/ngrg-rr/nGRG-RR-2023-03-Research-Report-on-Native-and-Cross-domain-AI-v1_1.pdf)
-[27]: [X. Lin, L. Kundu, C. Dick, and S. Velayutham, "Embracing AI in 5G-Advanced Towards 6G: A Joint 3GPP and O-RAN Perspective," arXiv:2209.04987](https://arxiv.org/abs/2209.04987)
-[28]: [R. Hasani, M. Lechner, A. Amini, D. Rus, and R. Grosu, "Liquid Time-constant Networks," arXiv:2006.04439](https://arxiv.org/abs/2006.04439)
-[29]: [R. Hasani, M. Lechner, A. Amini, L. Liebenwein, A. Ray, M. Tschaikowski, G. Teschl, and D. Rus, "Closed-form Continuous-time Neural Models," Nature Machine Intelligence 4, 992--1003 (2022)](https://arxiv.org/abs/2106.13898)
-[30]: [X. Wang, H. Ji, C. Shi, B. Wang, P. Cui, P. S. Yu, and Y. Ye, "Heterogeneous Graph Attention Network," arXiv:1903.07293](https://arxiv.org/abs/1903.07293)
-[31]: [NVIDIA, "AI-RAN Solutions for 5G and 6G Cellular Networks"](https://www.nvidia.com/en-us/industries/telecommunications/ai-ran/)
-[32]: [O-RAN Software Community documentation](https://docs.o-ran-sc.org/en/latest/)
-[33]: [NITRD, "National Spectrum Research and Development Plan 2024"](https://www.nitrd.gov/pubs/National-Spectrum-RD-Plan-2024.pdf)
-[34]: [NTIA, "NTIA Seeks Feedback on New Direction for Innovation Fund That Focuses on AI-RAN"](https://www.ntia.gov/blog/2026/ntia-seeks-feedback-new-direction-innovation-fund-focuses-ai-ran)
+Architecture, controls, and the full threat model: [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
+Research lineage and team: [`docs/RESEARCH_ALIGNMENT.md`](docs/RESEARCH_ALIGNMENT.md).
+Evaluation rubric: [`docs/EVALUATION_CRITERIA.md`](docs/EVALUATION_CRITERIA.md).
+License: Apache-2.0.

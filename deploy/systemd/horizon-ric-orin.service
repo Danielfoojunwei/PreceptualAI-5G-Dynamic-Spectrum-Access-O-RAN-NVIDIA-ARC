@@ -1,0 +1,89 @@
+# Horizon-RIC — Jetson Orin Nano edge profile (systemd unit).
+#
+# Constraints baked in:
+#   * 2-CPU envelope        — CPUAffinity=0 1   (matches Orin Nano 2-core
+#                              effective budget after carving for kernel + DLA).
+#   * 8 GiB memory ceiling  — MemoryMax=8G       (Orin Nano 8 GiB SKU).
+#   * Soft pressure target  — MemoryHigh=7G      (cgroup throttles before OOM).
+#   * Watchdog              — WatchdogSec=30s; lifecycle.notify_watchdog()
+#                             pings every 15 s via sd_notify(3).
+#   * Hardened              — non-root user, NoNewPrivileges, ProtectSystem=strict,
+#                             read-only filesystem except /var/lib/horizon-ric
+#                             and /var/log/horizon-ric.
+#
+# Install: see deploy/systemd/README.md.
+
+[Unit]
+Description=Horizon-RIC rApp (Jetson Orin Nano edge profile)
+Documentation=https://github.com/preceptualai/horizon-ric
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=notify
+NotifyAccess=main
+
+User=horizon
+Group=horizon
+
+# Crash-recovery checkpoint must live under a ReadWritePaths grant — with
+# ProtectSystem=strict the rest of the filesystem is read-only, so the
+# lifecycle default (/var/lib/horizon/state.json) would be denied.
+Environment=HORIZON_STATE_PATH=/var/lib/horizon-ric/state.json
+# Operator-API signing secret (HORIZON_API_JWT_SECRET=...) is supplied via an
+# optional drop-in; the leading '-' tolerates its absence (probes-only mode).
+EnvironmentFile=-/etc/horizon-ric/horizon.env
+
+ExecStart=/usr/bin/python3 -m horizon_ric.cli serve --bind 127.0.0.1:8083
+
+# Watchdog — sd_notify WATCHDOG=1 every 15 s; systemd kills + restarts at 30 s.
+WatchdogSec=30s
+
+# Restart policy.
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=60
+TimeoutStopSec=30
+KillSignal=SIGTERM
+KillMode=mixed
+
+# Orin Nano resource envelope (2 cores, 8 GiB RAM).
+CPUAffinity=0 1
+MemoryHigh=7G
+MemoryMax=8G
+TasksMax=2048
+LimitNOFILE=8192
+LimitNPROC=2048
+
+# Hardening.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Writable paths — only state + logs.
+ReadWritePaths=/var/lib/horizon-ric /var/log/horizon-ric
+
+# Logging — structlog JSON to journald.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=horizon-ric-orin
+
+[Install]
+WantedBy=multi-user.target

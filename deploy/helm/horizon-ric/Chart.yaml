@@ -1,0 +1,28 @@
+apiVersion: v2
+name: horizon-ric
+description: |
+  Horizon-RIC — NTN-Aware AI-RAN Resource-Orchestration rApp Suite for the
+  O-RAN SMO platform. Deploys the rApp lifecycle daemon, exposes /healthz,
+  /readyz, /metrics, and registers with the Non-RT-RIC over R1 and the
+  Near-RT RIC over A1.
+type: application
+version: 0.2.0
+appVersion: "0.2.0"
+kubeVersion: ">=1.27.0"
+home: https://github.com/preceptualai/horizon-ric
+sources:
+  - https://github.com/preceptualai/horizon-ric
+maintainers:
+  - name: Preceptual AI
+    email: ops@preceptual.ai
+keywords:
+  - o-ran
+  - smo
+  - non-rt-ric
+  - rapp
+  - ntn
+  - ai-ran
+icon: https://raw.githubusercontent.com/preceptualai/horizon-ric/main/docs/logo.svg
+annotations:
+  category: Telecommunications
+  licenses: Apache-2.0

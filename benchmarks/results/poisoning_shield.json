@@ -1,0 +1,65 @@
+{
+  "shield": {
+    "decisions": 10000,
+    "poison_rate": 0.3,
+    "poisoned_inputs": 2995,
+    "oracle": "independent emission-mask / ACLR integral (NOT Shield constants)",
+    "unguarded_illegal_emits": 1983,
+    "shielded_illegal_emits": 0,
+    "shielded_blocked_emits": 0,
+    "shield_prevented": 1983,
+    "in_spec_but_harmful_unguarded": 489,
+    "in_spec_but_harmful_after_shield": 0,
+    "result": "PASS"
+  },
+  "federated": {
+    "n_honest": 16,
+    "n_byzantine": 4,
+    "byzantine_fraction": 0.2,
+    "dim": 200,
+    "alie_z": 0.1573,
+    "krum_breakdown_ok": true,
+    "breakdown_points": {
+      "krum": "f Byzantine tolerated iff n > 2f + 2 (so < ~50%); single-point selection makes it brittle and high-variance under ALIE.",
+      "median": "breakdown point ~50% (needs < n/2 Byzantine per coordinate); ALIE stays *inside* the envelope so small bias leaks through.",
+      "trimmed_mean": "needs beta >= number of Byzantine and n > 2*beta; tolerates < ~50% but the leaked bias grows with the trim slack.",
+      "fedavg": "breakdown point 0% \u2014 a single Byzantine client moves it arbitrarily."
+    },
+    "no_attack_baseline_dist": {
+      "fedavg": 0.0,
+      "krum": 12.196867167126614,
+      "median": 2.4680238353808197,
+      "trimmed_mean": 0.6065188231500388,
+      "note": "distance from honest mean with NO attack \u2014 Krum is far because it returns ONE client's update, not an average."
+    },
+    "dist_from_honest_mean": {
+      "alie": {
+        "fedavg": 0.43175198527362646,
+        "krum": 2.1587599263681323,
+        "krum_selected_honest": false,
+        "median": 1.9910735709547576,
+        "trimmed_mean": 1.297927720298796
+      },
+      "fang_krum": {
+        "fedavg": 1.7677669529663689,
+        "krum": 8.838834764831844,
+        "krum_selected_honest": false,
+        "median": 4.81567013850247,
+        "trimmed_mean": 3.0482658244438876
+      },
+      "fang_median": {
+        "fedavg": 8.233744329869157,
+        "krum": 12.196867167126614,
+        "krum_selected_honest": true,
+        "median": 4.95805240333847,
+        "trimmed_mean": 5.809181291847292
+      }
+    },
+    "honest_findings": [
+      "Krum returns a single client update, so its distance from the honest mean is large EVEN WITH NO ATTACK (~12 here) \u2014 it is high-variance.",
+      "ALIE hides inside the benign variance envelope: it leaks a small but nonzero bias through median/trimmed-mean (it does NOT zero out).",
+      "Fang's directed-deviation attack leaks more bias through every robust aggregator; tuned against Krum it can pull Krum's selection.",
+      "No robust aggregator is a silver bullet: they BOUND the damage, they do not eliminate it. Below the breakdown fraction the bias is small; near it, the bias grows sharply."
+    ]
+  }
+}

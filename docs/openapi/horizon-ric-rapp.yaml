@@ -1,0 +1,866 @@
+openapi: 3.1.0
+info:
+  title: Horizon-RIC Operator API
+  description: "Horizon-RIC rApp operator API. O-RAN.WG2 R1/A1/O1 conformant, TM Forum\
+    \ ODA Production component. JWT bearer auth (HS256/RS256) per O-RAN.WG11 \xA7\
+    6."
+  version: 0.2.0
+paths:
+  /v1/state:
+    get:
+      summary: Get State
+      operationId: get_state_v1_state_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RAppStateInfo'
+      security:
+      - HTTPBearer: []
+  /v1/policies:
+    get:
+      summary: List Policies
+      operationId: list_policies_v1_policies_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 50
+          title: Limit
+      - name: since
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Since
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PolicyEnvelope'
+                title: Response List Policies V1 Policies Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      summary: Submit Policy
+      operationId: submit_policy_v1_policies_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyAction'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/policies/{decision_id}:
+    get:
+      summary: Get Policy
+      operationId: get_policy_v1_policies__decision_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: decision_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Decision Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/audit/verify:
+    get:
+      summary: Verify Audit
+      operationId: verify_audit_v1_audit_verify_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditVerifyResult'
+      security:
+      - HTTPBearer: []
+  /v1/sla/timeline:
+    get:
+      summary: Sla Timeline
+      operationId: sla_timeline_v1_sla_timeline_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: From
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: To
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SLATimelineSample'
+                title: Response Sla Timeline V1 Sla Timeline Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/breakers:
+    get:
+      summary: Breakers
+      operationId: breakers_v1_breakers_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  $ref: '#/components/schemas/BreakerState'
+                type: object
+                title: Response Breakers V1 Breakers Get
+      security:
+      - HTTPBearer: []
+  /v1/connectors:
+    get:
+      summary: Connectors
+      operationId: connectors_v1_connectors_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ConnectorInfo'
+                type: array
+                title: Response Connectors V1 Connectors Get
+      security:
+      - HTTPBearer: []
+  /api/v1/state:
+    get:
+      summary: Get State
+      operationId: get_state_api_v1_state_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RAppStateInfo'
+      security:
+      - HTTPBearer: []
+  /api/v1/policies:
+    get:
+      summary: List Policies
+      operationId: list_policies_api_v1_policies_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 50
+          title: Limit
+      - name: since
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Since
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PolicyEnvelope'
+                title: Response List Policies Api V1 Policies Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      summary: Submit Policy
+      operationId: submit_policy_api_v1_policies_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyAction'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/policies/{decision_id}:
+    get:
+      summary: Get Policy
+      operationId: get_policy_api_v1_policies__decision_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: decision_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Decision Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/audit/verify:
+    get:
+      summary: Verify Audit
+      operationId: verify_audit_api_v1_audit_verify_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditVerifyResult'
+      security:
+      - HTTPBearer: []
+  /api/v1/sla/timeline:
+    get:
+      summary: Sla Timeline
+      operationId: sla_timeline_api_v1_sla_timeline_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: From
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: To
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SLATimelineSample'
+                title: Response Sla Timeline Api V1 Sla Timeline Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/breakers:
+    get:
+      summary: Breakers
+      operationId: breakers_api_v1_breakers_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  $ref: '#/components/schemas/BreakerState'
+                type: object
+                title: Response Breakers Api V1 Breakers Get
+      security:
+      - HTTPBearer: []
+  /api/v1/connectors:
+    get:
+      summary: Connectors
+      operationId: connectors_api_v1_connectors_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ConnectorInfo'
+                type: array
+                title: Response Connectors Api V1 Connectors Get
+      security:
+      - HTTPBearer: []
+components:
+  schemas:
+    AuditVerifyResult:
+      properties:
+        ok:
+          type: boolean
+          title: Ok
+        records_checked:
+          type: integer
+          title: Records Checked
+        first_bad_index:
+          type: integer
+          title: First Bad Index
+      type: object
+      required:
+      - ok
+      - records_checked
+      - first_bad_index
+      title: AuditVerifyResult
+    BreakerState:
+      properties:
+        name:
+          type: string
+          title: Name
+        state:
+          type: string
+          title: State
+        failure_count:
+          type: integer
+          title: Failure Count
+        opened_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Opened At
+      type: object
+      required:
+      - name
+      - state
+      - failure_count
+      title: BreakerState
+    ConnectorInfo:
+      properties:
+        name:
+          type: string
+          title: Name
+        kind:
+          type: string
+          title: Kind
+        connected:
+          type: boolean
+          title: Connected
+        last_heartbeat_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Heartbeat At
+      type: object
+      required:
+      - name
+      - kind
+      - connected
+      title: ConnectorInfo
+    ConstraintCorrection:
+      properties:
+        constraint_id:
+          type: string
+          title: Constraint Id
+        severity:
+          type: string
+          enum:
+          - hard
+          - soft
+          title: Severity
+        margin_dB:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Margin Db
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - constraint_id
+      - severity
+      - message
+      title: ConstraintCorrection
+      description: 'One projection-step correction applied by the constraint layer.
+
+
+        Persisted to the audit so a regulator can reproduce the projection.'
+    DecisionRecord:
+      properties:
+        decision_id:
+          type: string
+          title: Decision Id
+        timestamp:
+          type: string
+          format: date-time
+          title: Timestamp
+        rapp_instance_id:
+          type: string
+          title: Rapp Instance Id
+        tenant_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tenant Id
+        state_hash:
+          type: string
+          title: State Hash
+        state_blob_uri:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: State Blob Uri
+        chosen_action:
+          additionalProperties: true
+          type: object
+          title: Chosen Action
+        predicted_outcome_chosen:
+          $ref: '#/components/schemas/PredictedOutcome'
+        rejected_alternatives:
+          items:
+            $ref: '#/components/schemas/RejectedAlternative'
+          type: array
+          title: Rejected Alternatives
+        constraint_corrections:
+          items:
+            $ref: '#/components/schemas/ConstraintCorrection'
+          type: array
+          title: Constraint Corrections
+        model_versions:
+          $ref: '#/components/schemas/ModelVersions'
+        actual_outcome_30s:
+          anyOf:
+          - $ref: '#/components/schemas/PredictedOutcome'
+          - type: 'null'
+        actual_outcome_1min:
+          anyOf:
+          - $ref: '#/components/schemas/PredictedOutcome'
+          - type: 'null'
+        actual_outcome_5min:
+          anyOf:
+          - $ref: '#/components/schemas/PredictedOutcome'
+          - type: 'null'
+        operator_override:
+          type: boolean
+          title: Operator Override
+          default: false
+        operator_override_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Operator Override Reason
+        sla_breach_context:
+          anyOf:
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
+          - type: 'null'
+          title: Sla Breach Context
+      type: object
+      required:
+      - decision_id
+      - timestamp
+      - rapp_instance_id
+      - state_hash
+      - chosen_action
+      - predicted_outcome_chosen
+      - rejected_alternatives
+      - model_versions
+      title: DecisionRecord
+      description: 'Complete record of one rApp policy decision.
+
+
+        Persisted to the evidence store for regulatory audit (GDPR Art. 30
+
+        records of processing, 3GPP TS 28.105 provenance, NIST SP 800-92 logs).'
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ModelVersions:
+      properties:
+        encoder:
+          type: string
+          title: Encoder
+        risk_heads:
+          type: string
+          title: Risk Heads
+        dyna:
+          type: string
+          title: Dyna
+        policy:
+          type: string
+          title: Policy
+        constraint_layer:
+          type: string
+          title: Constraint Layer
+        rapp:
+          type: string
+          title: Rapp
+      type: object
+      required:
+      - encoder
+      - risk_heads
+      - dyna
+      - policy
+      - constraint_layer
+      - rapp
+      title: ModelVersions
+      description: 'Version tags for the models that produced a decision.
+
+
+        Required by 3GPP TS 28.105 (AI/ML Management) for provenance.'
+    PolicyAction:
+      properties:
+        action_type:
+          type: string
+          title: Action Type
+        params:
+          additionalProperties: true
+          type: object
+          title: Params
+        note:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Note
+      type: object
+      required:
+      - action_type
+      title: PolicyAction
+    PolicyEnvelope:
+      properties:
+        decision_id:
+          type: string
+          title: Decision Id
+        timestamp:
+          type: string
+          format: date-time
+          title: Timestamp
+        rapp_instance_id:
+          type: string
+          title: Rapp Instance Id
+        chosen_action_summary:
+          type: string
+          title: Chosen Action Summary
+        sla_risk_30s:
+          type: number
+          title: Sla Risk 30S
+      type: object
+      required:
+      - decision_id
+      - timestamp
+      - rapp_instance_id
+      - chosen_action_summary
+      - sla_risk_30s
+      title: PolicyEnvelope
+    PredictedOutcome:
+      properties:
+        sla_risk_30s:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Sla Risk 30S
+        sla_risk_1min:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Sla Risk 1Min
+        sla_risk_5min:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Sla Risk 5Min
+        gateway_loads:
+          additionalProperties:
+            type: number
+          type: object
+          title: Gateway Loads
+        ntn_capacity_used:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Ntn Capacity Used
+          default: 0.0
+        energy_kwh:
+          type: number
+          minimum: 0.0
+          title: Energy Kwh
+          default: 0.0
+        constraint_violations:
+          items:
+            type: string
+          type: array
+          title: Constraint Violations
+      type: object
+      required:
+      - sla_risk_30s
+      - sla_risk_1min
+      - sla_risk_5min
+      title: PredictedOutcome
+      description: "Per-decision predicted KPI envelope.\n\nNames align to 3GPP TS\
+        \ 28.554 \xA76 KPI definitions where possible."
+    RAppStateInfo:
+      properties:
+        state:
+          type: string
+          title: State
+        rapp_id:
+          type: string
+          title: Rapp Id
+        version:
+          type: string
+          title: Version
+        uptime_seconds:
+          type: number
+          title: Uptime Seconds
+        last_decision_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Decision At
+      type: object
+      required:
+      - state
+      - rapp_id
+      - version
+      - uptime_seconds
+      title: RAppStateInfo
+    RejectedAlternative:
+      properties:
+        rank:
+          type: integer
+          minimum: 1.0
+          title: Rank
+        action:
+          additionalProperties: true
+          type: object
+          title: Action
+        predicted_outcome:
+          $ref: '#/components/schemas/PredictedOutcome'
+        rejection_reason_machine:
+          $ref: '#/components/schemas/RejectionReasonMachine'
+        rejection_reason_human:
+          type: string
+          title: Rejection Reason Human
+      type: object
+      required:
+      - rank
+      - action
+      - predicted_outcome
+      - rejection_reason_machine
+      - rejection_reason_human
+      title: RejectedAlternative
+      description: One rejected alternative action with its predicted outcome and
+        rejection reason.
+    RejectionReasonMachine:
+      properties:
+        primary_cause:
+          type: string
+          enum:
+          - gateway_overload
+          - sla_breach_predicted
+          - compute_overload
+          - energy_cost
+          - ntn_capacity_exhausted
+          - spectrum_unavailable
+          - constraint_violation_hard
+          - constraint_violation_soft
+          - policy_oscillation
+          title: Primary Cause
+        primary_metric:
+          type: string
+          title: Primary Metric
+        predicted_value:
+          type: number
+          title: Predicted Value
+        threshold:
+          type: number
+          title: Threshold
+        horizon:
+          type: string
+          enum:
+          - 30s
+          - 60s
+          - 300s
+          title: Horizon
+      type: object
+      required:
+      - primary_cause
+      - primary_metric
+      - predicted_value
+      - threshold
+      - horizon
+      title: RejectionReasonMachine
+      description: "Structured rejection reason \u2014 machine-readable for audit\
+        \ dashboards."
+    SLATimelineSample:
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          title: Timestamp
+        sla_risk_30s:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Sla Risk 30S
+        sla_risk_1min:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Sla Risk 1Min
+        sla_risk_5min:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Sla Risk 5Min
+        decisions_per_minute:
+          type: number
+          minimum: 0.0
+          title: Decisions Per Minute
+      type: object
+      required:
+      - timestamp
+      - sla_risk_30s
+      - sla_risk_1min
+      - sla_risk_5min
+      - decisions_per_minute
+      title: SLATimelineSample
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer
+    BearerJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Operator JWT (HS256 dev, RS256 prod). Audience: 'horizon-ric'.\
+        \ Conforms to O-RAN.WG11 \xA76 token requirements."
+security:
+- BearerJWT: []
+servers:
+- url: http://localhost:8083
+  description: Local
+- url: https://horizon-ric.example.com
+  description: Production
