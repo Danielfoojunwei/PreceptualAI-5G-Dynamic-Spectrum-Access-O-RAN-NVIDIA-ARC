@@ -7,6 +7,12 @@ against an attack it was *not* hand-coded against (closing the "the benchmark
 only tests violations the Shield was written to catch" critique).
 """
 
+from horizon_ric.phy.channel import (
+    classical_equalize_demap,
+    fading_dataset,
+    lmmse_equalize,
+    zf_equalize,
+)
 from horizon_ric.phy.constellation import (
     awgn,
     classical_ml_demap,
@@ -27,4 +33,8 @@ __all__ = [
     "classical_ml_demap",
     "awgn",
     "make_dataset",
+    "fading_dataset",
+    "classical_equalize_demap",
+    "lmmse_equalize",
+    "zf_equalize",
 ]

@@ -1,0 +1,94 @@
+{
+  "setup": {
+    "constellation": "16-QAM",
+    "channel": "Rayleigh TDL (4 taps)",
+    "receiver": "perfect-CSI neural vs LMMSE",
+    "attack": "white-box PGD on Y"
+  },
+  "points": [
+    {
+      "snr_dB": 28.0,
+      "pgd_epsilon": 0.07,
+      "seeds": [
+        0,
+        1,
+        2
+      ],
+      "clean_ser": {
+        "neural": {
+          "mean": 0.011533333333333333,
+          "std": 0.001049867716534908
+        },
+        "classical_lmmse": {
+          "mean": 0.010933333333333331,
+          "std": 0.0008055363982396381
+        }
+      },
+      "pgd_ser": {
+        "neural": {
+          "mean": 0.1295111111111111,
+          "std": 0.004395733060116645
+        },
+        "classical_lmmse": {
+          "mean": 0.11555555555555556,
+          "std": 0.0026534859438710015
+        },
+        "neural_over_classical_x": 1.1207692307692307
+      },
+      "shield": {
+        "effective_ser": {
+          "mean": 0.1255777777777778,
+          "std": 0.0030259780583931223
+        },
+        "fallback_rate": {
+          "mean": 0.12,
+          "std": 0.03771236166328253
+        }
+      }
+    },
+    {
+      "snr_dB": 34.0,
+      "pgd_epsilon": 0.07,
+      "seeds": [
+        0,
+        1,
+        2
+      ],
+      "clean_ser": {
+        "neural": {
+          "mean": 0.0034000000000000002,
+          "std": 0.00028284271247461896
+        },
+        "classical_lmmse": {
+          "mean": 0.0029555555555555555,
+          "std": 0.00016629588385661968
+        }
+      },
+      "pgd_ser": {
+        "neural": {
+          "mean": 0.10422222222222222,
+          "std": 0.003617379175420437
+        },
+        "classical_lmmse": {
+          "mean": 0.09037777777777778,
+          "std": 0.0019719013823536933
+        },
+        "neural_over_classical_x": 1.153184165232358
+      },
+      "shield": {
+        "effective_ser": {
+          "mean": 0.09799999999999999,
+          "std": 0.0017461067804945103
+        },
+        "fallback_rate": {
+          "mean": 0.22666666666666668,
+          "std": 0.07138834846315116
+        }
+      }
+    }
+  ],
+  "honest_finding": [
+    "Under realistic multipath fading the neural-vs-classical adversarial gap is ~1.1-1.2x (mean over seeds), NOT the ~22x of the AWGN toy: deep fades amplify the Y-domain perturbation and make both receivers vulnerable.",
+    "The gap is small on average but not uniform: on the minority of windows where the measured neural SER is meaningfully (>1 dB) worse than the LMMSE baseline, the Shield falls back (see per-point fallback_rate, ~12-23% here), nudging the effective SER below the neural receiver's toward the classical baseline. So under fading the Shield's benefit is small but real; in AWGN, where the neural receiver is >>1 dB worse, it falls back almost always and protects ~12x. The guarantee (effective <= classical + tolerance) holds in both regimes \u2014 the Shield helps exactly as much as the measured degradation warrants, and no more."
+  ]
+}

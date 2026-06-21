@@ -27,12 +27,13 @@ def _softmax(z: np.ndarray) -> np.ndarray:
 class NeuralReceiver:
     """2-layer MLP (2 → hidden → M) with ReLU and softmax output."""
 
-    def __init__(self, M: int, hidden: int = 64, seed: int = 0) -> None:
+    def __init__(self, M: int, hidden: int = 64, seed: int = 0, n_features: int = 2) -> None:
         self.M = M
         self.hidden = hidden
+        self.n_features = n_features
         rng = np.random.default_rng(seed)
         # He initialisation.
-        self.W1 = rng.normal(0.0, np.sqrt(2.0 / 2.0), size=(2, hidden))
+        self.W1 = rng.normal(0.0, np.sqrt(2.0 / n_features), size=(n_features, hidden))
         self.b1 = np.zeros(hidden)
         self.W2 = rng.normal(0.0, np.sqrt(2.0 / hidden), size=(hidden, M))
         self.b2 = np.zeros(M)
