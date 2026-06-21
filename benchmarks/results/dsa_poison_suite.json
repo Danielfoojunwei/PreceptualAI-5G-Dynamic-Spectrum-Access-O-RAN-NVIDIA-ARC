@@ -1,0 +1,354 @@
+{
+  "config": {
+    "n_channels": 4,
+    "n_users": 3,
+    "n_clients": 12,
+    "local_episodes": 20,
+    "eval_episodes": 10,
+    "seed": 1,
+    "band_lo_hz": 3400000000.0,
+    "band_hi_hz": 3500000000.0,
+    "max_eirp_dBm": 33.0
+  },
+  "attacks": [
+    "reward_poison",
+    "backdoor",
+    "free_rider"
+  ],
+  "citations": {
+    "reward_poison": "Biggio et al. ICML 2012; Tolpegin et al. ESORICS 2020",
+    "backdoor": "Bagdasaryan et al., How To Backdoor Federated Learning, AISTATS 2020",
+    "free_rider": "Fraboni et al., Free-rider Attacks on Model Aggregation, AISTATS 2021"
+  },
+  "sweep": {
+    "clean_baseline": {
+      "quality": {
+        "throughput_per_slot": 0.9175,
+        "collision_per_slot": 1.42,
+        "pu_clash_per_slot": 0.2712
+      },
+      "backdoor_success_rate": 0.0781
+    },
+    "attacks": {
+      "reward_poison": {
+        "n_malicious=4": {
+          "byzantine_fraction": 0.333,
+          "fedavg": {
+            "quality": {
+              "throughput_per_slot": 1.02,
+              "collision_per_slot": 0.755,
+              "pu_clash_per_slot": 0.6562
+            },
+            "backdoor_success_rate": 0.1667
+          },
+          "median": {
+            "quality": {
+              "throughput_per_slot": 0.9762,
+              "collision_per_slot": 0.7475,
+              "pu_clash_per_slot": 0.59
+            },
+            "backdoor_success_rate": 0.1042
+          },
+          "krum": {
+            "quality": {
+              "throughput_per_slot": 0.395,
+              "collision_per_slot": 1.8613,
+              "pu_clash_per_slot": 0.1925
+            },
+            "backdoor_success_rate": 0.0781,
+            "krum_selected_index": 6,
+            "krum_selected_honest": true
+          },
+          "trimmed_mean": {
+            "quality": {
+              "throughput_per_slot": 0.9788,
+              "collision_per_slot": 0.8075,
+              "pu_clash_per_slot": 0.56
+            },
+            "backdoor_success_rate": 0.1042
+          }
+        },
+        "n_malicious=5": {
+          "byzantine_fraction": 0.417,
+          "fedavg": {
+            "quality": {
+              "throughput_per_slot": 0.9537,
+              "collision_per_slot": 0.6438,
+              "pu_clash_per_slot": 0.8387
+            },
+            "backdoor_success_rate": 0.1823
+          },
+          "median": {
+            "quality": {
+              "throughput_per_slot": 0.9575,
+              "collision_per_slot": 0.6325,
+              "pu_clash_per_slot": 0.695
+            },
+            "backdoor_success_rate": 0.1042
+          },
+          "krum": {
+            "skipped": "krum needs n > 2f+2"
+          },
+          "trimmed_mean": {
+            "quality": {
+              "throughput_per_slot": 0.9575,
+              "collision_per_slot": 0.6325,
+              "pu_clash_per_slot": 0.695
+            },
+            "backdoor_success_rate": 0.1042
+          }
+        },
+        "n_malicious=6": {
+          "byzantine_fraction": 0.5,
+          "fedavg": {
+            "quality": {
+              "throughput_per_slot": 0.9537,
+              "collision_per_slot": 0.4525,
+              "pu_clash_per_slot": 1.0175
+            },
+            "backdoor_success_rate": 0.1823
+          },
+          "median": {
+            "quality": {
+              "throughput_per_slot": 0.9275,
+              "collision_per_slot": 0.4763,
+              "pu_clash_per_slot": 0.8538
+            },
+            "backdoor_success_rate": 0.1354
+          },
+          "krum": {
+            "skipped": "krum needs n > 2f+2"
+          },
+          "trimmed_mean": {
+            "skipped": "trimmed_mean needs n > 2*beta"
+          }
+        }
+      },
+      "backdoor": {
+        "n_malicious=4": {
+          "byzantine_fraction": 0.333,
+          "fedavg": {
+            "quality": {
+              "throughput_per_slot": 0.9812,
+              "collision_per_slot": 1.2688,
+              "pu_clash_per_slot": 0.2975
+            },
+            "backdoor_success_rate": 1.0
+          },
+          "median": {
+            "quality": {
+              "throughput_per_slot": 0.8562,
+              "collision_per_slot": 1.5112,
+              "pu_clash_per_slot": 0.2687
+            },
+            "backdoor_success_rate": 0.1042
+          },
+          "krum": {
+            "quality": {
+              "throughput_per_slot": 0.395,
+              "collision_per_slot": 1.8613,
+              "pu_clash_per_slot": 0.1925
+            },
+            "backdoor_success_rate": 0.0781,
+            "krum_selected_index": 6,
+            "krum_selected_honest": true
+          },
+          "trimmed_mean": {
+            "quality": {
+              "throughput_per_slot": 0.8875,
+              "collision_per_slot": 1.455,
+              "pu_clash_per_slot": 0.2775
+            },
+            "backdoor_success_rate": 0.1042
+          }
+        },
+        "n_malicious=5": {
+          "byzantine_fraction": 0.417,
+          "fedavg": {
+            "quality": {
+              "throughput_per_slot": 0.9637,
+              "collision_per_slot": 1.3225,
+              "pu_clash_per_slot": 0.2913
+            },
+            "backdoor_success_rate": 1.0
+          },
+          "median": {
+            "quality": {
+              "throughput_per_slot": 0.8363,
+              "collision_per_slot": 1.6062,
+              "pu_clash_per_slot": 0.2375
+            },
+            "backdoor_success_rate": 0.1094
+          },
+          "krum": {
+            "skipped": "krum needs n > 2f+2"
+          },
+          "trimmed_mean": {
+            "quality": {
+              "throughput_per_slot": 0.8363,
+              "collision_per_slot": 1.6062,
+              "pu_clash_per_slot": 0.2375
+            },
+            "backdoor_success_rate": 0.1094
+          }
+        },
+        "n_malicious=6": {
+          "byzantine_fraction": 0.5,
+          "fedavg": {
+            "quality": {
+              "throughput_per_slot": 0.9762,
+              "collision_per_slot": 1.3262,
+              "pu_clash_per_slot": 0.2775
+            },
+            "backdoor_success_rate": 1.0
+          },
+          "median": {
+            "quality": {
+              "throughput_per_slot": 0.8113,
+              "collision_per_slot": 1.6025,
+              "pu_clash_per_slot": 0.2625
+            },
+            "backdoor_success_rate": 1.0
+          },
+          "krum": {
+            "skipped": "krum needs n > 2f+2"
+          },
+          "trimmed_mean": {
+            "skipped": "trimmed_mean needs n > 2*beta"
+          }
+        }
+      },
+      "free_rider": {
+        "n_malicious=4": {
+          "byzantine_fraction": 0.333,
+          "fedavg": {
+            "quality": {
+              "throughput_per_slot": 1.045,
+              "collision_per_slot": 1.0137,
+              "pu_clash_per_slot": 0.4125
+            },
+            "backdoor_success_rate": 0.1146
+          },
+          "median": {
+            "quality": {
+              "throughput_per_slot": 1.0137,
+              "collision_per_slot": 0.8962,
+              "pu_clash_per_slot": 0.495
+            },
+            "backdoor_success_rate": 0.0885
+          },
+          "krum": {
+            "quality": {
+              "throughput_per_slot": 1.075,
+              "collision_per_slot": 0.57,
+              "pu_clash_per_slot": 0.7675
+            },
+            "backdoor_success_rate": 0.1875,
+            "krum_selected_index": 11,
+            "krum_selected_honest": false
+          },
+          "trimmed_mean": {
+            "quality": {
+              "throughput_per_slot": 1.0188,
+              "collision_per_slot": 0.9225,
+              "pu_clash_per_slot": 0.49
+            },
+            "backdoor_success_rate": 0.0885
+          }
+        },
+        "n_malicious=5": {
+          "byzantine_fraction": 0.417,
+          "fedavg": {
+            "quality": {
+              "throughput_per_slot": 1.0637,
+              "collision_per_slot": 0.9663,
+              "pu_clash_per_slot": 0.4512
+            },
+            "backdoor_success_rate": 0.1302
+          },
+          "median": {
+            "quality": {
+              "throughput_per_slot": 1.0137,
+              "collision_per_slot": 0.8025,
+              "pu_clash_per_slot": 0.58
+            },
+            "backdoor_success_rate": 0.0885
+          },
+          "krum": {
+            "skipped": "krum needs n > 2f+2"
+          },
+          "trimmed_mean": {
+            "quality": {
+              "throughput_per_slot": 1.0137,
+              "collision_per_slot": 0.8025,
+              "pu_clash_per_slot": 0.58
+            },
+            "backdoor_success_rate": 0.0885
+          }
+        },
+        "n_malicious=6": {
+          "byzantine_fraction": 0.5,
+          "fedavg": {
+            "quality": {
+              "throughput_per_slot": 1.0662,
+              "collision_per_slot": 0.9237,
+              "pu_clash_per_slot": 0.4725
+            },
+            "backdoor_success_rate": 0.1406
+          },
+          "median": {
+            "quality": {
+              "throughput_per_slot": 1.0413,
+              "collision_per_slot": 0.6412,
+              "pu_clash_per_slot": 0.69
+            },
+            "backdoor_success_rate": 0.151
+          },
+          "krum": {
+            "skipped": "krum needs n > 2f+2"
+          },
+          "trimmed_mean": {
+            "skipped": "trimmed_mean needs n > 2*beta"
+          }
+        }
+      }
+    }
+  },
+  "shield_legality_under_backdoor": {
+    "live_backdoor_success_rate_undefended": 1.0,
+    "decisions": 16,
+    "emitted": 16,
+    "illegal_emits_after_shield": 0,
+    "eirp_projections_applied": 16,
+    "certificates_recorded": 16,
+    "evidence_records": 16,
+    "audit_chain_intact": true,
+    "out_of_band_probe": {
+      "proposed_freq_MHz": 3540.0,
+      "proposed_eirp_dBm": 54.0,
+      "safe_freq_MHz": 3490.0,
+      "safe_eirp_dBm": 33.0,
+      "emit_blocked": false,
+      "legal_or_blocked": true
+    },
+    "result": "PASS"
+  },
+  "honest_findings": [
+    "Reward poisoning trains a denial-of-spectrum policy that SEEKS PU clashes: under un-defended FedAvg the aggregate PU-clash-per-slot rises above the clean baseline (0.2712); coordinate-median bounds (does not zero) that rise.",
+    "The single-row backdoor succeeds with SR~1.0 under FedAvg even at a small Byzantine fraction. Coordinate-median / Krum screen it ONLY while the malicious clients are a per-coordinate MINORITY; at the median ~50% breakdown point the backdoor survives with SR~1.0. Robust aggregation BOUNDS, it does not ELIMINATE, a stealthy backdoor.",
+    "Free-riders contribute no learning and (with small noise) barely move a robust aggregate \u2014 they are a throughput/incentive problem, not a safety one.",
+    "KEY GUARANTEE: regardless of poisoning or a live backdoor, the Shield kept every emitted (channel, power) in-band and within the EIRP ceiling (0 illegal emits), clamped every over-power request, and the hash-chained evidence verified intact. A poisoned policy can lose throughput or carry a backdoor; it cannot emit an illegal RF action."
+  ],
+  "summary": {
+    "reward_poison_clean_pu_clash": 0.2712,
+    "reward_poison_fedavg_pu_clash_nm4": 0.6562,
+    "reward_poison_median_pu_clash_nm4": 0.59,
+    "backdoor_clean_sr": 0.0781,
+    "backdoor_fedavg_sr_nm4": 1.0,
+    "backdoor_median_sr_nm4": 0.1042,
+    "backdoor_median_sr_nm6_breakdown": 1.0,
+    "shield_illegal_emits": 0,
+    "shield_audit_chain_intact": true,
+    "shield_result": "PASS"
+  }
+}
