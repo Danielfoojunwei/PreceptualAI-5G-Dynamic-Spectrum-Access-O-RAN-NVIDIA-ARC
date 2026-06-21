@@ -53,7 +53,7 @@ Annex III §2 covers AI systems "intended to be used as safety components in the
 - Horizon-RIC emits A1 *intents* (`src/horizon_ric/rapp/a1_adapter.py:190`, `emit_policy`). It does not directly drive the gNB or UPF.
 - The Near-RT RIC and gNB enforce their own safety bounds on top of any A1 intent.
 - Emergency call dispatch (E.164 / E.112) is handled by the operator's IMS / E-CSCF, not by Horizon-RIC.
-- Hard regulatory constraints (LI, EPFD, ITU-R spectrum masks) are enforced **before** A1 emit by the constraint layer (`src/horizon_ric/policy/li_constraint.py`, `src/horizon_ric/planner/physics/epfd.py`, `src/horizon_ric/planner/physics/s1428.py`). These are hard rejections, not soft penalties (`policy/li_constraint.py:30-34, 100`).
+- Hard regulatory constraints (LI, PFD/EIRP ceilings, spectral masks) are enforced **before** A1 emit by the constraint layer (`src/horizon_ric/policy/li_constraint.py`) and the Shield invariants (`src/horizon_ric/shield/invariants.py`: `PfdCeilingInvariant`, `SpectralMaskInvariant`, `MaxEirpInvariant`). These are hard rejections, not soft penalties (`policy/li_constraint.py:30-34, 100`).
 
 **Conclusion:** Horizon-RIC operates on the **performance** side of telecoms management (RAN policy optimisation), not the **safety** side. It is therefore outside Annex III §2.
 
@@ -76,10 +76,10 @@ These documents constitute the iterative risk management process required by Art
 ### 4.2 Data governance (Art. 10)
 
 - Per-tenant evidence chain with explicit canonicalisation and tamper-evidence: `src/horizon_ric/evidence/store.py:106-142` (`verify`, `verify_tenant`)
-- TS 28.105 model cards with sha256 + size verification on every shipped checkpoint: `checkpoints/*.md`, validated by `tests/test_ts28105_model_card_emit.py`
+- TS 28.105 model cards emitted with sha256 verification: `src/horizon_ric/observability/model_card.py`, with model weights signed (RSA-PSS over weights‖manifest) by `src/horizon_ric/provenance/signing.py`
 - Decision-time provenance (`ModelVersions`): `src/horizon_ric/evidence/schema.py:18-30` records encoder / risk_heads / dyna / policy / constraint_layer / rapp version tags on every decision
 
-Training data provenance is captured in each model card (e.g. `checkpoints/jepa_encoder_v0.1.md`).
+Training data provenance is captured in the emitted model card (`src/horizon_ric/observability/model_card.py`).
 
 ### 4.3 Technical documentation (Art. 11, Annex IV)
 
@@ -88,7 +88,7 @@ The repository's MD documentation set provides the substantive content of an Ann
 - `docs/RESEARCH_ALIGNMENT.md` — system rationale and intended purpose
 - `PARADIGMS.md` — design patterns (paradigm H1 = counterfactual envelope)
 - `docs/EVALUATION_CRITERIA.md` — standards conformance and evaluation criteria
-- `docs/SLA.md`, `deploy/SLO.md` — reliability characteristics and service-level objectives
+- `deploy/SLO.md` — reliability characteristics and service-level objectives
 - `docs/RBAC.md` — security model
 - `docs/conformance/CONFORMANCE.md` — conformance report
 
@@ -115,7 +115,7 @@ Honest gap, see §5.2 below: the content is present but not yet tabulated to the
 
 ### 4.7 Accuracy, robustness and cybersecurity (Art. 15)
 
-- Accuracy claims documented and CI-tested: `docs/EVALUATION_CRITERIA.md`, plus model card metrics (e.g. `checkpoints/sla_head_v0.4_jepa.md`)
+- Accuracy claims documented and CI-tested: `docs/EVALUATION_CRITERIA.md`, plus model card metrics emitted by `src/horizon_ric/observability/model_card.py`
 - Cybersecurity controls aligned to O-RAN.WG11 §6 cipher allow-list: `src/horizon_ric/rapp/auth.py:34-38`, applied at lines 155-200
 - TLS-1.3 best-effort honest-failure logging: `auth.py:178-200` (we honestly log the OpenSSL TLS-1.3 limitation rather than silently degrade)
 - RBAC via Casbin: `src/horizon_ric/security/rbac.py`, `rbac_model.conf`, `rbac_policy.csv`
@@ -143,7 +143,7 @@ Honest enumeration of gaps that an operator's compliance officer should know abo
 
 ### 5.1 GPAI provider duties (Art. 53-55) — N/A by design
 
-Horizon-RIC ships task-specific models (`checkpoints/*.pt`): a JEPA encoder, an SLA risk head, a CfC cell, a TD-MPC value/policy. None of these are general-purpose AI models within the meaning of Art. 3(63) of the regulation. The thresholds in Art. 51 (10^25 FLOPs training compute) are several orders of magnitude above the training budget for these specialised heads.
+Horizon-RIC ships small task-specific numpy models: a neural receiver (`src/horizon_ric/phy/neural_rx.py`) and a federated tabular DSA Q-learning policy (`src/horizon_ric/spectrum/federated_q.py`). None of these are general-purpose AI models within the meaning of Art. 3(63) of the regulation. The thresholds in Art. 51 (10^25 FLOPs training compute) are several orders of magnitude above the training budget for these specialised models.
 
 **Disposition:** Not applicable. We are not a GPAI provider.
 

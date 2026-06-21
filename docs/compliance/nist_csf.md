@@ -32,7 +32,7 @@ Asset and risk inventory — the assets the system holds and the risks that appl
 
 | Sub-category | What it requires | Horizon-RIC mapping | Gap |
 |---|---|---|---|
-| **ID.AM-02** Software assets (e.g. applications, services) and systems are inventoried | Software inventory | `deploy/sbom/horizon-ric-sbom.json` (CycloneDX 1.5 — every dependency with version, licence, hash); `pyproject.toml` (top-level deps); `checkpoints/*.md` (model assets with sha256 + size) | None |
+| **ID.AM-02** Software assets (e.g. applications, services) and systems are inventoried | Software inventory | `deploy/sbom/horizon-ric-sbom.json` (CycloneDX 1.5 — every dependency with version, licence, hash); `pyproject.toml` (top-level deps) | None |
 | **ID.AM-05** Resources are prioritised based on classification, criticality, resources, and impact on the mission | Asset criticality classification | `docs/conformance/CONFORMANCE.md` (per-spec status with ✅/⚠️/🟡/❌); `deploy/SLO.md` (SLO classes) | Operator-side classification not vendor-provided |
 | **ID.RA-01** Vulnerabilities in assets are identified, validated, and recorded | Vulnerability inventory | CI dependency-scan via SBOM; `AUDIT_NO_FAKES.md` (runtime vulnerability — fakes that masquerade as real implementations); `DEAD_CODE_SWEEP.md` | NOT YET — automated CVE feed integration planned in Phase 3 |
 | **ID.RA-09** The authenticity and integrity of hardware and software is assessed prior to acquisition and use | Image signing verification | `deploy/cosign/cosign.pub` (verifying public key); release pipeline signs every image | None |

@@ -28,22 +28,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-# The set of card names we ship today. Any new model added to ``checkpoints/``
-# must have an entry here OR call ``compose_canonical_block`` directly with
-# explicit values — silent defaults are forbidden by Finding #3.
+# The set of card names this rApp ships today. Any new model must have an entry
+# here OR call ``compose_canonical_block`` directly with explicit values —
+# silent defaults are forbidden by Finding #3.
 _INFERENCE_TYPE_REGISTRY: dict[str, str] = {
     # Real-time = invoked on the per-decision control loop (≤ 50 ms budget).
-    "sla_head": "real-time",
-    "latent_dynamics": "real-time",
-    "jepa_encoder": "real-time",
-    "cfc_cell": "real-time",
-    "liquid_s4": "real-time",
-    "physics_residual": "real-time",
-    "tdmpc_value": "real-time",
-    "tdmpc_policy_prior": "real-time",
-    # Batch = trajectory-level rollouts and offline planner work.
-    "tdmpc_planner": "batch",
-    "dynamics_rollout": "batch",
+    "neural_rx": "real-time",  # numpy neural receiver (phy/neural_rx.py)
+    "dsa_policy": "real-time",  # federated tabular DSA Q-policy (spectrum/federated_q.py)
 }
 
 _DEFAULT_RUNTIME_CONTEXT: str = (
@@ -133,7 +124,7 @@ def default_training_corpus_paths() -> list[Path]:
     """The canonical set of training-corpus roots Horizon-RIC ships against.
 
     These paths are repo-relative anchors of the real corpora that the
-    SLA head, JEPA encoder, and planner heads were trained on. They live
+    models this rApp ships were trained on. They live
     OUTSIDE the repo root for size reasons; the manifest hash captures
     presence/size/mtime so an auditor can verify continuity even if the
     bytes have been migrated.

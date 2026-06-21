@@ -61,7 +61,7 @@ No data is shared with the vendor (Horizon-RIC) in production. Telemetry remains
 ### 1.6 Retention (Art. 5(1)(e))
 
 - DecisionRecord audit chain: retention is operator-configured. Recommended floor: the longer of (a) the operator's regulatory log retention (typically 6-24 months) and (b) the SLA dispute window (typically 90 days). See risk #2 in §3.
-- Model checkpoints (`checkpoints/*.pt`): retained for the lifetime of the deployment plus the longest in-flight A1 policy lifetime (so an audit can re-instantiate the model that produced any historical decision).
+- Model weights and their signed provenance records (`src/horizon_ric/provenance/signing.py`): retained for the lifetime of the deployment plus the longest in-flight A1 policy lifetime (so an audit can re-instantiate the model that produced any historical decision).
 - Telemetry caches (Redis / in-memory): minutes to hours, no persistence by default.
 
 ## 2. Necessity and proportionality (Art. 35(7)(b))
@@ -133,7 +133,7 @@ The combinations are listed from least to most identifiable. The naming conventi
 **Identifiability:** Increasingly identifying as the time window narrows. A 5-minute window of `(cell_id, slice_id, time)` narrows the anonymity set further — for a sparse slice in a sparse cell during a quiet hour, fewer than 10 subscribers may have been served.
 
 **Mitigation in our codebase:**
-- Time windows in our audit chain are decision-grain (~1s decision cadence per `core/timing_budgets.py`). We do not retain per-second per-(cell, slice) subscriber counts in the audit chain — we retain per-decision aggregates.
+- Time windows in our audit chain are decision-grain (~1s decision cadence). We do not retain per-second per-(cell, slice) subscriber counts in the audit chain — we retain per-decision aggregates.
 - The retention policy (DPIA §1.6, recommended ≥6 months under operator control) applies; old narrow-window aggregates are archived/deleted at the retention horizon under the operator's WORM policy.
 
 #### 3.5.4 `(cell_id + slice_id + RNTI)` — UNIQUE per-second per UE → IDENTIFIABLE
@@ -168,9 +168,9 @@ The operator's controller-side responsibility under Recital 26 remains to assess
 
 ### Risk 4 — Model card data lineage
 
-**Risk:** The model cards (`checkpoints/*.md`) declare training datasets but, if the operator brings their own training corpus and the vendor's corpus claim is stale, the lineage record may not match reality.
+**Risk:** The emitted model cards (`src/horizon_ric/observability/model_card.py`) declare training datasets but, if the operator brings their own training corpus and the vendor's corpus claim is stale, the lineage record may not match reality.
 
-**Likelihood:** Low — CI gate (`tests/test_ts28105_model_card_emit.py`) checks sha256+size match, but does not guarantee the human-readable dataset description is accurate.
+**Likelihood:** Low — provenance signing (`src/horizon_ric/provenance/signing.py`) binds weights to a training manifest, but does not guarantee the human-readable dataset description is accurate.
 **Severity:** Moderate — undermines an auditor's ability to verify training data fairness / bias.
 
 ## 4. Mitigations (Art. 35(7)(d))
@@ -197,8 +197,8 @@ The operator's controller-side responsibility under Recital 26 remains to assess
 
 ### Mitigation for Risk 4 — Model card data lineage
 
-- Each `checkpoints/<model>.md` records `sha256`, file size, training corpus, and training metrics (validated by `tests/test_ts28105_model_card_emit.py`).
-- Provenance at decision time: `ModelVersions` (`evidence/schema.py:18-30`) is persisted on every DecisionRecord, so an auditor can reproduce which checkpoint produced any decision.
+- Each emitted model card (`src/horizon_ric/observability/model_card.py`) records `sha256`, training corpus, and training metrics; model lineage is signed via `src/horizon_ric/provenance/signing.py` and surfaced through `src/horizon_ric/evidence/ai_phy_lineage.py`.
+- Provenance at decision time: `ModelVersions` (`evidence/schema.py:18-30`) is persisted on every DecisionRecord, so an auditor can reproduce which model produced any decision.
 - Operator-side recommendation: when the operator brings their own training corpus, they must re-issue the model card with corrected lineage. There is no automatic propagation today. **NOT YET — planned in Phase 2**: a CI hook that fails the build if a model card's training-corpus block is empty or the `dataset_sha256` is missing.
 
 ## 5. DPO consultation record (Art. 35(2)) — operator-side template

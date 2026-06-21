@@ -12,7 +12,7 @@
 
 ## 1. What the counterfactual envelope is
 
-For every A1 policy decision the rApp emits, the evidence chain stores not only the chosen action but also the **top-K rejected alternatives** that the planner considered. Each rejected alternative carries a structured rejection reason, a predicted outcome envelope, and a human-readable explanation. This is paradigm H1 in `PARADIGMS.md`; the schema is at `src/horizon_ric/evidence/schema.py:67-74` (`RejectedAlternative`).
+For every A1 policy decision the rApp emits, the evidence chain stores not only the chosen action but also the **top-K rejected alternatives** that the policy considered. Each rejected alternative carries a structured rejection reason, a predicted outcome envelope, and a human-readable explanation. The schema is at `src/horizon_ric/evidence/schema.py:67-74` (`RejectedAlternative`).
 
 The counterfactual envelope answers three questions an operator and a regulator need to be able to answer about any automated RAN decision:
 
@@ -46,11 +46,11 @@ The rejection reason is a `RejectionReasonMachine` (`evidence/schema.py:47-65`).
 |---|---|
 | `primary_cause` | One of the nine canonical causes (see §4) |
 | `primary_metric` | The specific KPI or counter that triggered (e.g. `gateway_load_G3`, `compute_cpu_edge_5`) |
-| `predicted_value` | The forward-simulated value the planner predicted for this alternative |
+| `predicted_value` | The forward-simulated value the policy predicted for this alternative |
 | `threshold` | The threshold the value would have crossed |
 | `horizon` | One of `30s`, `60s`, `300s` — the prediction horizon |
 
-To interpret: the alternative was rejected because, at horizon `H`, the planner predicted that `primary_metric` would reach `predicted_value`, which crosses the operator-configured `threshold` for that `primary_cause`.
+To interpret: the alternative was rejected because, at horizon `H`, the policy predicted that `primary_metric` would reach `predicted_value`, which crosses the operator-configured `threshold` for that `primary_cause`.
 
 ## 4. The nine canonical rejection causes
 
@@ -132,8 +132,8 @@ Below is a synthetic but representative DecisionRecord drawn from the schema in 
   ],
   "constraint_corrections": [],
   "model_versions": {
-    "encoder": "jepa_v0.1", "risk_heads": "sla_v0.4_jepa",
-    "dyna": "latent_v0.1", "policy": "tdmpc_v0.1",
+    "encoder": "neural_rx_v1", "risk_heads": "n/a",
+    "dyna": "n/a", "policy": "dsa_q_v1",
     "constraint_layer": "v0.2.0", "rapp": "0.2.0"
   },
   "operator_override": false,
@@ -188,7 +188,7 @@ Handler at `src/horizon_ric/rapp/api_v1.py:340-347`. Returns the full DecisionRe
 
 ### 7.3 Reproduce the predicted outcomes
 
-Using `model_versions.encoder`, `model_versions.risk_heads`, etc., the auditor can match the corresponding `checkpoints/<model>_v<version>.pt` artefact (with sha256 verified against the `checkpoints/<model>_v<version>.md` model card per `tests/test_ts28105_model_card_emit.py`). Replaying the encoder + risk heads on the input state reproduces the predicted outcome envelope.
+Using `model_versions.encoder`, `model_versions.risk_heads`, etc., the auditor can match the recorded versions against the signed model provenance (`src/horizon_ric/provenance/signing.py`) and the model-card lineage (`src/horizon_ric/observability/model_card.py`). Replaying the recorded model versions on the input state reproduces the predicted outcome envelope.
 
 The input state is referenced by `state_hash` (`evidence/schema.py:107`) and optionally by `state_blob_uri` (line 108) — the operator's object-store URI of the full `z_resource` snapshot.
 

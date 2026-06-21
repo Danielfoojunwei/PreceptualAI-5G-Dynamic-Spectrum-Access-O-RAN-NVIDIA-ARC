@@ -248,8 +248,9 @@ HORIZON_OSC_A1PMS_URL=http://127.0.0.1:18081 \
 ```
 
 Result: **E2E PASS — all 5 stages green** (telemetry source/sink,
-physics pack, encoder, planner+constraint projection, A1 emit + audit
-+ status + rollback over the live OSC dialect).
+Shield invariant projection (spectral-mask / EIRP / PFD), lawful-intercept
+constraint, A1 emit + tamper-evident audit + status + rollback over the
+live OSC dialect).
 
 Live HTTP exchanges captured by the run (status codes + URL paths):
 

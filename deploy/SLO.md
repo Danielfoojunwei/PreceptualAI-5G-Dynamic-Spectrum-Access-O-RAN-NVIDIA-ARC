@@ -67,13 +67,9 @@ spec change.
 Rows 2a / 2b above replace an earlier 8 ms p99 edge target. The 8 ms
 figure came from an isolated quantised-kernel micro-benchmark and
 did not include the audit-append + telemetry-event marshaling the
-production path walks. The real measurement
-(`deploy/EDGE_BENCHMARK_PROOF.md`, 10 000 decisions on aarch64
-GB10): p99 = **48.441 ms** on GB10, projected **145.323 ms** on
-Orin Nano (×3 scaling). Budgets in `core/timing_budgets.py`
-(`EDGE_P99_BUDGET_MS_GB10`, `EDGE_P99_BUDGET_MS_ORIN_NANO`) and the
-"Edge p99 latency budget" rows of this document are the
-authoritative numbers.
+production path walks. The authoritative edge-latency numbers are the
+rows 2a–2d of this document; the constrained-Orin envelope is
+substantiated by `deploy/ORIN_CONSTRAINED_SOAK_PROOF.md`.
 
 ## DNS caching
 

@@ -58,6 +58,4 @@ The same plug-in convention is used for:
 | group                       | registry                                                |
 | --------------------------- | ------------------------------------------------------- |
 | `horizon_ric.connectors`    | `horizon_ric.io.registry`                               |
-| `horizon_ric.encoders`      | `horizon_ric.core.encoder_registry`                     |
-| `horizon_ric.verifiers`     | `horizon_ric.policy.verifier_registry`                  |
 | `horizon_ric.guards`        | `horizon_ric.policy.guard_registry`                     |

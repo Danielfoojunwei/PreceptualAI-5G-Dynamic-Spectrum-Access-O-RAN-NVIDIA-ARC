@@ -129,5 +129,5 @@ sha256sum deploy/cosign/cosign.pub
 | ---------------------------------------- | ------------------------------------------------------ |
 | O-RAN.WG11 §6 supply-chain integrity     | Image signature + SBOM attached as cosign attestation. |
 | SLSA L3 (build provenance)               | `cosign attest --predicate slsa-provenance.json …`     |
-| 3GPP TS 28.105 §5 trustworthy AI/ML lifecycle | Each model card includes `sha256` matched to artifact (see `tests/test_ts28105_model_card_emit.py`). |
+| 3GPP TS 28.105 §5 trustworthy AI/ML lifecycle | Each model card includes `sha256` matched to artifact (`src/horizon_ric/observability/model_card.py`). |
 | NIST SP 800-204D supply-chain hygiene    | KMS-backed signing key (no private material at rest).   |

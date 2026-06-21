@@ -27,7 +27,7 @@ chain break **always** promotes to Sev1 and pivots to
 | `/healthz` 503 watcher                                    | `src/horizon_ric/rapp/health.py:122` — body names failed check  |
 | Customer page                                             | `customer_escalation.md` triage flow                            |
 | Audit-chain break                                         | `EvidenceStore.verify()` returns False — Sev1 immediate         |
-| FL non-convergence / drift                                | `horizon_drift_fired_total` > 0 — `fl_convergence_failure.md`   |
+| FL non-convergence / drift                                | `horizon_drift_fired_total` > 0 — escalate per `customer_escalation.md` |
 
 ```sh
 NS=${HORIZON_NS:-horizon}
@@ -74,9 +74,6 @@ Page received
 ├─ Source = HorizonAuditChainBroken / EvidenceStore.verify()=False
 │   └─ security_incident.md Sev1 step 4 (do NOT investigate; isolate first)
 │
-├─ Source = HorizonFLNonConverging / horizon_drift_fired_total > 0 sustained
-│   └─ fl_convergence_failure.md
-│
 ├─ Source = horizon_cert_expiry_days < 7
 │   └─ cert_rotation.md (the cert that fired is named in the alert label)
 │
@@ -90,8 +87,9 @@ The single goal of the 15-minute window is to put the rApp into a
 **known** state — RUNNING, DEGRADED (safe), or quarantined for
 forensics. Pick **one** of:
 
-1. **Roll the pod** if `/healthz` reports `planner_idle` (planner-task
-   heartbeat stale), per `src/horizon_ric/rapp/health.py:130-133`:
+1. **Roll the pod** if `/healthz` reports `watchdog_stale` (the
+   loop/watchdog heartbeat is stale), per
+   `src/horizon_ric/rapp/health.py:130-133`:
 
    ```sh
    kubectl -n horizon rollout restart deployment/horizon-rapp
@@ -102,8 +100,9 @@ forensics. Pick **one** of:
 3. **Quarantine** if any audit-chain check returned False —
    `security_incident.md` Sev1 steps 2–3.
 
-Do NOT roll on `watchdog_stale` alone — it normally clears within
-`DEFAULT_WATCHDOG_INTERVAL_S` (`src/horizon_ric/runtime/watchdog.py`).
+Do NOT roll on `loop_lag_high` alone — transient loop lag normally
+clears within `DEFAULT_WATCHDOG_INTERVAL_S`
+(`src/horizon_ric/runtime/watchdog.py`).
 
 ## Recovery (60 min) — back to RUNNING
 
@@ -160,7 +159,7 @@ Post once per status transition, plus every 30 min while open.
 - `src/horizon_ric/rapp/health.py:172` — `/metrics`
 - `src/horizon_ric/rapp/lifecycle.py:42` — `RAppState`
 - Sister runbooks: `customer_escalation.md`, `security_incident.md`,
-  `cert_rotation.md`, `fl_convergence_failure.md`
+  `cert_rotation.md`
 
 ## Schedule
 

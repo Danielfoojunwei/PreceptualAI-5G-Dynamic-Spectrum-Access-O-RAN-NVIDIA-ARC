@@ -154,7 +154,7 @@ SLA credit calculation will follow the post-mortem.
 ```
 
 If the breach exceeded contractual SLA, a credit calculation is mandatory
-(see `docs/SLA.md`) and is attached to the post-mortem.
+(per the SLO targets in `deploy/SLO.md`) and is attached to the post-mortem.
 
 ## Customer-side runbook excerpts
 
@@ -202,10 +202,10 @@ next region per `oncall.md`.
 
 1. **If `/healthz` 503 sustained** (`src/horizon_ric/rapp/health.py:122`):
    the liveness registry has a failed signal. Pull the structured body —
-   it names the failed check (`watchdog_stale`, `loop_lag`, `planner_idle`)
+   it names the failed check (`watchdog_stale`, `loop_lag_high`)
    per `src/horizon_ric/rapp/health.py:130-133`. Roll the pod **only** if
-   `planner_idle` (the planner-task heartbeat) — the other two recover
-   when the asyncio loop unwedges.
+   `watchdog_stale` (the loop/watchdog heartbeat is stale) — `loop_lag_high`
+   recovers when the asyncio loop unwedges.
 2. **If A1 emit failure burst** — the breaker is OPEN. Confirm with
    `curl /metrics | grep horizon_a1_policies_rolled_back_total` and
    compare to emitted total. Engage A1 dry-run if the upstream Near-RT

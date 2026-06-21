@@ -63,7 +63,7 @@ Status legend:
 
 | Subsection | Requirement | Status | Reference |
 | --- | --- | --- | --- |
-| §7 model description card | name/version/training_data/metrics/sha256 | ✅ | `checkpoints/*.md` (canonical block), `tests/test_ts28105_model_card_emit.py` |
+| §7 model description card | name/version/training_data/metrics/sha256 | ✅ | `src/horizon_ric/observability/model_card.py` |
 | §8 inference reporting | DecisionRecord schema (TS 28.105 §7.4) | ✅ | `src/horizon_ric/evidence/schema.py` (`DecisionRecord`) |
 | §9 lifecycle | training / serving separation, version tracking | ✅ | `src/horizon_ric/evidence/schema.py` (`ModelVersions`) |
 
@@ -86,22 +86,6 @@ Status legend:
 | §6.3.5 Energy KWh per decision | ✅ | `src/horizon_ric/evidence/schema.py` (`PredictedOutcome.energy_kwh`) |
 | §6.4 SLA-policy associations | ✅ | `src/horizon_ric/sla/policy.py` |
 
-## ITU-R Propagation
-
-| Recommendation | Status | Reference |
-| --- | --- | --- |
-| ITU-R P.525-4 (free-space path loss) | ✅ | `src/horizon_ric/planner/physics/propagation.py:53` (`free_space_path_loss_dB`) |
-| ITU-R P.676-13 (gas attenuation, Annex 2) | ✅ | `src/horizon_ric/planner/physics/propagation.py:95` (`gas_attenuation_dB`) |
-| ITU-R P.838-3 (rain k/α) | ✅ | `src/horizon_ric/planner/physics/propagation.py:151` (`rain_attenuation_dB`), Table 1 in `_itu_tables.py` |
-| ITU-R P.618-13 (slant-path) | ✅ | `src/horizon_ric/planner/physics/propagation.py` (path-length reduction in `rain_attenuation_dB`) |
-
-## ITU-R Spectrum / NGSO
-
-| Recommendation | Status | Reference |
-| --- | --- | --- |
-| ITU-R S.1428-1 (ES antenna mask) | ✅ | `src/horizon_ric/planner/physics/s1428.py` |
-| ITU-R S.1503-3 (EPFD aggregation) | ✅ | `src/horizon_ric/planner/physics/epfd.py` (Annex 1 Eq. (1) at line 91) |
-
 ## TM Forum ODA / Open APIs
 
 | Spec | Status | Reference |
@@ -121,7 +105,6 @@ These claims are gated by CI:
 | --- | --- | --- |
 | Unit + integration tests | `.github/workflows/test.yml` | `pytest tests/` green |
 | OpenAPI spec validity | `tests/test_conformance.py::test_openapi_spec_is_valid_3_1` | OpenAPI 3.1, BearerJWT scheme present |
-| TS 28.105 cards | `tests/test_ts28105_model_card_emit.py` | sha256 + size match every shipped checkpoint |
 | Prom metric naming | `tests/test_conformance.py::test_prometheus_metric_naming_convention` | `<namespace>_<subsystem>_<name>_<unit>` |
 | SBOM validity | `deploy/sbom/validate_sbom.py` (run in `.github/workflows/sbom.yml`) | CycloneDX 1.5 strict schema |
 | Image signing | `.github/workflows/build.yml` | `cosign sign --key …` on every release tag |

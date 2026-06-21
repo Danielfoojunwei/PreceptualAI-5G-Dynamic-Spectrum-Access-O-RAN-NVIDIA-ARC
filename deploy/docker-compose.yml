@@ -42,30 +42,6 @@ services:
     networks:
       - horizon-net
 
-  horizon-edge-agent:
-    image: horizonric/edge:0.2.0
-    build:
-      context: ..
-      dockerfile: deploy/docker/Dockerfile.edge
-      args:
-        GIT_SHA: ${GIT_SHA:-dev}
-        VERSION: ${HORIZON_VERSION:-0.2.0}
-    container_name: horizon-edge-agent
-    restart: unless-stopped
-    environment:
-      HORIZON_HEAD_CKPT: /opt/horizon/checkpoints/sla_head_v0.4_jepa.pt
-    # Edge agent reads stdin, so default it to a stub feed for demo. In a
-    # real Jetson deployment this would be replaced by a stream from the
-    # local KPI collector.
-    command: ["--latent-dim", "128", "--max-iterations", "5"]
-    stdin_open: true
-    tty: false
-    networks:
-      - horizon-net
-    depends_on:
-      horizon-rapp:
-        condition: service_healthy
-
   prometheus:
     image: prom/prometheus:latest
     container_name: horizon-prometheus

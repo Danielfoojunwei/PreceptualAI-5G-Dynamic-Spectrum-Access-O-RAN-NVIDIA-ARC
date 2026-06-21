@@ -152,12 +152,9 @@ billing and audit isolation is enforced through:
 
 ## 7. Honest blockers
 
-  * **Ericsson EIAP**: the full EIAP rApp SDK reference and the
-    Ericsson Marketplace listing template require an Ericsson Developer
-    Hub login. The dialect implementation, the marketplace YAML, and
-    these tests pin the **publicly-documented** portion of the contract.
-    Closed fields are clearly noted in the YAML and filled in through
-    the partner portal at submission time.
+  * **Ericsson EIAP**: the full EIAP rApp SDK reference requires an
+    Ericsson Developer Hub login. The dialect implementation and these
+    tests pin the **publicly-documented** portion of the contract.
   * **Nokia MantaRay**: same caveat — the full MantaRay administrator
     guide and DAC listing schema live behind a Nokia partner portal
     login. The MantaRay dialect honours the public SDN-R URL surface
@@ -168,6 +165,6 @@ billing and audit isolation is enforced through:
 
 In all three cases Horizon-RIC's payloads are validated against the
 public surface; a real partner integration replaces the mock transport
-with the vendor's live endpoint and (for the marketplace listings) adds
-the partner-portal-only fields. None of those replacements requires a
-code change in Horizon-RIC itself — the dialect switch is the seam.
+with the vendor's live endpoint and adds the partner-portal-only
+fields. None of those replacements requires a code change in
+Horizon-RIC itself — the dialect switch is the seam.
