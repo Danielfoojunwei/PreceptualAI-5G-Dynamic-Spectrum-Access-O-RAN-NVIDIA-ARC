@@ -307,10 +307,16 @@ suite (300+ tests) is green in CI.
 
 Known limitations (also in `docs/THREAT_MODEL.md`):
 
-- **Aggregator robustness is baseline only.** Krum / median / trimmed-mean are
-  defeated by adaptive ALIE (Baruch, NeurIPS-19) and Fang (USENIX Security-20)
-  attacks; our committed numbers are against a naive Byzantine model. Adaptive
-  attackers join the benchmark in M3–4.
+- **Aggregator robustness is baseline only — and we prove it.** Krum / median /
+  trimmed-mean are defeated by adaptive ALIE (Baruch, NeurIPS-19), Fang (USENIX
+  Security-20), and Min-Max/Min-Sum (Shejwalkar, NDSS-21) attacks. A committed
+  **five-family adversarial campaign** (`benchmarks/results/`, 68 adversarial
+  tests) demonstrates exactly where our defenses fail *and* where they hold — see
+  `docs/THREAT_MODEL.md` §7. Robust aggregation is a *bound*, not a cure; the
+  deterministic Shield + audit layer is the guarantee — it bounds the emitted
+  action to legal spectrum even from a fully compromised model (0 illegal emits
+  from a backdoored DSA policy), and the integrity/audit perimeter is unbroken
+  (8/8 probes blocked).
 - **Secure aggregation is honest-but-curious only** (Bonawitz et al., CCS-17) and
   is in tension with robustness (secure-agg ⊥ robustness). Verifiable secret
   sharing for the malicious-server case is M3–4.

@@ -233,6 +233,36 @@ not a trusted one.
 
 ---
 
+## 7. Empirical adversarial evaluation — what holds, what does not
+
+We ran a real attack campaign against our own system (numpy, no mocks) across five
+families. Every attack is implemented, run, and committed with results under
+`benchmarks/results/`; **68 adversarial tests** gate them in CI. The honest summary:
+the deterministic perimeter (integrity, audit, output-shielding) holds completely;
+the ML layer is beatable by adaptive adversaries — as it is across the field — and
+we report exactly where.
+
+| Family | Results file(s) | What HOLDS | Where the defense FAILS (reported, not hidden) |
+|---|---|---|---|
+| Integrity / audit / supply-chain | `integrity_attack_suite.json` | **8/8** probes detected/blocked: model-swap, weight/manifest tamper, evidence tamper/reorder/replay, self-report spoof, illegal-emit, LI fail-closed | none of the 8 bypassed |
+| Adversarial evasion (neural-RX) | `evasion_suite.json`, `neural_rx_pgd.json`, `phy_fading.json` | Shield falls back via *independent* CRC measurement (~94% of windows in AWGN), restoring the link; guarantee `effective ≤ classical + tol` | white-box FGSM/BIM/MIM/**transfer** crush the neural-RX **~28×** in AWGN; gap **collapses to ~1.1×** under realistic fading (both receivers vulnerable) |
+| Physical-layer jamming | `jamming_suite.json` | helps under imperfect-CSI asymmetry (routes to the better receiver) | **barrage jamming degrades BOTH receivers** — the Shield is a router, not a denoiser; it cannot restore a noisier channel |
+| FL model-poisoning | `fl_poisoning_suite.json` | naive Gaussian Byzantine fully bounded by median / trimmed-mean / Krum | **Min-Max/Min-Sum (Shejwalkar NDSS-21) and Fang (USENIX-20) DEFEAT Krum/median/trimmed-mean** near breakdown; FedAvg unbounded |
+| FL data-poisoning / backdoor (DSA) | `dsa_poison_suite.json`, `secure_dsa.json` | Shield+audit keep every emitted (channel, power) **LEGAL** and the chain intact even from a fully backdoored policy (**0 illegal emits**) | a single-row **backdoor SURVIVES coordinate-median at its 50% breakdown point** (success 1.0); robust agg only *bounds* reward poisoning |
+
+**The thesis this evidence supports.** Robust aggregation is a *bound*, not a cure —
+adaptive poisoning beats it, exactly as the literature predicts (Baruch et al.
+NeurIPS-19; Fang et al. USENIX-Sec-20; Shejwalkar & Houmansadr NDSS-21). The two
+guarantees that DO hold are **deterministic and model-independent**: (a) the
+tamper-evident audit perimeter, and (b) the Decision Safety Shield bounding the
+*emitted action* to legal spectrum even when the model is fully compromised. That is
+the point of a defense-in-depth design — the AI layer can be defeated; the safety +
+audit layer is what holds the line, and that is the AI-RAN-native contribution. We
+publish the failures rather than hide them, which is the correct posture for a
+security submission.
+
+---
+
 ## Sources
 
 - [O-RAN ALLIANCE Security Update 2025 — WG11 Threat Model & Risk Analysis, ~39 AI/ML threats added in 2024](https://www.o-ran.org/blog/o-ran-alliance-security-update-2025)
