@@ -38,7 +38,6 @@ from horizon_ric.security.rbac import (  # noqa: E402
     Casbin,
 )
 
-
 app = typer.Typer(help="PreceptualAI security admin CLI", no_args_is_help=True)
 user_app = typer.Typer(help="User ↔ role bindings", no_args_is_help=True)
 token_app = typer.Typer(help="JWT mint / verify", no_args_is_help=True)
