@@ -1,0 +1,69 @@
+{
+  "combinations": [
+    {
+      "aggregator": "fedavg",
+      "attack": "none",
+      "label": "honest"
+    },
+    {
+      "aggregator": "krum",
+      "attack": "none",
+      "label": "honest"
+    },
+    {
+      "aggregator": "fedavg",
+      "attack": "qtable_target",
+      "label": "poisoned_undefended"
+    },
+    {
+      "aggregator": "median",
+      "attack": "qtable_target",
+      "label": "poisoned_defended"
+    },
+    {
+      "aggregator": "krum",
+      "attack": "qtable_target",
+      "label": "poisoned_defended"
+    },
+    {
+      "aggregator": "fedavg",
+      "attack": "alie",
+      "label": "poisoned_undefended"
+    },
+    {
+      "aggregator": "median",
+      "attack": "alie",
+      "label": "poisoned_defended"
+    },
+    {
+      "aggregator": "krum",
+      "attack": "fang_krum",
+      "label": "poisoned_defended"
+    },
+    {
+      "aggregator": "median",
+      "attack": "fang_median",
+      "label": "poisoned_defended"
+    }
+  ],
+  "dataset": "horizon-ric-spectrum-dsa",
+  "decisions_per_round": 60,
+  "illegal_emits_after_shield": 0,
+  "labels": [
+    "honest",
+    "poisoned_defended",
+    "poisoned_undefended"
+  ],
+  "license": "Apache-2.0",
+  "n_channels": 6,
+  "n_clients": 12,
+  "n_malicious": 3,
+  "n_users": 3,
+  "round_seeds": [
+    1,
+    2,
+    3
+  ],
+  "rows": 1620,
+  "version": "1.0.0"
+}
