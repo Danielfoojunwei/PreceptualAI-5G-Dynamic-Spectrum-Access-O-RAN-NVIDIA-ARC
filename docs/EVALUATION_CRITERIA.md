@@ -107,8 +107,8 @@ SER is ~22× the classical demapper's under attack, and the Shield's
 independent-measurement fallback cuts the block-error impact ~12×.
 
 Beyond these, a **five-family adversarial campaign** is committed (numpy, no mocks)
-with ten result files under `benchmarks/results/` and **75 adversarial tests** in
-CI: evasion (FGSM/BIM/MIM/transfer/boundary), physical-layer jamming +
+with thirteen result files under `benchmarks/results/` and **75 adversarial tests**
+in CI: evasion (FGSM/BIM/MIM/transfer/boundary), physical-layer jamming +
 imperfect-CSI, FL model-poisoning (sign-flip / scaling / Gaussian / Min-Max /
 Min-Sum / ALIE / Fang) against every aggregator, FL data-poisoning + backdoor on
 the DSA loop, and an integrity/audit/bypass battery. It reports honestly where our
@@ -119,7 +119,12 @@ legal spectrum even from a compromised model). See `docs/THREAT_MODEL.md` §7. T
 campaign now also *repairs* the worst FAIL: **certified federated unlearning**
 (`federated_unlearning_suite.json`) removes a backdoor an undefended aggregator let
 through (success 1.0 → 0.04) with a signed, audit-chainable certificate — bridging
-the NTU/DTC federated-unlearning research (`docs/THREAT_MODEL.md` §8).
+the NTU/DTC federated-unlearning research (`docs/THREAT_MODEL.md` §8). A further
+**privacy & erasure stack** (24 tests, 3 result files) closes the privacy face of
+the threat model (`docs/THREAT_MODEL.md` §9): DP-FedAvg with a real Rényi-DP
+accountant (membership-inference AUC 0.97→~0.5 as ε falls), verifiable two-server
+secure aggregation (malicious-server tamper/drop detection 1.0), and provable
+GDPR-Art.17 subject-level erasure — each grounded in a specific Lam et al. paper.
 
 **Self-score: Strong.** The benchmarks are real, committed, reproducible, and
 adversarially exhaustive — including attacks that defeat our own defenses, reported

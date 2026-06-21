@@ -1,0 +1,176 @@
+{
+  "setup": {
+    "scheme": "2-of-2 additive secret sharing + Feldman commitments",
+    "field_prime_bits": 2048,
+    "subgroup_order_bits": 2047,
+    "generator": 2,
+    "quant_scale": 65536,
+    "fixed_point_tolerance": 1.52587890625e-05,
+    "lineage": [
+      "Liu, Ye, Jiang, Shen, Guo, Tjuawinata & Lam, arXiv:2404.09724 (Starfish: two non-colluding servers, certified client removal)",
+      "Feldman, FOCS 1987 (non-interactive verifiable secret sharing)",
+      "RFC 3526 group 14 (2048-bit MODP safe prime)"
+    ],
+    "closes": "docs/THREAT_MODEL.md \u00a75 (secure aggregation is honest-but-curious only)"
+  },
+  "correctness": {
+    "cells": [
+      {
+        "n_clients": 2,
+        "dim": 1,
+        "max_abs_sum_err": 7.861641851070189e-06,
+        "max_abs_mean_err": 3.9308209255350945e-06,
+        "verified": true
+      },
+      {
+        "n_clients": 2,
+        "dim": 4,
+        "max_abs_sum_err": 9.140288548370457e-06,
+        "max_abs_mean_err": 4.570144274185228e-06,
+        "verified": true
+      },
+      {
+        "n_clients": 2,
+        "dim": 16,
+        "max_abs_sum_err": 1.2341985785369047e-05,
+        "max_abs_mean_err": 6.170992892684524e-06,
+        "verified": true
+      },
+      {
+        "n_clients": 5,
+        "dim": 1,
+        "max_abs_sum_err": 2.4548905817045608e-06,
+        "max_abs_mean_err": 4.909781163298099e-07,
+        "verified": true
+      },
+      {
+        "n_clients": 5,
+        "dim": 4,
+        "max_abs_sum_err": 1.1913093068693925e-05,
+        "max_abs_mean_err": 2.382618613738785e-06,
+        "verified": true
+      },
+      {
+        "n_clients": 5,
+        "dim": 16,
+        "max_abs_sum_err": 2.2402072458405087e-05,
+        "max_abs_mean_err": 4.48041449169212e-06,
+        "verified": true
+      },
+      {
+        "n_clients": 10,
+        "dim": 1,
+        "max_abs_sum_err": 9.087584254441339e-06,
+        "max_abs_mean_err": 9.087584254413583e-07,
+        "verified": true
+      },
+      {
+        "n_clients": 10,
+        "dim": 4,
+        "max_abs_sum_err": 2.3933211004800725e-05,
+        "max_abs_mean_err": 2.3933211004793786e-06,
+        "verified": true
+      },
+      {
+        "n_clients": 10,
+        "dim": 16,
+        "max_abs_sum_err": 2.9877773818909326e-05,
+        "max_abs_mean_err": 2.9877773818909326e-06,
+        "verified": true
+      }
+    ],
+    "max_abs_sum_err_overall": 2.9877773818909326e-05,
+    "max_abs_mean_err_overall": 6.170992892684524e-06,
+    "fixed_point_tolerance": 1.52587890625e-05,
+    "all_honest_aggregates_verified": true,
+    "note": "Error is pure deterministic fixed-point round-off (no statistical noise); it stays at the 1/QUANT_SCALE scale regardless of n or dim."
+  },
+  "privacy": {
+    "dim": 64,
+    "n_clients": 8,
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "share_a_samples": 1536,
+    "masking_violations": 0,
+    "masking_violation_rate": 0.0,
+    "expected_violations_if_uniform_log10": -612.836,
+    "uniformity_top_bits": 16,
+    "uniformity_bins": 65536,
+    "chi_square": 66133.333,
+    "chi_square_dof": 65535,
+    "chi_square_z": 1.653,
+    "note": "share_a never equals the encoded secret and its top bits are ~uniform (|z| small): a single server's view is a one-time pad. This is INFORMATION-THEORETIC privacy of the individual update \u2014 but ONLY under the assumption that the two servers do not collude (B holds share_b = x - a; together they trivially recover x)."
+  },
+  "integrity": {
+    "dim": 8,
+    "n_clients": 5,
+    "n_trials": 200,
+    "honest_verify_rate": 1.0,
+    "tamper_detection_rate": 1.0,
+    "drop_detection_rate": 1.0,
+    "note": "Tamper and drop detection are 1.0: Feldman binding (discrete-log hardness in the order-q subgroup) means the reconstructed g^{\u03a3x} can only match the public product if every committed share is summed exactly once and unaltered."
+  },
+  "cost": {
+    "modulus_bits": 2048,
+    "rows": [
+      {
+        "dim": 1,
+        "n_clients": 5,
+        "repeats": 3,
+        "split_s_per_client": 0.009391,
+        "split_s_total_mean": 0.046957,
+        "aggregate_verify_s_mean": 0.007902,
+        "aggregate_verify_s_std": 0.010928,
+        "total_s_mean": 0.054859,
+        "modexps_per_split": 1,
+        "modexps_per_verify": 6
+      },
+      {
+        "dim": 8,
+        "n_clients": 5,
+        "repeats": 3,
+        "split_s_per_client": 0.086735,
+        "split_s_total_mean": 0.433677,
+        "aggregate_verify_s_mean": 0.093853,
+        "aggregate_verify_s_std": 0.019297,
+        "total_s_mean": 0.527529,
+        "modexps_per_split": 8,
+        "modexps_per_verify": 48
+      },
+      {
+        "dim": 32,
+        "n_clients": 5,
+        "repeats": 3,
+        "split_s_per_client": 0.379491,
+        "split_s_total_mean": 1.897456,
+        "aggregate_verify_s_mean": 0.383023,
+        "aggregate_verify_s_std": 0.060963,
+        "total_s_mean": 2.280479,
+        "modexps_per_split": 32,
+        "modexps_per_verify": 192
+      },
+      {
+        "dim": 128,
+        "n_clients": 5,
+        "repeats": 3,
+        "split_s_per_client": 1.535541,
+        "split_s_total_mean": 7.677707,
+        "aggregate_verify_s_mean": 1.671951,
+        "aggregate_verify_s_std": 0.068947,
+        "total_s_mean": 9.349658,
+        "modexps_per_split": 128,
+        "modexps_per_verify": 768
+      }
+    ],
+    "note": "Wall-clock scales linearly with dim and n_clients: each coordinate is a 2048-bit modular exponentiation. This is the honest cost of public verifiability; the additive secret-sharing that gives privacy is near-free by comparison."
+  },
+  "honest_finding": [
+    "PRIVACY HOLDS ONLY UNDER NON-COLLUSION. A single server sees share_a (or share_b), a uniform one-time pad \u2014 information-theoretic privacy of the individual update. But share_a + share_b = x exactly: if the two servers collude they trivially recover every client's update. This is the explicit two-non-colluding-servers trust model, not a single-server guarantee.",
+    "FELDMAN COMMITMENTS ARE BINDING, NOT HIDING. A commitment reveals g^x mod p. That does not break privacy: the client owns x, and recovering x from g^x is the discrete-log problem in the order-q subgroup (hard at 2048 bits). The commitment buys PUBLIC VERIFIABILITY \u2014 anyone can check the aggregate \u2014 at the cost of publishing g^x, which carries no usable information about x.",
+    "INTEGRITY IS PERFECT, NOT PROBABILISTIC, IN THIS SUITE. Over the tamper/drop trials the detection rate is 1.0 because verification is an exact modular equality (g^{\u03a3x} == \u03a0 Commit). A forgery would require finding a second preimage of a Feldman commitment, i.e. breaking discrete log \u2014 not a measured failure rate here.",
+    "PER-COORDINATE COMMITMENT COST IS THE PRICE OF VERIFIABILITY. Each coordinate costs one 2048-bit modular exponentiation at split time and (n_clients + 1) at verify time. Wall-clock is linear in dim and client count. The additive sharing that provides privacy is cheap; the modexps that provide public proof are the dominant cost, reported honestly above."
+  ]
+}

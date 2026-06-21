@@ -192,7 +192,7 @@ Per **NIST SP 800-207**, these are necessary-but-not-AI-specific supports (see �
 
 | Gap | Threat exposed | Status |
 |-----|----------------|--------|
-| **No differential-privacy accountant** | ML03 model inversion, ML04 membership inference | **ROADMAP** — tenant isolation reduces, but does not bound, privacy leakage |
+| **No differential-privacy accountant** | ML03 model inversion, ML04 membership inference | **ADDRESSED** (§9) — DP-FedAvg + a real Rényi-DP accountant now *bound* leakage; a committed membership-inference benchmark shows AUC 0.97→~0.5 as ε falls |
 | **No inference-API extraction rate-limiting** | ML05 model theft / extraction | **ROADMAP** — authn restricts *who* queries, not *how much* |
 | **Telemetry source authentication depends on the vendor** | Spoofed Aerial cuBB / E2 KPM feeds (S) | **VENDOR-DEPENDENT** — Horizon-RIC trusts the Aerial/E2 transport's authentication; it does not independently attest the sensor |
 | **HSM production custody not bundled** | Key compromise of signing/timestamp keys | **DOCUMENTED, NOT BUNDLED** — production deployments must wire CloudHSM / Thales Luna; the code ships an HSM *interface* and software fallback for dev |
@@ -297,6 +297,26 @@ here), but a *norm-matched* stealthy backdoor would evade it; (c) at that breakd
 point the deterministic **Decision Safety Shield remains the backstop**. Unlearning
 is a new layer that *repairs* an attributed compromise; it does not replace the
 output-shield that holds when attribution fails.
+
+---
+
+## 9. Privacy, verifiable aggregation, and the right to be forgotten
+
+Three more trust mechanisms close the remaining privacy gaps in §5, each torch-free,
+each grounded in the NTU/DTC research line (`docs/RESEARCH_ALIGNMENT.md`) and each
+reporting honestly where it costs something. Results are committed under
+`benchmarks/results/`; **24** tests gate them.
+
+| Mechanism | Derives from | What it does | Honest cost / caveat |
+|---|---|---|---|
+| **DP-FedAvg + Rényi-DP accountant** (`federated/dp.py`, `dp_privacy.json`) | Liu, Jiang, Lam et al., *Efficient FU with Adaptive DP*, IEEE BigData 2024; accounting per Mironov CSF-17 / Abadi CCS-16 | Per-client L2 clipping + Gaussian noise *bound* privacy leakage with a real (ε, δ) accountant. A committed membership-inference benchmark shows the leak close as ε falls: **MIA AUC 0.97 (no DP) → 0.69 (ε≈5.3) → ~0.47 (ε≈0.62)** | Privacy costs **utility**: throughput 1.09 → 0.05 over the same range. We report the full ε/utility/leakage curve, not a single flattering point; the clip bound is data-dependent (a mild leak we disclose) |
+| **Verifiable two-server secure aggregation** (`federated/verifiable_secagg.py`, `verifiable_secagg.json`) | Liu, Ye, Jiang, Shen, Guo, Tjuawinata & Lam, Starfish, arXiv:2404.09724 | 2-of-2 additive secret sharing (a malicious or curious **server learns nothing**) + Feldman commitments over a 2048-bit safe prime so a server that **tampers or drops** a contribution is **detected** — tamper & drop detection **1.0** (exact, by discrete-log binding); reconstruction matches plaintext to ~3e-5 | Privacy holds **only under non-collusion** of the two servers; Feldman commitments are *binding, not hiding*; public verifiability costs one 2048-bit modexp **per coordinate** (dim 128 ≈ 9 s in pure Python) |
+| **Subject-level certified erasure** (`federated/erasure.py`, `subject_erasure.json`) | Lam et al., *Certifying the Right to be Forgotten: Primal-Dual … in Vertical FL*, IEEE TIFS | GDPR Art. 17 erasure of **one data subject** (not a whole client): exact recompute + re-aggregate, **verified against an independent from-scratch retrain (certified distance 0.0)** and bound to a signed `ErasureCertificate` | Exactness is for the single-round transition model; a *cheap* linear shortcut is exact for FedAvg but leaves a measured **~0.57** residual under non-linear median (reported), so we recompute |
+
+These do not change the thesis: the deterministic perimeter is the guarantee. They
+close the *privacy* face of the threat model — bounding leakage (DP), removing trust
+in the server (verifiable agg), and honouring erasure (Art. 17) — with the same
+"publish the cost" honesty as the attack campaign.
 
 ---
 

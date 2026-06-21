@@ -37,7 +37,7 @@ how does an operator *prove* to a regulator what the agent actually did?
 
 **Horizon-RIC is an AI-for-RAN trust & audit layer.** It does not train or run
 the agent; it sits beside the SMO / Non-RT RIC and wraps every decision the agent
-emits in five mechanisms:
+emits in eight mechanisms:
 
 1. **Decision Safety Shield** — projects each proposed action onto enumerated,
    independently-measured radio invariants (spectral mask, EIRP, NTN/LEO PFD
@@ -55,6 +55,19 @@ emits in five mechanisms:
    a signed `UnlearningCertificate` (distance-to-retrain bound + backdoor-probe).
    The **repair** layer for what robust aggregation only bounds — bridging the
    NTU/DTC federated-unlearning research (Lam et al., arXiv:2404.09724).
+6. **DP-FedAvg + Rényi-DP accountant** — clipping + Gaussian noise with a real
+   (ε, δ) budget that *bounds* membership/inversion leakage (MIA AUC 0.97→~0.5 as
+   ε falls); reports the honest privacy/utility curve.
+7. **Verifiable two-server secure aggregation** — 2-of-2 additive sharing (the
+   server learns nothing) + Feldman commitments, so a malicious server that tampers
+   or drops a contribution is *detected* (Starfish model, arXiv:2404.09724).
+8. **Subject-level certified erasure (GDPR Art. 17)** — provable, audit-bound
+   erasure of one *data subject*, verified against an independent retrain.
+
+Mechanisms 4–8 are the **federated trust stack**; the privacy/erasure additions
+(6–8) close the privacy face of `docs/THREAT_MODEL.md` (§9). All eight are
+torch-free and grounded in the NTU/DTC/Lam research lineage
+(`docs/RESEARCH_ALIGNMENT.md`).
 
 **Measured result (`benchmarks/results/poisoning_shield.json`):** on a
 10,000-decision stream that is 30% poisoned, an unguarded emit path would put

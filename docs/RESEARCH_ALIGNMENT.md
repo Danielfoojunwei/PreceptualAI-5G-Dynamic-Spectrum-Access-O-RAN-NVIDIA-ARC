@@ -66,8 +66,16 @@ Certified Client Removal* (Z. Liu, H. Ye, Y. Jiang, J. Shen, J. Guo, I. Tjuawina
 guarantee is a **bound on the distance to a model retrained from scratch** — and the
 field survey *A Survey on Federated Unlearning: Challenges, Methods, and Future
 Directions* (Z. Liu, Y. Jiang, J. Shen, M. Peng, K.-Y. Lam, X. Yuan & X. Liu, **ACM
-Computing Surveys**, 2024). Horizon-RIC implements **certified federated unlearning**
-on the DSA policy directly bridging this line (§3; `THREAT_MODEL.md` §8).
+Computing Surveys**, 2024). Two adjacent results in the same programme extend the
+bridge: *Efficient Federated Unlearning with Adaptive Differential Privacy
+Preservation* (Liu, Jiang, Lam et al., **IEEE BigData** 2024) — which pairs
+unlearning with a DP budget — and *Certifying the Right to be Forgotten: Primal-Dual
+Optimization for Sample and Label Unlearning in Vertical Federated Learning* (Lam et
+al., **IEEE TIFS**) — finer, subject-level erasure. Horizon-RIC implements
+**certified federated unlearning**, **DP-FedAvg with a Rényi-DP accountant**,
+**verifiable two-server secure aggregation**, and **subject-level (Art. 17)
+erasure** on the DSA policy, directly bridging this line (§3; `THREAT_MODEL.md`
+§8–§9).
 
 ---
 
@@ -109,6 +117,9 @@ federated decisions deployable on **regulated / licensed / satellite** spectrum:
 | **Robust aggregation** | Bounds a poisoning client's pull on the *shared DSA policy* during federated training (Krum / median / trimmed-mean). | `src/horizon_ric/federated/robust.py` |
 | **Shamir secure aggregation** | Hides individual client updates — the successor to the team's privacy-preserving power-control line. | `src/horizon_ric/federated/secure.py` |
 | **Certified federated unlearning** | *Removes* an attributed poisoning client's contribution from the shared DSA policy post-hoc — the **repair** layer for the backdoor robust aggregation only *bounds* — and binds the removal to a signed, audit-chainable `UnlearningCertificate` (Starfish-style distance-to-retrain bound + backdoor-probe). Bridges the team's own machine-unlearning-for-DSA work (pub. 6) and Lam's certified-client-removal line. | `src/horizon_ric/federated/unlearning.py` |
+| **DP-FedAvg + Rényi-DP accountant** | *Bounds* membership/inversion leakage with clipping + Gaussian noise and a real (ε, δ) accountant; a committed MIA benchmark shows AUC 0.97→~0.5 as ε falls. Extends the team's adaptive-DP-for-unlearning line. | `src/horizon_ric/federated/dp.py` |
+| **Verifiable two-server secure aggregation** | Upgrades secure-agg from honest-but-curious to *malicious-server-detecting*: 2-of-2 additive sharing (server learns nothing) + Feldman commitments (tamper/drop detection 1.0). Realises the Starfish two-non-colluding-server model. | `src/horizon_ric/federated/verifiable_secagg.py` |
+| **Subject-level certified erasure (GDPR Art. 17)** | Erases *one data subject* (not a whole client) by exact recompute, verified against an independent retrain (distance 0) and bound to a signed `ErasureCertificate`. Bridges Lam's primal-dual sample/label-unlearning (right-to-be-forgotten) work. | `src/horizon_ric/federated/erasure.py` |
 | **Decision Safety Shield** | A *model-independent* projection of any agent's chosen channel / power onto the TS 38.104 spectral mask + EIRP ceiling + an LEO/NTN power-flux-density (PFD) ceiling. | `src/horizon_ric/shield/` |
 | **Hash-chained, RFC-3161-anchored decision record** | Per-decision evidence a regulator can replay (counterfactual + tamper-evident chain + timestamp anchor). | `src/horizon_ric/evidence/` |
 
