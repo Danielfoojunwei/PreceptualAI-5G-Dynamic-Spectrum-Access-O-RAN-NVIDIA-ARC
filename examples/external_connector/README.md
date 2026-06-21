@@ -3,10 +3,10 @@
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08.*
 
 
-A self-contained external Python package that ships a PreceptualAI
+A self-contained external Python package that ships a Horizon-RIC
 connector. Demonstrates the entry-point plug-in path: installing this
 wheel makes `RandomTelemetrySource` discoverable by the core registry
-without editing any PreceptualAI source.
+without editing any Horizon-RIC source.
 
 ## Install
 

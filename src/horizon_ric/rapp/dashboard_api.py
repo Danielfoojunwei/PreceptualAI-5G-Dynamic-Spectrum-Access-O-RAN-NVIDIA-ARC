@@ -1,4 +1,4 @@
-"""PreceptualAI operator dashboard REST API (port 8083).
+"""Horizon-RIC operator dashboard REST API (port 8083).
 
 Stakeholder-facing read/control surface for SLA, policy, audit, and
 connector management. Distinct from:
@@ -268,10 +268,10 @@ def build_dashboard_api(
         evidence_store = JsonlEvidenceStore(path)
 
     app = FastAPI(
-        title="PreceptualAI Operator Dashboard API",
+        title="Horizon-RIC Operator Dashboard API",
         version="0.2.0",
         description=(
-            "Operator-facing REST surface for the PreceptualAI dashboard. "
+            "Operator-facing REST surface for the Horizon-RIC dashboard. "
             "Every endpoint requires a JWT bearer token (HS256). "
             "See README at frontend/ for usage."
         ),

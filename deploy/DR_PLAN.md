@@ -205,4 +205,4 @@ kubectl -n horizon logs -l job-name=horizon-ric-backup-<TS>
 * Helm template (TimescaleDB): [`templates/statefulset-timescaledb.yaml`](helm/horizon-ric/templates/statefulset-timescaledb.yaml)
 * Helm template (MinIO): [`templates/statefulset-minio.yaml`](helm/horizon-ric/templates/statefulset-minio.yaml)
 * DR drill CI test: [`tests/test_dr_drill.py`](../tests/test_dr_drill.py)
-* RPO/RTO governance: ARCHITECTURE.md §"Reliability tier".
+* RPO/RTO governance: [`deploy/SLO.md`](SLO.md).

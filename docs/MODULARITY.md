@@ -1,8 +1,8 @@
-# PreceptualAI Modularity Inventory
+# Horizon-RIC Modularity Inventory
 
 *Date: 2026-05-08 (post-v3 trust-layer wave; canonical with 144 source modules / 30 751 LoC).*
 
-PreceptualAI is built around **named registries**. Anything that is likely
+Horizon-RIC is built around **named registries**. Anything that is likely
 to vary between operators, deployments, regions, or model families is
 swapped at config time, not patched into core. The same registry pattern
 recurs across six surfaces.
@@ -87,7 +87,7 @@ register_verifier("my_rule", MyVerifier)
 Compose into the constraint layer:
 
 ```python
-PreceptualAIConstraintLayer(
+HorizonRICConstraintLayer(
     config,
     verifier_chain=["gso_pfd", "itu_spectral_mask", "my_rule"],
 )

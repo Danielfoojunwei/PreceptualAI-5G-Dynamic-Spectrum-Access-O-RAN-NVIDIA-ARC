@@ -204,7 +204,7 @@
   "time": {"from": "now-30m", "to": "now"},
   "timepicker": {},
   "timezone": "",
-  "title": "PreceptualAI Counterfactual & Audit",
+  "title": "Horizon-RIC Counterfactual & Audit",
   "uid": "horizon-counterfactual",
   "version": 1,
   "weekStart": ""

@@ -84,7 +84,7 @@ def make_app() -> FastAPI:
     rac_spec = _load_spec("rac-api.json")
 
     app = FastAPI(
-        title="OSC NONRTRIC Emulator (PreceptualAI dev stack)",
+        title="OSC NONRTRIC Emulator (Horizon-RIC dev stack)",
         description=(
             "Real FastAPI server that mirrors the OSC NONRTRIC OpenAPI "
             "surface (A1PMS + rApp Catalogue + R1 registration). "
@@ -149,7 +149,7 @@ def make_app() -> FastAPI:
     ) -> Response:
         body = await request.json()
         # Accept both the OSC `policy_type_definition` shape and the
-        # PreceptualAI adapter's `register_policy_types` payload, which
+        # Horizon-RIC adapter's `register_policy_types` payload, which
         # carries the JSON schema under "create_schema".
         schema = body.get("policy_schema") or body.get("create_schema")
         if schema is None:

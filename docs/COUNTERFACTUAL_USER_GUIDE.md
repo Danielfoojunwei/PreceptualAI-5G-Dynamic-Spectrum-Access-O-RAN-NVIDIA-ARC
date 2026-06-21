@@ -6,7 +6,7 @@
 **Version:** 0.2.0
 **Date:** 2026-05-06
 **Audience:** SOC operator, network engineer, regulator running an audit
-**Component:** PreceptualAI dashboard `/policies` page; `GET /api/v1/decisions/{id}`; `GET /api/v1/audit/verify`
+**Component:** Horizon-RIC dashboard `/policies` page; `GET /api/v1/decisions/{id}`; `GET /api/v1/audit/verify`
 
 ---
 

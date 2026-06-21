@@ -55,7 +55,7 @@ def build_app(
         GET  /audit/recent        — auditor / regulator / admin
         GET  /state               — api-user and above
     """
-    app = FastAPI(title="PreceptualAI rApp", version="0.1.0")
+    app = FastAPI(title="Horizon-RIC rApp", version="0.1.0")
     attach_security(app, jwt_manager, rbac)
 
     @app.get("/healthz")

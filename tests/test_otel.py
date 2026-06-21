@@ -1,4 +1,4 @@
-"""OpenTelemetry tracing tests for PreceptualAI.
+"""OpenTelemetry tracing tests for Horizon-RIC.
 
 Verifies that:
 

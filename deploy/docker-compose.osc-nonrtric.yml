@@ -61,7 +61,7 @@ services:
       retries: 30
     restart: unless-stopped
 
-  # Sidecar that runs the PreceptualAI rApp end-to-end pipeline against
+  # Sidecar that runs the Horizon-RIC rApp end-to-end pipeline against
   # the live OSC services. Image is built from the project root via
   # `docker build -t horizon-rapp:dev -f deploy/docker/Dockerfile.rapp .`.
   horizon-rapp:

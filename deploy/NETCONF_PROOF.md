@@ -6,7 +6,7 @@
 > **Closes audit caveat #3** — *"We have NETCONF code (ncclient wrapper) but
 > no live E2 node has actually connected."*
 >
-> This file documents a real protocol round-trip between PreceptualAI's
+> This file documents a real protocol round-trip between Horizon-RIC's
 > `O1Adapter` (`src/horizon_ric/rapp/o1_adapter.py`) and an unmodified
 > upstream NETCONF server. The XML below is the literal output of
 > `ncclient.manager` printing the server's `<rpc-reply>` and
@@ -175,7 +175,7 @@ urn:ietf:params:xml:ns:netconf:notification:1.0?module=notifications&revision=20
 </rpc-reply>
 ```
 
-### 3.c `<edit-config target=candidate>` — what PreceptualAI sent
+### 3.c `<edit-config target=candidate>` — what Horizon-RIC sent
 
 ```xml
 <config xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">

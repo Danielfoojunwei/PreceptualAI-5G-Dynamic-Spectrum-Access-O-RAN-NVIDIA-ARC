@@ -1,4 +1,4 @@
-# PreceptualAI — Jetson Orin Nano systemd profile
+# Horizon-RIC — Jetson Orin Nano systemd profile
 
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08.*
 

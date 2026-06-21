@@ -3,7 +3,7 @@
 # guidelines, and the TMF Open API Table at
 # https://www.tmforum.org/oda/directory/components-r19
 #
-# This manifest declares PreceptualAI as a Production-class ODA component.
+# This manifest declares Horizon-RIC as a Production-class ODA component.
 # It is consumed by ODA Canvas and by TMF Component Conformance Certification.
 apiVersion: oda.tmforum.org/v1beta3
 kind: Component
@@ -18,14 +18,14 @@ spec:
   type: Production
   version: 0.2.0
   description: >
-    PreceptualAI is an O-RAN compliant rApp delivering AI-driven SLA risk
+    Horizon-RIC is an O-RAN compliant rApp delivering AI-driven SLA risk
     forecasting, autonomous policy emission and audit-grade decision
     provenance for non-RT RIC deployments. Implements TMF640 Service
     Activation, TMF638 Service Inventory and TMF724 Intent Management
     surfaces.
-  vendor: PreceptualAI
+  vendor: Horizon-RIC
   maintainers:
-    - name: PreceptualAI Engineering
+    - name: Horizon-RIC Engineering
       email: ops@horizon-ric.example.com
 
   # Core function: business capabilities offered by this component

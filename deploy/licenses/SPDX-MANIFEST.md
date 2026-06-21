@@ -1,4 +1,4 @@
-# PreceptualAI SPDX License Manifest
+# Horizon-RIC SPDX License Manifest
 
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08.*
 

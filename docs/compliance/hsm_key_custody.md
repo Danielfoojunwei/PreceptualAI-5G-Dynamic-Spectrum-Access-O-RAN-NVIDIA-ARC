@@ -9,7 +9,7 @@ key never live in process memory in production. This document covers the
 HSM-abstraction layer (`src/horizon_ric/security/hsm.py`), the supported
 backends, key-rotation procedure, and FIPS 140-3 inheritance.
 
-Closes Row 15 of `GAPS_TO_PILOT.md` (Federated aggregator → TRUE).
+Establishes HSM-backed key custody for the federated aggregator.
 
 ---
 

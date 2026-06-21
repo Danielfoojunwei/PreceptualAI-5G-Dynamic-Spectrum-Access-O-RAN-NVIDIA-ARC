@@ -5,7 +5,7 @@ Devil-A Finding #8 / Solver-2 Fix #20 closure.
 ITU-T X.733 (Recommendation, "Information technology — Open Systems
 Interconnection — Systems Management: Alarm reporting function") defines
 the canonical alarm record consumed by the operator's NMS / SMO Fault
-Management plane. Every internal PreceptualAI failure that an operator's
+Management plane. Every internal Horizon-RIC failure that an operator's
 NMS would need to see MUST be mapped onto an X.733 alarm so the SMO can
 ingest it via the ``oran-fm-alarm`` YANG notification channel.
 
@@ -69,7 +69,7 @@ class X733Alarm(BaseModel):
         default_factory=lambda: str(uuid.uuid4()),
         description="notificationIdentifier — globally unique alarm id.",
     )
-    managed_object_class: str = Field(default="PreceptualAI.rApp")
+    managed_object_class: str = Field(default="Horizon-RIC.rApp")
     managed_object_instance: str = Field(default="rApp/horizon_ric")
     alarm_type: X733AlarmType
     probable_cause: str

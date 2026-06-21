@@ -1,4 +1,4 @@
-# GDPR Article 35 Data Protection Impact Assessment — PreceptualAI
+# GDPR Article 35 Data Protection Impact Assessment — Horizon-RIC
 
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
@@ -6,18 +6,18 @@
 **Version:** 0.2.0
 **Date:** 2026-05-06
 **Audience:** Operator Data Protection Officer (DPO), supervisory authority on request
-**Component:** PreceptualAI rApp (`src/horizon_ric/`)
+**Component:** Horizon-RIC rApp (`src/horizon_ric/`)
 **Regulation:** Regulation (EU) 2016/679 (GDPR), in particular Articles 5, 6, 25, 30, 32, and 35.
 
 ---
 
-This template DPIA is provided so that an operator deploying PreceptualAI can complete its own Article 35 obligation. The vendor (PreceptualAI) is not the controller — the operator is — but the technical-side analysis below is reproducible by the vendor and is therefore documented here once. Section 5 is intentionally left for operator-side completion.
+This template DPIA is provided so that an operator deploying Horizon-RIC can complete its own Article 35 obligation. The vendor (Horizon-RIC) is not the controller — the operator is — but the technical-side analysis below is reproducible by the vendor and is therefore documented here once. Section 5 is intentionally left for operator-side completion.
 
 ## 1. Description of processing (Art. 35(7)(a))
 
 ### 1.1 Nature of processing
 
-PreceptualAI ingests **management-plane telemetry** from the operator's RAN: per-cell KPIs (3GPP TS 28.552 §6, e.g. `RRU.PrbUsedDl`, `DRB.PdcpSduDelayDl`), per-slice load counters, gateway load gauges, and physical-layer propagation observables (RSRP/RSRQ rolled up per cell). It does NOT ingest IMSI, SUPI, MSISDN, IMEI, location traces, content of communication, or signalling.
+Horizon-RIC ingests **management-plane telemetry** from the operator's RAN: per-cell KPIs (3GPP TS 28.552 §6, e.g. `RRU.PrbUsedDl`, `DRB.PdcpSduDelayDl`), per-slice load counters, gateway load gauges, and physical-layer propagation observables (RSRP/RSRQ rolled up per cell). It does NOT ingest IMSI, SUPI, MSISDN, IMEI, location traces, content of communication, or signalling.
 
 Inputs flow through:
 
@@ -28,13 +28,13 @@ The state encoder (`src/horizon_ric/encoder/`) compresses these into a latent `z
 
 ### 1.2 Identifiers handled
 
-| Identifier | Type | PreceptualAI handling |
+| Identifier | Type | Horizon-RIC handling |
 |---|---|---|
 | Cell-ID (NCGI / ECGI) | Quasi-identifier | Always handled. Per-cell KPIs are inherent to RAN scheduling. |
 | Slice-ID (S-NSSAI) | Tenant identifier | Always handled. |
 | Gateway-ID (LADN-DNN, UPF-ID) | Network identifier | Handled when operator-configured. |
 | UE-ID | Subscriber pseudonymous ID | **Only** when the operator's LIMF configures the LI constraint (`src/horizon_ric/policy/li_constraint.py:71-73`, `protected_ue_ids`). This is opaque-tag handling — the rApp never receives warrant content, never handles IMSI directly. |
-| IMSI / SUPI / MSISDN / IMEI / IMEISV | PII | **NEVER** processed by PreceptualAI. There is no code path that ingests these identifiers. |
+| IMSI / SUPI / MSISDN / IMEI / IMEISV | PII | **NEVER** processed by Horizon-RIC. There is no code path that ingests these identifiers. |
 
 ### 1.3 Purposes (Art. 5(1)(b) purpose limitation)
 
@@ -47,7 +47,7 @@ No secondary or unrelated purpose. The audit chain is used only for operator-sid
 ### 1.4 Categories of data subjects
 
 - **Subscribers** — only as cell-density and slice-load aggregates. No subscriber is identifiable from a `z_resource` vector or from the per-cell KPIs.
-- **Operator personnel** — names, roles, and JWT subjects of SOC staff who interact with the rApp. Held in the operator's IdP, not in PreceptualAI; PreceptualAI stores only the `sub` claim from JWTs in audit logs (`src/horizon_ric/security/middleware.py:110, 153-161`).
+- **Operator personnel** — names, roles, and JWT subjects of SOC staff who interact with the rApp. Held in the operator's IdP, not in Horizon-RIC; Horizon-RIC stores only the `sub` claim from JWTs in audit logs (`src/horizon_ric/security/middleware.py:110, 153-161`).
 
 ### 1.5 Recipients (Art. 30(1)(d))
 
@@ -56,7 +56,7 @@ No secondary or unrelated purpose. The audit chain is used only for operator-sid
 - The operator's Prometheus / Alertmanager (see `deploy/prometheus/`)
 - On warrant, a regulator with credentials in the operator's IdP can read tenant-scoped audit records via `GET /api/v1/audit/verify` (`src/horizon_ric/rapp/api_v1.py:392-398`).
 
-No data is shared with the vendor (PreceptualAI) in production. Telemetry remains within the operator's network boundary.
+No data is shared with the vendor (Horizon-RIC) in production. Telemetry remains within the operator's network boundary.
 
 ### 1.6 Retention (Art. 5(1)(e))
 
@@ -74,11 +74,11 @@ The processing is necessary because:
 - The operator's contractual SLA obligation requires post-hoc breach evidence — satisfied by the audit chain.
 - The operator's TS 33.117 §4.2.5.2 obligation (security log integrity) is satisfied by the SHA-256 chain.
 
-PreceptualAI's processing is therefore additive to obligations the operator already has.
+Horizon-RIC's processing is therefore additive to obligations the operator already has.
 
 ### 2.2 Proportionality
 
-- PreceptualAI does NOT process PII; the highest-sensitivity identifier it can be configured to see is an opaque per-UE tag from the operator's LIMF (`policy/li_constraint.py:71-73`).
+- Horizon-RIC does NOT process PII; the highest-sensitivity identifier it can be configured to see is an opaque per-UE tag from the operator's LIMF (`policy/li_constraint.py:71-73`).
 - The state encoder uses dimensionality reduction (`encoder/`) before any decision; raw KPIs are not stored alongside the decision record (only the `state_hash` and an optional `state_blob_uri` are persisted, see `src/horizon_ric/evidence/schema.py:107-108`). The blob URI points to the operator's object store, not to the vendor.
 - The audit chain is per-tenant: an auditor for tenant A cannot read tenant B (`evidence/store.py:212-227`). This is data-minimisation by tenant boundary.
 
@@ -107,7 +107,7 @@ PreceptualAI's processing is therefore additive to obligations the operator alre
 
 ### 3.5 Recital 26 quasi-identifier enumeration
 
-GDPR Recital 26 requires that "to determine whether a natural person is identifiable, account should be taken of all the means reasonably likely to be used … either by the controller or by another person to identify the natural person directly or indirectly." This sub-section enumerates the combinations of fields PreceptualAI handles, classifies the identifiability risk of each, and names the codebase mitigation in force. This addresses Devils-Advocate finding #22.
+GDPR Recital 26 requires that "to determine whether a natural person is identifiable, account should be taken of all the means reasonably likely to be used … either by the controller or by another person to identify the natural person directly or indirectly." This sub-section enumerates the combinations of fields Horizon-RIC handles, classifies the identifiability risk of each, and names the codebase mitigation in force. This addresses Devils-Advocate finding #22.
 
 The combinations are listed from least to most identifiable. The naming convention is `(field_a + field_b + ... )`.
 
@@ -141,7 +141,7 @@ The combinations are listed from least to most identifiable. The naming conventi
 **Identifiability:** **IDENTIFIABLE.** An RNTI (Radio Network Temporary Identifier) is unique to a single UE within a cell at any moment in time. The combination `(cell_id, slice_id, RNTI)` is therefore unique to a single UE, and over even a short observation window can be linked to a subscriber identity by a party with adjacent data (e.g., the operator's HSS or MME).
 
 **Mitigation in our codebase:**
-- **PreceptualAI does NOT ingest, store, or process RNTI.** The state encoder (`src/horizon_ric/encoder/`) consumes per-cell aggregates from TS 28.552 KPIs, not per-UE per-RNTI records. There is no field in `src/horizon_ric/io/schemas.py` that holds RNTI.
+- **Horizon-RIC does NOT ingest, store, or process RNTI.** The state encoder (`src/horizon_ric/encoder/`) consumes per-cell aggregates from TS 28.552 KPIs, not per-UE per-RNTI records. There is no field in `src/horizon_ric/io/schemas.py` that holds RNTI.
 - The only per-UE identifier the rApp can be configured to see is an opaque per-UE tag from the operator's LIMF (`src/horizon_ric/policy/li_constraint.py:71-73, protected_ue_ids`). This tag is a hashed/scoped identifier the operator generates; it is not an RNTI and is not joinable by the rApp to any subscriber identity. The operator's LI process governs the RNTI-to-tag mapping outside our boundary.
 - `__iter__` returning DecisionRecords scopes by tenant (`evidence/store.py:212-227`); even were RNTI somehow persisted upstream, cross-tenant disclosure is fail-closed.
 
@@ -164,7 +164,7 @@ The combinations are listed from least to most identifiable. The naming conventi
 | `(cell_id + slice_id + RNTI)` | **IDENTIFIABLE** | **RNTI never ingested**; only opaque hashed LI-UE tags via warrant. |
 | `(cell_id + RNTI-history over 5 min)` | **IDENTIFIABLE** | **No mobility trajectories stored**; only latent + state_hash in chain. |
 
-The operator's controller-side responsibility under Recital 26 remains to assess "the means reasonably likely to be used … by another person to identify the natural person." PreceptualAI's contribution is to make the rApp-side surface as small as possible: per-cell aggregates, no RNTI, no mobility, hashed UE tags only when warrant-driven, per-tenant scoping at every read.
+The operator's controller-side responsibility under Recital 26 remains to assess "the means reasonably likely to be used … by another person to identify the natural person." Horizon-RIC's contribution is to make the rApp-side surface as small as possible: per-cell aggregates, no RNTI, no mobility, hashed UE tags only when warrant-driven, per-tenant scoping at every read.
 
 ### Risk 4 — Model card data lineage
 
@@ -177,9 +177,9 @@ The operator's controller-side responsibility under Recital 26 remains to assess
 
 ### Mitigation for Risk 1 — Cell-ID quasi-identifier
 
-- PreceptualAI never persists per-subscriber records; only per-cell aggregates appear in the evidence chain (`src/horizon_ric/evidence/schema.py`).
+- Horizon-RIC never persists per-subscriber records; only per-cell aggregates appear in the evidence chain (`src/horizon_ric/evidence/schema.py`).
 - The `z_resource` state is hashed before persistence (`evidence/schema.py:107`, `state_hash`); the raw vector is optional and operator-controlled (`state_blob_uri`).
-- Operator-side recommendation: configure the rApp to drop cells with fewer than k subscribers from the policy decision input set (k-anonymity at the cell level). PreceptualAI accepts a cell-allowlist filter via O1 (`src/horizon_ric/rapp/o1_adapter.py`); this is NOT a default and the operator must opt in.
+- Operator-side recommendation: configure the rApp to drop cells with fewer than k subscribers from the policy decision input set (k-anonymity at the cell level). Horizon-RIC accepts a cell-allowlist filter via O1 (`src/horizon_ric/rapp/o1_adapter.py`); this is NOT a default and the operator must opt in.
 
 ### Mitigation for Risk 2 — Audit-log retention
 

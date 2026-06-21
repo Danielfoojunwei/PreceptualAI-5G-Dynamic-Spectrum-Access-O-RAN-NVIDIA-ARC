@@ -25,7 +25,7 @@ DEFAULT_POLICY_TYPES = {
     "horizon.qos.priority": {
         "policy_type_id": 20001,
         "name": "QoS priority weights per slice",
-        "description": "Adjust per-slice QoS priority based on PreceptualAI SLA risk",
+        "description": "Adjust per-slice QoS priority based on Horizon-RIC SLA risk",
         "schema_v": "1.0.0",
     },
     "horizon.traffic.steering": {
@@ -151,7 +151,7 @@ class A1Adapter:
         return self._cb
 
     async def register_policy_types(self) -> list[int]:
-        """Register PreceptualAI's A1 policy types with the Near-RT RIC.
+        """Register Horizon-RIC's A1 policy types with the Near-RT RIC.
 
         Returns:
             List of accepted policy_type_ids.

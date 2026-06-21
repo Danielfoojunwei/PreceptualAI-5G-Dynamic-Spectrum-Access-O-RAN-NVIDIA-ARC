@@ -1,9 +1,9 @@
 apiVersion: 1
 
 providers:
-  - name: PreceptualAI
+  - name: Horizon-RIC
     orgId: 1
-    folder: PreceptualAI
+    folder: Horizon-RIC
     type: file
     disableDeletion: false
     editable: false

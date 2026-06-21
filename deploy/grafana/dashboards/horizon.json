@@ -227,7 +227,7 @@
   "time": {"from": "now-15m", "to": "now"},
   "timepicker": {},
   "timezone": "",
-  "title": "PreceptualAI rApp Overview",
+  "title": "Horizon-RIC rApp Overview",
   "uid": "horizon-rapp-overview",
   "version": 1,
   "weekStart": ""

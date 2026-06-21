@@ -6,7 +6,7 @@ through an httpx.MockTransport that records the URLs the adapter would
 hit on a real vendor stack. Each per-dialect test then asserts the URL
 shape matches the public spec for that vendor.
 
-This is the proof that PreceptualAI's payloads conform to the published
+This is the proof that Horizon-RIC's payloads conform to the published
 interfaces of:
     * legacy   — historical near-RT-RIC A1AP mirror (/A1-P/v2/...)
     * osc      — OSC NONRTRIC PMS reference (/a1-policy/v2/...)

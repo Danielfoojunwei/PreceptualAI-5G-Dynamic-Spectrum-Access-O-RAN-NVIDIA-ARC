@@ -1,4 +1,4 @@
-"""Production daemon entrypoint for the PreceptualAI rApp.
+"""Production daemon entrypoint for the Horizon-RIC rApp.
 
 Differs from the bare ``horizon-rapp`` console script in that it wires the
 *full* runtime: a telemetry source, a planner loop, the A1 emitter, and the
@@ -161,7 +161,7 @@ def _build_admin_app(state_ref: dict[str, Any]):
     """Build a minimal ASGI app exposing /healthz, /readyz, /metrics."""
     from fastapi import FastAPI, Response
 
-    app = FastAPI(title="PreceptualAI Daemon", docs_url=None, redoc_url=None)
+    app = FastAPI(title="Horizon-RIC Daemon", docs_url=None, redoc_url=None)
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
@@ -403,7 +403,7 @@ def run_daemon(source_config: str | None = None, once: bool = False) -> int:
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="run_horizon_rapp",
-        description="PreceptualAI rApp production daemon.",
+        description="Horizon-RIC rApp production daemon.",
     )
     p.add_argument(
         "--source-config",

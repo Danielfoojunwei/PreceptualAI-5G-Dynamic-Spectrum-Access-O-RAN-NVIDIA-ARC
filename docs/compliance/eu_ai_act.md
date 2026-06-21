@@ -6,30 +6,30 @@
 **Version:** 0.2.0
 **Date:** 2026-05-06
 **Audience:** Operator compliance officer, EU operator's AI Act register
-**Component:** PreceptualAI rApp (`src/horizon_ric/`)
+**Component:** Horizon-RIC rApp (`src/horizon_ric/`)
 **Regulation cited:** Regulation (EU) 2024/1689 of the European Parliament and of the Council laying down harmonised rules on artificial intelligence ("AI Act"), in force as of 2 August 2026.
 
 ---
 
 ## 1. Purpose
 
-This memorandum classifies PreceptualAI under the EU AI Act (Regulation (EU) 2024/1689) and enumerates the high-risk-grade controls PreceptualAI voluntarily adopts so an EU operator's compliance officer can append a self-attestation to their internal AI Act register. The document is auditor-facing: every claim cites either a file:line in this repository or a numbered article of the regulation.
+This memorandum classifies Horizon-RIC under the EU AI Act (Regulation (EU) 2024/1689) and enumerates the high-risk-grade controls Horizon-RIC voluntarily adopts so an EU operator's compliance officer can append a self-attestation to their internal AI Act register. The document is auditor-facing: every claim cites either a file:line in this repository or a numbered article of the regulation.
 
 ## 2. Classification
 
-**PreceptualAI is NOT a high-risk AI system under Annex III of the AI Act.** It is consequently not subject to the conformity assessment, CE marking, registration, or mandatory post-market monitoring obligations of Articles 16-49.
+**Horizon-RIC is NOT a high-risk AI system under Annex III of the AI Act.** It is consequently not subject to the conformity assessment, CE marking, registration, or mandatory post-market monitoring obligations of Articles 16-49.
 
-**PreceptualAI voluntarily adopts the substantive controls of Articles 9 (risk management), 10 (data governance), 11 (technical documentation), 12 (record-keeping), 13 (transparency), 14 (human oversight), and 15 (accuracy / robustness / cybersecurity)** because the largest EU operators (Tier-1) treat AI Act-grade controls as a procurement floor regardless of the regulation's own scope language.
+**Horizon-RIC voluntarily adopts the substantive controls of Articles 9 (risk management), 10 (data governance), 11 (technical documentation), 12 (record-keeping), 13 (transparency), 14 (human oversight), and 15 (accuracy / robustness / cybersecurity)** because large EU operators commonly treat AI Act-grade controls as a baseline expectation regardless of the regulation's own scope language.
 
 This is a deliberate stance, not a regulatory requirement. It is documented here so an operator's compliance officer can rely on it.
 
-## 3. Why PreceptualAI is not high-risk under Annex III
+## 3. Why Horizon-RIC is not high-risk under Annex III
 
-Annex III lists eight categories of high-risk AI systems. PreceptualAI falls outside all of them.
+Annex III lists eight categories of high-risk AI systems. Horizon-RIC falls outside all of them.
 
 ### 3.1 Categories that are clearly inapplicable
 
-| Annex III §  | Category | PreceptualAI position |
+| Annex III §  | Category | Horizon-RIC position |
 |---|---|---|
 | §1 | Biometric identification / categorisation | N/A — no biometric pipeline. The state encoder consumes 3GPP TS 28.552 KPIs, not biometric inputs. (`src/horizon_ric/encoder/`) |
 | §3 | Education and vocational training | N/A — no education use case |
@@ -37,8 +37,8 @@ Annex III lists eight categories of high-risk AI systems. PreceptualAI falls out
 | §5(a) | Public benefits eligibility evaluation | N/A — not a benefits system |
 | §5(b) | Creditworthiness | N/A |
 | §5(c) | Risk assessment in life and health insurance | N/A |
-| §5(d) | Emergency call dispatch and triage | N/A — PreceptualAI is RAN scheduling, not emergency dispatch |
-| §6 | Law enforcement | N/A — see also `docs/compliance/li_applicability.md`: PreceptualAI is not an LI function |
+| §5(d) | Emergency call dispatch and triage | N/A — Horizon-RIC is RAN scheduling, not emergency dispatch |
+| §6 | Law enforcement | N/A — see also `docs/compliance/li_applicability.md`: Horizon-RIC is not an LI function |
 | §7 | Migration, asylum and border control management | N/A |
 | §8 | Administration of justice and democratic processes | N/A |
 
@@ -48,31 +48,30 @@ Annex III §2 covers AI systems "intended to be used as safety components in the
 
 **Construction:** the qualifier "safety components" is load-bearing. The Annex III §2 entry is restricted to *safety-of-persons* infrastructure management. Recital 55 of the AI Act clarifies: "It is appropriate to classify as high-risk the AI systems used as safety components of the management and operation of […] critical digital infrastructure as listed in point (8) of the Annex to Directive (EU) 2022/2557, where their failure or malfunctioning may put at risk the life and health of persons at large scale". RAN scheduling and policy optimisation does not place safety-of-life at risk on failure: degraded scheduling lowers throughput, increases SLA breach probability, and may cause handover oscillation, but does not endanger lives.
 
-**Concrete operator-side controls already separate PreceptualAI from safety-of-life telecoms paths:**
+**Concrete operator-side controls already separate Horizon-RIC from safety-of-life telecoms paths:**
 
-- PreceptualAI emits A1 *intents* (`src/horizon_ric/rapp/a1_adapter.py:190`, `emit_policy`). It does not directly drive the gNB or UPF.
+- Horizon-RIC emits A1 *intents* (`src/horizon_ric/rapp/a1_adapter.py:190`, `emit_policy`). It does not directly drive the gNB or UPF.
 - The Near-RT RIC and gNB enforce their own safety bounds on top of any A1 intent.
-- Emergency call dispatch (E.164 / E.112) is handled by the operator's IMS / E-CSCF, not by PreceptualAI.
+- Emergency call dispatch (E.164 / E.112) is handled by the operator's IMS / E-CSCF, not by Horizon-RIC.
 - Hard regulatory constraints (LI, EPFD, ITU-R spectrum masks) are enforced **before** A1 emit by the constraint layer (`src/horizon_ric/policy/li_constraint.py`, `src/horizon_ric/planner/physics/epfd.py`, `src/horizon_ric/planner/physics/s1428.py`). These are hard rejections, not soft penalties (`policy/li_constraint.py:30-34, 100`).
 
-**Conclusion:** PreceptualAI operates on the **performance** side of telecoms management (RAN policy optimisation), not the **safety** side. It is therefore outside Annex III §2.
+**Conclusion:** Horizon-RIC operates on the **performance** side of telecoms management (RAN policy optimisation), not the **safety** side. It is therefore outside Annex III §2.
 
 ### 3.3 Operator review is the ultimate control
 
-Article 14 of the AI Act ("Human oversight") is satisfied even were PreceptualAI reclassified as high-risk: every A1 emit can be vetoed by the SOC operator, and every override is recorded in the audit chain (`src/horizon_ric/evidence/schema.py:128-129`, `operator_override` and `operator_override_reason`).
+Article 14 of the AI Act ("Human oversight") is satisfied even were Horizon-RIC reclassified as high-risk: every A1 emit can be vetoed by the SOC operator, and every override is recorded in the audit chain (`src/horizon_ric/evidence/schema.py:128-129`, `operator_override` and `operator_override_reason`).
 
-## 4. The nine voluntary high-risk-grade controls PreceptualAI adopts
+## 4. The nine voluntary high-risk-grade controls Horizon-RIC adopts
 
-For each Article 8-15 obligation, PreceptualAI has implemented or documented a control. References below are to file paths in this repository.
+For each Article 8-15 obligation, Horizon-RIC has implemented or documented a control. References below are to file paths in this repository.
 
 ### 4.1 Risk management system (Art. 9)
 
-- `REVIEW.md` — pre-pilot independent review with a numbered findings list
 - `AUDIT_NO_FAKES.md` — assertion that no mocks/fakes/hardcoded values masquerade as real implementations; reviewed pre-PR
-- `STANDARDS.md` — 22-row gap analysis of every standards/regulation row
-- `GAPS_TO_PILOT.md` — open risks tracked to closure
+- `docs/conformance/CONFORMANCE.md` — per-spec conformance status, including gaps tracked to closure
+- `docs/EVALUATION_CRITERIA.md` — evaluation criteria and standards/regulation gap analysis
 
-These four documents constitute the iterative risk management process required by Art. 9(2)-(5).
+These documents constitute the iterative risk management process required by Art. 9(2)-(5).
 
 ### 4.2 Data governance (Art. 10)
 
@@ -86,12 +85,11 @@ Training data provenance is captured in each model card (e.g. `checkpoints/jepa_
 
 The repository's MD documentation set provides the substantive content of an Annex IV technical file:
 
-- `ARCHITECTURE.md` — system architecture and intended purpose
-- `WHITEPAPER.md` — design rationale
+- `docs/RESEARCH_ALIGNMENT.md` — system rationale and intended purpose
 - `PARADIGMS.md` — design patterns (paradigm H1 = counterfactual envelope)
-- `STANDARDS.md` — standards conformance map
-- `RELIABILITY.md` — reliability characteristics
-- `RBAC.md`, `docs/RBAC.md` — security model
+- `docs/EVALUATION_CRITERIA.md` — standards conformance and evaluation criteria
+- `docs/SLA.md`, `deploy/SLO.md` — reliability characteristics and service-level objectives
+- `docs/RBAC.md` — security model
 - `docs/conformance/CONFORMANCE.md` — conformance report
 
 Honest gap, see §5.2 below: the content is present but not yet tabulated to the exact Annex IV table-of-contents structure.
@@ -117,7 +115,7 @@ Honest gap, see §5.2 below: the content is present but not yet tabulated to the
 
 ### 4.7 Accuracy, robustness and cybersecurity (Art. 15)
 
-- Accuracy claims documented and CI-tested: `RELIABILITY.md`, plus model card metrics (e.g. `checkpoints/sla_head_v0.4_jepa.md`)
+- Accuracy claims documented and CI-tested: `docs/EVALUATION_CRITERIA.md`, plus model card metrics (e.g. `checkpoints/sla_head_v0.4_jepa.md`)
 - Cybersecurity controls aligned to O-RAN.WG11 §6 cipher allow-list: `src/horizon_ric/rapp/auth.py:34-38`, applied at lines 155-200
 - TLS-1.3 best-effort honest-failure logging: `auth.py:178-200` (we honestly log the OpenSSL TLS-1.3 limitation rather than silently degrade)
 - RBAC via Casbin: `src/horizon_ric/security/rbac.py`, `rbac_model.conf`, `rbac_policy.csv`
@@ -139,13 +137,13 @@ The report is gated by CI (`docs/conformance/CONFORMANCE.md` §"Continuous valid
 - SLA breach engine: `src/horizon_ric/sla/engine.py:78-187` — emits structured `horizon.sla.breach` events on sustained breach
 - Audit log persistence: `src/horizon_ric/evidence/store.py` — every decision recorded for retroactive analysis with actual_outcome_30s/1min/5min fields filled in retroactively (`evidence/schema.py:122-125`)
 
-## 5. Three controls PreceptualAI explicitly does NOT yet have
+## 5. Three controls Horizon-RIC explicitly does NOT yet have
 
 Honest enumeration of gaps that an operator's compliance officer should know about.
 
 ### 5.1 GPAI provider duties (Art. 53-55) — N/A by design
 
-PreceptualAI ships task-specific models (`checkpoints/*.pt`): a JEPA encoder, an SLA risk head, a CfC cell, a TD-MPC value/policy. None of these are general-purpose AI models within the meaning of Art. 3(63) of the regulation. The thresholds in Art. 51 (10^25 FLOPs training compute) are several orders of magnitude above the training budget for these specialised heads.
+Horizon-RIC ships task-specific models (`checkpoints/*.pt`): a JEPA encoder, an SLA risk head, a CfC cell, a TD-MPC value/policy. None of these are general-purpose AI models within the meaning of Art. 3(63) of the regulation. The thresholds in Art. 51 (10^25 FLOPs training compute) are several orders of magnitude above the training budget for these specialised heads.
 
 **Disposition:** Not applicable. We are not a GPAI provider.
 
@@ -157,7 +155,7 @@ The substantive content for an Annex IV file (intended purpose, system architect
 
 ### 5.3 CE mark — not applicable
 
-CE marking under Art. 16(g) is required only of high-risk AI systems. PreceptualAI is not high-risk (see §3 above). If a future Annex III amendment brings RAN policy optimisation into scope, a CE mark with notified-body involvement would be required; today it is not applicable.
+CE marking under Art. 16(g) is required only of high-risk AI systems. Horizon-RIC is not high-risk (see §3 above). If a future Annex III amendment brings RAN policy optimisation into scope, a CE mark with notified-body involvement would be required; today it is not applicable.
 
 **Disposition:** Not applicable while §3 classification holds.
 
@@ -165,7 +163,7 @@ CE marking under Art. 16(g) is required only of high-risk AI systems. Preceptual
 
 An EU operator's compliance officer may append the following statement to their internal AI Act register:
 
-> *We have evaluated PreceptualAI v0.2.0 (third-party rApp from [vendor]) for inclusion in our AI Act register. We classify PreceptualAI as **outside** Annex III on the basis of: (a) it is not a safety component of safety-of-life critical infrastructure; (b) all outputs are operator-reviewable through the SOC override path documented in `src/horizon_ric/evidence/schema.py:128-129`; (c) it does not process biometric, employment, education, law-enforcement, migration, justice, or benefits data. We have nevertheless verified that PreceptualAI implements the substantive controls of Articles 9-15 as documented in `docs/compliance/eu_ai_act.md` §4. Two known gaps (Annex IV tabulation, live LI rule-list refresh) are tracked in `GAPS_TO_PILOT.md` with closure dates. We rely on PreceptualAI's per-tenant audit chain (`src/horizon_ric/evidence/store.py`) to satisfy our own Art. 12 record-keeping obligation.*
+> *We have evaluated Horizon-RIC v0.2.0 (third-party rApp from [vendor]) for inclusion in our AI Act register. We classify Horizon-RIC as **outside** Annex III on the basis of: (a) it is not a safety component of safety-of-life critical infrastructure; (b) all outputs are operator-reviewable through the SOC override path documented in `src/horizon_ric/evidence/schema.py:128-129`; (c) it does not process biometric, employment, education, law-enforcement, migration, justice, or benefits data. We have nevertheless verified that Horizon-RIC implements the substantive controls of Articles 9-15 as documented in `docs/compliance/eu_ai_act.md` §4. Two known gaps (Annex IV tabulation, live LI rule-list refresh) are tracked in `docs/conformance/CONFORMANCE.md` with closure status. We rely on Horizon-RIC's per-tenant audit chain (`src/horizon_ric/evidence/store.py`) to satisfy our own Art. 12 record-keeping obligation.*
 
 ---
 

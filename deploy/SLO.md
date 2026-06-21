@@ -1,11 +1,11 @@
-# PreceptualAI SLOs
+# Horizon-RIC SLOs
 
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
 
 
-Formal Service-Level Objectives for the PreceptualAI rApp suite. These are the
+Formal Service-Level Objectives for the Horizon-RIC rApp suite. These are the
 contractual targets enforced by Prometheus alerts (`deploy/prometheus/rules.yml`)
-and tracked on the `PreceptualAI rApp Overview` Grafana dashboard.
+and tracked on the `Horizon-RIC rApp Overview` Grafana dashboard.
 
 The rApp aligns to **3GPP TS 28.554 §6** (KPI definitions), **O-RAN.WG2.NON-RT-RIC-ARCH**
 (rApp lifecycle), and **NIST SP 800-92** (audit log integrity).
@@ -72,7 +72,7 @@ production path walks. The real measurement
 GB10): p99 = **48.441 ms** on GB10, projected **145.323 ms** on
 Orin Nano (×3 scaling). Budgets in `core/timing_budgets.py`
 (`EDGE_P99_BUDGET_MS_GB10`, `EDGE_P99_BUDGET_MS_ORIN_NANO`) and the
-"Edge p99 latency budget" section of `RELIABILITY.md` are the
+"Edge p99 latency budget" rows of this document are the
 authoritative numbers.
 
 ## DNS caching

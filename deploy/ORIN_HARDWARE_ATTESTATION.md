@@ -3,12 +3,12 @@
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
 
 
-_Document version: 1.0 · Issued: 2026-05-08 · Issuer: PreceptualAI engineering_
+_Document version: 1.0 · Issued: 2026-05-08 · Issuer: Horizon-RIC engineering_
 
 This is a signable engineering attestation closing the only False conjunct in
 `PILOT_READY_TIER_1` (Row 26: `systemd_unit_runs_on_jetson_orin_nano_for_24h_no_crash`).
 It establishes that the **constrained-envelope soak on the GB10 aarch64 host is
-a functionally valid Tier-1 substitute** for the not-yet-procured physical
+a functionally valid representative substitute** for the not-yet-procured physical
 Jetson Orin Nano 8 GB Developer Kit, and pins the post-delivery acceptance
 criteria so that Row 26 can be signed today and revalidated at hardware-arrival
 time with a single command.
@@ -81,7 +81,7 @@ crypto + SVE2 feature flags.
 
 **Conclusion.** No instruction-set difference exists between the GB10
 host and a Jetson Orin Nano. Every machine instruction emitted by the
-PreceptualAI binaries (uvicorn, asyncio loop, hashlib SHA-256, pybreaker
+Horizon-RIC binaries (uvicorn, asyncio loop, hashlib SHA-256, pybreaker
 state machine, the soak driver) decodes identically on both parts.
 Codepath divergence is impossible at the ISA layer.
 
@@ -135,7 +135,7 @@ EAGAIN, page-cache thrash) reproduces under the constraint.
 
 **Bandwidth.** The constrained host has higher peak DRAM bandwidth
 (273 vs 102 GB/s). This is a *favourable* delta only if the workload
-is bandwidth-bound — but PreceptualAI is not. Section 5 below
+is bandwidth-bound — but Horizon-RIC is not. Section 5 below
 demonstrates this empirically. The 24-h shadow soak's hot path is
 SHA-256 hashing of the audit chain, asyncio scheduling, and
 loopback HTTP — all dominated by L1/L2 cache hits and syscall
@@ -173,7 +173,7 @@ soak):
 
 The Orin Nano's distinguishing accelerators — NVDLA (deep-learning
 accelerator) and the integrated Ampere GPU — are **not on the Row 26
-critical path**. The PreceptualAI control plane (A1 emit, audit chain
+critical path**. The Horizon-RIC control plane (A1 emit, audit chain
 verify, watchdog tick, R1 register/deregister) is a
 syscall-and-cache-bound workload. The absence of an NVDLA on the GB10
 is therefore irrelevant; the absence of a GPU is irrelevant; the
@@ -261,7 +261,7 @@ runtime is identical (CPython 3.11 aarch64 wheels).
 ## Section 8 — Acceptance criteria for delivery-time validation
 
 When a physical Jetson Orin Nano 8 GB Developer Kit arrives, the
-customer (or a PreceptualAI SE) runs **one command**:
+operator (or a Horizon-RIC engineer) runs **one command**:
 
 ```
 sudo bash deploy/orin_validation.sh
@@ -302,20 +302,20 @@ revised numbers once the gap is closed.
 
 ```
 =============================================================================
-HORIZON-RIC ROW 26 HARDWARE-SUBSTITUTE ATTESTATION (Tier-1, signable)
+HORIZON-RIC ROW 26 HARDWARE-SUBSTITUTE ATTESTATION (signable)
 =============================================================================
 
 Engineering attestation
 -----------------------
 I attest that the constrained-envelope soak on the GB10 aarch64 host is a
-functionally valid Tier-1 substitute for a Jetson Orin Nano 8 GB Developer
+functionally valid representative substitute for a Jetson Orin Nano 8 GB Developer
 Kit for the purpose of Row 26 acceptance. The four equivalence claims
 (ISA, compute, memory, workload-profile) are documented in §§2-5 above.
 The five acceptance bars are met under the constrained envelope (§6). The
 residual risk delta is enumerated in §7 with mitigations.
 
 Signed:  ___________________________   Date: ____________
-         (PreceptualAI engineering lead)
+         (Horizon-RIC engineering lead)
 
 
 Customer architect acknowledgement

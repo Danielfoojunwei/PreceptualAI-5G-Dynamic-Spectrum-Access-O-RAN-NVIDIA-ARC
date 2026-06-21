@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
-  title: PreceptualAI Operator API
-  description: "PreceptualAI rApp operator API. O-RAN.WG2 R1/A1/O1 conformant, TM Forum\
+  title: Horizon-RIC Operator API
+  description: "Horizon-RIC rApp operator API. O-RAN.WG2 R1/A1/O1 conformant, TM Forum\
     \ ODA Production component. JWT bearer auth (HS256/RS256) per O-RAN.WG11 \xA7\
     6."
   version: 0.2.0

@@ -1,4 +1,4 @@
-"""OpenTelemetry tracing for PreceptualAI.
+"""OpenTelemetry tracing for Horizon-RIC.
 
 One span per decision; attributes mirror the TS 28.105 §8 inference
 report fields and the rApp SLO contract:

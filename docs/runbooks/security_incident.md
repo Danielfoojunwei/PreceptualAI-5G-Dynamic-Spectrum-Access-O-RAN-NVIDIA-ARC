@@ -3,7 +3,7 @@
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
 
-Activates when a PreceptualAI tenant chain breaks, an IDS hit lands on the rApp
+Activates when a Horizon-RIC tenant chain breaks, an IDS hit lands on the rApp
 pod, or a vendor / regulator notification arrives. Pair this runbook with
 `cert_rotation.md` (credential rotation step) and `customer_escalation.md`
 (communication tempo).
@@ -142,9 +142,9 @@ Triage in business hours. Required actions:
 ### NIS2 — 24-hour initial (Art. 23(4)(a))
 
 ```
-Subject: Initial incident notification — PreceptualAI tenant <TENANT> — <INCIDENT_ID>
+Subject: Initial incident notification — Horizon-RIC tenant <TENANT> — <INCIDENT_ID>
 Detected: <UTC timestamp>
-Service affected: PreceptualAI rApp / Near-RT RIC policy emit
+Service affected: Horizon-RIC rApp / Near-RT RIC policy emit
 Suspected cause: <one line>
 Cross-border impact: <yes/no, list MS>
 Mitigation in place: pod quarantined, credentials rotated, evidence preserved
@@ -166,8 +166,8 @@ preventive actions, post-mortem link.
 
 Required for any incident affecting `policy.constraints` violations or human-
 oversight bypass. Template lives in `docs/compliance/ai_act_art73.md`
-(referenced from `GAPS_TO_PILOT.md` row 36 — currently MISSING; placeholder
-text in this runbook acts as fallback until shipped).
+(currently MISSING; placeholder text in this runbook acts as fallback
+until shipped).
 
 ## Communication playbook
 
@@ -188,5 +188,5 @@ text in this runbook acts as fallback until shipped).
 - The `kubectl debug node/...` flow assumes a permissive PSP/PSA; on
   cluster profiles that block privileged debug pods, fall back to
   `crictl` direct on a node SSH session.
-- `docs/compliance/ai_act_art73.md` is referenced but not present in repo
-  (see `GAPS_TO_PILOT.md` row 36).
+- `docs/compliance/ai_act_art73.md` is referenced but not present in repo;
+  tracked as a follow-up.

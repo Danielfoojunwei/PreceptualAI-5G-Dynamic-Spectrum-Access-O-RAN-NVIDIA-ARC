@@ -1,9 +1,9 @@
-# PreceptualAI RBAC + Multi-Tenancy
+# Horizon-RIC RBAC + Multi-Tenancy
 
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
 
-The PreceptualAI rApp ships with a production-grade RBAC + JWT-bearer
+The Horizon-RIC rApp ships with a production-grade RBAC + JWT-bearer
 auth layer built on **Casbin** (Apache 2.0) and **python-jose** (Apache
 2.0). This document is the operator's reference: roles, custom-role
 recipes, CI bot tokens, key rotation, and the audit log.
@@ -23,7 +23,7 @@ recipes, CI bot tokens, key rotation, and the audit log.
 
 The seed lives in `src/horizon_ric/security/rbac_policy.csv` and uses
 the canonical Casbin **RBAC-with-domains** model. The "domain" is the
-PreceptualAI **tenant**.
+Horizon-RIC **tenant**.
 
 ## 2. Adding a custom role
 

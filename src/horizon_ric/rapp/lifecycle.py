@@ -1,6 +1,6 @@
 """rApp lifecycle — boot, register, serve, deregister.
 
-Top-level orchestration of PreceptualAI rApp instance.
+Top-level orchestration of Horizon-RIC rApp instance.
 Implements the lifecycle states from O-RAN.WG2.NON-RT-RIC-ARCH §rApp Lifecycle.
 """
 
@@ -410,7 +410,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="horizon-rapp",
         description=(
-            "PreceptualAI rApp daemon — registers with the SMO over R1, "
+            "Horizon-RIC rApp daemon — registers with the SMO over R1, "
             "registers A1 policy types with the Near-RT RIC, and serves "
             "/healthz, /readyz, /metrics until SIGTERM/SIGINT."
         ),

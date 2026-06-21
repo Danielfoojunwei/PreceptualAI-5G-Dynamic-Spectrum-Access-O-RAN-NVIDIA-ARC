@@ -107,7 +107,7 @@ fault-injection rate per wall-clock second is **2.5× higher** than the
 48× speedup baseline (300 5xx in 12 min vs 259 in 30 min), and each emit
 costs more CPU because 18 cores are masked off. Under that envelope a
 **99.5 % A1 success bar is the realistic Orin Nano target**. See
-`RELIABILITY.md` §7 for the math.
+`deploy/SLO.md` for the SLO math.
 
 The p99 of 205 ms is 5 ms over the cluster bar of 200 ms — but the
 **Orin envelope bar is 250 ms** in `deploy/SLO.md` row 2a (160 ms hard
@@ -144,8 +144,8 @@ We claim **TRUE under representative envelope** because:
 representative*, not *hardware-identical*. The remaining gap to "Row 26
 fully TRUE" is a soak run on a physical Jetson Orin Nano box — pure
 hardware procurement, no software change. Until then we ship this proof
-as a Tier-1 substitute and document the honest delta in
-`deploy/SLO.md` and `RELIABILITY.md`.
+as a representative substitute and document the honest delta in
+`deploy/SLO.md`.
 
 ## How this was generated
 

@@ -1,4 +1,4 @@
-# Lawful Intercept (LI) Applicability Memo — PreceptualAI rApp
+# Lawful Intercept (LI) Applicability Memo — Horizon-RIC rApp
 
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
@@ -6,16 +6,16 @@
 **Version:** 0.2.0
 **Date:** 2026-05-06
 **Audience:** Operator legal counsel, LI architect, sign-off authority
-**Component under review:** PreceptualAI rApp (`src/horizon_ric/`)
-**Status:** Pre-pilot — produced for Tier-1 operator sign-off
+**Component under review:** Horizon-RIC rApp (`src/horizon_ric/`)
+**Status:** Pre-competitive — produced for operator sign-off
 
 ---
 
 ## 1. Purpose and scope
 
-This memorandum is read by the operator's Lawful Intercept architect, the operator's legal counsel, and (by reference) by any national LI sign-off authority. It establishes whether PreceptualAI requires LI accreditation, what surface it exposes to the operator's Lawful Intercept Mediation Function (LIMF), and what the operator must configure on its side before authorising the rApp to emit A1 policies in production.
+This memorandum is read by the operator's Lawful Intercept architect, the operator's legal counsel, and (by reference) by any national LI sign-off authority. It establishes whether Horizon-RIC requires LI accreditation, what surface it exposes to the operator's Lawful Intercept Mediation Function (LIMF), and what the operator must configure on its side before authorising the rApp to emit A1 policies in production.
 
-The memo is scoped to PreceptualAI v0.2.0 as deployed at the Non-RT RIC (rApp tier). It does NOT cover the operator's underlying Near-RT RIC, gNB, UPF, or LIMF — those remain the operator's accredited LI components.
+The memo is scoped to Horizon-RIC v0.2.0 as deployed at the Non-RT RIC (rApp tier). It does NOT cover the operator's underlying Near-RT RIC, gNB, UPF, or LIMF — those remain the operator's accredited LI components.
 
 ## 2. Statutory framework
 
@@ -23,26 +23,26 @@ The framework below is cited because each of these instruments imposes distinct 
 
 - **3GPP TS 33.126 (LI Requirements), Release 18** — §4 establishes the principle that any management or optimisation function affecting bearer routing must not be permitted to subvert active warrants.
 - **3GPP TS 33.127 (LI Architecture and Functions), Release 18** — §5.4 names the LIMF as the authoritative orchestrator of intercept; §6.2 requires that the Administration Function (ADMF) holds the catalogue of protected targets and that no third-party function (an rApp is third-party from the LIMF's perspective) may relocate a protected target across jurisdictional anchors. §7.1 sets the non-interference principle for management plane functions.
-- **3GPP TS 33.128 (LI Stage 3), Release 18** — §5 / §6 define the X1, X2, X3 handover interfaces. PreceptualAI consumes none of these interfaces and emits onto none of them.
+- **3GPP TS 33.128 (LI Stage 3), Release 18** — §5 / §6 define the X1, X2, X3 handover interfaces. Horizon-RIC consumes none of these interfaces and emits onto none of them.
 - **ETSI TS 103 221-1 / -2** — internal LI handover; same non-interference principle.
 - **USA**: CALEA (47 U.S.C. §1001 et seq.) — operator-side obligation; an rApp that disrupts intercept capability creates operator liability under §103.
 - **EU**: Directive 2002/58/EC (e-Privacy) Art. 15(1) and Directive (EU) 2016/680 (Law Enforcement Data Directive) — define the lawful basis under which interception data is processed; rApp must not relocate a target out of the warrant's competent jurisdiction.
 - **UK**: Investigatory Powers Act 2016, Part 9 (Telecommunications Operator obligations) — Technical Capability Notices may name jurisdictional anchoring requirements.
 - **Singapore**: Telecommunications Act 1999 (Cap. 323) and the Telecommunications (Class Licences) Notifications — Singapore IMDA imposes operator-side LI obligations on Class Licence holders.
 
-## 3. PreceptualAI's LI architecture position
+## 3. Horizon-RIC's LI architecture position
 
-PreceptualAI is an **A1 policy emitter at the Non-RT RIC (rApp) tier**. Per O-RAN.WG2.NON-RT-RIC-ARCH and O-RAN.WG2.A1AP-v05.00 §6.3, the rApp issues policy intents (PUT /policies); the actual user-plane traffic is handled by the Near-RT RIC, the gNB-CU/DU, and the UPF.
+Horizon-RIC is an **A1 policy emitter at the Non-RT RIC (rApp) tier**. Per O-RAN.WG2.NON-RT-RIC-ARCH and O-RAN.WG2.A1AP-v05.00 §6.3, the rApp issues policy intents (PUT /policies); the actual user-plane traffic is handled by the Near-RT RIC, the gNB-CU/DU, and the UPF.
 
 Concretely:
 
-- PreceptualAI **never sees subscriber traffic, IMSI/SUPI, or content of communication (CC) or intercept-related information (IRI).** The rApp consumes 3GPP TS 28.552 KPIs and TS 28.541 NRM via the O1 adapter (`src/horizon_ric/rapp/o1_adapter.py`); these are management-plane counters, not subscriber data.
-- PreceptualAI emits A1 policy intents to the Near-RT RIC. These intents express constraints over slices, gateway placements, and target jurisdictions — never per-IMSI mappings.
-- PreceptualAI is therefore **not an LI function** under TS 33.127 §5.4. It is an "external optimisation function" that, *if unconstrained*, could nevertheless disturb the LIMF by emitting a policy that re-anchors a slice carrying a protected UE.
+- Horizon-RIC **never sees subscriber traffic, IMSI/SUPI, or content of communication (CC) or intercept-related information (IRI).** The rApp consumes 3GPP TS 28.552 KPIs and TS 28.541 NRM via the O1 adapter (`src/horizon_ric/rapp/o1_adapter.py`); these are management-plane counters, not subscriber data.
+- Horizon-RIC emits A1 policy intents to the Near-RT RIC. These intents express constraints over slices, gateway placements, and target jurisdictions — never per-IMSI mappings.
+- Horizon-RIC is therefore **not an LI function** under TS 33.127 §5.4. It is an "external optimisation function" that, *if unconstrained*, could nevertheless disturb the LIMF by emitting a policy that re-anchors a slice carrying a protected UE.
 
 This memo concerns that residual disturbance surface.
 
-## 4. The five protections PreceptualAI implements
+## 4. The five protections Horizon-RIC implements
 
 ### 4.1 LI jurisdiction constraint — `src/horizon_ric/policy/li_constraint.py:78-207`
 
@@ -85,7 +85,7 @@ JWT issuance is RS256-only (`src/horizon_ric/security/jwt.py:36-37`); HS256 is n
 
 This means an LI auditor presenting a warrant-scoped JWT can only read the records in their authorised tenant.
 
-## 5. Seven LI-affecting actions PreceptualAI CANNOT take
+## 5. Seven LI-affecting actions Horizon-RIC CANNOT take
 
 Per 3GPP TS 33.127 §6.2 and §7.1, the following classes of action would, if taken, disturb the LIMF. Each is blocked by a named constraint:
 
@@ -101,7 +101,7 @@ Per 3GPP TS 33.127 §6.2 and §7.1, the following classes of action would, if ta
 
 All seven are exercised by the test suite (see `tests/test_li_constraint.py`, `tests/test_evidence_store.py`, `tests/test_auth_security.py`).
 
-## 6. Two LI-affecting actions PreceptualAI COULD take if misconfigured
+## 6. Two LI-affecting actions Horizon-RIC COULD take if misconfigured
 
 The constraint surface is only as good as the configuration the operator supplies. The following are honest residual risks; each requires operator-side mitigation.
 
@@ -135,9 +135,9 @@ In the interim, the operator is responsible for ensuring rApp restart happens wi
 
 ## 7. Conclusion — deployment checklist for the operator's LI architect
 
-Before authorising PreceptualAI to emit A1 policies in a production environment carrying intercepted bearers, the operator's LI architect MUST verify each of the following.
+Before authorising Horizon-RIC to emit A1 policies in a production environment carrying intercepted bearers, the operator's LI architect MUST verify each of the following.
 
-- [ ] PreceptualAI is registered as an external optimisation function, not as an LI function (TS 33.127 §5.4 categorisation).
+- [ ] Horizon-RIC is registered as an external optimisation function, not as an LI function (TS 33.127 §5.4 categorisation).
 - [ ] A non-empty `LIConstraint` rule catalogue is populated from the operator's LIMF/ADMF before the rApp transitions out of `RAppState.REGISTERING` (`src/horizon_ric/rapp/lifecycle.py:135`).
 - [ ] The rule catalogue refresh SLA from LIMF→rApp meets the operator's LI architect's requirement (today: rApp restart; planned: live O1 push, Phase 2).
 - [ ] mTLS is enabled with `production_mode=True` and `verify_tls=True` on every R1, A1, O1 channel (`src/horizon_ric/rapp/auth.py:80, 112-117`).
@@ -145,8 +145,8 @@ Before authorising PreceptualAI to emit A1 policies in a production environment 
 - [ ] The operator's SOC has a documented override procedure that exercises `DecisionRecord.operator_override = True` and writes a non-empty `operator_override_reason` (`src/horizon_ric/evidence/schema.py:128-129`).
 - [ ] A periodic chain-verification job runs `EvidenceStore.verify()` (`src/horizon_ric/evidence/store.py:106`); failures generate an Alertmanager P1 incident (`deploy/prometheus/sla_rules.yml`).
 
-Sign-off by the operator's LI architect on the above seven items closes PreceptualAI's residual LI applicability for that operator's deployment.
+Sign-off by the operator's LI architect on the above seven items closes Horizon-RIC's residual LI applicability for that operator's deployment.
 
 ---
 
-**End of memo.** Questions to: PreceptualAI compliance lead. Spec citations are to the latest published versions of TS 33.126, 33.127, 33.128 and ETSI TS 103 221 as of 2026-05-06.
+**End of memo.** Questions to: Horizon-RIC compliance lead. Spec citations are to the latest published versions of TS 33.126, 33.127, 33.128 and ETSI TS 103 221 as of 2026-05-06.

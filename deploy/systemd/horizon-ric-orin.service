@@ -1,4 +1,4 @@
-# PreceptualAI — Jetson Orin Nano edge profile (systemd unit).
+# Horizon-RIC — Jetson Orin Nano edge profile (systemd unit).
 #
 # Constraints baked in:
 #   * 2-CPU envelope        — CPUAffinity=0 1   (matches Orin Nano 2-core
@@ -14,7 +14,7 @@
 # Install: see deploy/systemd/README.md.
 
 [Unit]
-Description=PreceptualAI rApp (Jetson Orin Nano edge profile)
+Description=Horizon-RIC rApp (Jetson Orin Nano edge profile)
 Documentation=https://github.com/preceptualai/horizon-ric
 After=network-online.target
 Wants=network-online.target

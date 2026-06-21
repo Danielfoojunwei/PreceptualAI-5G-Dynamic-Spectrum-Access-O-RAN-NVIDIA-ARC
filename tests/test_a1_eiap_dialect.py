@@ -56,7 +56,7 @@ async def test_eiap_register_policy_types_url_path():
         transport=httpx.MockTransport(handler),
     )
     accepted = await adapter.register_policy_types()
-    assert len(accepted) == 4, "all 4 default PreceptualAI types should register"
+    assert len(accepted) == 4, "all 4 default Horizon-RIC types should register"
     for req in captured:
         assert req.url.path.startswith("/A1-PolicyManagement/v2/policy-types/"), (
             f"EIAP policy-type URL must live under /A1-PolicyManagement/v2/, "

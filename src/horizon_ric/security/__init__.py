@@ -1,4 +1,4 @@
-"""PreceptualAI security: RBAC + multi-tenancy + JWT-bearer auth.
+"""Horizon-RIC security: RBAC + multi-tenancy + JWT-bearer auth.
 
 Public re-exports — every consumer of the security layer should import
 from this package, not from the submodules directly.

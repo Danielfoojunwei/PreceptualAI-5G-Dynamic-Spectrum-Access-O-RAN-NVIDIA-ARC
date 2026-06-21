@@ -3,7 +3,7 @@
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
 
-PreceptualAI ships as a vendor-portable non-RT RIC rApp. Operators wire
+Horizon-RIC ships as a vendor-portable non-RT RIC rApp. Operators wire
 it into their SMO of choice by selecting an A1 *dialect* on
 `A1AdapterConfig`. A dialect is the (URL surface + body shape + auth
 mechanism) tuple that a specific SMO vendor publishes for the A1
@@ -12,10 +12,10 @@ across vendors; only the wire shape differs.
 
 This document is the canonical reference for:
 
-  * the four A1 dialects PreceptualAI supports today
+  * the four A1 dialects Horizon-RIC supports today
   * what an operator changes to add a fifth (or N+1) SMO vendor
   * the per-capability × per-dialect compatibility matrix
-  * the exact URL PreceptualAI PUTs a policy to, for each dialect
+  * the exact URL Horizon-RIC PUTs a policy to, for each dialect
 
 ## 1. Dialect switch
 
@@ -68,7 +68,7 @@ Concretely, add a fifth dialect (call it `acme`) like so:
      `tests/test_multi_vendor_integration.py::DIALECTS`.
 
 That is the complete contract. Schema maps for the four
-PreceptualAI-default policy types (`horizon.qos.priority`,
+Horizon-RIC-default policy types (`horizon.qos.priority`,
 `horizon.traffic.steering`, `horizon.admission.control`,
 `horizon.spectrum.reservation`) are vendor-independent — every dialect
 ships the same JSON Schema for the policy payload.
@@ -93,10 +93,10 @@ regardless of dialect because all four SMOs ship A1-EI compatibility
 shims under that path. A vendor-specific A1-EI URL switch is on the
 roadmap and would follow the same one-branch-per-dialect pattern.
 
-## 4. Exact URL PreceptualAI PUTs a policy to, per dialect
+## 4. Exact URL Horizon-RIC PUTs a policy to, per dialect
 
 These are the exact URL paths emitted by `A1Adapter.emit_policy(...)`
-in PreceptualAI v0.2.0 for the default `horizon.qos.priority` policy
+in Horizon-RIC v0.2.0 for the default `horizon.qos.priority` policy
 type (policy_type_id = 20001). The base URL is
 `A1AdapterConfig.near_rt_ric_base_url` and is prepended in every case.
 
@@ -121,9 +121,9 @@ The corresponding bodies:
 
 ## 5. NVIDIA Aerial Cloud-Native RAN (ARC)
 
-ARC is the management plane for the NVIDIA cuBB L1/L2 stack. PreceptualAI
+ARC is the management plane for the NVIDIA cuBB L1/L2 stack. Horizon-RIC
 does **not** ship E2 today, so cuBB live control is out of scope. The
-management surface PreceptualAI integrates with via
+management surface Horizon-RIC integrates with via
 `horizon_ric.integrations.nvidia_arc.ARCClient`:
 
   * `POST /api/v1/models` — upload a checkpoint (multipart) plus a
@@ -139,7 +139,7 @@ ARC header name).
 ## 6. Multi-tenant rApps-as-a-Service
 
 `horizon_ric.integrations.raas.RaaSEndpoint` is the multi-tenant
-front-door for PreceptualAI. One running instance can serve many tenants;
+front-door for Horizon-RIC. One running instance can serve many tenants;
 billing and audit isolation is enforced through:
 
   * `TenantScope` (`horizon_ric.security.tenant`) — drives the active
@@ -166,8 +166,8 @@ billing and audit isolation is enforced through:
     NVIDIA Developer Program members; the public docs describe the
     multipart model upload and PM KPI read used here.
 
-In all three cases PreceptualAI's payloads are validated against the
+In all three cases Horizon-RIC's payloads are validated against the
 public surface; a real partner integration replaces the mock transport
 with the vendor's live endpoint and (for the marketplace listings) adds
 the partner-portal-only fields. None of those replacements requires a
-code change in PreceptualAI itself — the dialect switch is the seam.
+code change in Horizon-RIC itself — the dialect switch is the seam.

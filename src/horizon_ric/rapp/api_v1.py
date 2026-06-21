@@ -1,4 +1,4 @@
-"""PreceptualAI operator REST API v1 — data surface (port 8083).
+"""Horizon-RIC operator REST API v1 — data surface (port 8083).
 
 Stakeholder-facing read/control endpoints for SLA, policy, audit and
 connector management. Distinct from:
@@ -217,10 +217,10 @@ def create_app() -> FastAPI:
     from horizon_ric.evidence.store import JsonlEvidenceStore
 
     app = FastAPI(
-        title="PreceptualAI Operator API",
+        title="Horizon-RIC Operator API",
         version="0.2.0",
         description=(
-            "PreceptualAI rApp operator API. O-RAN.WG2 R1/A1/O1 conformant, "
+            "Horizon-RIC rApp operator API. O-RAN.WG2 R1/A1/O1 conformant, "
             "TM Forum ODA Production component. JWT bearer auth (HS256/RS256) "
             "per O-RAN.WG11 §6."
         ),

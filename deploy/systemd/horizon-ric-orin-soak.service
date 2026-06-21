@@ -1,11 +1,11 @@
-# PreceptualAI — soak oneshot (called by horizon-ric-orin-soak.timer).
+# Horizon-RIC — soak oneshot (called by horizon-ric-orin-soak.timer).
 #
 # Runs the 1-hour wall × 24× speed-up soak (= 24 simulated hours) under the
 # same 2-CPU envelope as the main service. Output JSON lands in
 # /var/log/horizon-ric/soak-YYYYMMDD.json.
 
 [Unit]
-Description=PreceptualAI daily 1h soak runner (Orin Nano profile)
+Description=Horizon-RIC daily 1h soak runner (Orin Nano profile)
 After=horizon-ric-orin.service
 Wants=horizon-ric-orin.service
 

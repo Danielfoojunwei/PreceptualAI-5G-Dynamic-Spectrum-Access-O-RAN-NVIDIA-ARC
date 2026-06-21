@@ -18,7 +18,7 @@ SDK_URL=${HORIZON_RIC_URL:-https://horizon.${TENANT}}
 | Tier | Owner                                | Pager target              | SLA target |
 | ---- | ------------------------------------ | ------------------------- | ---------- |
 | T1   | Operator NOC (customer-side)         | their own NOC tooling     | 5 min ack  |
-| T2   | PreceptualAI engineer on-call          | PagerDuty `horizon-ric`   | 15 min ack |
+| T2   | Horizon-RIC engineer on-call          | PagerDuty `horizon-ric`   | 15 min ack |
 | T3   | Engineering lead + CTO               | PagerDuty `horizon-exec`  | 1 hour ack |
 
 ## Auto-escalation matrix
@@ -110,11 +110,11 @@ tools and we want zero ambiguity.
 ### T+15 min — initial response (open ticket / page acknowledgement)
 
 ```
-Subject: PreceptualAI investigating SLA breach — Ticket <TICKET_ID>
+Subject: Horizon-RIC investigating SLA breach — Ticket <TICKET_ID>
 
 Hi <NOC contact>,
 
-We have your page. PreceptualAI engineer <NAME> is on the bridge.
+We have your page. Horizon-RIC engineer <NAME> is on the bridge.
 
 Symptom we see on our side: <one line — match what they reported>.
 Mitigation in flight: <one line — e.g. "rolled emit dry-run, restart in progress">.
@@ -126,7 +126,7 @@ If urgent escalation is needed, reply with "ESCALATE" and we will page T3.
 ### T+1 hour — status update
 
 ```
-Subject: PreceptualAI update — Ticket <TICKET_ID>
+Subject: Horizon-RIC update — Ticket <TICKET_ID>
 
 What changed in the last hour:
   * <bullet — what we tried>
@@ -142,7 +142,7 @@ Next update: <UTC timestamp + 1h>. We will not let this thread go quiet.
 ### T+4 hours — resolution + post-mortem ETA
 
 ```
-Subject: PreceptualAI resolved — Ticket <TICKET_ID>
+Subject: Horizon-RIC resolved — Ticket <TICKET_ID>
 
 Service restored at <UTC timestamp>. Total user-visible breach: <duration>.
 
@@ -250,8 +250,7 @@ sets the value, `health.py:162` veto-checks it on every `/readyz`.
 
 ## References
 
-- `RELIABILITY.md` — SLO bar derivation + breaker config
-- `deploy/SLO.md` — rows 1, 2, 2a-2d, 4, 4a
+- `deploy/SLO.md` — SLO bar derivation + breaker config; rows 1, 2, 2a-2d, 4, 4a
 - `deploy/RUNBOOK.md` — operator runbook (rapp-down, a1-emit-failure)
 - `src/horizon_ric/rapp/health.py:55-95` — Prometheus metric definitions
 - `src/horizon_ric/rapp/health.py:122-182` — `/healthz`, `/readyz`, `/metrics`

@@ -2,7 +2,7 @@
 
 Compliance context
 ------------------
-The PreceptualAI rApp does not itself perform interception. However, an rApp
+The Horizon-RIC rApp does not itself perform interception. However, an rApp
 that controls beam steering, gateway placement, slice assignment, or
 hand-off can disturb the operator's Lawful Intercept Mediation Function
 (LIMF). For any EU/UK/US operator pilot, the operator's LI architect will

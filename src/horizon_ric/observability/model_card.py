@@ -130,7 +130,7 @@ def training_corpus_manifest_sha256(corpus_paths: Iterable[Path]) -> str:
 
 
 def default_training_corpus_paths() -> list[Path]:
-    """The canonical set of training-corpus roots PreceptualAI ships against.
+    """The canonical set of training-corpus roots Horizon-RIC ships against.
 
     These paths are repo-relative anchors of the real corpora that the
     SLA head, JEPA encoder, and planner heads were trained on. They live

@@ -1,4 +1,4 @@
-# PreceptualAI local stack — rApp + edge agent + Prometheus + Grafana.
+# Horizon-RIC local stack — rApp + edge agent + Prometheus + Grafana.
 # Bring up: docker compose up -d
 # Smoke check (60s): curl -fsS http://localhost:8081/healthz
 #                    curl -fsS http://localhost:8082/metrics

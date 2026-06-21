@@ -1933,7 +1933,7 @@
     },
     {
       "bom-ref": "horizon-ric-sdk==0.1.0",
-      "description": "Official Python client SDK for the PreceptualAI operator REST API",
+      "description": "Official Python client SDK for the Horizon-RIC operator REST API",
       "externalReferences": [
         {
           "comment": "PackageSource: Local",

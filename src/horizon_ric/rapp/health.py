@@ -113,7 +113,7 @@ def _resolve_liveness(lifecycle: object) -> LivenessRegistry:
 def build_health_app(lifecycle: "HorizonRAppLifecycle") -> FastAPI:  # noqa: F821
     """Build a FastAPI ASGI app bound to the given lifecycle."""
     app = FastAPI(
-        title="PreceptualAI rApp Health",
+        title="Horizon-RIC rApp Health",
         version="0.1.0",
         docs_url=None,
         redoc_url=None,

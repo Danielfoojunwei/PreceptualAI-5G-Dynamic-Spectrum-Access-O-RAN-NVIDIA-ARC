@@ -1,4 +1,4 @@
-"""Casbin-backed RBAC with domains for PreceptualAI multi-tenant access control.
+"""Casbin-backed RBAC with domains for Horizon-RIC multi-tenant access control.
 
 Production-grade RBAC built on Casbin (Apache 2.0). Five default roles per
 tenant (`admin`, `operator`, `auditor`, `regulator`, `api-user`) — see

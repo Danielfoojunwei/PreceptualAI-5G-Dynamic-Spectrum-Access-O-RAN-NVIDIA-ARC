@@ -3,7 +3,7 @@
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
 
-PreceptualAI ships a full SLA management surface for operators: define
+Horizon-RIC ships a full SLA management surface for operators: define
 targets, persist them, evaluate observations every tick, alert on
 breaches, escalate on missed ACKs, and annotate the audit chain with
 breach context so a regulator can prove which decision was in flight

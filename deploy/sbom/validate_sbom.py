@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Validate the PreceptualAI CycloneDX SBOM.
+"""Validate the Horizon-RIC CycloneDX SBOM.
 
 Used in lieu of `cyclonedx-cli` (Go binary) when only Python is available.
 Loads the JSON SBOM, runs it through the official `cyclonedx-python-lib`

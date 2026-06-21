@@ -121,7 +121,7 @@ RUNNING, (b) evidence store writable, (c) R1 registered — see
 ## Communication template (status page / Slack #incidents)
 
 ```
-[<UTC>] PreceptualAI <SEV> — <ALERT_NAME>
+[<UTC>] Horizon-RIC <SEV> — <ALERT_NAME>
 Owner:        <on-call name>
 Started:      <UTC>
 Customer-visible: <YES | NO>
@@ -150,8 +150,7 @@ Post once per status transition, plus every 30 min while open.
 
 ## References
 
-- `RELIABILITY.md` — fault-tree, SLO derivation
-- `deploy/SLO.md` — every alert maps back to one row
+- `deploy/SLO.md` — fault-tree, SLO derivation; every alert maps back to one row
 - `deploy/RUNBOOK.md` — change-management, rapp-down / rapp-degraded /
   a1-emit-failure / queue-depth / healthz-503
 - `deploy/grafana/dashboards/horizon-counterfactual.json` — primary
@@ -220,7 +219,7 @@ done
 ```
 
 A 503 -> `deploy/RUNBOOK.md` healthz-503. A connection refusal ->
-ingress / DNS triage, not a PreceptualAI issue.
+ingress / DNS triage, not a Horizon-RIC issue.
 
 ### 3. SDK round-trip
 
@@ -280,7 +279,7 @@ Anything outside this list -> ticket, not page.
 
 ## Post-incident: post-mortem template
 
-Blameless. 5-whys structure. Use the GAPS_TO_PILOT.md table format so
+Blameless. 5-whys structure. Use the standard action-item table format so
 action items get tracked alongside roadmap gaps:
 
 ```
@@ -310,7 +309,7 @@ action items get tracked alongside roadmap gaps:
 ## What didn't
 - ...
 
-## Action items (table — same shape as GAPS_TO_PILOT.md row)
+## Action items (table)
 
 | # | Action | Owner | Due | Status |
 |---|--------|-------|-----|--------|
@@ -319,7 +318,7 @@ action items get tracked alongside roadmap gaps:
 ```
 
 File the post-mortem in `docs/post_mortems/<INCIDENT_ID>.md` and link it
-from `GAPS_TO_PILOT.md` if any action item closes a roadmap gap.
+from the roadmap-gap tracker if any action item closes a roadmap gap.
 
 ## Burnout rule
 

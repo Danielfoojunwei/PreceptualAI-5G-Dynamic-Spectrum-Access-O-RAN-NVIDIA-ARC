@@ -1,6 +1,6 @@
 """Connector ABCs — the stable extension surface for adding data flow.
 
-A connector is anything that moves typed messages in or out of PreceptualAI.
+A connector is anything that moves typed messages in or out of Horizon-RIC.
 Three roles:
 
     Source         async-iterates TelemetryEvents

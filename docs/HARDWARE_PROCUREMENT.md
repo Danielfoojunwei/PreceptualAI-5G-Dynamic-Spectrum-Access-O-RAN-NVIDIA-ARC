@@ -8,7 +8,7 @@ _Document version: 1.0 · Issued: 2026-05-08_
 ## Honest framing
 
 This is a **procurement timeline** issue, not a code-readiness issue. The
-PreceptualAI code is delivery-ready: it boots, soaks, and self-validates on
+Horizon-RIC code is delivery-ready: it boots, soaks, and self-validates on
 aarch64. The substitute-envelope attestation in
 `deploy/ORIN_HARDWARE_ATTESTATION.md` lets the customer's procurement
 architect sign Row 26 today, with the validation script
@@ -57,7 +57,7 @@ receipt — i.e. the longest plausible total path from PO to validation is
    ```
 4. Install runtime prerequisites (Python 3.11, systemd ≥ 245 — both ship
    with JetPack 5.1.2).
-5. Clone the PreceptualAI repository, run `make venv` and `make install`.
+5. Clone the Horizon-RIC repository, run `make venv` and `make install`.
 6. Lock the clock and power profile for the acceptance run:
    ```
    sudo nvpmodel -m 0       # 15 W mode

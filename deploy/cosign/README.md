@@ -1,9 +1,9 @@
-# Cosign image signing for PreceptualAI
+# Cosign image signing for Horizon-RIC
 
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08.*
 
 
-PreceptualAI publishes container images signed with [Sigstore Cosign](https://docs.sigstore.dev/cosign/overview/),
+Horizon-RIC publishes container images signed with [Sigstore Cosign](https://docs.sigstore.dev/cosign/overview/),
 in line with O-RAN.WG11 (Security Specification) supply-chain integrity
 requirements and SLSA L3 attestation.
 
@@ -13,7 +13,7 @@ The previous `cosign.key` file (sha256
 `b4fa4c49c9149959fddbbb0ddfb23e1283ce402f6a7bf781e1c20940355216bb`,
 653 bytes) was **committed to this repository in plain text**. As of the
 DEVIL_B remediation it is **REVOKED**. Anyone holding a copy of that key
-can no longer publish signed PreceptualAI images: the public key in
+can no longer publish signed Horizon-RIC images: the public key in
 `cosign.pub` has been replaced with a new keypair and any signature made
 with the old private key fails `cosign verify` against this repo.
 

@@ -247,7 +247,7 @@ before they reach the weighted mean.
 ## Communication template
 
 ```
-[<UTC>] PreceptualAI FL pause — round <N>
+[<UTC>] Horizon-RIC FL pause — round <N>
 Tenants:        <list>
 Trigger:        horizon_drift_fired_total advanced 3 consecutive rounds
                  OR FedProx loss diverged (round <N-2..N>)
@@ -276,7 +276,6 @@ Runbook:        docs/runbooks/fl_convergence_failure.md
 
 ## References
 
-- `RELIABILITY.md` — federated-learning posture
 - `deploy/SLO.md` — does NOT cover model-quality SLO (excluded)
 - `src/horizon_ric/federated/aggregator.py:65-184` — FedAvg, FedProx,
   defaults
@@ -310,13 +309,13 @@ not telemetry.
 
 - **Krum / median-of-means / trimmed-mean are not implemented.** The
   runbook recommends FedProx + client allowlist as the available
-  mitigation. `GAPS_TO_PILOT.md` row 15 already tracks this as
-  SCAFFOLD-level FL maturity. Action: add `aggregate_krum`,
+  mitigation. This is tracked as SCAFFOLD-level FL maturity in the
+  roadmap-gap tracker. Action: add `aggregate_krum`,
   `aggregate_median`, `aggregate_trimmed_mean` to
   `src/horizon_ric/federated/aggregator.py`.
 - No DP accountant ships. If a regulator asks about ε-bound after a
   round, the answer today is "not bounded by the platform" — that is
-  also tracked in row 15 of `GAPS_TO_PILOT.md`.
+  also tracked alongside FL maturity in the roadmap-gap tracker.
 - `HORIZON_FL_DENY_CLIENTS` and `HORIZON_FL_AGGREGATOR` env-var hooks
   are referenced as the operator switches; the wiring exists in the
   rApp config layer but the names are operational conventions, not

@@ -1,6 +1,6 @@
 """Standard I/O contracts and connector framework.
 
-This package is the **stable extension surface** for PreceptualAI. To add a
+This package is the **stable extension surface** for Horizon-RIC. To add a
 new data source, modality, sink, or transport, write a class that
 implements one of the abstract bases here and register it in the
 `registry` — every other component (encoder, world model, A1 emitter,

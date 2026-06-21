@@ -1,4 +1,4 @@
-# PreceptualAI rApp — bare-metal systemd unit.
+# Horizon-RIC rApp — bare-metal systemd unit.
 #
 # Install:
 #   sudo cp deploy/systemd/horizon-rapp.service /etc/systemd/system/
@@ -12,7 +12,7 @@
 # WATCHDOG=1 every 15s via horizon_ric.rapp.sd_notify.
 
 [Unit]
-Description=PreceptualAI rApp — NTN-Aware AI-RAN Resource-Orchestration
+Description=Horizon-RIC rApp — NTN-Aware AI-RAN Resource-Orchestration
 Documentation=https://github.com/preceptualai/horizon-ric
 After=network-online.target
 Wants=network-online.target

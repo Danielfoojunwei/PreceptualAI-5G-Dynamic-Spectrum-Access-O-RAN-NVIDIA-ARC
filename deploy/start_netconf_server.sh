@@ -14,7 +14,7 @@
 # This is REAL upstream netconfd — not a mock. The same binary is used
 # by Open vSwitch, ZeroTier and other OEM appliances. Wire format is
 # RFC 6241 (NETCONF) over RFC 6242 (SSH); RPC reply XML is what the
-# server actually emits, not what PreceptualAI pretends.
+# server actually emits, not what Horizon-RIC pretends.
 #
 # Usage:  bash deploy/start_netconf_server.sh        # foreground (^C to stop)
 #         bash deploy/start_netconf_server.sh -d     # detach

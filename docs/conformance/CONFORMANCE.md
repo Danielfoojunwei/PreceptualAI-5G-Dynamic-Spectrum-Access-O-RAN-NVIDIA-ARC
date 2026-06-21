@@ -1,4 +1,4 @@
-# PreceptualAI Conformance Report
+# Horizon-RIC Conformance Report
 
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
@@ -16,7 +16,7 @@ Status legend:
 | Glyph | Meaning |
 | ----- | ------- |
 | ✅ | Implemented and continuously tested in CI |
-| ⚠️ | Partially implemented — gaps tracked in `GAPS_TO_PILOT.md` |
+| ⚠️ | Partially implemented — gaps tracked in `docs/EVALUATION_CRITERIA.md` |
 | ❌ | Not applicable — out of scope for this component |
 | 🟡 | Planned — design exists, code not yet landed |
 

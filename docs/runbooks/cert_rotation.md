@@ -40,7 +40,7 @@ Cert lives in `Secret/${APP}-credentials` keys `r1.client.crt`, `r1.client.key`.
 # 1. Generate new keypair (P-256, 90-day lifetime)
 openssl ecparam -name prime256v1 -genkey -noout -out /tmp/r1.client.key
 openssl req -new -key /tmp/r1.client.key \
-  -subj "/CN=${REL}.${NS}/O=PreceptualAI/OU=R1Adapter" \
+  -subj "/CN=${REL}.${NS}/O=Horizon-RIC/OU=R1Adapter" \
   -out /tmp/r1.client.csr
 # 2. Submit /tmp/r1.client.csr to the operator's CA. Save signed cert as /tmp/r1.client.crt.
 # 3. Patch the Secret in-place (Helm-managed; --dry-run first to confirm diff).
@@ -65,7 +65,7 @@ secret revision and pod template.
 
 ## 2. mTLS server cert (health/api endpoints behind TLS terminator)
 
-Termination is at the cluster Ingress / sidecar; PreceptualAI itself listens on
+Termination is at the cluster Ingress / sidecar; Horizon-RIC itself listens on
 plaintext 8081 inside the pod. Rotate the Ingress secret:
 
 ```sh
