@@ -13,11 +13,10 @@ Backend matrix
 * :class:`InMemoryHSMBackend` — pure-Python RSA via ``cryptography``.
   TEST-ONLY (key material is in process memory). Real RSA-2048 keys, no
   mocks; suitable for unit tests and CI.
-* ``backend == "aws_cloudhsm"`` and ``backend == "thales_luna"`` —
-  :meth:`HSMBackend.from_config` raises :class:`NotImplementedError`
-  with a "contact ops" message; the production wiring (CloudHSM-CLI /
-  Luna client) is documented in ``docs/compliance/hsm_key_custody.md``
-  but not bundled here.
+* Production PKCS#11 HSMs (AWS CloudHSM, Thales Luna) plug into the same
+  :class:`SoftHSM2Backend` PKCS#11 path — point ``module_path`` at the vendor
+  ``.so``. The deployment wiring is documented in
+  ``docs/compliance/hsm_key_custody.md``.
 
 Mechanism set (for any production backend):
     * ``CKM_RSA_PKCS_OAEP``  — encrypt / decrypt
@@ -113,10 +112,10 @@ class HSMBackend:
     def from_config(cfg: dict) -> "HSMBackend":
         """Select a backend by ``cfg['backend']``.
 
-        Recognised values: ``"in_memory"``, ``"softhsm2"``,
-        ``"aws_cloudhsm"``, ``"thales_luna"``. The last two raise
-        :class:`NotImplementedError` — production deployment is documented
-        in ``docs/compliance/hsm_key_custody.md`` and requires ops support.
+        Recognised values: ``"in_memory"`` (real RSA-2048, keys in process
+        memory — test/lab only) and ``"softhsm2"`` (real PKCS#11). Production
+        PKCS#11 HSMs (AWS CloudHSM, Thales Luna) use the same SoftHSM2Backend
+        path with the vendor module — see ``docs/compliance/hsm_key_custody.md``.
         """
         backend = cfg.get("backend", "in_memory")
         if backend == "in_memory":
@@ -127,12 +126,10 @@ class HSMBackend:
                 token_label=cfg.get("token_label", "horizon-ric"),
                 user_pin=cfg.get("user_pin", "1234"),
             )
-        if backend in ("aws_cloudhsm", "thales_luna"):
-            raise NotImplementedError(
-                f"HSM backend {backend!r} is documented but not bundled — "
-                "contact ops (see docs/compliance/hsm_key_custody.md)."
-            )
-        raise ValueError(f"unknown HSM backend {backend!r}")
+        raise ValueError(
+            f"unknown HSM backend {backend!r}; supported: 'in_memory', 'softhsm2' "
+            "(point softhsm2 at a vendor PKCS#11 module for CloudHSM / Luna)."
+        )
 
 
 # ---------------------------------------------------------------------------

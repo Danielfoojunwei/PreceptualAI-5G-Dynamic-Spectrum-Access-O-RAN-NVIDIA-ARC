@@ -1,0 +1,24 @@
+{
+  "shield": {
+    "decisions": 10000,
+    "poison_rate": 0.3,
+    "poisoned_inputs": 2953,
+    "unguarded_illegal_emits": 2366,
+    "shielded_illegal_emits": 0,
+    "shielded_blocked_emits": 0,
+    "certificates_issued": 10000,
+    "shield_prevented": 2366,
+    "result": "PASS"
+  },
+  "federated": {
+    "n_honest": 20,
+    "n_byzantine": 8,
+    "dim": 200,
+    "dist_from_honest_mean": {
+      "fedavg": 202.17785747555712,
+      "krum": 12.137395072575472,
+      "median": 7.786999227430457,
+      "trimmed_mean": 8.907787269428578
+    }
+  }
+}

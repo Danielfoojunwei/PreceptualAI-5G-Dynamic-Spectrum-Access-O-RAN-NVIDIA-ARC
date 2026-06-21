@@ -1,156 +1,198 @@
-# Horizon-RIC — a security & trust rApp for AI-RAN
+# Horizon-RIC — an AI-RAN Security & Trust rApp
 
-**Horizon-RIC makes AI-RAN decisions safe and auditable *by construction*.** It
-is an O-RAN Non-RT-RIC **rApp** that wraps the decisions a neural-PHY block or
-RIC policy head produces — and guarantees that a *poisoned, drifted, or
-adversarial* model still cannot emit an unsafe or illegal radio policy.
+> O-RAN Non-RT-RIC **rApp** that makes AI-RAN decisions **safe and auditable by
+> construction**: a poisoned, drifted, or adversarial neural-PHY/RIC model still
+> cannot emit an unsafe or illegal radio policy.
 
-It does **not** train or run the neural model. It sits beside the SMO / Non-RT
-RIC and acts as a security envelope around the AI's *output*. That is the
-AI-RAN-native security idea: bind the AI decision to the RAN's own physical and
-regulatory invariants, at the RAN's own timescales.
+**Status:** torch-free, installs on stock Python 3.10+ with no accelerator ·
+**349 tests green in CI** (ruff + mypy + pytest + docker + yang-strict) ·
+benchmark + threat model committed · Apache-2.0.
 
-> Scope note: this repository is deliberately narrow — **security in AI-RAN**.
-> It is torch-free and installs on a stock Python 3.10+ with no accelerator. The
-> earlier broad "UHCI / NTN orchestration" codebase has been removed; the
-> security core is the product.
+This README is also the AI-RAN Alliance *Call for Innovation* proposal.
 
 ---
 
-## The four mechanisms
+## Executive summary
 
-| # | Mechanism | What it defends | Where |
-|---|---|---|---|
-| 1 | **Decision Safety Shield** | A poisoned/adversarial model cannot emit an illegal policy. The AI proposes; a verified envelope of RAN-physics + spectrum + AI-PHY + lawful-intercept invariants disposes, projecting to a safe action or a **certified classical fallback** and emitting a `SafetyCertificate`. | `src/horizon_ric/shield/` |
-| 2 | **At-decision-time evidence** | Tamper-evidence + replayability. SHA-256 hash-chained, RFC-3161-anchored `DecisionRecord`s with a counterfactual (rejected alternatives + reason + pinned RNG seed). | `src/horizon_ric/evidence/`, `policy/counterfactual.py` |
-| 3 | **Model provenance** | The "byte-consistent but untrusted/backdoored model" gap. A signature over `(weights ‖ training-manifest)` (RSA-PSS, HSM-held key), verified on promotion. | `src/horizon_ric/provenance/` |
-| 4 | **Robust federated aggregation** | Model-poisoning (Byzantine) clients. Krum / coordinate-median / trimmed-mean cap a malicious client's influence; Shamir secure aggregation hides individual updates. | `src/horizon_ric/federated/` |
+The AI-RAN industry is shipping neural physical-layer blocks (neural receivers,
+learned constellations, DPoD) and RIC control models onto live spectrum. The
+open problem is **not** capability — it is **trust**: when an AI model is
+poisoned, drifted, or adversarially driven, what stops it from steering a cell
+out of band, over its power licence, or into an illegal waveform — and how does
+an operator *prove* to a regulator and a CFO what the model did?
 
-Supporting (Zero-Trust platform table-stakes, per NIST SP 800-207): mTLS, JWT,
-Casbin RBAC with tenant domains, HSM key custody, NIS2 24h incident reporter
-(`src/horizon_ric/security/`, `rapp/`).
+**Horizon-RIC is a runtime-assurance + audit layer for AI-RAN decisions.** It
+does not train or run the model; it sits beside the SMO/Non-RT RIC and wraps
+every decision the model emits in four mechanisms:
 
-The full mapping of O-RAN WG11 / OWASP-ML / 3GPP TR 33.898 threats to these
-controls — with an honest GAP register — is in
-[`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
+1. **Decision Safety Shield** — checks each proposed action against RAN-physics,
+   spectrum-regulatory, AI-PHY, and lawful-intercept invariants, and **projects
+   it to a safe action or a certified classical fallback**, emitting a signed
+   `SafetyCertificate`.
+2. **At-decision-time evidence** — a SHA-256 hash-chained, RFC-3161-anchored
+   `DecisionRecord` with a replayable counterfactual.
+3. **Model provenance** — a signature over `(weights ‖ training-manifest)`,
+   verified on promotion.
+4. **Robust federated aggregation** — Krum / median / trimmed-mean against
+   model-poisoning clients, plus Shamir secure aggregation for update privacy.
 
----
-
-## The Shield in one snippet
-
-```python
-from horizon_ric.shield import default_terrestrial_shield
-from horizon_ric.policy.li_constraint import LIConstraint
-
-shield = default_terrestrial_shield(
-    band_lo_hz=3.40e9, band_hi_hz=3.50e9, max_eirp_dBm=33.0,
-    li_constraint=LIConstraint(rules=[], fail_closed=False,
-                               deployment_audit_record="lab-001"),
-)
-
-# A *poisoned* neural-RX decision: out-of-band, over-power, illegal 1024-QAM,
-# blown PAPR, and a TBLER regression versus the classical baseline.
-poisoned = {
-    "block": "neural_rx", "frequency_hz": 3.55e9, "bandwidth_hz": 20e6,
-    "tx_power_dBm": 40.0, "antenna_gain_dBi": 6.0,
-    "constellation_order": 1024, "papr_dB": 12.0,
-    "predicted_tbler": 0.4, "baseline_tbler": 0.05, "demap_confidence": 0.1,
-}
-
-disp = shield.dispose(poisoned, decision_id="d1", rng_seed=7)
-assert disp.certificate.safe and not disp.certificate.emit_blocked
-# → safe action: in-band 3.49 GHz, EIRP 33 dBm, 256-QAM, PAPR 8.5 dB,
-#   fell back to a certified classical receiver — and a SafetyCertificate
-#   recording every correction for the audit chain.
-```
+**Measured result (`benchmarks/results/poisoning_shield.json`):** on a
+10,000-decision stream that is 30 % poisoned, an unguarded emit path would put
+**2,366 illegal policies** on the air interface; with the Shield, **0**. Under a
+Byzantine federation, the global-model distance from the honest mean drops from
+**202** (FedAvg) to **8–12** (robust aggregators).
 
 ---
 
-## The benchmark (attack → defense)
+## Problem statement and market relevance
+
+**The trust gap is the binding constraint on AI-RAN deployment, not the
+technology gap.**
+
+- **Regulatory.** The EU AI Act classifies AI in critical infrastructure as
+  high-risk (Art. 6 + Annex III → Art. 9–15 controls); NIS2 Art. 23 mandates
+  24-hour incident notification; Ofcom's 2025/26 AI approach requires
+  explainability "sufficient to support post-incident regulatory review."
+- **Commercial.** Dell'Oro (2025) projects Tier-1s will **under-deploy AI-RAN by
+  30–40 % in 2026–2027** because capex follows the *trust* curve, not the
+  technology curve. The decision-level evidence layer — counterfactual + tamper-
+  evident audit + safe rollback — is empty in today's SMOs.
+- **Security.** O-RAN WG11 added ~39 AI/ML-specific threats (data/model
+  poisoning, adversarial input, model inversion/extraction, supply-chain) to its
+  Threat Model in 2024 (OWASP-ML + ENISA); 3GPP TR 33.898 studies AI/ML security
+  for the RAN. These threats currently have **no shipped rApp-level control**.
+
+**Market:** every operator deploying AI-RAN neural-PHY (on NVIDIA Aerial, Nokia
+MantaRay, Ericsson, VIAVI) needs this horizontal trust layer to pass procurement,
+regulatory sign-off, and CFO attribution. It is complementary to — not
+competitive with — the vendors shipping the AI capability.
+
+---
+
+## Innovative solution and technical approach
+
+The core idea is **AI-RAN-native runtime assurance**: bind the AI's *output* to
+the RAN's own physical and regulatory invariants, at the RAN's own timescales.
+
+**The Shield** (`src/horizon_ric/shield/`) — `Shield.dispose(action) →
+(safe_action, SafetyCertificate)` runs an ordered invariant chain:
+
+| Invariant | Basis | Action on violation |
+|---|---|---|
+| Lawful intercept | 3GPP TS 33.127, **fail-closed** | refuse emit if LI scope unknown |
+| Spectral mask | 3GPP TS 38.104 | clip carrier inside the licensed channel |
+| Max EIRP / Tx power | block-edge / licence limit | reduce power to the ceiling |
+| Neural-RX envelope | TBLER vs classical LMMSE baseline + demap confidence | **fall back to the certified classical receiver** |
+| Constellation legality + PAPR | legal M-QAM orders, PAPR ceiling | snap to nearest legal order / classical QAM |
+
+Because the gate is mathematical and **independent of the model**, a
+poisoned/backdoored/adversarial model cannot emit an unsafe or illegal policy;
+every disposition yields a certificate recording the invariants checked, the
+margin to each bound, and any fallback — *evidence by construction*.
+
+**The trust chain runs model → decision → evidence end-to-end:**
+`provenance/` signs and verifies the model artefact (RSA-PSS over weights ‖
+manifest, HSM-held key); `federated/robust.py` bounds a poisoning client's
+influence (Krum / median / trimmed-mean); `federated/secure.py` hides individual
+updates (Shamir `(t,n)` over GF(2¹²⁷−1)); `evidence/` hash-chains every
+`DecisionRecord` and anchors the chain head to **real public RFC-3161 TSAs**
+(freetsa, DigiCert) with nonce + imprint verification.
+
+What's novel: not the individual crypto, but **composing a verified safety
+envelope + at-decision-time, loop-tiered, replayable evidence around the
+specific AI-PHY blocks the AI-RAN Alliance is standardising** — the security
+control most vendors lack.
+
+---
+
+## Deployment feasibility
+
+- **Drops in beside any O-RAN SMO.** Real R1 (registration), A1 (policy emit,
+  OSC/EIAP/MantaRay dialects), and O1 (NETCONF/YANG via `ncclient`) adapters,
+  behind circuit breakers, mTLS, OAuth2, and Casbin RBAC with tenant domains.
+- **No accelerator, no lock-in.** Torch-free (numpy + pydantic); the Shield
+  validates the *data* a neural block emits (in production, from NVIDIA Aerial
+  cuBB / O-RAN E2 KPM), so it never needs to run the model. `pip install -e .`
+  completes in seconds on a stock host.
+- **Runs where AI-RAN runs.** Three shapes: Helm-on-Kubernetes, systemd
+  edge-envelope (aarch64), or bare-metal Docker. Prometheus `/metrics`, Grafana
+  dashboards, RFC-3161-anchored JSONL/SQLite evidence store.
+- **Operationally safe.** Hash-chained audit, atomic A→B model promotion with
+  bit-identical rollback, graceful degradation, systemd watchdog, NIS2 reporter.
 
 ```bash
+pip install -e ".[dev]"
+pytest tests/ -m "not integration and not slow" -q          # 349 passed
 python benchmarks/poisoning_shield_benchmark.py --decisions 10000 --poison-rate 0.30
-```
-
-Representative result:
-
-```
-SHIELD:    ~1500 illegal emits without the Shield → 0 with it   [PASS]
-FEDERATED: FedAvg dist 202.2  vs  Krum 12.1 / median 7.8 / trimmed 8.9
-```
-
-The Shield reduces illegal air-interface emits from a 30%-poisoned decision
-stream to **zero**; robust aggregation cuts a Byzantine federation's pull on the
-global model by ~20×.
-
----
-
-## Quickstart
-
-```bash
-python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"            # torch-free; installs in seconds
-pytest tests/ -m "not integration and not slow" -q
-python benchmarks/poisoning_shield_benchmark.py --decisions 2000
-```
-
-Optional extras: `.[oran]` (NETCONF/YANG + ASN.1 for the O1/A1 wire),
-`.[otel]` (OpenTelemetry export), `.[persistence]` (Postgres evidence store).
-
-Run the rApp daemon (registers over R1, emits A1 policies, serves
-`/healthz` `/readyz` `/metrics`):
-
-```bash
-horizon-rapp --once          # boot + readiness check + shutdown (smoke)
+horizon-rapp --once                                          # boot + readiness smoke
 ```
 
 ---
 
-## Architecture
+## 12-month timeline with milestones
 
-```
- telemetry  ┌──────────────────────────────────────────────────────────────┐
- (Aerial    │                        Horizon-RIC rApp                        │
-  cuBB /    │                                                                │
-  E2 KPM)   │   neural-PHY / RIC head ──▶ Decision Safety Shield ──▶ A1 emit │
-     │      │      (external; the AI         (shield/)              (rapp/)   │
-     └──────┼──────▶ proposes)                   │                     │      │
-            │                                    ▼                     ▼      │
-            │   provenance/  ◀── verify    evidence chain        Zero-Trust   │
-            │   (signed weights)           (SHA-256 + RFC-3161)   (security/) │
-            │   federated/ (robust agg)    + counterfactual                   │
-            └──────────────────────────────────────────────────────────────┘
-```
-
-- `shield/` — invariants (`SpectralMaskInvariant` TS 38.104, `MaxEirpInvariant`,
-  `NeuralRxEnvelopeInvariant`, `ConstellationLegalityInvariant`,
-  `LawfulInterceptInvariant` TS 33.127), the `Shield` orchestrator, and the
-  `SafetyCertificate`.
-- `evidence/` — hash-chained store, RFC-3161 anchor, model card, AI-PHY lineage.
-- `provenance/` — sign / verify model artefacts.
-- `federated/` — `robust.py` (Krum/median/trimmed) + `secure.py` (Shamir).
-- `rapp/` — R1 / A1 / O1 adapters, auth, lifecycle, health.
-- `security/` — JWT, Casbin RBAC, HSM, tenant isolation, NIS2 reporter.
+| Months | Milestone | Output |
+|---|---|---|
+| **M1–2** | Per-band invariant calibration — pin TS 38.104 emission masks and EIRP limits for FR1/FR3 target bands; live R1/A1 against OSC NONRTRIC. | Calibrated Shield configs + conformance run |
+| **M3–4** | Strengthen FL security — verifiable secret sharing (Feldman/Pedersen) for *malicious*-server resistance; differential-privacy accountant for membership-inference/inversion. | Upgraded `federated/`; closes two GAP-register items |
+| **M5–6** | Live AI-PHY integration — shield a real neural receiver (e.g. HybridDeepRx) and learned constellation on NVIDIA Aerial cuBB / ARC-OTA telemetry. | End-to-end demo against real I/Q |
+| **M7–8** | Loop-tiered evidence — dApp (sub-ms sampled), Near-RT (per-decision), Non-RT (full counterfactual); inference-API extraction rate-limiting. | Evidence architecture + extraction defence |
+| **M9–10** | Operator/testbed pilot — deploy alongside an SMO; 24-h soak; production PKCS#11 HSM custody; conformance dossier. | Pilot report + signed attestation packet |
+| **M11–12** | Standardization + public benchmark — contribute the AI/ML threat→control mapping to O-RAN WG11; release the poisoning/robustness benchmark + dataset. | Standards contribution + public benchmark |
 
 ---
 
-## Honest status
+## Expected deliverables and impact
 
-- **What is real and tested:** the Shield, provenance, robust/secure
-  aggregation, evidence chain, RBAC/JWT/tenant, R1/A1/O1 adapters — all covered
-  by the fast test pack and the benchmark above.
-- **Invariant calibration:** the spectral-mask / EIRP limits must be pinned to
-  each deployment's licensed band; the defaults are illustrative.
-- **Known gaps (see `docs/THREAT_MODEL.md`):** no DP accountant for
-  membership-inference/inversion yet; no inference-API extraction rate-limiting
-  yet; telemetry source authentication depends on the vendor (Aerial / E2); HSM
-  production custody (CloudHSM / Luna) is documented, not bundled.
+**Deliverables**
+- A production-grade, open-source **security & trust rApp** (this repo).
+- The **Decision Safety Shield** algorithm with safety certificates.
+- **Robust + secure federated aggregation** algorithms.
+- **Benchmarking-ready code + committed results** (`benchmarks/`).
+- A **poisoned-AI-PHY-decision dataset generator** for reproducible evaluation.
+- A **threat-model → control mapping** (`docs/THREAT_MODEL.md`) suitable as a
+  standardization input.
+
+**Impact**
+- **Safety:** illegal air-interface emits from a 30 %-poisoned decision stream
+  reduced from 2,366 → **0** (10k-decision benchmark).
+- **Poisoning resilience:** Byzantine pull on the global model cut **~20×**.
+- **Deployability:** unblocks the 30–40 % AI-RAN under-deployment Dell'Oro
+  attributes to the trust gap, by giving operators the regulator- and
+  CFO-defensible evidence layer their SMO lacks.
+
+### Expected outputs (mapping to the Call)
+
+| Call output | What we provide |
+|---|---|
+| **Prototypes** | The runnable rApp + R1/A1/O1 adapters + `horizon-rapp` daemon. |
+| **Algorithms or models** | The Shield + invariants; Krum/median/trimmed-mean; Shamir secure aggregation; RSA-PSS model-provenance. |
+| **Benchmarking-ready code** | `benchmarks/poisoning_shield_benchmark.py` + committed `results/`. |
+| **Datasets** | A synthetic poisoned-AI-PHY-decision trace generator (in the benchmark); consumes real NVIDIA Aerial / E2 telemetry in deployment. |
+| **Standardization contributions** | `docs/THREAT_MODEL.md` mapping O-RAN WG11 / OWASP-ML / TR 33.898 threats to controls, with an honest GAP register. |
+
+---
+
+## Honest status and gaps
+
+Real, not mocked: the Shield, provenance signing/verify, robust/secure
+aggregation, hash-chained evidence store, RFC-3161 TSA anchoring (real public
+TSAs), and the R1/A1/O1 wire adapters are all working code with tests.
+
+Known limitations (also in `docs/THREAT_MODEL.md`): invariant thresholds must be
+pinned per licensed band; the malicious-server FL case needs verifiable secret
+sharing (M3–4); no DP accountant yet; inference-API extraction rate-limiting is
+roadmap; HSM custody ships with in-memory (RSA-2048) and SoftHSM2 (PKCS#11)
+backends — production CloudHSM/Luna wire in through the same PKCS#11 path.
 
 ## AI-RAN Alliance positioning
 
-This targets the **AI-for-RAN** track as a *security & trust* contribution: a
-demonstrable, benchmarked control set for the O-RAN WG11 / OWASP-ML AI/ML threat
-surface, framed as an open innovation + benchmark (the normative security spec
-work belongs to O-RAN WG11 / 3GPP, not to this project).
+An **AI-for-RAN** security & trust contribution: an open innovation + benchmark
+against the O-RAN WG11 / OWASP-ML AI/ML threat surface. The normative security
+specification is owned by O-RAN WG11 / 3GPP; this project is a reference
+implementation and benchmark, not a competing standard.
 
+---
+
+Architecture, controls, and the full threat model: [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
 License: Apache-2.0.

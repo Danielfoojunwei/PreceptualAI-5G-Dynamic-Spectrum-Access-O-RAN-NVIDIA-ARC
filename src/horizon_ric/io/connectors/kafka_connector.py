@@ -29,9 +29,8 @@ try:  # pragma: no cover — optional
     from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 except ImportError as exc:  # pragma: no cover
     raise ImportError(
-        "Kafka connector requires `aiokafka`. Install with "
-        "`pip install aiokafka` or rely on the stub registration in "
-        "horizon_ric.io.connectors which silently skips when the dep is missing."
+        "Kafka connector requires `aiokafka`. Install with `pip install aiokafka`. "
+        "The connector registry skips Kafka registration when the dependency is absent."
     ) from exc
 
 

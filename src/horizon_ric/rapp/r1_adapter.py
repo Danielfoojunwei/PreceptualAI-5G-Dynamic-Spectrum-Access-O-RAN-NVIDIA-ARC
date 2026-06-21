@@ -1,12 +1,10 @@
 """R1 adapter — rApp ↔ SMO communication (O-RAN.WG2.R1AP / R1GAP).
 
-This is a stub for Phase 1. The full implementation calls the SMO's R1AP
-service via REST (per the O-RAN R1 reference). For now we provide:
-  - rApp registration / deregistration
-  - service consumption (DME, AI/ML model pull)
-  - service production (publishing the rApp's REST API to SMO catalog)
-
-The transport layer is HTTP/REST per O-RAN.WG2.R1GAP §5.2; we use httpx.
+A real R1 REST client. It registers / deregisters the rApp with the SMO /
+Non-RT RIC, consumes services (DME, AI/ML model pull/push), and produces the
+rApp's own services into the SMO catalogue — all over HTTP/REST per
+O-RAN.WG2.R1GAP §5.2 using ``httpx``, behind a real circuit breaker and, when
+configured, mTLS / OAuth2 (WG11 §6).
 
 References:
     O-RAN.WG2.R1AP-v06.00 §5 (Application Protocol)
@@ -28,25 +26,22 @@ logger = structlog.get_logger(__name__)
 class R1AdapterConfig:
     smo_base_url: str = "http://nonrtric:8080"
     rapp_id: str = "horizon-ric-rapp"
-    rapp_version: str = "0.1.0"
-    rapp_name: str = "PreceptualAI Resource-Orchestration"
+    rapp_version: str = "0.2.0"
+    rapp_name: str = "Horizon-RIC Security & Trust rApp"
     rapp_description: str = (
-        "NTN-Aware AI-RAN Resource-Orchestration rApp Suite (PRD: PreceptualAI)"
+        "Decision Safety Shield + evidence/provenance trust layer for AI-RAN"
     )
     timeout_seconds: float = 30.0
     auth: "AuthConfig | None" = None  # noqa: F821 — forward ref
     """When set, R1 client uses mTLS / OAuth2 / static-bearer per O-RAN
-    WG11 §6. None keeps the legacy plain-HTTP behaviour for unsecured
-    testbeds."""
+    WG11 §6. None keeps plain-HTTP behaviour for unsecured testbeds."""
     services_produced: list[str] = field(
         default_factory=lambda: [
-            "horizon.risk.sla",
-            "horizon.risk.beam",
-            "horizon.risk.gateway",
-            "horizon.risk.compute",
+            "horizon.shield.dispose",
+            "horizon.evidence.query",
+            "horizon.provenance.verify",
             "horizon.policy.recommend",
             "horizon.policy.rollback",
-            "horizon.evidence.query",
         ]
     )
     services_consumed: list[str] = field(
@@ -63,10 +58,11 @@ class R1AdapterConfig:
 
 
 class R1Adapter:
-    """rApp framework client for the O-RAN R1 interface (Phase 1 stub).
+    """rApp framework client for the O-RAN R1 interface.
 
-    Production implementation will use the SMO's full R1AP REST catalog;
-    this stub validates registration and produces well-formed payloads.
+    Issues real R1AP REST calls (POST/DELETE) to the SMO registration service,
+    validates spec-compliant payloads, and fails fast through a circuit breaker
+    when the SMO is unreachable.
     """
 
     def __init__(self, config: R1AdapterConfig | None = None):
