@@ -3,9 +3,19 @@
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
 
 
-_Run started_: 2026-05-07T10:21:16.743351+00:00  ·  _ended_: 2026-05-07T10:51:17.525627+00:00
+_Run recorded_: 2026-05-07T10:21:16.743351+00:00 → 2026-05-07T10:51:17.525627+00:00
 
 Wall-clock 30.0 min × speedup 48.0× = **24.00 simulated hours**.
+
+> **Provenance note.** The figures below were recorded on the 2026-05-07
+> tree. They are a historical measurement, not a value re-derived on every
+> CI run. The driver script `scripts/soak_24h.py` referenced under "How this
+> was generated" is **not currently present in this tree** (the daily soak
+> systemd unit at `deploy/systemd/` invokes it on the edge device); treat
+> these numbers as a recorded soak result and re-run the soak on the target
+> host to reproduce. The circuit-breaker and evidence-store mechanisms the
+> soak exercises are themselves covered by `tests/test_circuit_breaker.py`,
+> `tests/test_evidence_store.py`, and `tests/test_watchdog.py` in CI.
 
 ## Headline
 
@@ -107,4 +117,6 @@ n=17248 · mean=37.87 · stdev=23.52 · p50=36.82 · p95=66.57 · p99=69.95 · m
 
 ## How this was generated
 
-`scripts/soak_24h.py` spawns `deploy/osc_emulator/server.py` as a real subprocess on a loopback port and pipes A1 emits through a fault-injecting TCP proxy. Each emit is wrapped in `AsyncCircuitBreaker.call(...)` — a real `pybreaker` state machine — and persists a `DecisionRecord` to a real SHA-256 hash-chained JSONL evidence store. Every audit verify reads the JSONL back from disk and walks the chain. No mocks, no fakes, no stubs.
+The soak driver spawns `deploy/osc_emulator/server.py` as a real subprocess on a loopback port and pipes A1 emits through a fault-injecting TCP proxy. Each emit is wrapped in `AsyncCircuitBreaker.call(...)` — a real `pybreaker` state machine (`src/horizon_ric/runtime/circuit_breaker.py`) — and persists a `DecisionRecord` to a real SHA-256 hash-chained JSONL evidence store (`src/horizon_ric/evidence/store.py`). Every audit verify reads the JSONL back from disk and walks the chain via `EvidenceStore.verify()` (returns `-1` when intact). No mocks, no fakes, no stubs.
+
+> The `scripts/soak_24h.py` entry point that ran this soak is not currently checked into `scripts/`. The breaker, evidence-store, and watchdog mechanisms it exercises are covered in CI by `tests/test_circuit_breaker.py`, `tests/test_evidence_store.py`, and `tests/test_watchdog.py`.

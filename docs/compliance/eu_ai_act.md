@@ -31,7 +31,7 @@ Annex III lists eight categories of high-risk AI systems. Horizon-RIC falls outs
 
 | Annex III §  | Category | Horizon-RIC position |
 |---|---|---|
-| §1 | Biometric identification / categorisation | N/A — no biometric pipeline. The state encoder consumes 3GPP TS 28.552 KPIs, not biometric inputs. (`src/horizon_ric/encoder/`) |
+| §1 | Biometric identification / categorisation | N/A — no biometric pipeline. The system consumes 3GPP TS 28.552 KPIs (validated by `src/horizon_ric/io/schemas.py`), not biometric inputs. |
 | §3 | Education and vocational training | N/A — no education use case |
 | §4 | Employment, workers management, access to self-employment | N/A — no employment use case |
 | §5(a) | Public benefits eligibility evaluation | N/A — not a benefits system |
@@ -67,9 +67,9 @@ For each Article 8-15 obligation, Horizon-RIC has implemented or documented a co
 
 ### 4.1 Risk management system (Art. 9)
 
-- `AUDIT_NO_FAKES.md` — assertion that no mocks/fakes/hardcoded values masquerade as real implementations; reviewed pre-PR
 - `docs/conformance/CONFORMANCE.md` — per-spec conformance status, including gaps tracked to closure
 - `docs/EVALUATION_CRITERIA.md` — evaluation criteria and standards/regulation gap analysis
+- `docs/THREAT_MODEL.md` — threat model and residual-risk register
 
 These documents constitute the iterative risk management process required by Art. 9(2)-(5).
 
@@ -86,7 +86,7 @@ Training data provenance is captured in the emitted model card (`src/horizon_ric
 The repository's MD documentation set provides the substantive content of an Annex IV technical file:
 
 - `docs/RESEARCH_ALIGNMENT.md` — system rationale and intended purpose
-- `PARADIGMS.md` — design patterns (paradigm H1 = counterfactual envelope)
+- `docs/COUNTERFACTUAL_USER_GUIDE.md` — design and use of the counterfactual envelope
 - `docs/EVALUATION_CRITERIA.md` — standards conformance and evaluation criteria
 - `deploy/SLO.md` — reliability characteristics and service-level objectives
 - `docs/RBAC.md` — security model
@@ -102,8 +102,8 @@ Honest gap, see §5.2 below: the content is present but not yet tabulated to the
 
 ### 4.5 Transparency to deployers (Art. 13)
 
-- `PILOT.md` — concession map listing every honest concession or limitation operators must understand before deployment
 - `docs/compliance/li_applicability.md` — explicit residual-risk disclosure (LI section §6)
+- `docs/THREAT_MODEL.md` — threat model and residual-risk register operators must understand before deployment
 - This document — explicit AI Act position
 - Deployer-facing user guide for the counterfactual envelope: `docs/COUNTERFACTUAL_USER_GUIDE.md`
 
@@ -133,9 +133,9 @@ The report is gated by CI (`docs/conformance/CONFORMANCE.md` §"Continuous valid
 ### 4.9 Post-market monitoring (analogue of Art. 72)
 
 - Prometheus metrics at `/metrics` per `src/horizon_ric/rapp/health.py`
-- Alertmanager rules: `deploy/prometheus/sla_rules.yml`, `deploy/prometheus/rules.yml`
-- SLA breach engine: `src/horizon_ric/sla/engine.py:78-187` — emits structured `horizon.sla.breach` events on sustained breach
-- Audit log persistence: `src/horizon_ric/evidence/store.py` — every decision recorded for retroactive analysis with actual_outcome_30s/1min/5min fields filled in retroactively (`evidence/schema.py:122-125`)
+- SLA breach detection via Prometheus alert rules: `deploy/prometheus/sla_rules.yml` (e.g. `HorizonSLALatencyP99`, `HorizonSLAA1EmitSuccess`, `HorizonSLAAuditChainIntegrity`), `deploy/prometheus/rules.yml`
+- ITU-T X.733 alarm records for SMO/NMS fault ingestion: `src/horizon_ric/observability/x733_alarms.py`
+- Audit log persistence: `src/horizon_ric/evidence/store.py` — every decision recorded for retroactive analysis with actual_outcome_30s/1min/5min fields filled in retroactively (`evidence/schema.py`, `DecisionRecord`)
 
 ## 5. Three controls Horizon-RIC explicitly does NOT yet have
 

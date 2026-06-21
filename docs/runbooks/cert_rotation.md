@@ -33,7 +33,8 @@ That record is the legal trail under `evidence/store.py` and AI Act Art. 12.
 
 ## 1. mTLS client cert (R1Adapter outbound to SMO)
 
-Used by `src/horizon_ric/integrations/raas.py` and the R1 register call.
+Used by the R1 register call (`src/horizon_ric/rapp/r1_adapter.py`) via the mTLS
+client builder in `src/horizon_ric/rapp/auth.py`.
 Cert lives in `Secret/${APP}-credentials` keys `r1.client.crt`, `r1.client.key`.
 
 ```sh
@@ -80,9 +81,10 @@ Validation: `curl --cacert /tmp/ca.crt https://horizon.${TENANT}/healthz` return
 ## 3. JWT signing key (RS256)
 
 Implementation: `src/horizon_ric/security/jwt.py::JWTManager.rotate_signing_key`.
-The 1-hour overlap window is `_OVERLAP_WINDOW_DEFAULT_SEC = 3600`. Tokens
-issued by the old key still verify until either their `exp` or the overlap
-deadline elapses, whichever is first.
+The default overlap window is `_OVERLAP_WINDOW_DEFAULT_SEC = 24 * 3600`
+(24 hours); `JWTManager` accepts an `overlap_window_seconds` override at
+construction. Tokens issued by the old key still verify until either their
+`exp` or the overlap deadline elapses, whichever is first.
 
 ```sh
 # 1. Generate the new RSA-2048 key.
@@ -161,12 +163,12 @@ adapter pods (`kubectl -n $NS rollout restart deploy/$APP`).
 
 ```sh
 kubectl -n $NS exec deploy/$APP -- python -c "
-from horizon_ric.evidence.store import open_default_store
+from horizon_ric.evidence.store import SqliteEvidenceStore
 from horizon_ric.evidence.schema import DecisionRecord
 from horizon_ric.security.tenant import TenantScope
 import os
 with TenantScope(os.environ['HORIZON_TENANT']):
-    s = open_default_store()
+    s = SqliteEvidenceStore('sqlite:///'+os.environ.get('HORIZON_EVIDENCE_DB','/var/lib/horizon/evidence.db'))
     rec = DecisionRecord.new(
         decision_id='rotate-'+os.urandom(4).hex(),
         operator_override=True,
@@ -176,15 +178,23 @@ with TenantScope(os.environ['HORIZON_TENANT']):
 "
 ```
 
-Then verify the chain still links:
+Then verify the chain still links (`EvidenceStore.verify()` returns `-1`
+when intact):
 
 ```sh
-horizon-ric-sdk audit verify
-# expected: {"verified": true, "records": <N+1>, ...}
+kubectl -n $NS exec deploy/$APP -- python -c "
+from horizon_ric.evidence.store import SqliteEvidenceStore
+from horizon_ric.security.tenant import TenantScope
+import os
+with TenantScope(os.environ['HORIZON_TENANT']):
+    s = SqliteEvidenceStore('sqlite:///'+os.environ.get('HORIZON_EVIDENCE_DB','/var/lib/horizon/evidence.db'))
+    rc = s.verify(); print('verify =', rc); raise SystemExit(0 if rc == -1 else 1)
+"
+# expected: verify = -1, exit 0
 ```
 
-If `verified: false` after a rotation, treat as **Sev1** and pivot to
-`security_incident.md`.
+If `verify` returns anything but `-1` after a rotation, treat as **Sev1**
+and pivot to `security_incident.md`.
 
 ## Honest gaps
 

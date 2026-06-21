@@ -42,9 +42,8 @@ Every entry below cites the exact file and line where the primitive is invoked. 
 | 6 | RSA private-key load (PEM, PKCS#8) | JWT signing key bootstrap | `src/horizon_ric/security/jwt.py:86` (`serialization.load_pem_private_key`) | Key import — covered by SP 800-140D §6.1 (CSP entry). |
 | 7 | RSA public-key derivation | JWT verification key publication | `src/horizon_ric/security/jwt.py:91-99` | FIPS 186-5 §A.1 (key generation parameters); we do not generate, we derive from the private key. |
 | 8 | SHA-256 hash chain | DecisionRecord tamper-evidence | `src/horizon_ric/evidence/store.py:23,76` (`hashlib.sha256`); chain construction `src/horizon_ric/evidence/store.py:13-18` | SHA-256 — FIPS 180-4 §6.2. **Approved.** |
-| 9 | SHA-256 over training-corpus manifest | TS 28.105 model-card evidence | `src/horizon_ric/observability/model_card.py:25,129` | SHA-256 — FIPS 180-4 §6.2. **Approved.** |
-| 10 | HMAC-SHA-256 | RAaS rApp-archive signature | `src/horizon_ric/integrations/raas.py:342,347` (`hashlib.sha256` keyed) | HMAC — FIPS 198-1; SHA-256 — FIPS 180-4. **Approved.** |
-| 11 | RFC 3161 timestamp signatures | Audit chain anchoring | `src/horizon_ric/evidence/rfc3161.py:47-52` (uses `rfc3161-client`) | RSA-PKCS1-v1_5 + SHA-256 inside the TSA's response. **Approved** (TSA-side); Horizon-RIC only verifies, it does not generate. |
+| 9 | SHA-256 over training-corpus manifest | TS 28.105 model-card evidence | `src/horizon_ric/observability/model_card.py` (`hashlib.sha256` in `training_corpus_manifest_sha256`) | SHA-256 — FIPS 180-4 §6.2. **Approved.** |
+| 10 | RFC 3161 timestamp signatures | Audit chain anchoring | `src/horizon_ric/evidence/rfc3161.py` (uses `rfc3161-client`) | RSA-PKCS1-v1_5 + SHA-256 inside the TSA's response. **Approved** (TSA-side); Horizon-RIC only verifies, it does not generate. Note: this module is present but is not yet covered by the unit suite. |
 
 **What's *not* in the inventory** (intentional negative claim): no MD5, no SHA-1, no DES/3DES, no RC4, no static-key TLS, no client-side random number generation outside `os.urandom` (which on a FIPS-mode kernel is `getrandom(2)` against the validated DRBG).
 
@@ -58,7 +57,7 @@ The transitive-inheritance argument in §1 covers OpenSSL and `cryptography`. It
 
 `src/horizon_ric/security/jwt.py:63` imports `from jose import jwt as jose_jwt`. While the underlying RSA + SHA-256 primitives are routed through `cryptography` (which inherits OpenSSL FIPS), the *codec* — base64url, JSON canonicalisation, JWS header construction — is python-jose's own pure-Python code path. python-jose is **not** CMVP-validated. Risk: the codec layer is non-cryptographic (no key material flows through it that doesn't also flow through `cryptography`), so the FIPS exposure is "module-level boundary expansion" rather than "weak crypto", but a strict auditor will still call it out.
 
-**Mitigation (Phase 2):** swap `python-jose` for `pyjwt` configured to use `cryptography`'s backend exclusively, OR switch to direct `cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15` calls and serialize the JWS ourselves (~120 LOC, tested by `tests/test_security_jwt_rotation.py`).
+**Mitigation (Phase 2):** swap `python-jose` for `pyjwt` configured to use `cryptography`'s backend exclusively, OR switch to direct `cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15` calls and serialize the JWS ourselves (~120 LOC; the existing JWT behaviour is covered by `tests/test_jwt.py` and `tests/test_jwt_rotation_window.py`, which the swap must keep green).
 
 ### 3.2 `pybreaker.CircuitBreakerListener` callbacks
 
@@ -81,8 +80,8 @@ The cheapest path that produces a defensible "FIPS-Inside" claim, without seekin
 | Week | Activity | Owner | Artifact |
 |---|---|---|---|
 | 1 | Vendor `cryptography` 42.x at a pinned version known to consume `OPENSSL_FIPS=1` | platform | `pyproject.toml` constraint, `deploy/sbom/horizon-ric-sbom.json` regenerated |
-| 2 | Replace `python-jose` with `pyjwt` configured for `cryptography` backend; update `tests/test_security_jwt_rotation.py` | security | unified diff on `src/horizon_ric/security/jwt.py` |
-| 3 | Audit `rfc3161-client` against FIPS provider — fall back to `cryptography.x509` direct verification if any non-Approved primitive is invoked | security | `tests/test_audit_rfc3161_anchor.py` extended with FIPS-mode CI matrix |
+| 2 | Replace `python-jose` with `pyjwt` configured for `cryptography` backend; keep `tests/test_jwt.py` and `tests/test_jwt_rotation_window.py` green | security | unified diff on `src/horizon_ric/security/jwt.py` |
+| 3 | Audit `rfc3161-client` against FIPS provider — fall back to `cryptography.x509` direct verification if any non-Approved primitive is invoked; add a FIPS-mode anchor test (none exists today) | security | new RFC-3161 anchor test under `tests/` with a FIPS-mode CI matrix |
 | 4 | CI lane: build container against `registry.access.redhat.com/ubi9/ubi-minimal:latest` with `crypto-policies-scripts` set to `FIPS`, run full test suite | infra | `.github/workflows/fips-mode.yml` |
 | 5 | Document operator-side prerequisites: kernel boot with `fips=1`, OpenSSL 3.0.7 FIPS provider loaded, `crypto-policies-scripts` = `FIPS` | docs | `docs/compliance/fips_operator_runbook.md` |
 | 6 | External crypto review (1 reviewer-week, specialist) — sign-off letter on the inventory in §2 and the boundary list in §3 | external | signed PDF, retained with the conformance dossier |

@@ -146,13 +146,12 @@ class DecisionRecord(BaseModel):
     operator_override: bool = False
     operator_override_reason: str | None = None
 
-    # Active SLA breaches at decision time. Annotated by the SLA engine
-    # (`horizon_ric.sla.breach_annotation.annotate_decision_record`) so the
-    # audit chain ties every breach to the decision that occurred during it.
-    # Type is `list[Any]` here to avoid a circular import; the elements are
-    # always `horizon_ric.sla.policy.SLABreachEvent` instances and round-trip
-    # through `model_validate` without loss because Pydantic v2 stores them
-    # as dicts when the model is loaded from JSON.
+    # Active SLA/SLO breaches at decision time, tied to the decision that
+    # occurred during them so the audit chain links each breach to its decision.
+    # SLO targets are defined in `deploy/SLO.md`; the breach records are supplied
+    # by the operator's SLA/SLO pipeline. Held as `list[dict]` (Pydantic v2
+    # round-trips each breach record as a dict through `model_validate`);
+    # optional, defaults to None when no breach is active.
     sla_breach_context: list[dict[str, Any]] | None = None
 
     @classmethod

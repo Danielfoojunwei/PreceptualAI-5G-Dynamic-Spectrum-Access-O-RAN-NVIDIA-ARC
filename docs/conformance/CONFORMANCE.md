@@ -26,7 +26,7 @@ Status legend:
 
 | Subsection | Requirement | Status | Reference |
 | --- | --- | --- | --- |
-| §5.3.1 | rApp registration with SME | ⚠️ | `src/horizon_ric/rapp/r1_adapter.py:99` (`R1Adapter.register`) |
+| §5.3.1 | rApp registration with SME | ⚠️ | `src/horizon_ric/rapp/r1_adapter.py:98` (`R1Adapter.register`) |
 | §5.4 | Service heartbeat / liveness | ✅ | `src/horizon_ric/rapp/health.py` (Prometheus + sd_notify) |
 | §5.5 | Service deregistration on shutdown | ⚠️ | `src/horizon_ric/rapp/lifecycle.py` |
 | §6 | Authentication (OAuth2 + bearer JWT) | ✅ | `src/horizon_ric/rapp/auth.py`, `src/horizon_ric/rapp/api.py` (BearerJWT scheme) |
@@ -35,10 +35,10 @@ Status legend:
 
 | Subsection | Requirement | Status | Reference |
 | --- | --- | --- | --- |
-| §6.3 (PUT policy) | Policy emission per type | ✅ | `src/horizon_ric/rapp/a1_adapter.py:190` (`emit_policy`) |
-| §6.4 (GET status) | Policy status retrieval | ✅ | `src/horizon_ric/rapp/a1_adapter.py:273` (`get_policy_status`) |
-| §6.5 (DELETE) | Policy rollback | ✅ | `src/horizon_ric/rapp/a1_adapter.py:365` (`rollback_policy`) |
-| §7 (A1-EI) | Enrichment Information jobs | ✅ | `src/horizon_ric/rapp/a1_adapter.py:320` (`create_ei_job`) |
+| §6.3 (PUT policy) | Policy emission per type | ✅ | `src/horizon_ric/rapp/a1_adapter.py:243` (`emit_policy`) |
+| §6.4 (GET status) | Policy status retrieval | ✅ | `src/horizon_ric/rapp/a1_adapter.py:388` (`get_policy_status`) |
+| §6.5 (DELETE) | Policy rollback | ✅ | `src/horizon_ric/rapp/a1_adapter.py:480` (`rollback_policy`) |
+| §7 (A1-EI) | Enrichment Information jobs | ✅ | `src/horizon_ric/rapp/a1_adapter.py:435` (`create_ei_job`) |
 | Annex A | Default policy types (1, 2, 20000) | ✅ | `src/horizon_ric/rapp/a1_adapter.py` (`DEFAULT_POLICY_TYPES`) |
 
 ## O-RAN.WG2.O1-v06.00 — O1 NETCONF/YANG
@@ -56,7 +56,7 @@ Status legend:
 | --- | --- | --- | --- |
 | §6.1 transport | mTLS for all R1/A1/O1 channels | ✅ | `src/horizon_ric/rapp/auth.py` (`AuthConfig`, `build_secure_async_client`) |
 | §6.3 authn | OAuth2 + JWT bearer | ✅ | `src/horizon_ric/rapp/auth.py`, `src/horizon_ric/rapp/api.py` |
-| §6.4 authz | RBAC (Casbin) | ✅ | `src/horizon_ric/security/rbac.py`, `rbac_model.conf`, `rbac_policy.csv` |
+| §6.4 authz | RBAC (Casbin) | ✅ | `src/horizon_ric/security/rbac.py`, `src/horizon_ric/security/rbac_model.conf`, `src/horizon_ric/security/rbac_policy.csv` |
 | §6.5 supply chain | Image signing + SBOM | ✅ | `deploy/cosign/`, `deploy/sbom/` |
 
 ## 3GPP TS 28.105 — AI/ML Management
@@ -81,10 +81,8 @@ Status legend:
 
 | KPI | Status | Reference |
 | --- | --- | --- |
-| §6.3.1 SLA breach probability | ✅ | `src/horizon_ric/heads/sla_risk.py` (multi-horizon head) |
-| §6.3.2 Throughput trend | ✅ | `src/horizon_ric/sla/engine.py` |
+| §6.3.1 SLA breach probability | ✅ | `src/horizon_ric/policy/counterfactual.py` (`sla_risk_30s/1min/5min`), emitted as the `sla_breach_count` span attribute in `src/horizon_ric/observability/tracing.py` |
 | §6.3.5 Energy KWh per decision | ✅ | `src/horizon_ric/evidence/schema.py` (`PredictedOutcome.energy_kwh`) |
-| §6.4 SLA-policy associations | ✅ | `src/horizon_ric/sla/policy.py` |
 
 ## TM Forum ODA / Open APIs
 
@@ -104,7 +102,5 @@ These claims are gated by CI:
 | Check | Workflow | What it asserts |
 | --- | --- | --- |
 | Unit + integration tests | `.github/workflows/test.yml` | `pytest tests/` green |
-| OpenAPI spec validity | `tests/test_conformance.py::test_openapi_spec_is_valid_3_1` | OpenAPI 3.1, BearerJWT scheme present |
-| Prom metric naming | `tests/test_conformance.py::test_prometheus_metric_naming_convention` | `<namespace>_<subsystem>_<name>_<unit>` |
 | SBOM validity | `deploy/sbom/validate_sbom.py` (run in `.github/workflows/sbom.yml`) | CycloneDX 1.5 strict schema |
 | Image signing | `.github/workflows/build.yml` | `cosign sign --key …` on every release tag |

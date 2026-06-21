@@ -89,13 +89,19 @@ claim and is a roadmap item.
 **What it measures.** Can a third party run the benchmark and reproduce the
 numbers? Are results committed?
 
-**Our evidence.** `benchmarks/poisoning_shield_benchmark.py` with committed
-results at `benchmarks/results/poisoning_shield.json`. Traceable numbers from
-that file: on a 10,000-decision stream at 30% poison rate, the unguarded path
-emits **2,366** illegal policies; the Shield emits **0** (every decision gets a
-certificate). Under a Byzantine federation (20 honest / 8 Byzantine clients),
-distance from the honest mean drops from **202** (FedAvg) to **8–12** (robust
-aggregators). The DSA demonstrator benchmark
+**Our evidence.** `benchmarks/poisoning_shield_benchmark.py` with committed,
+**deterministic** results at `benchmarks/results/poisoning_shield.json` (reproduce
+with `--decisions 10000 --poison-rate 0.3`). Traceable numbers from that file: on a
+10,000-decision stream at 30% poison rate, the unguarded path emits **1,983**
+out-of-spec policies plus **489** in-spec-but-harmful ones (graded by an
+*independent* emission-mask/ACLR oracle); the Shield emits **0** of each (every
+decision gets a certificate). The federated half (16 honest / 4 Byzantine, dim 200)
+is reported honestly: robust aggregation is only a *partial* bound — under adaptive
+Fang-median the FedAvg distance from the honest mean is 8.23 vs median 4.96 /
+trimmed 5.81, while **Krum is worse at 12.2**, and under small-step ALIE the robust
+aggregators sit *further* from the honest mean than FedAvg. The guarantee is the
+deterministic Shield, not the aggregators (the repair layer is certified unlearning,
+§8). The DSA demonstrator benchmark
 (`benchmarks/secure_dsa_benchmark.py` → `benchmarks/results/secure_dsa.json`)
 runs a federated DSA agent under ALIE/Fang poisoning and shows the Shield keeps
 every emission legal and the audit chain intact. The adversarial-robustness
@@ -170,7 +176,7 @@ Python 3.10+ with no accelerator. Real R1 / A1 / O1 adapters
 (`src/horizon_ric/rapp/`, `src/horizon_ric/io/`) behind mTLS, OAuth2, circuit
 breakers, and Casbin RBAC. The Shield validates the *data* an AI block emits, so
 it never has to run the model — it is complementary to NVIDIA Aerial / Nokia
-MantaRay / Ericsson, not competitive. The full test suite (300+ tests) is green
+MantaRay / Ericsson, not competitive. The full test suite (490+ tests) is green
 in CI (ruff + mypy + pytest + docker + yang-strict).
 
 **Self-score: Strong** on openness and packaging; **Adequate** on field-proof.

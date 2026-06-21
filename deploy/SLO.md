@@ -36,21 +36,22 @@ The error budget resets at the start of each calendar month.
 ## A1 success-rate bar — derivation
 
 The bar in row 4 was originally **99.99 %**. The 24-hour shadow soak
-(`deploy/SOAK_24H_PROOF.md`) drives 17 265 emits through the OSC
+recorded in `deploy/SOAK_24H_PROOF.md` drives 17 248 emits through the OSC
 emulator with a fault-injecting TCP proxy that returns 5xx every
 ~10 simulated minutes. Each emit is wrapped in a 3-attempt retry on
 top of the `pybreaker`-backed `AsyncCircuitBreaker`; the breaker
 absorbs sustained outages (fail-fast OPEN) while the retry absorbs
 transient single-call 5xx.
 
-After retries, **10 emits remained user-visible failures** out of
-17 265 — 99.9421 % — so a **99.99 % bar is not realistic** for an
+After retries, that recorded run left **12 emits as user-visible failures**
+out of 17 248 — **99.9304 %** — so a **99.99 % bar is not realistic** for an
 adapter that talks across an unreliable WAN to an external SMO whose
 availability is *outside this rApp's contract* (see "These SLOs do
 not cover" below). The honest bar that this implementation actually
 meets, with margin, is **99.9 %** — three nines after retry. That
 matches what an O-RAN R1 / A1 SMO can credibly promise in a real
-deployment without warranting a third party's uptime.
+deployment without warranting a third party's uptime. (These figures are
+the recorded 2026-05-07 soak result; re-run the soak to reproduce.)
 
 The breaker config (`fail_max=5`, `reset_timeout=30 s`) and the retry
 loop (3 attempts, 50 ms × n linear backoff) are unchanged; only the
@@ -71,16 +72,6 @@ production path walks. The authoritative edge-latency numbers are the
 rows 2a–2d of this document; the constrained-Orin envelope is
 substantiated by `deploy/ORIN_CONSTRAINED_SOAK_PROOF.md`.
 
-## DNS caching
-
-The A1 / R1 adapters expose an optional `dns_cache_ttl_s` config
-field (default 0 = OFF) that wires
-`horizon_ric.runtime.dns_cache.CachingDNSTransport` around httpx.
-TTL defaults to 30 s, short enough that an SMO failover (CNAME flip)
-is observed inside the breaker `reset_timeout`. Aimed at edge nodes
-where the local resolver is also serving NTP/Kubelet/etc; OFF by
-default for backward compatibility with the existing soak harness.
-
 ## Promises and exclusions
 
 These SLOs apply to:
@@ -94,8 +85,8 @@ These SLOs **do not** cover:
 * External SMO / Near-RT RIC availability (we observe and report; we don't
   warrant). Sustained R1 / A1 outage will trip `HorizonRAppDegraded`, which
   is informational, not a budget burn.
-* Edge-agent inference accuracy (governed separately by the SLA risk-head
-  v0.4 evaluation in `AUDIT_NO_FAKES.md`).
+* Edge-agent inference accuracy (a model-quality concern governed by the
+  PHY / policy model evaluation, not by these operational SLOs).
 * Internet-facing endpoints (we expose only cluster-local services).
 
 ## Burn-rate alerts

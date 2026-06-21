@@ -20,8 +20,8 @@
 | `<get-config source=running>` | real `<rpc-reply><data>...</data></rpc-reply>` returned |
 | `<edit-config target=candidate>` + `<commit>` | `<ok/>` from the server, change visible on next `<get-config>` |
 | `<create-subscription>` (RFC 5277) | `<ok/>` from the server, real `<netconf-config-change>` notification flowed |
-| Pytest gate `pytest -m integration tests/test_o1_live.py` | **3 passed in 1.69 s** |
-| `scripts/e2e_simulation.py --osc-netconf` | stage 1 produces `TelemetryEvent`s wrapping the live `<notification>` payload |
+| Pytest gate `pytest -m integration tests/test_o1_live.py` | **3 passed** (recorded 1.69 s; re-run to reproduce) |
+| `O1Adapter.iter_notifications()` end-to-end wiring | produces `TelemetryEvent`s wrapping the live `<notification>` payload (see §6) |
 
 ---
 
@@ -280,18 +280,20 @@ tests/test_o1_live.py::test_real_netconf_create_subscription PASSED
 ```
 
 The default suite (`pytest tests/`, no `-m` flag) skips this file via the
-`integration` marker — **497 tests pass, no integration test runs without
-the live server**.
+`integration` marker — **492 tests collected (489 run in CI; 3 integration/
+slow tests are deselected), and no integration test runs without the live
+server**.
 
 ---
 
 ## 6. End-to-end wiring
 
-`scripts/e2e_simulation.py` accepts `--osc-netconf` (or env
-`HORIZON_OSC_NETCONF=1`). When set, stage 1 of the simulation does:
+The wiring exercised by this proof lives in
+`src/horizon_ric/rapp/o1_adapter.py`. Against a live NETCONF endpoint at
+`$HORIZON_O1_HOST:$HORIZON_O1_PORT` (defaults `127.0.0.1:8830`), the
+`O1Adapter` flow is:
 
-1. Open an O1 NETCONF session via `O1Adapter` against `$HORIZON_O1_HOST:$HORIZON_O1_PORT`
-   (defaults `127.0.0.1:8830`).
+1. Open an O1 NETCONF session via `O1Adapter`.
 2. Issue `<create-subscription>`.
 3. Edit + commit the candidate datastore to provoke a
    `<netconf-config-change>` notification.
@@ -299,7 +301,9 @@ the live server**.
    yield each one as a `TelemetryEvent` whose `payload.raw_xml` is the
    server's verbatim `<notification>` body.
 
-A live run produces:
+This is the path covered by the integration test
+`tests/test_o1_live.py` (§5). A live drain yields a telemetry event of
+the shape:
 
 ```
 EVENTS: 1
@@ -308,8 +312,9 @@ EVENTS: 1
   xml.head=<?xml version="1.0" encoding="UTF-8"?> <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0">   <eventTime>…</eventTime>   <netconf-config-change xmlns="urn:ietf:par
 ```
 
-That telemetry event is then consumed by stages 2–6 of the simulation
-exactly as the synthetic stream is — no codepath divergence.
+That telemetry event is consumed by the downstream Shield / policy /
+evidence stages exactly as a synthetic stream is — no codepath
+divergence in `O1Adapter`.
 
 ---
 

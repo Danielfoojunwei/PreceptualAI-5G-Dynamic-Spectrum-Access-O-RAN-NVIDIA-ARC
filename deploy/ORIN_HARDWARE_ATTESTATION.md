@@ -153,10 +153,13 @@ failure on the next 60 s tick).
 
 ## Section 5 — Workload profile equivalence
 
-Row 26's workload is the 24-h shadow soak (`scripts/soak_24h.py` +
-`deploy/osc_emulator/server.py`) plus the edge-benchmark hot loop
-(`scripts/edge_benchmark_arm64.py`). Both are **CPU-bound,
-control-plane** workloads — not GPU/NPU/DLA-bound.
+Row 26's workload is the 24-h shadow soak (driven against
+`deploy/osc_emulator/server.py`) plus the edge-benchmark hot loop. Both
+are **CPU-bound, control-plane** workloads — not GPU/NPU/DLA-bound. (The
+`scripts/soak_24h.py` and `scripts/edge_benchmark_arm64.py` entry points
+that produced the recorded numbers in `deploy/ORIN_CONSTRAINED_SOAK_PROOF.md`
+are not currently checked into `scripts/`; the post-delivery validation in
+§8 re-runs the soak on hardware via `deploy/orin_validation.sh`.)
 
 Profiling evidence (from `deploy/SOAK_24H_PROOF.md` and the
 `/proc/[pid]/status` snapshots taken during the 30 min wall-clock
@@ -266,6 +269,11 @@ operator (or a Horizon-RIC engineer) runs **one command**:
 ```
 sudo bash deploy/orin_validation.sh
 ```
+
+> Note: `deploy/orin_validation.sh` ships in this commit, but it invokes the
+> soak driver `scripts/soak_24h.py`, which is not currently present in
+> `scripts/`. That driver must be restored to the tree before the
+> validation run will execute the soak end-to-end.
 
 The script:
 

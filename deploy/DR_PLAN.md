@@ -14,9 +14,14 @@
 
 This plan closes Row 38 of the gap matrix. Every step references real
 artifacts checked into the repository — no manual edits, no out-of-band
-runbooks. The CI gate `tests/test_dr_drill.py` exercises the same
-`scripts/backup_and_restore.sh` end-to-end against a SQLite stand-in for
-TimescaleDB so we never ship a regression in the backup logic.
+runbooks. The CI gates `tests/test_state_recovery.py` and
+`tests/test_loop_state.py` cover the state-persistence and crash-recovery
+logic this plan relies on: `test_state_recovery.py` exercises atomic
+save/load round-trips, corrupt/partial-write recovery, and periodic
+checkpointing, while `test_loop_state.py` locks the lifecycle state machine
+and its append-only, replayable history. The `scripts/backup_and_restore.sh`
+driver (signature + `pg_restore` + chain re-verify) is the operational
+backup tool referenced throughout.
 
 ---
 
@@ -84,9 +89,16 @@ Run on the first Tuesday of each month:
    ```
 3. [ ] Verify the restored hash chain:
    ```
-   kubectl exec deploy/horizon-ric -- python -m horizon_ric.evidence.verify_cli
+   kubectl exec deploy/horizon-ric -- python -c "
+   from horizon_ric.evidence.store import JsonlEvidenceStore
+   s = JsonlEvidenceStore('/var/lib/horizon/audit.jsonl')
+   rc = s.verify()
+   print('verify =', rc); raise SystemExit(0 if rc == -1 else 1)
+   "
    ```
-   The CLI returns 0 iff every per-tenant chain validates.
+   `EvidenceStore.verify()` returns `-1` iff the chain is intact (any other
+   value is the index of the first broken record); the snippet exits 0 only
+   when every record validates.
 4. [ ] Time the round-trip; record in the SRE log. RTO target is ≤ 4 hours.
 5. [ ] Page the on-call (`/dr-drill-fire`) and have them execute the failover
    playbook below from cold context. Stop-watch ≤ 4 hours.
@@ -147,9 +159,13 @@ This step both:
 ### 4.5 Verify the hash chain
 
 ```
-kubectl -n horizon exec deploy/horizon-ric -- \
-  python -m horizon_ric.evidence.verify_cli
-# exit 0 = every tenant's chain intact
+kubectl -n horizon exec deploy/horizon-ric -- python -c "
+from horizon_ric.evidence.store import JsonlEvidenceStore
+s = JsonlEvidenceStore('/var/lib/horizon/audit.jsonl')
+rc = s.verify()
+print('verify =', rc); raise SystemExit(0 if rc == -1 else 1)
+"
+# exit 0 = chain intact (EvidenceStore.verify() == -1)
 # exit 1 = chain broken; STOP — do not promote the DR cluster.
 ```
 
@@ -204,5 +220,5 @@ kubectl -n horizon logs -l job-name=horizon-ric-backup-<TS>
 * Bash driver: [`scripts/backup_and_restore.sh`](../scripts/backup_and_restore.sh)
 * Helm template (TimescaleDB): [`templates/statefulset-timescaledb.yaml`](helm/horizon-ric/templates/statefulset-timescaledb.yaml)
 * Helm template (MinIO): [`templates/statefulset-minio.yaml`](helm/horizon-ric/templates/statefulset-minio.yaml)
-* DR drill CI test: [`tests/test_dr_drill.py`](../tests/test_dr_drill.py)
+* State-recovery CI tests: [`tests/test_state_recovery.py`](../tests/test_state_recovery.py), [`tests/test_loop_state.py`](../tests/test_loop_state.py)
 * RPO/RTO governance: [`deploy/SLO.md`](SLO.md).
