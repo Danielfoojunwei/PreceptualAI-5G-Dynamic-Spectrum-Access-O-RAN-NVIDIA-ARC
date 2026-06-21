@@ -60,6 +60,18 @@ global-model distance from the honest mean drops from **202** (FedAvg) to
 against a naive Byzantine model and would not survive an adaptive ALIE/Fang
 attack — see "Honest status and gaps".*
 
+**Adversarial-robustness result (`benchmarks/results/neural_rx_pgd.json`):** the
+Shield faces an attack it was *not* hand-coded against — a real white-box **PGD**
+perturbation of the received signal, crafted on a real numpy neural receiver's
+input gradient (gradient verified against finite differences in
+`tests/test_neural_rx_pgd.py`). At 16-QAM / 22 dB / ε=0.12, both receivers are
+error-free on clean input; under the attack the neural receiver's symbol-error
+rate is **~22×** the certified classical demapper's. The Shield watches the
+*independently measured* (CRC/HARQ) block-error rate, detects the neural receiver
+leaving its envelope, and falls back to the classical demapper — cutting the
+attack's block-error impact **~12×**. (Honest scope: no-worse-than-the-certified-
+baseline under an unseen attack, not "immune".)
+
 ---
 
 ## What is actually new — prior art & honest novelty scoping

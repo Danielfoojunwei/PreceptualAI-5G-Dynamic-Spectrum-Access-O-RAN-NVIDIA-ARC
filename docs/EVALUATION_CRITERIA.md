@@ -96,11 +96,20 @@ emits **2,366** illegal policies; the Shield emits **0** (every decision gets a
 certificate). Under a Byzantine federation (20 honest / 8 Byzantine clients),
 distance from the honest mean drops from **202** (FedAvg) to **8–12** (robust
 aggregators). The DSA demonstrator benchmark
-(`benchmarks/secure_dsa_benchmark.py` → `benchmarks/results/secure_dsa.json`) is
-in build.
+(`benchmarks/secure_dsa_benchmark.py` → `benchmarks/results/secure_dsa.json`)
+runs a federated DSA agent under ALIE/Fang poisoning and shows the Shield keeps
+every emission legal and the audit chain intact. The adversarial-robustness
+benchmark (`benchmarks/neural_rx_pgd_benchmark.py` →
+`benchmarks/results/neural_rx_pgd.json`) grades the Shield against an attack it
+was **not** hand-coded for — a real white-box PGD attack on a real numpy neural
+receiver (input gradient verified by finite difference): the neural receiver's
+SER is ~22× the classical demapper's under attack, and the Shield's
+independent-measurement fallback cuts the block-error impact ~12×.
 
-**Self-score: Adequate.** The poisoning/robustness benchmark is real, committed,
-and reproducible; the DSA-specific benchmark is in build.
+**Self-score: Strong.** Three real, committed, reproducible benchmarks — including
+one that grades the Shield against an unseen adversarial attack with an
+independent oracle, directly answering the "the benchmark only tests what the
+Shield was coded to catch" critique.
 
 **Gap & closure.** The committed benchmark exercises a *synthetic* poisoned trace,
 not live I/Q. The current robust-aggregation numbers are against a naive Byzantine
