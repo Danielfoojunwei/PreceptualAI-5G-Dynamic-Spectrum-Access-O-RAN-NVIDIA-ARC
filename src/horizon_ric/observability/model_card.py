@@ -9,10 +9,9 @@ block MUST contain the four spec-mandatory fields:
   * ``evaluationReport``        — structured reference (URI + SHA-256 of
                                   the evaluation report)
 
-This module is the single source of truth for those four fields. It is
-imported by ``scripts/train_*`` whenever a new checkpoint card is written
-out, AND by ``tests/test_ts28105_model_card_emit.py`` to validate that
-every existing card complies.
+This module is the single source of truth for those four fields. Its canonical
+block is consumed by the AI-PHY model-card lineage in
+``horizon_ric.evidence.ai_phy_lineage`` (which extends it).
 
 Reference
 ---------
@@ -156,8 +155,8 @@ def compose_canonical_block(
 ) -> str:
     """Return the canonical TS 28.105 identification block for a card.
 
-    The block is wrapped between the canonical sentinels expected by
-    ``tests/test_ts28105_model_card_emit.py``::
+    The block is wrapped between canonical sentinels so a consumer can locate
+    and validate it deterministically::
 
         <!-- TS28105-IDENTIFICATION-BEGIN -->
         ## TS 28.105 Identification

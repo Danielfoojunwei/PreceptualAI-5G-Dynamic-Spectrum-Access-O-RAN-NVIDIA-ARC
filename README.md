@@ -7,7 +7,7 @@
 > evidence record a regulator can verify.
 
 **Status:** torch-free, installs on stock Python 3.10+ with no accelerator ·
-the full suite (300+ tests) is green in CI (ruff + mypy + pytest + docker +
+the full suite (490+ tests) is green in CI (ruff + mypy + pytest + docker +
 yang-strict) · benchmark + threat model committed · Apache-2.0.
 
 > Naming: the project is **Horizon-RIC** everywhere; the GitHub repository is
@@ -37,7 +37,7 @@ how does an operator *prove* to a regulator what the agent actually did?
 
 **Horizon-RIC is an AI-for-RAN trust & audit layer.** It does not train or run
 the agent; it sits beside the SMO / Non-RT RIC and wraps every decision the agent
-emits in four mechanisms:
+emits in eight mechanisms:
 
 1. **Decision Safety Shield** — projects each proposed action onto enumerated,
    independently-measured radio invariants (spectral mask, EIRP, NTN/LEO PFD
@@ -50,15 +50,38 @@ emits in four mechanisms:
 4. **Federated aggregation** — robust aggregation (Krum / median / trimmed-mean)
    bounding a poisoning client's pull on the shared DSA policy, plus Shamir
    secure aggregation for update privacy.
+5. **Certified federated unlearning** — once a poisoning client is attributed,
+   *removes* its contribution from the shared DSA policy and binds the removal to
+   a signed `UnlearningCertificate` (distance-to-retrain bound + backdoor-probe).
+   The **repair** layer for what robust aggregation only bounds — bridging the
+   NTU/DTC federated-unlearning research (Lam et al., arXiv:2404.09724).
+6. **DP-FedAvg + Rényi-DP accountant** — clipping + Gaussian noise with a real
+   (ε, δ) budget that *bounds* membership/inversion leakage (MIA AUC 0.97→~0.5 as
+   ε falls); reports the honest privacy/utility curve.
+7. **Verifiable two-server secure aggregation** — 2-of-2 additive sharing (the
+   server learns nothing) + Feldman commitments, so a malicious server that tampers
+   or drops a contribution is *detected* (Starfish model, arXiv:2404.09724).
+8. **Subject-level certified erasure (GDPR Art. 17)** — provable, audit-bound
+   erasure of one *data subject*, verified against an independent retrain.
 
-**Measured result (`benchmarks/results/poisoning_shield.json`):** on a
-10,000-decision stream that is 30% poisoned, an unguarded emit path would put
-**2,366** illegal policies on the air interface; with the Shield, **0**, and
-every decision carries a certificate. Under a (naive) Byzantine federation, the
-global-model distance from the honest mean drops from **202** (FedAvg) to
-**8–12** (robust aggregators). *Caveat: these robust-aggregation numbers are
-against a naive Byzantine model and would not survive an adaptive ALIE/Fang
-attack — see "Honest status and gaps".*
+Mechanisms 4–8 are the **federated trust stack**; the privacy/erasure additions
+(6–8) close the privacy face of `docs/THREAT_MODEL.md` (§9). All eight are
+torch-free and grounded in the NTU/DTC/Lam research lineage
+(`docs/RESEARCH_ALIGNMENT.md`).
+
+**Measured result (`benchmarks/results/poisoning_shield.json`, deterministic —
+reproduce with `python benchmarks/poisoning_shield_benchmark.py --decisions 10000
+--poison-rate 0.3`):** on a 10,000-decision stream that is 30% poisoned, an
+unguarded emit path puts **1,983** out-of-spec policies on the air interface plus
+**489** in-spec-but-harmful ones (graded by an *independent* emission-mask / ACLR
+oracle, not the Shield's own constants); with the Shield, **0** of each, and every
+decision carries a certificate. The federated half (16 honest / 4 Byzantine, dim
+200) is reported honestly: robust aggregation is a *partial bound, not a cure* —
+under adaptive Fang-median the FedAvg distance from the honest mean is 8.23 while
+median is 4.96 and trimmed-mean 5.81, but **Krum is worse at 12.2**, and under
+small-step ALIE the robust aggregators are *further* from the honest mean than
+FedAvg. The load-bearing guarantee is the deterministic Shield (0 illegal emits),
+not the aggregators — see `docs/THREAT_MODEL.md` §7 and "Honest status and gaps".
 
 **Adversarial-robustness result (`benchmarks/results/neural_rx_pgd.json`):** the
 Shield faces an attack it was *not* hand-coded against — a real white-box **PGD**
@@ -236,7 +259,7 @@ built-vs-roadmap breakdown.
 
 ```bash
 pip install -e ".[dev]"
-pytest tests/ -m "not integration and not slow" -q          # full suite (300+ tests) green
+pytest tests/ -m "not integration and not slow" -q          # full suite (490+ tests) green
 python benchmarks/poisoning_shield_benchmark.py --decisions 10000 --poison-rate 0.30
 horizon-rapp --once                                          # boot + readiness smoke
 ```
@@ -273,12 +296,13 @@ horizon-rapp --once                                          # boot + readiness 
   WG11 input.
 
 **Impact**
-- **Safety:** illegal air-interface emits from a 30%-poisoned decision stream
-  reduced from 2,366 → **0** (10k-decision benchmark,
-  `benchmarks/results/poisoning_shield.json`).
-- **Poisoning resilience (baseline):** Byzantine pull on the global model cut
-  **~20×** against a *naive* attacker (202 → 8–12); adaptive-attack hardening is
-  M3–4 work.
+- **Safety:** out-of-spec air-interface emits from a 30%-poisoned decision stream
+  reduced from **1,983 → 0** (plus 489 in-spec-but-harmful → 0; deterministic 10k-decision
+  benchmark, `benchmarks/results/poisoning_shield.json`).
+- **Poisoning resilience (honest):** robust aggregation only *partially* bounds a
+  Byzantine pull and is comparable-or-worse than FedAvg under adaptive Fang/ALIE
+  (Krum 12.2 vs FedAvg 8.23 under Fang-median); the guarantee is the deterministic
+  Shield, with certified unlearning (`THREAT_MODEL.md` §8) as the repair layer.
 - **Deployability:** gives operators and regulators (IMDA-style, NTN/LEO
   included) the replayable evidence layer their SMO lacks for federated AI-RAN
   agents on licensed spectrum.
@@ -303,17 +327,20 @@ score a **Gap** — is in [`docs/EVALUATION_CRITERIA.md`](docs/EVALUATION_CRITER
 Real, not mocked: the Shield, provenance signing / verify, robust / secure
 aggregation, hash-chained evidence store, RFC-3161 TSA anchoring (real public
 TSAs), and the R1/A1/O1 wire adapters are all working code with tests. The full
-suite (300+ tests) is green in CI.
+suite (490+ tests) is green in CI.
 
 Known limitations (also in `docs/THREAT_MODEL.md`):
 
-- **Aggregator robustness is baseline only — and we prove it.** Krum / median /
-  trimmed-mean are defeated by adaptive ALIE (Baruch, NeurIPS-19), Fang (USENIX
-  Security-20), and Min-Max/Min-Sum (Shejwalkar, NDSS-21) attacks. A committed
-  **five-family adversarial campaign** (`benchmarks/results/`, 68 adversarial
-  tests) demonstrates exactly where our defenses fail *and* where they hold — see
-  `docs/THREAT_MODEL.md` §7. Robust aggregation is a *bound*, not a cure; the
-  deterministic Shield + audit layer is the guarantee — it bounds the emitted
+- **Aggregator robustness is baseline only — and we prove it, then repair it.**
+  Krum / median / trimmed-mean are defeated by adaptive ALIE (Baruch, NeurIPS-19),
+  Fang (USENIX Security-20), and Min-Max/Min-Sum (Shejwalkar, NDSS-21) attacks. A
+  committed **five-family adversarial campaign** (`benchmarks/results/`, 75
+  adversarial tests) demonstrates exactly where our defenses fail *and* where they
+  hold — see `docs/THREAT_MODEL.md` §7. Robust aggregation is a *bound*, not a cure;
+  when a poisoner is attributed, **certified federated unlearning** now *removes* it
+  — driving a backdoor an undefended aggregator let through from success **1.0 → 0.04**
+  (clean floor), bound to a signed certificate (`docs/THREAT_MODEL.md` §8). And the
+  deterministic Shield + audit layer remains the guarantee — it bounds the emitted
   action to legal spectrum even from a fully compromised model (0 illegal emits
   from a backdoored DSA policy), and the integrity/audit perimeter is unbroken
   (8/8 probes blocked).

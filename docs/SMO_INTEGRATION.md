@@ -62,9 +62,12 @@ Concretely, add a fifth dialect (call it `acme`) like so:
      client-credentials, static bearer, and mTLS are already supported;
      adding a vendor-specific header injector is a one-line custom
      `httpx.Auth` subclass.
-  6. **Tests**: add `tests/test_a1_acme_dialect.py` with at least four
-     `httpx.MockTransport`-backed assertions — URL, body shape, auth
-     header, success status — and one row in
+  6. **Tests**: add a per-dialect test module following the pattern of
+     the existing `tests/test_a1_osc_dialect.py`,
+     `tests/test_a1_mantaray_dialect.py`, and
+     `tests/test_a1_eiap_dialect.py` — at least four
+     `httpx.MockTransport`-backed assertions (URL, body shape, auth
+     header, success status) — and add one row in
      `tests/test_multi_vendor_integration.py::DIALECTS`.
 
 That is the complete contract. Schema maps for the four
@@ -83,9 +86,7 @@ ships the same JSON Schema for the policy payload.
 | mTLS (WG11 §6 cipher allow-list)             | ✅     | ✅  | ✅   | ✅       |
 | Tamper-evident evidence store                | ✅     | ✅  | ✅   | ✅       |
 | Federated weights-only learning              | ✅     | ✅  | ✅   | ✅       |
-| Multi-tenant RaaS billing meter              | ✅     | ✅  | ✅   | ✅       |
 | Cosign-signed audit export                   | ✅     | ✅  | ✅   | ✅       |
-| NVIDIA ARC model registry upload             | ✅     | ✅  | ✅   | ✅       |
 | O-RAN.WG2.O1-v06.00 PM bulk-data ingest      | ✅     | ✅  | ✅   | ✅       |
 
 \* A1-EI is currently emitted on the legacy path (`/A1-EI/v1/eijobs/...`)
@@ -119,38 +120,18 @@ The corresponding bodies:
   * **mantaray**: `{policyId, policyTypeId, ricId, rappId, policyData}`
     (camelCase plus `rappId` for SDN-R rApp catalogue correlation).
 
-## 5. NVIDIA Aerial Cloud-Native RAN (ARC)
+## 5. Multi-tenant isolation
 
-ARC is the management plane for the NVIDIA cuBB L1/L2 stack. Horizon-RIC
-does **not** ship E2 today, so cuBB live control is out of scope. The
-management surface Horizon-RIC integrates with via
-`horizon_ric.integrations.nvidia_arc.ARCClient`:
-
-  * `POST /api/v1/models` — upload a checkpoint (multipart) plus a
-    JSON model card. The model card is auto-augmented with
-    `artifact_sha256`, `artifact_filename`, and `artifact_bytes` so
-    the registry can validate the upload.
-  * `GET /api/v1/pm/kpis/{cell_id}?start=...&end=...` — read PM KPIs
-    over a closed time window.
-
-Auth is bearer-token via the `X-NVIDIA-API-KEY` header (the published
-ARC header name).
-
-## 6. Multi-tenant rApps-as-a-Service
-
-`horizon_ric.integrations.raas.RaaSEndpoint` is the multi-tenant
-front-door for Horizon-RIC. One running instance can serve many tenants;
-billing and audit isolation is enforced through:
+Tenant isolation is enforced in the security layer, independent of the
+SMO dialect:
 
   * `TenantScope` (`horizon_ric.security.tenant`) — drives the active
     `tenant_id` for the duration of one request.
-  * Per-tenant SHA-256 hash chain in the evidence store — a tamper of
-    tenant A's chain leaves tenant B's chain intact.
-  * Per-tenant decision counter exposed at `/api/v1/billing/usage`.
-  * Cosign-signed (or HMAC-fallback) audit-trail tarball per
-    `(tenant_id, since_ts)`.
+  * Per-tenant SHA-256 hash chain in the evidence store
+    (`horizon_ric.evidence.store`) — a tamper of tenant A's chain
+    leaves tenant B's chain intact.
 
-## 7. Honest blockers
+## 6. Honest blockers
 
   * **Ericsson EIAP**: the full EIAP rApp SDK reference requires an
     Ericsson Developer Hub login. The dialect implementation and these
@@ -159,12 +140,9 @@ billing and audit isolation is enforced through:
     guide and DAC listing schema live behind a Nokia partner portal
     login. The MantaRay dialect honours the public SDN-R URL surface
     and JWT auth flow.
-  * **NVIDIA ARC**: the production REST API surface is documented for
-    NVIDIA Developer Program members; the public docs describe the
-    multipart model upload and PM KPI read used here.
 
-In all three cases Horizon-RIC's payloads are validated against the
+In both cases Horizon-RIC's payloads are validated against the
 public surface; a real partner integration replaces the mock transport
 with the vendor's live endpoint and adds the partner-portal-only
-fields. None of those replacements requires a code change in
+fields. Neither replacement requires a code change in
 Horizon-RIC itself — the dialect switch is the seam.

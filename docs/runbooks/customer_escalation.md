@@ -29,7 +29,7 @@ SDK_URL=${HORIZON_RIC_URL:-https://horizon.${TENANT}}
 | `/healthz` 503 sustained > 60 s                 | T2             | See `deploy/RUNBOOK.md` healthz-503             |
 | `HorizonA1EmitFailureRate > 1% for 5 min`       | T2             | See `deploy/RUNBOOK.md` a1-emit-failure         |
 | Audit-chain verify fail (`EvidenceStore.verify`)| T3 + Sev1 sec  | Pivot to `security_incident.md` immediately     |
-| Tenant SLA breach: latency p99 > target × 1.5  | T2             | See `src/horizon_ric/sla/engine.py`             |
+| Tenant SLA breach: latency p99 > target × 1.5  | T2             | SLO targets in `deploy/SLO.md`; breach context recorded per-decision in `src/horizon_ric/evidence/schema.py` (`sla_breach_context`) |
 | Tenant SLA breach > 30 min unmitigated          | T3             | Auto-bumps; CTO joins bridge                    |
 | `HorizonQueueDepth` > 1k for 5 min              | T2             | See `deploy/RUNBOOK.md` queue-depth             |
 
@@ -70,7 +70,9 @@ Single most critical 4-line block, paste **before** anything else:
 curl -sS -o /dev/null -w "healthz=%{http_code}\n" http://horizon-rapp.${NS}:8081/healthz
 curl -sS -o /dev/null -w "readyz=%{http_code}\n"  http://horizon-rapp.${NS}:8081/readyz
 curl -sS http://horizon-rapp.${NS}:8081/metrics | grep -E '^horizon_a1_policies(_emitted|_rolled_back)_total'
-horizon-ric-sdk state && horizon-ric-sdk audit verify
+# rApp lifecycle state + audit-chain status via the v1 API (dashboard, 8083):
+curl -sS http://horizon-rapp.${NS}:8083/v1/state | jq '.state'
+curl -sS http://horizon-rapp.${NS}:8083/v1/audit/verify | jq    # {ok:true, first_bad_index:-1} means intact
 ```
 
 Endpoints are wired in `src/horizon_ric/rapp/health.py:122` (`/healthz`),
@@ -85,7 +87,8 @@ intrusion.
 ```sh
 # 1. Confirm scope
 kubectl -n $NS get pods,svc,hpa,pdb -l app.kubernetes.io/name=horizon-ric
-horizon-ric-sdk sla timeline --minutes 60          # last-hour breach map
+# last-hour SLA breach map via /v1/sla/timeline (requires from/to RFC3339 params):
+curl -sS "http://horizon-rapp.${NS}:8083/v1/sla/timeline?from=$(date -u -d '60 min ago' +%Y-%m-%dT%H:%M:%SZ)&to=$(date -u +%Y-%m-%dT%H:%M:%SZ)" | jq
 
 # 2. Classify
 #    - Single tenant, single policy -> T2 mitigation, 1h SLA
@@ -96,11 +99,12 @@ horizon-ric-sdk sla timeline --minutes 60          # last-hour breach map
 Single most critical command — the one operators paste before anything else:
 
 ```sh
-horizon-ric-sdk state && horizon-ric-sdk audit verify
+curl -sS http://horizon-rapp.${NS}:8083/v1/state | jq '.state'
+curl -sS http://horizon-rapp.${NS}:8083/v1/audit/verify | jq
 ```
 
-If `audit verify` returns `verified: false`, stop. Pivot to
-`security_incident.md` Sev1 step 4.
+If `/v1/audit/verify` returns `ok: false` (i.e. `first_bad_index != -1`),
+stop. Pivot to `security_incident.md` Sev1 step 4.
 
 ## Customer-facing communication templates
 
@@ -226,8 +230,8 @@ next region per `oncall.md`.
 kubectl -n $NS logs deploy/$APP --tail=200 | jq 'select(.event=="a1.emit" and .status=="ok")' | tail -3
 # 2. /readyz returns 200 + rapp_state=running.
 curl -sS http://horizon-rapp.${NS}:8081/readyz | jq '{status, rapp_state, degraded_state}'
-# 3. SLA engine reports breach closed.
-horizon-ric-sdk sla timeline --minutes 5
+# 3. Confirm the SLO breach has cleared (latency p99 back under target).
+curl -sS http://horizon-rapp.${NS}:8083/v1/sla/timeline | jq '.[-5:]'
 # 4. Send T+1h or T+4h customer template.
 ```
 
@@ -255,16 +259,16 @@ sets the value, `health.py:162` veto-checks it on every `/readyz`.
 - `src/horizon_ric/rapp/health.py:55-95` — Prometheus metric definitions
 - `src/horizon_ric/rapp/health.py:122-182` — `/healthz`, `/readyz`, `/metrics`
 - `src/horizon_ric/rapp/lifecycle.py:42-48` — `RAppState` enum
-- `src/horizon_ric/sla/engine.py` — SLA breach timeline source
+- `src/horizon_ric/rapp/api_v1.py:408` — `/v1/sla/timeline` (SLA breach timeline source)
 - `docs/runbooks/oncall.md`, `docs/runbooks/security_incident.md`,
   `docs/runbooks/cert_rotation.md`
 
 ## Honest gaps
 
-- `horizon-ric-sdk sla timeline` (`sdk/python/horizon_ric_sdk/cli.py:131`)
-  exists but currently returns last-15-min by default; the `--minutes 60`
-  flag works against the API but the Grafana panel pinned in the runbook
-  also needs updating.
+- There is no packaged `horizon-ric-sdk` CLI in the tree today; the triage
+  steps above call the `/v1/state`, `/v1/audit/verify`, and
+  `/v1/sla/timeline` HTTP endpoints (`src/horizon_ric/rapp/api_v1.py`)
+  directly via `curl`. A thin CLI wrapper over those endpoints is open work.
 - The "auto-bump after 30 min unmitigated" rule lives in PagerDuty config
   today, not in the repo. There is no in-tree alertmanager rule that
   enforces it; it relies on the on-call honouring the runbook.

@@ -1,0 +1,139 @@
+{
+  "setup": {
+    "m_members": 8,
+    "k_nonmembers": 8,
+    "noise_multipliers": [
+      0.0,
+      1.0,
+      4.0,
+      8.0
+    ],
+    "delta": 1e-05,
+    "eval_episodes": 20,
+    "clip_norm_C": {
+      "mean": 11.0569,
+      "std": 0.2335,
+      "rule": "median member-update L2 norm (data-dependent; a mild DP-leak, reported not hidden)"
+    },
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "mia_score": "membership score = -||global - local||_2 (member is pulled closer => higher score)",
+    "auc_rule": "P(score_member > score_nonmember) over all member x nonmember pairs (Mann-Whitney)",
+    "lineage": [
+      "Mironov, CSF 2017 (R\u00e9nyi differential privacy)",
+      "Abadi, Chu, Goodfellow, McMahan, Mironov, Talwar & Zhang, CCS 2016 (DP-SGD / moments accountant)",
+      "Liu, Jiang, Lam et al., IEEE BigData 2024 (efficient federated unlearning with adaptive DP)"
+    ]
+  },
+  "results": [
+    {
+      "noise_multiplier": 0.0,
+      "label": "no DP (plain mean)",
+      "epsilon": {
+        "mean": null,
+        "std": null,
+        "note": "infinite \u2014 no DP guarantee"
+      },
+      "mia_auc": {
+        "mean": 0.9688,
+        "std": 0.0255
+      },
+      "throughput_per_slot": {
+        "mean": 1.0848,
+        "std": 0.0098
+      },
+      "mean_member_distance": {
+        "mean": 7.298,
+        "std": 0.2136
+      },
+      "mean_nonmember_distance": {
+        "mean": 8.6735,
+        "std": 0.2442
+      },
+      "accounted_steps": 0
+    },
+    {
+      "noise_multiplier": 1.0,
+      "label": "z=1",
+      "epsilon": {
+        "mean": 5.3026,
+        "std": 0.0
+      },
+      "mia_auc": {
+        "mean": 0.6875,
+        "std": 0.071
+      },
+      "throughput_per_slot": {
+        "mean": 0.4803,
+        "std": 0.0284
+      },
+      "mean_member_distance": {
+        "mean": 29.5421,
+        "std": 0.9903
+      },
+      "mean_nonmember_distance": {
+        "mean": 29.8448,
+        "std": 0.9605
+      },
+      "accounted_steps": 1
+    },
+    {
+      "noise_multiplier": 4.0,
+      "label": "z=4",
+      "epsilon": {
+        "mean": 1.2675,
+        "std": 0.0
+      },
+      "mia_auc": {
+        "mean": 0.6042,
+        "std": 0.083
+      },
+      "throughput_per_slot": {
+        "mean": 0.1319,
+        "std": 0.0086
+      },
+      "mean_member_distance": {
+        "mean": 122.1101,
+        "std": 3.6673
+      },
+      "mean_nonmember_distance": {
+        "mean": 122.171,
+        "std": 3.7394
+      },
+      "accounted_steps": 1
+    },
+    {
+      "noise_multiplier": 8.0,
+      "label": "z=8",
+      "epsilon": {
+        "mean": 0.6214,
+        "std": 0.0
+      },
+      "mia_auc": {
+        "mean": 0.4688,
+        "std": 0.1786
+      },
+      "throughput_per_slot": {
+        "mean": 0.0465,
+        "std": 0.0067
+      },
+      "mean_member_distance": {
+        "mean": 228.7023,
+        "std": 9.7622
+      },
+      "mean_nonmember_distance": {
+        "mean": 228.6904,
+        "std": 9.5663
+      },
+      "accounted_steps": 1
+    }
+  ],
+  "honest_finding": [
+    "WITHOUT DP (z=0) the membership-inference AUC sits well above 0.5: the global policy is measurably closer to its member clients than to fresh non-members, so membership leaks through update proximity. The mean member-distance is strictly below the mean non-member distance \u2014 the leakage is directional, not noise.",
+    "Adding DP-FedAvg noise drives the AUC toward 0.5 (less leakage) and the accountant's epsilon DOWN (more privacy) as z grows \u2014 z=1.0 < z=4.0 < z=8.0 in privacy. This is the privacy half of the trade-off, charged exactly once per aggregation round by the R\u00e9nyi-DP accountant.",
+    "The privacy is NOT free: throughput-per-slot falls sharply as z grows (the Gaussian noise, scaled by the clip C, swamps the aggregated signal in this single-round full-participation regime). We report the utility cost rather than hide it. At the strongest setting (z=8, epsilon~0.6) the AUC has fallen to ~0.5 \u2014 membership is no longer distinguishable \u2014 but the global policy's throughput has collapsed to near zero, so the privacy is bought at the price of an unusable policy. The honest takeaway is the SHAPE of the (epsilon, utility, leakage) curve: DP closes the membership leak, but on this single-round, no-subsampling DSA federation the useful operating point is a compromise, not a free lunch."
+  ]
+}

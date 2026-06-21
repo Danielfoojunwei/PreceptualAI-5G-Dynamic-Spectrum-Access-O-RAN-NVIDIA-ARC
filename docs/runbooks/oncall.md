@@ -26,7 +26,7 @@ chain break **always** promotes to Sev1 and pivots to
 | Prometheus alert (`HorizonRAppDown` / `…Degraded` / etc.) | Grafana `deploy/grafana/dashboards/horizon-counterfactual.json` |
 | `/healthz` 503 watcher                                    | `src/horizon_ric/rapp/health.py:122` — body names failed check  |
 | Customer page                                             | `customer_escalation.md` triage flow                            |
-| Audit-chain break                                         | `EvidenceStore.verify()` returns False — Sev1 immediate         |
+| Audit-chain break                                         | `EvidenceStore.verify()` returns non-`-1` — Sev1 immediate      |
 | FL non-convergence / drift                                | `horizon_drift_fired_total` > 0 — escalate per `customer_escalation.md` |
 
 ```sh
@@ -46,8 +46,10 @@ kubectl logs -f deployment/horizon-rapp --tail=200      # Ctrl-C after ~10 s
 # 3. Probe the rApp directly:
 curl -sS http://horizon-rapp.horizon:8081/healthz | jq .
 curl -sS http://horizon-rapp.horizon:8081/readyz  | jq .
-# 4. Pull the canonical SDK summary:
-horizon-ric-sdk state && horizon-ric-sdk audit verify
+# 4. Pull lifecycle state + audit-chain status from the v1 API (dashboard, 8083).
+#    (There is no packaged horizon-ric-sdk CLI; call the HTTP endpoints directly.)
+curl -sS http://horizon-rapp.horizon:8083/v1/state | jq '.state'
+curl -sS http://horizon-rapp.horizon:8083/v1/audit/verify | jq   # {ok:true, first_bad_index:-1} = intact
 ```
 
 Open the Grafana board:
@@ -71,7 +73,7 @@ Page received
 ├─ Source = HorizonA1EmitFailureRate (cluster) or …Orin (constrained)
 │   └─ customer_escalation.md  (SLA breach is contractual)
 │
-├─ Source = HorizonAuditChainBroken / EvidenceStore.verify()=False
+├─ Source = HorizonAuditChainBroken / EvidenceStore.verify() != -1
 │   └─ security_incident.md Sev1 step 4 (do NOT investigate; isolate first)
 │
 ├─ Source = horizon_cert_expiry_days < 7
@@ -109,8 +111,8 @@ clears within `DEFAULT_WATCHDOG_INTERVAL_S`
 ```sh
 kubectl get pods -n horizon                        # all replicas Running 1/1
 curl -sS http://horizon-rapp.horizon:8081/readyz   # status=ok rapp_state=running
-horizon-ric-sdk audit verify                       # verified=true
-horizon-ric-sdk sla timeline --minutes 30          # no open breach rows
+curl -sS http://horizon-rapp.horizon:8083/v1/audit/verify | jq   # {ok:true, first_bad_index:-1}
+curl -sS "http://horizon-rapp.horizon:8083/v1/sla/timeline?from=$(date -u -d '30 min ago' +%Y-%m-%dT%H:%M:%SZ)&to=$(date -u +%Y-%m-%dT%H:%M:%SZ)" | jq   # no open breach rows
 ```
 
 If `rapp_state=running` but `/readyz` is still 503, one of (a) connector
@@ -179,9 +181,9 @@ in a row (PagerDuty escalation policy `horizon-ric` step 2).
 1. Outgoing engineer dumps to the shared bridge:
 
    ```sh
-   horizon-ric-sdk state
-   horizon-ric-sdk audit verify
-   horizon-ric-sdk sla timeline --minutes 480     # last shift
+   curl -sS http://horizon-rapp.horizon:8083/v1/state | jq '.state'
+   curl -sS http://horizon-rapp.horizon:8083/v1/audit/verify | jq
+   curl -sS "http://horizon-rapp.horizon:8083/v1/sla/timeline?from=$(date -u -d '480 min ago' +%Y-%m-%dT%H:%M:%SZ)&to=$(date -u +%Y-%m-%dT%H:%M:%SZ)" | jq   # last shift
    kubectl -n $NS get events --sort-by='.lastTimestamp' --field-selector type!=Normal | tail -20
    ```
 
@@ -220,16 +222,16 @@ done
 A 503 -> `deploy/RUNBOOK.md` healthz-503. A connection refusal ->
 ingress / DNS triage, not a Horizon-RIC issue.
 
-### 3. SDK round-trip
+### 3. API round-trip
 
-The script `sdk/python/scripts/horizon_sdk_health.py` does **not** exist
-in the repo today (see "Honest gaps" below). Until it lands, run the
-equivalent SDK CLI commands — same intent, same exit code semantics:
+There is no packaged `horizon-ric-sdk` CLI in the repo today (see "Honest
+gaps" below). Exercise the same intent against the `/v1` HTTP API
+(`src/horizon_ric/rapp/api_v1.py`, served on the dashboard port 8083):
 
 ```sh
-horizon-ric-sdk state \
-  && horizon-ric-sdk policies list --limit 1 > /dev/null \
-  && horizon-ric-sdk audit verify
+curl -fsS http://horizon-rapp.horizon:8083/v1/state > /dev/null \
+  && curl -fsS "http://horizon-rapp.horizon:8083/v1/policies?limit=1" > /dev/null \
+  && curl -fsS http://horizon-rapp.horizon:8083/v1/audit/verify > /dev/null
 echo "exit=$?"
 # expected: exit=0
 ```
@@ -242,19 +244,21 @@ JWT is expired (rotate per `cert_rotation.md` §3).
 ```sh
 for T in $(yq '.tenants[].id' $TENANT_VALUES); do
   kubectl -n $NS exec deploy/$APP -- python -c "
-from horizon_ric.evidence.store import open_default_store
+from horizon_ric.evidence.store import SqliteEvidenceStore
 from horizon_ric.security.tenant import TenantScope
+import os
 with TenantScope('$T'):
-    s = open_default_store()
-    print('$T verified=', s.verify())
+    s = SqliteEvidenceStore('sqlite:///'+os.environ.get('HORIZON_EVIDENCE_DB','/var/lib/horizon/evidence.db'))
+    print('$T verify=', s.verify())   # -1 == chain intact
 "
 done
-# expected: every line "<tenant> verified= <int record_count>"
+# expected: every line "<tenant> verify= -1"
 ```
 
-Single most critical command of the shift — if any line raises an
-exception or prints `verified= 0` after records were appended, declare
-Sev1 and pivot to `security_incident.md` step 4.
+Single most critical command of the shift — `EvidenceStore.verify()`
+returns `-1` when the chain is intact and the index of the first broken
+record otherwise. If any line raises an exception or prints a non-`-1`
+value, declare Sev1 and pivot to `security_incident.md` step 4.
 
 ## Pager rules
 
@@ -329,10 +333,11 @@ weekly by the lead; there is no in-repo enforcement.
 
 ## Honest gaps
 
-- `sdk/python/scripts/horizon_sdk_health.py` does not exist. Daily check
-  #3 currently runs the SDK CLI commands inline. Building the wrapper
-  script is a small follow-up — it should exec the same three commands
-  and exit non-zero on any failure.
+- There is no packaged `horizon-ric-sdk` CLI and no SDK health-wrapper
+  script in the repo. Daily check #3 calls the `/v1` HTTP API
+  (`src/horizon_ric/rapp/api_v1.py`) directly via `curl`. A thin CLI/health
+  wrapper over `/v1/state`, `/v1/policies`, and `/v1/audit/verify` that
+  exits non-zero on any failure is a small follow-up.
 - The 4-tenant loop in checks #2 and #4 reads tenants from
   `deploy/helm/horizon-ric/values.yaml`; a registry-backed list would be
   more correct but the values file is the source of truth today.

@@ -71,18 +71,19 @@ chain break = compromise.
 ```sh
 for T in $(yq '.tenants[].id' deploy/helm/horizon-ric/values.yaml); do
   kubectl -n $NS exec deploy/$APP -- python -c "
-from horizon_ric.evidence.store import open_default_store
+from horizon_ric.evidence.store import SqliteEvidenceStore
 from horizon_ric.security.tenant import TenantScope
+import os
 with TenantScope('$T'):
-    s = open_default_store()
+    s = SqliteEvidenceStore('sqlite:///'+os.environ.get('HORIZON_EVIDENCE_DB','/var/lib/horizon/evidence.db'))
     print('$T', s.verify())
 " || echo "$T BROKEN"
 done | tee $SNAP_DIR/chain-verify.txt
 ```
 
-Expected good output: `acme 1742` (records verified, no exception). A
-`BROKEN` line, an exception, or a record count regressing vs the last known
-state in `state.json` are all sev1 confirmations.
+Expected good output: `acme -1` (chain intact — `EvidenceStore.verify()`
+returns `-1`). A `BROKEN` line, an exception, or any non-`-1` value (the
+index of the first broken record) are all sev1 confirmations.
 
 ### Step 5 — rotate ALL credentials
 
@@ -159,8 +160,9 @@ preliminary attribution. Reference `$SNAP_DIR/MANIFEST.sha256`.
 ### NIS2 — 1-month detailed (Art. 23(4)(c))
 
 Add: full root-cause, all DecisionRecords minted between detection and
-restoration (`horizon-ric-sdk audit verify --since <ts>`), corrective and
-preventive actions, post-mortem link.
+restoration (list them via the v1 API:
+`curl -sS "http://horizon-rapp.${NS}:8083/v1/policies?since=<RFC3339-ts>"`),
+corrective and preventive actions, post-mortem link.
 
 ### EU AI Act Art. 73 — 15-day serious incident report
 

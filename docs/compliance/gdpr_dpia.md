@@ -24,7 +24,7 @@ Inputs flow through:
 - O1 NETCONF subscriptions: `src/horizon_ric/rapp/o1_adapter.py`
 - R1 service exposure: `src/horizon_ric/rapp/r1_adapter.py`
 
-The state encoder (`src/horizon_ric/encoder/`) compresses these into a latent `z_resource` vector. The decision pipeline (`src/horizon_ric/policy/`) emits A1 policy intents to the Near-RT RIC (`src/horizon_ric/rapp/a1_adapter.py:190`).
+These inputs are validated against the strict schemas in `src/horizon_ric/io/schemas.py` (`TelemetryEvent`, `FeatureFrame`) and reduced to a latent `z_resource` representation. The decision pipeline (`src/horizon_ric/policy/`) emits A1 policy intents to the Near-RT RIC (`src/horizon_ric/rapp/a1_adapter.py`).
 
 ### 1.2 Identifiers handled
 
@@ -79,7 +79,7 @@ Horizon-RIC's processing is therefore additive to obligations the operator alrea
 ### 2.2 Proportionality
 
 - Horizon-RIC does NOT process PII; the highest-sensitivity identifier it can be configured to see is an opaque per-UE tag from the operator's LIMF (`policy/li_constraint.py:71-73`).
-- The state encoder uses dimensionality reduction (`encoder/`) before any decision; raw KPIs are not stored alongside the decision record (only the `state_hash` and an optional `state_blob_uri` are persisted, see `src/horizon_ric/evidence/schema.py:107-108`). The blob URI points to the operator's object store, not to the vendor.
+- The state representation uses dimensionality reduction before any decision; raw KPIs are not stored alongside the decision record (only the `state_hash` and an optional `state_blob_uri` are persisted, see `src/horizon_ric/evidence/schema.py`, `DecisionRecord`). The blob URI points to the operator's object store, not to the vendor.
 - The audit chain is per-tenant: an auditor for tenant A cannot read tenant B (`evidence/store.py:212-227`). This is data-minimisation by tenant boundary.
 
 ## 3. Identified risks (Art. 35(7)(c))
@@ -141,7 +141,7 @@ The combinations are listed from least to most identifiable. The naming conventi
 **Identifiability:** **IDENTIFIABLE.** An RNTI (Radio Network Temporary Identifier) is unique to a single UE within a cell at any moment in time. The combination `(cell_id, slice_id, RNTI)` is therefore unique to a single UE, and over even a short observation window can be linked to a subscriber identity by a party with adjacent data (e.g., the operator's HSS or MME).
 
 **Mitigation in our codebase:**
-- **Horizon-RIC does NOT ingest, store, or process RNTI.** The state encoder (`src/horizon_ric/encoder/`) consumes per-cell aggregates from TS 28.552 KPIs, not per-UE per-RNTI records. There is no field in `src/horizon_ric/io/schemas.py` that holds RNTI.
+- **Horizon-RIC does NOT ingest, store, or process RNTI.** The input schemas (`src/horizon_ric/io/schemas.py`) consume per-cell aggregates from TS 28.552 KPIs, not per-UE per-RNTI records. There is no field in `src/horizon_ric/io/schemas.py` that holds RNTI.
 - The only per-UE identifier the rApp can be configured to see is an opaque per-UE tag from the operator's LIMF (`src/horizon_ric/policy/li_constraint.py:71-73, protected_ue_ids`). This tag is a hashed/scoped identifier the operator generates; it is not an RNTI and is not joinable by the rApp to any subscriber identity. The operator's LI process governs the RNTI-to-tag mapping outside our boundary.
 - `__iter__` returning DecisionRecords scopes by tenant (`evidence/store.py:212-227`); even were RNTI somehow persisted upstream, cross-tenant disclosure is fail-closed.
 
@@ -150,8 +150,8 @@ The combinations are listed from least to most identifiable. The naming conventi
 **Identifiability:** **IDENTIFIABLE.** A 5-minute trajectory of `(cell_id, RNTI)` pairs reconstructs a subscriber's mobility path across cells; combined with a public cell-tower map, this identifies a person's movement. Even without RNTI, a 5-minute trajectory of `(cell_id, opaque-UE-tag)` is identifying.
 
 **Mitigation in our codebase:**
-- We don't store RNTI at all (see §3.5.4). We don't store mobility trajectories. The state encoder produces a `z_resource` *latent* vector per decision, and only the `state_hash` (a fixed-size sha256) is persisted in the audit chain (`src/horizon_ric/evidence/schema.py:107`). The optional `state_blob_uri` (line 108) points to the operator's object store, not to the vendor's; the operator chooses whether and for how long the latent blobs are retained.
-- The latent vector itself is dimensionality-reduced and is intentionally not invertible to per-UE trajectories; the encoder is trained on cell-aggregate inputs, not per-UE inputs.
+- We don't store RNTI at all (see §3.5.4). We don't store mobility trajectories. Only the `state_hash` (a fixed-size sha256) is persisted in the audit chain (`src/horizon_ric/evidence/schema.py`, `DecisionRecord.state_hash`). The optional `state_blob_uri` points to the operator's object store, not to the vendor's; the operator chooses whether and for how long the latent blobs are retained.
+- The latent representation is dimensionality-reduced and is intentionally not invertible to per-UE trajectories; it is derived from cell-aggregate inputs, not per-UE inputs.
 - LI-tagged UE handling is per the warrant lifecycle in `docs/compliance/li_applicability.md` §4.1 — the warrant defines retention; rApp-side retention is bounded by the warrant's term.
 
 #### 3.5.6 Summary table
@@ -198,7 +198,7 @@ The operator's controller-side responsibility under Recital 26 remains to assess
 ### Mitigation for Risk 4 — Model card data lineage
 
 - Each emitted model card (`src/horizon_ric/observability/model_card.py`) records `sha256`, training corpus, and training metrics; model lineage is signed via `src/horizon_ric/provenance/signing.py` and surfaced through `src/horizon_ric/evidence/ai_phy_lineage.py`.
-- Provenance at decision time: `ModelVersions` (`evidence/schema.py:18-30`) is persisted on every DecisionRecord, so an auditor can reproduce which model produced any decision.
+- Provenance at decision time: `ModelVersions` (`evidence/schema.py`) is persisted on every DecisionRecord, so an auditor can reproduce which model produced any decision.
 - Operator-side recommendation: when the operator brings their own training corpus, they must re-issue the model card with corrected lineage. There is no automatic propagation today. **NOT YET — planned in Phase 2**: a CI hook that fails the build if a model card's training-corpus block is empty or the `dataset_sha256` is missing.
 
 ## 5. DPO consultation record (Art. 35(2)) — operator-side template
@@ -230,7 +230,7 @@ If the operator's DPO disagrees with any risk classification in §3, the operato
 | (d) Recipients to whom personal data have been or will be disclosed | Operator's Near-RT RIC, SOC dashboard, Prometheus/Alertmanager, regulator-on-warrant — see §1.5 |
 | (e) Transfers to third countries | None by default (vendor receives no operator data in production) |
 | (f) Time limits for erasure | Operator-configured; recommended floor in §1.6 |
-| (g) General description of the technical and organisational security measures referred to in Art. 32(1) | mTLS (auth.py), JWT RS256 with rotation (jwt.py), Casbin RBAC, per-tenant evidence chain with SHA-256 tamper detection (evidence/store.py), atomic state checkpointer (state_recovery.py), structured audit event names (middleware.py, sla/engine.py) |
+| (g) General description of the technical and organisational security measures referred to in Art. 32(1) | mTLS (auth.py), JWT RS256 with rotation (jwt.py), Casbin RBAC, per-tenant evidence chain with SHA-256 tamper detection (evidence/store.py), atomic state checkpointer (runtime/state_recovery.py), structured audit event names (security/middleware.py) |
 
 ---
 

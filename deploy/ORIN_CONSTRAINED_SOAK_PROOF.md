@@ -3,10 +3,19 @@
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`../README.md`](../README.md) for the 49-section deep dive.*
 
 
-_Run started_: 2026-05-07T10:08:54.307371+00:00 · _ended_: 2026-05-07T10:20:55.509361+00:00
+_Run recorded_: 2026-05-07T10:08:54.307371+00:00 → 2026-05-07T10:20:55.509361+00:00
 
 Wall-clock **12.0 min × speedup 120× = 24.00 simulated hours** under
 **Orin Nano-equivalent envelope** on the GB10 aarch64 host.
+
+> **Provenance note.** The latencies, success rates and histograms below
+> were recorded on the 2026-05-07 tree and are a historical measurement.
+> The driver `scripts/soak_24h.py` and the edge micro-benchmark
+> `scripts/edge_benchmark_arm64.py` referenced in the command blocks are
+> **not currently present in this tree**; re-run the soak on the target host
+> to reproduce. The breaker / evidence-store / watchdog mechanisms exercised
+> are covered in CI by `tests/test_circuit_breaker.py`,
+> `tests/test_evidence_store.py`, and `tests/test_watchdog.py`.
 
 ## Headline
 
@@ -80,6 +89,9 @@ inflation under heavy CPU pressure.
 
 ## Edge benchmark (separate 10 K-step run, same envelope)
 
+Recorded with the command below (`scripts/edge_benchmark_arm64.py` is not
+currently in this tree — see the provenance note above):
+
 ```
 $ taskset -c 0-1 prlimit --as=8589934592 \
     .venv/bin/python scripts/edge_benchmark_arm64.py --steps 10000
@@ -149,6 +161,10 @@ as a representative substitute and document the honest delta in
 
 ## How this was generated
 
+Recorded with the commands below (the `scripts/soak_24h.py` and
+`scripts/edge_benchmark_arm64.py` entry points are not currently checked
+into `scripts/` — see the provenance note at the top):
+
 ```bash
 taskset -c 0-1 .venv/bin/python scripts/soak_24h.py \
     --duration-min 12 --speedup 120
@@ -157,13 +173,14 @@ taskset -c 0-1 prlimit --as=8589934592 \
     --out /tmp/orin_constrained_edge.json
 ```
 
-`scripts/soak_24h.py` spawns `deploy/osc_emulator/server.py` as a real
+The soak driver spawns `deploy/osc_emulator/server.py` as a real
 subprocess on a loopback port and pipes A1 emits through a fault-
 injecting TCP proxy. Each emit is wrapped in `AsyncCircuitBreaker.call(...)`
-— a real `pybreaker` state machine — and persists a `DecisionRecord` to
-a real SHA-256 hash-chained JSONL evidence store. Every audit verify
-reads the JSONL back from disk and walks the chain. The `taskset` pin
-ensures all child processes (uvicorn, the soak driver, the fault proxy)
-share the same 2-core CPU set.
+— a real `pybreaker` state machine (`src/horizon_ric/runtime/circuit_breaker.py`)
+— and persists a `DecisionRecord` to a real SHA-256 hash-chained JSONL
+evidence store (`src/horizon_ric/evidence/store.py`). Every audit verify
+reads the JSONL back from disk and walks the chain via
+`EvidenceStore.verify()`. The `taskset` pin ensures all child processes
+(uvicorn, the soak driver, the fault proxy) share the same 2-core CPU set.
 
 No mocks, no fakes, no stubs.

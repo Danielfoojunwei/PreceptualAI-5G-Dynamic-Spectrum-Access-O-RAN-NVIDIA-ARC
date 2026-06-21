@@ -192,7 +192,7 @@ Per **NIST SP 800-207**, these are necessary-but-not-AI-specific supports (see �
 
 | Gap | Threat exposed | Status |
 |-----|----------------|--------|
-| **No differential-privacy accountant** | ML03 model inversion, ML04 membership inference | **ROADMAP** — tenant isolation reduces, but does not bound, privacy leakage |
+| **No differential-privacy accountant** | ML03 model inversion, ML04 membership inference | **ADDRESSED** (§9) — DP-FedAvg + a real Rényi-DP accountant now *bound* leakage; a committed membership-inference benchmark shows AUC 0.97→~0.5 as ε falls |
 | **No inference-API extraction rate-limiting** | ML05 model theft / extraction | **ROADMAP** — authn restricts *who* queries, not *how much* |
 | **Telemetry source authentication depends on the vendor** | Spoofed Aerial cuBB / E2 KPM feeds (S) | **VENDOR-DEPENDENT** — Horizon-RIC trusts the Aerial/E2 transport's authentication; it does not independently attest the sensor |
 | **HSM production custody not bundled** | Key compromise of signing/timestamp keys | **DOCUMENTED, NOT BUNDLED** — production deployments must wire CloudHSM / Thales Luna; the code ships an HSM *interface* and software fallback for dev |
@@ -237,7 +237,7 @@ not a trusted one.
 
 We ran a real attack campaign against our own system (numpy, no mocks) across five
 families. Every attack is implemented, run, and committed with results under
-`benchmarks/results/`; **68 adversarial tests** gate them in CI. The honest summary:
+`benchmarks/results/`; **75 adversarial tests** gate them in CI. The honest summary:
 the deterministic perimeter (integrity, audit, output-shielding) holds completely;
 the ML layer is beatable by adaptive adversaries — as it is across the field — and
 we report exactly where.
@@ -248,7 +248,7 @@ we report exactly where.
 | Adversarial evasion (neural-RX) | `evasion_suite.json`, `neural_rx_pgd.json`, `phy_fading.json` | Shield falls back via *independent* CRC measurement (~94% of windows in AWGN), restoring the link; guarantee `effective ≤ classical + tol` | white-box FGSM/BIM/MIM/**transfer** crush the neural-RX **~28×** in AWGN; gap **collapses to ~1.1×** under realistic fading (both receivers vulnerable) |
 | Physical-layer jamming | `jamming_suite.json` | helps under imperfect-CSI asymmetry (routes to the better receiver) | **barrage jamming degrades BOTH receivers** — the Shield is a router, not a denoiser; it cannot restore a noisier channel |
 | FL model-poisoning | `fl_poisoning_suite.json` | naive Gaussian Byzantine fully bounded by median / trimmed-mean / Krum | **Min-Max/Min-Sum (Shejwalkar NDSS-21) and Fang (USENIX-20) DEFEAT Krum/median/trimmed-mean** near breakdown; FedAvg unbounded |
-| FL data-poisoning / backdoor (DSA) | `dsa_poison_suite.json`, `secure_dsa.json` | Shield+audit keep every emitted (channel, power) **LEGAL** and the chain intact even from a fully backdoored policy (**0 illegal emits**) | a single-row **backdoor SURVIVES coordinate-median at its 50% breakdown point** (success 1.0); robust agg only *bounds* reward poisoning |
+| FL data-poisoning / backdoor (DSA) | `dsa_poison_suite.json`, `secure_dsa.json` | Shield+audit keep every emitted (channel, power) **LEGAL** and the chain intact even from a fully backdoored policy (**0 illegal emits**); **certified unlearning removes the backdoor post-hoc** (§8) | a single-row **backdoor SURVIVES coordinate-median at its 50% breakdown point** (success 1.0); robust agg only *bounds* reward poisoning |
 
 **The thesis this evidence supports.** Robust aggregation is a *bound*, not a cure —
 adaptive poisoning beats it, exactly as the literature predicts (Baruch et al.
@@ -260,6 +260,63 @@ the point of a defense-in-depth design — the AI layer can be defeated; the saf
 audit layer is what holds the line, and that is the AI-RAN-native contribution. We
 publish the failures rather than hide them, which is the correct posture for a
 security submission.
+
+---
+
+## 8. Closing the backdoor FAIL — certified federated unlearning
+
+Robust aggregation only *bounds* a poisoner; it never *removes* the influence that
+already leaked into the global policy (the §7 backdoor row). The repair mechanism
+is **machine unlearning**, and it is exactly the active research line of the same
+NTU/DTC group this project builds on — Prof Kwok-Yan Lam's federated-unlearning
+work (see `docs/RESEARCH_ALIGNMENT.md`): *Privacy-Preserving Federated Unlearning
+with Certified Client Removal* (Liu, Ye, Jiang, Shen, Guo, Tjuawinata & Lam,
+arXiv:2404.09724) and the *Survey on Federated Unlearning* (Liu, Jiang, Shen, Peng,
+Lam, Yuan & Liu, ACM Comput. Surv. 2024); plus the backdoor-as-verification idea of
+Han et al. (arXiv:2412.11476).
+
+We implement it torch-free on the federated DSA policy
+(`src/horizon_ric/federated/unlearning.py`; `benchmarks/results/federated_unlearning.json`;
+7 tests in `tests/test_federated_unlearning.py`). Honest results, multi-seed:
+
+| | Backdoor success (trigger) | Certified L2 distance to retrain | Signed certificate |
+|---|---|---|---|
+| Poisoned (undefended FedAvg) | **1.00** | — | — |
+| **Retrain-from-scratch unlearning** | **0.04** (clean floor) | 0.0 (it *is* the gold standard) | verifies; rejects the poisoned model & manifest/weight tamper |
+| Efficient replay unlearning | 1.00 (**insufficient**) | **~14 (large)** | verifies, but the large bound flags it as untrustworthy |
+
+So **certified retrain-from-scratch unlearning removes the backdoor an undefended
+aggregator let through (1.00 → 0.04)** and binds the removal to an RSA-PSS-signed
+`UnlearningCertificate` (the Starfish-style bound = distance to the gold standard;
+backdoor-probe success before/after; audit-chainable). Three honest caveats: (a)
+the *cheap* replay unlearner is **insufficient** for a backdoor that propagated
+through warm-starting — and its large certified distance-to-retrain says so rather
+than hiding it; (b) unlearning needs **attribution** — whole-vector detection flags
+large-norm poisoning (crafted Q-table, reward poisoning, and the boost-50 backdoor
+here), but a *norm-matched* stealthy backdoor would evade it; (c) at that breakdown
+point the deterministic **Decision Safety Shield remains the backstop**. Unlearning
+is a new layer that *repairs* an attributed compromise; it does not replace the
+output-shield that holds when attribution fails.
+
+---
+
+## 9. Privacy, verifiable aggregation, and the right to be forgotten
+
+Three more trust mechanisms close the remaining privacy gaps in §5, each torch-free,
+each grounded in the NTU/DTC research line (`docs/RESEARCH_ALIGNMENT.md`) and each
+reporting honestly where it costs something. Results are committed under
+`benchmarks/results/`; **24** tests gate them.
+
+| Mechanism | Derives from | What it does | Honest cost / caveat |
+|---|---|---|---|
+| **DP-FedAvg + Rényi-DP accountant** (`federated/dp.py`, `dp_privacy.json`) | Liu, Jiang, Lam et al., *Efficient FU with Adaptive DP*, IEEE BigData 2024; accounting per Mironov CSF-17 / Abadi CCS-16 | Per-client L2 clipping + Gaussian noise *bound* privacy leakage with a real (ε, δ) accountant. A committed membership-inference benchmark shows the leak close as ε falls: **MIA AUC 0.97 (no DP) → 0.69 (ε≈5.3) → ~0.47 (ε≈0.62)** | Privacy costs **utility**: throughput 1.09 → 0.05 over the same range. We report the full ε/utility/leakage curve, not a single flattering point; the clip bound is data-dependent (a mild leak we disclose) |
+| **Verifiable two-server secure aggregation** (`federated/verifiable_secagg.py`, `verifiable_secagg.json`) | Liu, Ye, Jiang, Shen, Guo, Tjuawinata & Lam, Starfish, arXiv:2404.09724 | 2-of-2 additive secret sharing (a malicious or curious **server learns nothing**) + Feldman commitments over a 2048-bit safe prime so a server that **tampers or drops** a contribution is **detected** — tamper & drop detection **1.0** (exact, by discrete-log binding); reconstruction matches plaintext to ~3e-5 | Privacy holds **only under non-collusion** of the two servers; Feldman commitments are *binding, not hiding*; public verifiability costs one 2048-bit modexp **per coordinate** (dim 128 ≈ 9 s in pure Python) |
+| **Subject-level certified erasure** (`federated/erasure.py`, `subject_erasure.json`) | Lam et al., *Certifying the Right to be Forgotten: Primal-Dual … in Vertical FL*, IEEE TIFS | GDPR Art. 17 erasure of **one data subject** (not a whole client): exact recompute + re-aggregate, **verified against an independent from-scratch retrain (certified distance 0.0)** and bound to a signed `ErasureCertificate` | Exactness is for the single-round transition model; a *cheap* linear shortcut is exact for FedAvg but leaves a measured **~0.57** residual under non-linear median (reported), so we recompute |
+
+These do not change the thesis: the deterministic perimeter is the guarantee. They
+close the *privacy* face of the threat model — bounding leakage (DP), removing trust
+in the server (verifiable agg), and honouring erasure (Art. 17) — with the same
+"publish the cost" honesty as the attack campaign.
 
 ---
 

@@ -3,13 +3,15 @@
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
 
-**Scope.** Horizon-RIC's federated aggregator (`SecureFedAvg`, Shamir
-secret-sharing over GF(2¹²⁷ − 1)) requires that the share-dealer signing
-key never live in process memory in production. This document covers the
-HSM-abstraction layer (`src/horizon_ric/security/hsm.py`), the supported
+**Scope.** Horizon-RIC's secure aggregation path (`ShamirSecretSharing` /
+`secure_mean` in `src/horizon_ric/federated/secure.py`, Shamir secret-sharing
+over GF(2¹²⁷ − 1)) and its model-provenance signing path
+(`src/horizon_ric/provenance/signing.py`, `sign_model(...)`) require that the
+signing key never live in process memory in production. This document covers
+the HSM-abstraction layer (`src/horizon_ric/security/hsm.py`), the supported
 backends, key-rotation procedure, and FIPS 140-3 inheritance.
 
-Establishes HSM-backed key custody for the federated aggregator.
+Establishes HSM-backed key custody for the provenance-signing path.
 
 ---
 
@@ -23,9 +25,9 @@ Establishes HSM-backed key custody for the federated aggregator.
    operator (R1) ──┐                │  CKM_RSA_PKCS_OAEP enc   │
                    │                │  CKM_AES_GCM      wrap   │
                    ▼                │                          │
-   SecureFedAvg ──> HSMBackend ───> ├─── SoftHSM2Backend ──────│  test labs
-   (federated/      (security/      ├─── AWS CloudHSMBackend ──│  prod (FIPS 140-2 L3)
-    secure_agg.py)   hsm.py)        ├─── ThalesLunaBackend ────│  prod (FIPS 140-3 L3)
+   sign_model() ──> HSMBackend ───> ├─── SoftHSM2Backend ──────│  test labs
+   (provenance/     (security/      ├─── AWS CloudHSMBackend ──│  prod (FIPS 140-2 L3)
+    signing.py)      hsm.py)        ├─── ThalesLunaBackend ────│  prod (FIPS 140-3 L3)
                                     └─── InMemoryHSMBackend ───│  unit tests ONLY
 ```
 
@@ -41,7 +43,7 @@ PKCS#11 verbs, one factory):
 | `list_keys`         | C_FindObjects                   | label enumeration             |
 | `from_config`       | factory                         | dispatches by `cfg["backend"]` |
 
-DEKs (data-encryption keys for FedAvg payloads-at-rest) wrap under
+DEKs (data-encryption keys for payloads-at-rest) wrap under
 `CKM_AES_GCM`; the wiring is documented but not bundled — see §6.
 
 ---
@@ -50,7 +52,7 @@ DEKs (data-encryption keys for FedAvg payloads-at-rest) wrap under
 
 | Backend                | File support          | FIPS status                    | Test status                                                                                                                  |
 | ---------------------- | --------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `InMemoryHSMBackend`   | Bundled, real RSA-2048 via `cryptography` | NONE — process memory          | TEST-ONLY. Used by `tests/test_hsm.py` and as the default when `SecureFedAvg(hsm=...)` is omitted.                          |
+| `InMemoryHSMBackend`   | Bundled, real RSA-2048 via `cryptography` | NONE — process memory          | TEST-ONLY. Exercised by `tests/test_provenance.py` as the HSM backing `sign_model(...)` in the provenance-signing path.       |
 | `SoftHSM2Backend`      | Bundled, PKCS#11      | NOT FIPS — SoftHSM2 is a test HSM | Functional when `python-pkcs11` is installed and `libsofthsm2.so` is on the host. Validated against SoftHSM2 v2.6.x.          |
 | AWS CloudHSM           | Documented, NOT bundled | **FIPS 140-2 Level 3**         | Production deployment requires the CloudHSM Client + JCE provider. `from_config({"backend":"aws_cloudhsm"})` raises `NotImplementedError("contact ops")`. |
 | Thales Luna Network HSM | Documented, NOT bundled | **FIPS 140-3 Level 3**         | Production deployment requires the Luna client + Universal Client SDK. Same factory path, same error surface.                |
@@ -72,13 +74,14 @@ pip install python-pkcs11
 ```
 
 ```python
-from horizon_ric.security import HSMBackend
-from horizon_ric.federated import SecureFedAvg
+from horizon_ric.security.hsm import HSMBackend
+from horizon_ric.provenance import sign_model
 
 hsm = HSMBackend.from_config({"backend": "softhsm2",
                               "token_label": "horizon-ric",
                               "user_pin": "1234"})
-sf = SecureFedAvg(n_shares=5, threshold=3, hsm=hsm)
+prov = sign_model(weights, trainer_id="trainer-a",
+                  training_manifest=manifest, hsm=hsm)
 ```
 
 The SoftHSM2 token is initialised under `~/.config/softhsm2/` per user.
@@ -122,7 +125,7 @@ runbook. The short version, specific to share-dealer keys:
 | ---- | ------------------------------------------------------------------ | -------- |
 | 1    | `softhsm2-util --import …` or vendor equivalent — generate new key under label `share-dealer-v{n+1}` | SRE      |
 | 2    | Re-deploy aggregator with `hsm_key_label="share-dealer-v{n+1}"` | SRE      |
-| 3    | Drain in-flight rounds (≤ 30 s; `SecureFedAvg` is stateless across rounds) | SRE      |
+| 3    | Drain in-flight signing operations (≤ 30 s; `sign_model` is stateless across calls) | SRE      |
 | 4    | `softhsm2-util --delete-object … --label share-dealer-v{n}` after 30-day audit window | Sec      |
 | 5    | Rotate aggregator client trust-store (NIS-2 incident-response trail) | Sec      |
 
@@ -148,13 +151,18 @@ Rev 5, §5.3 — RSA-2048, Class 1 protection, originator-usage period
 
 ## 7. Testing
 
-* `tests/test_hsm.py` — 8 tests covering keypair roundtrip, OAEP
-  encrypt/decrypt, factory selection, NotImplementedError for AWS / Thales,
-  SecureFedAvg parity with/without HSM, tampered-announcement rejection,
-  and a `pytest.importorskip("pkcs11")`-gated SoftHSM2 smoke test.
-* `tests/test_secure_aggregation.py` — 5 existing tests, all still green
-  (HSM is opt-in; default behaviour is unchanged).
+* `tests/test_provenance.py` — exercises the `InMemoryHSMBackend` as the
+  HSM backing `sign_model(...)`: sign/verify roundtrip (RSA-PSS-SHA256),
+  tampered-weights rejection, tampered-manifest rejection, untrusted-signer
+  rejection under a pinned public key, `verify_or_raise` promotion gate, and
+  provenance dict roundtrip. The SoftHSM2 / CloudHSM / Thales backends and the
+  `from_config` factory are present in `src/horizon_ric/security/hsm.py` but
+  are not covered by the unit suite (they require a live PKCS#11 token).
+* Shamir secure aggregation (`ShamirSecretSharing` / `secure_mean`) is covered
+  by `tests/test_robust_aggregation.py`
+  (`test_secure_mean_matches_plain_mean_privately`) and
+  `tests/test_spectrum_dsa.py` (`test_secure_aggregation_path_runs`).
 
 ```bash
-.venv/bin/python -m pytest tests/test_hsm.py tests/test_secure_aggregation.py -v
+.venv/bin/python -m pytest tests/test_provenance.py tests/test_robust_aggregation.py -v
 ```

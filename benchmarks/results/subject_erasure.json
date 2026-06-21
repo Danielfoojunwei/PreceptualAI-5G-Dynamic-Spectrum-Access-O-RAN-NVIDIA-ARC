@@ -1,0 +1,80 @@
+{
+  "setup": {
+    "n_clients": 4,
+    "subjects_per_client": 3,
+    "erasure": "one subject from one client (GDPR Art. 17, sample-level)",
+    "gold_standard": "from-scratch retrain of the whole federation with the subject's rows absent from the target client (other clients recomputed)",
+    "lineage": [
+      "Lam et al., Certifying the Right to be Forgotten: Primal-Dual Optimization for Sample and Label Unlearning in VFL, IEEE TIFS"
+    ]
+  },
+  "results": [
+    {
+      "method": "fedavg",
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "global_changed": true,
+      "n_transitions_erased": 400,
+      "n_transitions_erased_matches_log": true,
+      "certified_l2_distance_to_retrain": {
+        "mean": 0.0,
+        "std": 0.0,
+        "max": 0.0
+      },
+      "independent_exact_distance_to_retrain": {
+        "mean": 0.0,
+        "std": 0.0,
+        "max": 0.0
+      },
+      "cheap_linear_shortcut_residual_to_retrain": {
+        "mean": 0.0,
+        "std": 0.0,
+        "max": 0.0
+      },
+      "certificate_verifies_after": true,
+      "certificate_rejects_before": true,
+      "certificate_pin_verify_ok": true,
+      "certificate_wrong_pin_fails": true,
+      "certificate_rejects_manifest_tamper": true
+    },
+    {
+      "method": "median",
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "global_changed": true,
+      "n_transitions_erased": 400,
+      "n_transitions_erased_matches_log": true,
+      "certified_l2_distance_to_retrain": {
+        "mean": 0.0,
+        "std": 0.0,
+        "max": 0.0
+      },
+      "independent_exact_distance_to_retrain": {
+        "mean": 0.0,
+        "std": 0.0,
+        "max": 0.0
+      },
+      "cheap_linear_shortcut_residual_to_retrain": {
+        "mean": 0.566558333333,
+        "std": 0.016891197655,
+        "max": 0.587105
+      },
+      "certificate_verifies_after": true,
+      "certificate_rejects_before": true,
+      "certificate_pin_verify_ok": true,
+      "certificate_wrong_pin_fails": true,
+      "certificate_rejects_manifest_tamper": true
+    }
+  ],
+  "honest_finding": [
+    "For FedAvg subject erasure is EXACT and PROVABLE: the cheap re-aggregation equals a from-scratch retrain that never saw the subject, so the certified L2 distance-to-retrain is 0.0 \u2014 the strong Art. 17 'as if the data was never used' guarantee, not an approximation. The independently computed distance to our own gold-standard retrain is 0.0 too, so the certificate is not self-referential hand-waving.",
+    "For a NON-LINEAR aggregator (median; krum is likewise non-linear) the cheap LINEAR re-aggregation shortcut an operator would use to avoid a full recompute is NOT the retrain: it leaves a small, non-zero residual (cheap_linear_shortcut_residual_to_retrain), reported honestly rather than hidden. The module's certificate still reaches distance 0.0 there only because it pays for a full EXACT recompute of the affected local before re-aggregating \u2014 exactness under non-linearity costs the recompute, and the residual quantifies what the cheap path would have left behind.",
+    "Erasure is bound to a signed, audit-chainable ErasureCertificate (RSA-PSS via the real provenance HSM): it verifies against the post-erasure global, rejects the pre-erasure global and any manifest tamper, pin-verifies against the embedded public key, and records the exact number of the subject's transitions that were erased."
+  ]
+}

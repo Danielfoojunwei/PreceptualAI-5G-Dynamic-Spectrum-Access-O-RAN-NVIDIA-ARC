@@ -87,15 +87,18 @@ The unit is parsed and asserted in CI:
 .venv/bin/python -m pytest tests/test_systemd_unit.py -v
 ```
 
-The 10 assertions cover Type=notify, WatchdogSec=30s, CPUAffinity=0 1,
-MemoryMax=8G, User=horizon (not root), NoNewPrivileges, ProtectSystem=strict,
-restricted ReadWritePaths, the timer's `Persistent=true` + daily firing, and
-the soak script's `taskset -c 0-1` pin.
+The 11 test functions cover the service file existing, Type=notify,
+WatchdogSec=30s, CPUAffinity=0 1, MemoryMax=8G, User=horizon (not root),
+NoNewPrivileges + ProtectSystem=strict, restricted ReadWritePaths, the
+install target, the ExecStart using the horizon_ric CLI, the timer's
+`Persistent=true` + daily firing, and the soak script's `taskset -c 0-1` pin.
 
 ## Soak output
 
-`horizon-soak-1h.sh` writes to `/var/log/horizon-ric/soak-YYYYMMDD.json`.
-The schema matches `scripts/soak_24h.py` (24 simulated hours' worth of
-metrics: A1 acks, latency p50/p95/p99, watchdog pings, OOM events).
-Long-term retention is the operator's responsibility — `logrotate` config
-in `deploy/logrotate.d/horizon-ric` (if present) handles weekly rotation.
+`horizon-soak-1h.sh` writes to `/var/log/horizon-ric/soak-YYYYMMDD.json`
+(24 simulated hours' worth of metrics: A1 acks, latency p50/p95/p99,
+watchdog pings, OOM events). The wrapper invokes `scripts/soak_24h.py`,
+which is **not currently checked into this tree** and must be restored
+before the soak timer will run end-to-end on the device. Long-term
+retention is the operator's responsibility — `logrotate` config in
+`deploy/logrotate.d/horizon-ric` (if present) handles weekly rotation.
