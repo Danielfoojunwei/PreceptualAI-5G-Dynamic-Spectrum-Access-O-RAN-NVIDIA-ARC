@@ -12,7 +12,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write    # for cosign keyless if used in the future
+      id-token: write    # keyless cosign signing via OIDC
     steps:
       - uses: actions/checkout@v4
 
@@ -28,29 +28,45 @@ jobs:
             echo "version=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Compute image ref (GHCR, lowercase)
+        id: img
+        run: |
+          owner="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "ref=ghcr.io/${owner}/horizon-ric" >> "$GITHUB_OUTPUT"
+
+      # Only log in / push on non-PR events (main + tags). PRs build-and-load
+      # locally for the smoke check and never publish.
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build image
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/docker/Dockerfile
-          tags: |
-            horizonric/rapp:${{ steps.ver.outputs.version }}
-          load: true
+          tags: ${{ steps.img.outputs.ref }}:${{ steps.ver.outputs.version }}
+          # Push to the registry on non-PR events so the following sign/SBOM
+          # steps can resolve the image by digest; just load on PRs.
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
 
       - name: Install cosign
+        if: github.event_name != 'pull_request'
         uses: sigstore/cosign-installer@v3
         with:
           cosign-release: "v2.4.1"
 
-      - name: Sign image
+      - name: Sign image (keyless, by digest)
         if: github.event_name != 'pull_request'
-        env:
-          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
         run: |
-          echo "${{ secrets.COSIGN_KEY }}" > /tmp/cosign.key
-          cosign sign --yes --key /tmp/cosign.key \
-            horizonric/rapp:${{ steps.ver.outputs.version }}
-          rm /tmp/cosign.key
+          cosign sign --yes \
+            "${{ steps.img.outputs.ref }}@${{ steps.build.outputs.digest }}"
 
       - name: Generate + attach SBOM
         if: github.event_name != 'pull_request'
@@ -61,4 +77,4 @@ jobs:
             --pyproject pyproject.toml
           cosign attach sbom --type cyclonedx \
             --sbom deploy/sbom/horizon-ric-sbom.json \
-            horizonric/rapp:${{ steps.ver.outputs.version }}
+            "${{ steps.img.outputs.ref }}@${{ steps.build.outputs.digest }}"

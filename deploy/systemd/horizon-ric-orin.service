@@ -28,6 +28,14 @@ NotifyAccess=main
 User=horizon
 Group=horizon
 
+# Crash-recovery checkpoint must live under a ReadWritePaths grant — with
+# ProtectSystem=strict the rest of the filesystem is read-only, so the
+# lifecycle default (/var/lib/horizon/state.json) would be denied.
+Environment=HORIZON_STATE_PATH=/var/lib/horizon-ric/state.json
+# Operator-API signing secret (HORIZON_API_JWT_SECRET=...) is supplied via an
+# optional drop-in; the leading '-' tolerates its absence (probes-only mode).
+EnvironmentFile=-/etc/horizon-ric/horizon.env
+
 ExecStart=/usr/bin/python3 -m horizon_ric.cli serve --bind 127.0.0.1:8083
 
 # Watchdog — sd_notify WATCHDOG=1 every 15 s; systemd kills + restarts at 30 s.

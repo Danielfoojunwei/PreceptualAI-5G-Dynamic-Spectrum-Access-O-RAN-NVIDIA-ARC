@@ -9,8 +9,9 @@ Subcommands:
   serve   — boot the rApp lifecycle with health/api on the given bind address.
 
 The actual lifecycle logic lives in `horizon_ric.rapp.lifecycle.main`; this
-shim only translates the `--bind HOST:PORT` form into the env vars that
-lifecycle._config_from_env() consumes (HORIZON_HEALTH_HOST / HORIZON_HEALTH_PORT).
+shim translates the `--bind HOST:PORT` form into the operator-API env vars
+(HORIZON_API_HOST / HORIZON_API_PORT). The health/probe server keeps its own
+default port (8081) so it never collides with the API.
 """
 
 from __future__ import annotations
@@ -45,8 +46,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "serve":
         host, port = _parse_bind(args.bind)
-        os.environ["HORIZON_HEALTH_HOST"] = host
-        os.environ["HORIZON_HEALTH_PORT"] = str(port)
+        # --bind configures the advertised operator API. Keep the health/probe
+        # server on its own default port (8081) to avoid a collision with the
+        # API, which the lifecycle also defaults to 8083.
+        os.environ["HORIZON_API_HOST"] = host
+        os.environ["HORIZON_API_PORT"] = str(port)
+        os.environ.setdefault("HORIZON_HEALTH_HOST", host)
+        os.environ.setdefault("HORIZON_HEALTH_PORT", "8081")
         from horizon_ric.rapp.lifecycle import main as lifecycle_main
         forwarded: list[str] = []
         if args.once:
