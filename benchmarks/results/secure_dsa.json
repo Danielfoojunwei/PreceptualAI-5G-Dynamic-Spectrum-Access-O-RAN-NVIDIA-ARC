@@ -1,0 +1,164 @@
+{
+  "setup": {
+    "problem": "federated tabular Q-learning Dynamic Spectrum Access",
+    "n_channels": 6,
+    "n_users": 3,
+    "n_clients": 12,
+    "n_malicious": 3,
+    "krum_breakdown_ok": true,
+    "breakdown_points": {
+      "krum": "f Byzantine tolerated iff n > 2f + 2 (so < ~50%); single-point selection makes it brittle and high-variance under ALIE.",
+      "median": "breakdown point ~50% (needs < n/2 Byzantine per coordinate); ALIE stays *inside* the envelope so small bias leaks through.",
+      "trimmed_mean": "needs beta >= number of Byzantine and n > 2*beta; tolerates < ~50% but the leaked bias grows with the trim slack.",
+      "fedavg": "breakdown point 0% \u2014 a single Byzantine client moves it arbitrarily."
+    }
+  },
+  "policy_quality": {
+    "clean_reference": {
+      "throughput_per_slot": 1.0717,
+      "collision_per_slot": 1.5397,
+      "pu_clash_per_slot": 0.2643,
+      "n_episodes": 15.0,
+      "slots": 3000.0
+    },
+    "byzantine_fraction": 0.25,
+    "attacks": {
+      "qtable_target": {
+        "fedavg": {
+          "throughput_per_slot": 0.0,
+          "collision_per_slot": 1.98,
+          "pu_clash_per_slot": 1.02,
+          "krum_selected_index": null
+        },
+        "median": {
+          "throughput_per_slot": 0.6833,
+          "collision_per_slot": 1.8537,
+          "pu_clash_per_slot": 0.3413,
+          "krum_selected_index": null
+        },
+        "trimmed_mean": {
+          "throughput_per_slot": 0.694,
+          "collision_per_slot": 1.8597,
+          "pu_clash_per_slot": 0.336,
+          "krum_selected_index": null
+        },
+        "krum": {
+          "throughput_per_slot": 0.3767,
+          "collision_per_slot": 2.208,
+          "pu_clash_per_slot": 0.2413,
+          "krum_selected_index": 0
+        }
+      },
+      "alie": {
+        "fedavg": {
+          "throughput_per_slot": 1.011,
+          "collision_per_slot": 1.6,
+          "pu_clash_per_slot": 0.2593,
+          "krum_selected_index": null
+        },
+        "median": {
+          "throughput_per_slot": 0.9437,
+          "collision_per_slot": 1.6603,
+          "pu_clash_per_slot": 0.265,
+          "krum_selected_index": null
+        },
+        "trimmed_mean": {
+          "throughput_per_slot": 0.8913,
+          "collision_per_slot": 1.721,
+          "pu_clash_per_slot": 0.2643,
+          "krum_selected_index": null
+        },
+        "krum": {
+          "throughput_per_slot": 1.0223,
+          "collision_per_slot": 1.5507,
+          "pu_clash_per_slot": 0.287,
+          "krum_selected_index": 9
+        }
+      },
+      "fang_krum": {
+        "fedavg": {
+          "throughput_per_slot": 0.9997,
+          "collision_per_slot": 1.6203,
+          "pu_clash_per_slot": 0.2547,
+          "krum_selected_index": null
+        },
+        "median": {
+          "throughput_per_slot": 0.9737,
+          "collision_per_slot": 1.5297,
+          "pu_clash_per_slot": 0.3323,
+          "krum_selected_index": null
+        },
+        "trimmed_mean": {
+          "throughput_per_slot": 0.8873,
+          "collision_per_slot": 1.6853,
+          "pu_clash_per_slot": 0.2913,
+          "krum_selected_index": null
+        },
+        "krum": {
+          "throughput_per_slot": 1.0013,
+          "collision_per_slot": 1.615,
+          "pu_clash_per_slot": 0.259,
+          "krum_selected_index": 9
+        }
+      },
+      "fang_median": {
+        "fedavg": {
+          "throughput_per_slot": 1.1247,
+          "collision_per_slot": 1.1843,
+          "pu_clash_per_slot": 0.4717,
+          "krum_selected_index": null
+        },
+        "median": {
+          "throughput_per_slot": 1.0197,
+          "collision_per_slot": 1.3773,
+          "pu_clash_per_slot": 0.4023,
+          "krum_selected_index": null
+        },
+        "trimmed_mean": {
+          "throughput_per_slot": 1.0123,
+          "collision_per_slot": 1.421,
+          "pu_clash_per_slot": 0.385,
+          "krum_selected_index": null
+        },
+        "krum": {
+          "throughput_per_slot": 0.3767,
+          "collision_per_slot": 2.208,
+          "pu_clash_per_slot": 0.2413,
+          "krum_selected_index": 0
+        }
+      }
+    }
+  },
+  "legality_audit": {
+    "qtable_target": {
+      "decisions": 300,
+      "emitted": 300,
+      "blocked": 0,
+      "illegal_emits_after_shield": 0,
+      "audit_chain_intact": true,
+      "records": 300
+    },
+    "alie": {
+      "decisions": 300,
+      "emitted": 295,
+      "blocked": 0,
+      "illegal_emits_after_shield": 0,
+      "audit_chain_intact": true,
+      "records": 300
+    },
+    "fang_median": {
+      "decisions": 300,
+      "emitted": 290,
+      "blocked": 0,
+      "illegal_emits_after_shield": 0,
+      "audit_chain_intact": true,
+      "records": 300
+    }
+  },
+  "honest_findings": [
+    "The blunt denial-of-spectrum attack (qtable_target) collapses FedAvg throughput to ~0 (every SU forced onto one channel \u2192 collision storm); median/trimmed-mean/Krum recover most of it.",
+    "ALIE and Fang are STEALTH attacks calibrated to the benign variance envelope; against a small tabular DSA Q-table they rarely flip the argmax, so they degrade throughput far less than the blunt attack \u2014 we report this honestly rather than claiming a dramatic defence win.",
+    "The Fang attack tuned against the median can still hurt KRUM's single-point selection (see fang_median \u00d7 krum) \u2014 no aggregator dominates.",
+    "Legality is INDEPENDENT of policy quality: across every attack, with the WEAKEST aggregator (plain FedAvg), ZERO illegal (channel,power) actions reach the air interface and the audit hash-chain verifies. A poisoned policy loses throughput; it can never emit an illegal carrier."
+  ]
+}

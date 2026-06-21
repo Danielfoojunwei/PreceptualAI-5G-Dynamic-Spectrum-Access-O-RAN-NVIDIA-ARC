@@ -137,12 +137,16 @@ def default_terrestrial_shield(
     li_constraint: Any | None = None,
     max_papr_dB: float = 8.5,
     neural_rx_tolerance_dB: float = 1.0,
+    guard_band_hz: float = 0.0,
 ) -> Shield:
     """Build a Shield with the standard terrestrial AI-RAN invariant chain.
 
     Order matters: lawful intercept first (fail-closed), then spectrum/power,
     then the AI-PHY envelopes. Pass an :class:`LIConstraint` to enforce TS
     33.127; omit it and the chain runs without LI (lab use only).
+
+    ``guard_band_hz`` keeps the occupied bandwidth that far inside each band edge
+    so a clipped carrier does not leak adjacent-channel power (ACLR compliance).
     """
     from horizon_ric.shield.invariants import (
         ConstellationLegalityInvariant,
@@ -157,7 +161,9 @@ def default_terrestrial_shield(
         chain.append(LawfulInterceptInvariant(li=li_constraint))
     chain.extend(
         [
-            SpectralMaskInvariant(band_lo_hz=band_lo_hz, band_hi_hz=band_hi_hz),
+            SpectralMaskInvariant(
+                band_lo_hz=band_lo_hz, band_hi_hz=band_hi_hz, guard_band_hz=guard_band_hz
+            ),
             MaxEirpInvariant(max_eirp_dBm=max_eirp_dBm),
             NeuralRxEnvelopeInvariant(tolerance_dB=neural_rx_tolerance_dB),
             ConstellationLegalityInvariant(max_papr_dB=max_papr_dB),
@@ -166,4 +172,48 @@ def default_terrestrial_shield(
     return Shield(chain)
 
 
-__all__ = ["Shield", "ShieldConfig", "default_terrestrial_shield"]
+def default_ntn_shield(
+    *,
+    band_lo_hz: float,
+    band_hi_hz: float,
+    max_eirp_dBm: float = 33.0,
+    max_pfd_dBW_m2_MHz: float = -146.0,
+    li_constraint: Any | None = None,
+    neural_rx_tolerance_dB: float = 1.0,
+) -> Shield:
+    """Build a Shield for a non-terrestrial (LEO-satellite) AI-RAN link.
+
+    Same chain as the terrestrial shield plus an ITU-R-style downlink
+    power-flux-density ceiling (:class:`PfdCeilingInvariant`) for LEO-satellite
+    coexistence — the team's privacy-preserving LEO power-control problem class.
+    A poisoned LEO power-control agent cannot command a downlink that breaches
+    the PFD mask at the Earth's surface.
+    """
+    from horizon_ric.shield.invariants import (
+        LawfulInterceptInvariant,
+        MaxEirpInvariant,
+        NeuralRxEnvelopeInvariant,
+        PfdCeilingInvariant,
+        SpectralMaskInvariant,
+    )
+
+    chain: list[Invariant] = []
+    if li_constraint is not None:
+        chain.append(LawfulInterceptInvariant(li=li_constraint))
+    chain.extend(
+        [
+            SpectralMaskInvariant(band_lo_hz=band_lo_hz, band_hi_hz=band_hi_hz),
+            MaxEirpInvariant(max_eirp_dBm=max_eirp_dBm),
+            PfdCeilingInvariant(max_pfd_dBW_m2_MHz=max_pfd_dBW_m2_MHz),
+            NeuralRxEnvelopeInvariant(tolerance_dB=neural_rx_tolerance_dB),
+        ]
+    )
+    return Shield(chain)
+
+
+__all__ = [
+    "Shield",
+    "ShieldConfig",
+    "default_terrestrial_shield",
+    "default_ntn_shield",
+]

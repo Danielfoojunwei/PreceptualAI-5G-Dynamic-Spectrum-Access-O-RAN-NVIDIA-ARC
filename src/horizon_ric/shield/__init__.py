@@ -20,9 +20,15 @@ from horizon_ric.shield.invariants import (
     LawfulInterceptInvariant,
     MaxEirpInvariant,
     NeuralRxEnvelopeInvariant,
+    PfdCeilingInvariant,
     SpectralMaskInvariant,
 )
-from horizon_ric.shield.shield import Shield, ShieldConfig, default_terrestrial_shield
+from horizon_ric.shield.shield import (
+    Shield,
+    ShieldConfig,
+    default_ntn_shield,
+    default_terrestrial_shield,
+)
 
 __all__ = [
     "ConstraintViolation",
@@ -32,10 +38,12 @@ __all__ = [
     "Invariant",
     "SpectralMaskInvariant",
     "MaxEirpInvariant",
+    "PfdCeilingInvariant",
     "NeuralRxEnvelopeInvariant",
     "ConstellationLegalityInvariant",
     "LawfulInterceptInvariant",
     "Shield",
     "ShieldConfig",
     "default_terrestrial_shield",
+    "default_ntn_shield",
 ]

@@ -83,6 +83,9 @@ def test_certificate_carries_provenance_and_seed():
         {"block": "neural_rx", "frequency_hz": 3.45e9, "bandwidth_hz": 20e6,
          "tx_power_dBm": 20.0, "antenna_gain_dBi": 6.0,
          "predicted_tbler": 0.05, "baseline_tbler": 0.05, "demap_confidence": 0.9},
+        # Supply an INDEPENDENT measured TBLER (CRC/HARQ telemetry) so the
+        # neural-RX envelope is graded against something the model did not report.
+        context={"measured_tbler": 0.05},
         decision_id="d", rng_seed=42, model_provenance=prov, loop_tier="near_rt",
     )
     assert disp.certificate.rng_seed == 42
@@ -90,6 +93,43 @@ def test_certificate_carries_provenance_and_seed():
     assert disp.certificate.loop_tier == "near_rt"
     d = disp.certificate.to_dict()
     assert d["decision_id"] == "d" and d["rng_seed"] == 42
+
+
+def test_neural_rx_trusts_independent_measurement_not_self_report():
+    # A POISONED model self-reports a great TBLER but the independent CRC/HARQ
+    # measurement says it is actually terrible. The Shield must NOT trust the
+    # self-report; it must fall back to the classical receiver. (Closes the
+    # "safe by construction" bypass.)
+    inv = NeuralRxEnvelopeInvariant(tolerance_dB=1.0)
+    poisoned = {
+        "block": "neural_rx",
+        "predicted_tbler": 0.001,      # model LIES: claims near-perfect
+        "demap_confidence": 0.99,      # and high confidence
+        "baseline_tbler": 0.05,
+    }
+    measured_bad = {"measured_tbler": 0.6}  # CRC/HARQ telemetry: actually awful
+    assert inv.evaluate(poisoned, measured_bad).satisfied is False
+    safe, corr = inv.project(poisoned, measured_bad)
+    assert safe["block"] == "classical_lmmse"
+    assert corr
+
+    # With an independent measurement that confirms the model is good, it passes.
+    measured_good = {"measured_tbler": 0.04}
+    assert inv.evaluate(poisoned, measured_good).satisfied is True
+
+
+def test_neural_rx_unverified_is_conservative_by_default():
+    # No independent measurement supplied → unverified → fall back (fail closed).
+    inv = NeuralRxEnvelopeInvariant(tolerance_dB=1.0)
+    action = {"block": "neural_rx", "predicted_tbler": 0.01,
+              "baseline_tbler": 0.05, "demap_confidence": 0.99}
+    chk = inv.evaluate(action, {})  # empty context — no measured_tbler
+    assert chk.satisfied is False
+    assert "UNVERIFIED" in chk.detail
+
+    # Lab override (require_measurement=False) re-opens the bypass deliberately.
+    lab = NeuralRxEnvelopeInvariant(tolerance_dB=1.0, require_measurement=False)
+    assert lab.evaluate(action, {}).satisfied is True
 
 
 def test_li_fail_closed_blocks_emit():
@@ -109,8 +149,10 @@ def test_neural_rx_envelope_falls_back_to_classical():
     inv = NeuralRxEnvelopeInvariant(tolerance_dB=1.0)
     bad = {"block": "neural_rx", "predicted_tbler": 0.5, "baseline_tbler": 0.01,
            "demap_confidence": 0.9}
-    assert inv.evaluate(bad, {}).satisfied is False
-    safe, corr = inv.project(bad, {})
+    # Independent measurement confirms the neural-RX is badly outside envelope.
+    ctx = {"measured_tbler": 0.5}
+    assert inv.evaluate(bad, ctx).satisfied is False
+    safe, corr = inv.project(bad, ctx)
     assert safe["block"] == "classical_lmmse"
     assert corr
 
