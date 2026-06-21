@@ -3,45 +3,71 @@ __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
+*.so
 dist/
 build/
 .pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
 
-# IDE
-.vscode/
-.idea/
+# Virtual envs
+.venv/
+.venv-edge/
+venv/
+env/
 
-# Training outputs
-results/
+# Frontend
+frontend/
+sdk/
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/.cache/
+
+# SDK build artefacts
+sdk/dist/
+sdk/build/
+sdk/node_modules/
+
+# Secrets / private keys — never commit
+*.key
+*.pem
+*.p12
+*.pfx
+deploy/cosign/cosign.key
+
+# Models / weights binaries
 *.pt
 *.zip
 *.onnx
 *.trt
 *.engine
-models/
 
-# Benchmarks (results are tracked separately)
-benchmark_results/
+# Big data assets (kept locally, not on git)
+data/aerial/
+data/itu_r/
+data/orbital/
+data/tle/
+data/deepmimo/*/
+!data/deepmimo/manifest.json
+!data/deepmimo/.gitkeep
 
-# Virtual environments
-venv/
-.venv/
-
-# Logging
-.wandb/
-wandb/
-
-# gRPC generated
-proto/*_pb2*.py
-proto/*_pb2*.pyi
+# Local logs
+logs/
+*.log
+chaos_test_report.json
 
 # OS
 .DS_Store
+Thumbs.db
 
-# Docker
-.docker/
-demo_results/
+# IDE
+.vscode/
+.idea/
+*.swp
 
-data/colosseum/
-data/ucc_misl/
-checkpoints/
+# Runtime state (per-deploy)
+var/evidence/
+var/state/
