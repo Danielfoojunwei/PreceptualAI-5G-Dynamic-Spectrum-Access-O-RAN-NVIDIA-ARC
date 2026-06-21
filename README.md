@@ -37,7 +37,7 @@ how does an operator *prove* to a regulator what the agent actually did?
 
 **Horizon-RIC is an AI-for-RAN trust & audit layer.** It does not train or run
 the agent; it sits beside the SMO / Non-RT RIC and wraps every decision the agent
-emits in four mechanisms:
+emits in five mechanisms:
 
 1. **Decision Safety Shield** — projects each proposed action onto enumerated,
    independently-measured radio invariants (spectral mask, EIRP, NTN/LEO PFD
@@ -50,6 +50,11 @@ emits in four mechanisms:
 4. **Federated aggregation** — robust aggregation (Krum / median / trimmed-mean)
    bounding a poisoning client's pull on the shared DSA policy, plus Shamir
    secure aggregation for update privacy.
+5. **Certified federated unlearning** — once a poisoning client is attributed,
+   *removes* its contribution from the shared DSA policy and binds the removal to
+   a signed `UnlearningCertificate` (distance-to-retrain bound + backdoor-probe).
+   The **repair** layer for what robust aggregation only bounds — bridging the
+   NTU/DTC federated-unlearning research (Lam et al., arXiv:2404.09724).
 
 **Measured result (`benchmarks/results/poisoning_shield.json`):** on a
 10,000-decision stream that is 30% poisoned, an unguarded emit path would put
@@ -307,13 +312,16 @@ suite (300+ tests) is green in CI.
 
 Known limitations (also in `docs/THREAT_MODEL.md`):
 
-- **Aggregator robustness is baseline only — and we prove it.** Krum / median /
-  trimmed-mean are defeated by adaptive ALIE (Baruch, NeurIPS-19), Fang (USENIX
-  Security-20), and Min-Max/Min-Sum (Shejwalkar, NDSS-21) attacks. A committed
-  **five-family adversarial campaign** (`benchmarks/results/`, 68 adversarial
-  tests) demonstrates exactly where our defenses fail *and* where they hold — see
-  `docs/THREAT_MODEL.md` §7. Robust aggregation is a *bound*, not a cure; the
-  deterministic Shield + audit layer is the guarantee — it bounds the emitted
+- **Aggregator robustness is baseline only — and we prove it, then repair it.**
+  Krum / median / trimmed-mean are defeated by adaptive ALIE (Baruch, NeurIPS-19),
+  Fang (USENIX Security-20), and Min-Max/Min-Sum (Shejwalkar, NDSS-21) attacks. A
+  committed **five-family adversarial campaign** (`benchmarks/results/`, 75
+  adversarial tests) demonstrates exactly where our defenses fail *and* where they
+  hold — see `docs/THREAT_MODEL.md` §7. Robust aggregation is a *bound*, not a cure;
+  when a poisoner is attributed, **certified federated unlearning** now *removes* it
+  — driving a backdoor an undefended aggregator let through from success **1.0 → 0.04**
+  (clean floor), bound to a signed certificate (`docs/THREAT_MODEL.md` §8). And the
+  deterministic Shield + audit layer remains the guarantee — it bounds the emitted
   action to legal spectrum even from a fully compromised model (0 illegal emits
   from a backdoored DSA policy), and the integrity/audit perimeter is unbroken
   (8/8 probes blocked).

@@ -57,6 +57,18 @@ privacy and adversarial constraints**, extended into LEO-satellite IoT power
 control and pricing. That is the agent Horizon-RIC treats as the system under
 trust.
 
+**Machine-unlearning sub-line.** Publication 6 above — *Secure Dynamic Spectrum
+Access in IoT Based on Machine Unlearning* — places **machine unlearning** squarely
+inside this team's own DSA agenda, and it sits within Prof Lam's broader
+federated-unlearning programme: *Privacy-Preserving Federated Unlearning with
+Certified Client Removal* (Z. Liu, H. Ye, Y. Jiang, J. Shen, J. Guo, I. Tjuawinata
+& K.-Y. Lam, arXiv:2404.09724, 2024) — the *Starfish* result that the unlearning
+guarantee is a **bound on the distance to a model retrained from scratch** — and the
+field survey *A Survey on Federated Unlearning: Challenges, Methods, and Future
+Directions* (Z. Liu, Y. Jiang, J. Shen, M. Peng, K.-Y. Lam, X. Yuan & X. Liu, **ACM
+Computing Surveys**, 2024). Horizon-RIC implements **certified federated unlearning**
+on the DSA policy directly bridging this line (§3; `THREAT_MODEL.md` §8).
+
 ---
 
 ## 2. Funding lineage — Singapore's FCP
@@ -96,17 +108,21 @@ federated decisions deployable on **regulated / licensed / satellite** spectrum:
 |---|---|---|
 | **Robust aggregation** | Bounds a poisoning client's pull on the *shared DSA policy* during federated training (Krum / median / trimmed-mean). | `src/horizon_ric/federated/robust.py` |
 | **Shamir secure aggregation** | Hides individual client updates — the successor to the team's privacy-preserving power-control line. | `src/horizon_ric/federated/secure.py` |
+| **Certified federated unlearning** | *Removes* an attributed poisoning client's contribution from the shared DSA policy post-hoc — the **repair** layer for the backdoor robust aggregation only *bounds* — and binds the removal to a signed, audit-chainable `UnlearningCertificate` (Starfish-style distance-to-retrain bound + backdoor-probe). Bridges the team's own machine-unlearning-for-DSA work (pub. 6) and Lam's certified-client-removal line. | `src/horizon_ric/federated/unlearning.py` |
 | **Decision Safety Shield** | A *model-independent* projection of any agent's chosen channel / power onto the TS 38.104 spectral mask + EIRP ceiling + an LEO/NTN power-flux-density (PFD) ceiling. | `src/horizon_ric/shield/` |
 | **Hash-chained, RFC-3161-anchored decision record** | Per-decision evidence a regulator can replay (counterfactual + tamper-evident chain + timestamp anchor). | `src/horizon_ric/evidence/` |
 
 The crucial honesty point: **the genuine novelty Horizon-RIC claims is only the
 decision-level evidence / audit binding** (per-decision `SafetyCertificate` +
 SHA-256 hash chain + RFC-3161 anchor + counterfactual replay + model-provenance
-threading). The safety-shield concept, the aggregators, and the crypto are prior
-art — see the "Prior art & what's actually new" section in
-[`README.md`](../README.md). The contribution here is making the *NTU team's*
-federated DSA / LEO decisions auditable on licensed spectrum, not reinventing
-shielding or aggregation.
+threading) — now extended to a signed, audit-chainable **unlearning certificate**.
+The safety-shield concept, the aggregators, the crypto, **and the unlearning
+algorithms themselves are prior art** (the latter Prof Lam's own federated-unlearning
+line) — see the "Prior art & what's actually new" section in
+[`README.md`](../README.md). What is ours is the *binding*: making the *NTU team's*
+federated DSA / LEO decisions — and now the unlearning operations that repair them —
+tamper-evidently auditable on licensed spectrum, not reinventing shielding,
+aggregation, or unlearning.
 
 ---
 

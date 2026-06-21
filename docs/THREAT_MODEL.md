@@ -237,7 +237,7 @@ not a trusted one.
 
 We ran a real attack campaign against our own system (numpy, no mocks) across five
 families. Every attack is implemented, run, and committed with results under
-`benchmarks/results/`; **68 adversarial tests** gate them in CI. The honest summary:
+`benchmarks/results/`; **75 adversarial tests** gate them in CI. The honest summary:
 the deterministic perimeter (integrity, audit, output-shielding) holds completely;
 the ML layer is beatable by adaptive adversaries — as it is across the field — and
 we report exactly where.
@@ -248,7 +248,7 @@ we report exactly where.
 | Adversarial evasion (neural-RX) | `evasion_suite.json`, `neural_rx_pgd.json`, `phy_fading.json` | Shield falls back via *independent* CRC measurement (~94% of windows in AWGN), restoring the link; guarantee `effective ≤ classical + tol` | white-box FGSM/BIM/MIM/**transfer** crush the neural-RX **~28×** in AWGN; gap **collapses to ~1.1×** under realistic fading (both receivers vulnerable) |
 | Physical-layer jamming | `jamming_suite.json` | helps under imperfect-CSI asymmetry (routes to the better receiver) | **barrage jamming degrades BOTH receivers** — the Shield is a router, not a denoiser; it cannot restore a noisier channel |
 | FL model-poisoning | `fl_poisoning_suite.json` | naive Gaussian Byzantine fully bounded by median / trimmed-mean / Krum | **Min-Max/Min-Sum (Shejwalkar NDSS-21) and Fang (USENIX-20) DEFEAT Krum/median/trimmed-mean** near breakdown; FedAvg unbounded |
-| FL data-poisoning / backdoor (DSA) | `dsa_poison_suite.json`, `secure_dsa.json` | Shield+audit keep every emitted (channel, power) **LEGAL** and the chain intact even from a fully backdoored policy (**0 illegal emits**) | a single-row **backdoor SURVIVES coordinate-median at its 50% breakdown point** (success 1.0); robust agg only *bounds* reward poisoning |
+| FL data-poisoning / backdoor (DSA) | `dsa_poison_suite.json`, `secure_dsa.json` | Shield+audit keep every emitted (channel, power) **LEGAL** and the chain intact even from a fully backdoored policy (**0 illegal emits**); **certified unlearning removes the backdoor post-hoc** (§8) | a single-row **backdoor SURVIVES coordinate-median at its 50% breakdown point** (success 1.0); robust agg only *bounds* reward poisoning |
 
 **The thesis this evidence supports.** Robust aggregation is a *bound*, not a cure —
 adaptive poisoning beats it, exactly as the literature predicts (Baruch et al.
@@ -260,6 +260,43 @@ the point of a defense-in-depth design — the AI layer can be defeated; the saf
 audit layer is what holds the line, and that is the AI-RAN-native contribution. We
 publish the failures rather than hide them, which is the correct posture for a
 security submission.
+
+---
+
+## 8. Closing the backdoor FAIL — certified federated unlearning
+
+Robust aggregation only *bounds* a poisoner; it never *removes* the influence that
+already leaked into the global policy (the §7 backdoor row). The repair mechanism
+is **machine unlearning**, and it is exactly the active research line of the same
+NTU/DTC group this project builds on — Prof Kwok-Yan Lam's federated-unlearning
+work (see `docs/RESEARCH_ALIGNMENT.md`): *Privacy-Preserving Federated Unlearning
+with Certified Client Removal* (Liu, Ye, Jiang, Shen, Guo, Tjuawinata & Lam,
+arXiv:2404.09724) and the *Survey on Federated Unlearning* (Liu, Jiang, Shen, Peng,
+Lam, Yuan & Liu, ACM Comput. Surv. 2024); plus the backdoor-as-verification idea of
+Han et al. (arXiv:2412.11476).
+
+We implement it torch-free on the federated DSA policy
+(`src/horizon_ric/federated/unlearning.py`; `benchmarks/results/federated_unlearning.json`;
+7 tests in `tests/test_federated_unlearning.py`). Honest results, multi-seed:
+
+| | Backdoor success (trigger) | Certified L2 distance to retrain | Signed certificate |
+|---|---|---|---|
+| Poisoned (undefended FedAvg) | **1.00** | — | — |
+| **Retrain-from-scratch unlearning** | **0.04** (clean floor) | 0.0 (it *is* the gold standard) | verifies; rejects the poisoned model & manifest/weight tamper |
+| Efficient replay unlearning | 1.00 (**insufficient**) | **~14 (large)** | verifies, but the large bound flags it as untrustworthy |
+
+So **certified retrain-from-scratch unlearning removes the backdoor an undefended
+aggregator let through (1.00 → 0.04)** and binds the removal to an RSA-PSS-signed
+`UnlearningCertificate` (the Starfish-style bound = distance to the gold standard;
+backdoor-probe success before/after; audit-chainable). Three honest caveats: (a)
+the *cheap* replay unlearner is **insufficient** for a backdoor that propagated
+through warm-starting — and its large certified distance-to-retrain says so rather
+than hiding it; (b) unlearning needs **attribution** — whole-vector detection flags
+large-norm poisoning (crafted Q-table, reward poisoning, and the boost-50 backdoor
+here), but a *norm-matched* stealthy backdoor would evade it; (c) at that breakdown
+point the deterministic **Decision Safety Shield remains the backstop**. Unlearning
+is a new layer that *repairs* an attributed compromise; it does not replace the
+output-shield that holds when attribution fails.
 
 ---
 

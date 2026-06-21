@@ -107,7 +107,7 @@ SER is ~22× the classical demapper's under attack, and the Shield's
 independent-measurement fallback cuts the block-error impact ~12×.
 
 Beyond these, a **five-family adversarial campaign** is committed (numpy, no mocks)
-with nine result files under `benchmarks/results/` and **68 adversarial tests** in
+with ten result files under `benchmarks/results/` and **75 adversarial tests** in
 CI: evasion (FGSM/BIM/MIM/transfer/boundary), physical-layer jamming +
 imperfect-CSI, FL model-poisoning (sign-flip / scaling / Gaussian / Min-Max /
 Min-Sum / ALIE / Fang) against every aggregator, FL data-poisoning + backdoor on
@@ -115,7 +115,11 @@ the DSA loop, and an integrity/audit/bypass battery. It reports honestly where o
 defenses FAIL — adaptive poisoning beats Krum/median, a backdoor survives median at
 its breakdown point, the white-box evasion gap collapses under realistic fading —
 and where they hold (8/8 integrity probes; the Shield bounds the emitted action to
-legal spectrum even from a compromised model). See `docs/THREAT_MODEL.md` §7.
+legal spectrum even from a compromised model). See `docs/THREAT_MODEL.md` §7. The
+campaign now also *repairs* the worst FAIL: **certified federated unlearning**
+(`federated_unlearning_suite.json`) removes a backdoor an undefended aggregator let
+through (success 1.0 → 0.04) with a signed, audit-chainable certificate — bridging
+the NTU/DTC federated-unlearning research (`docs/THREAT_MODEL.md` §8).
 
 **Self-score: Strong.** The benchmarks are real, committed, reproducible, and
 adversarially exhaustive — including attacks that defeat our own defenses, reported
@@ -217,7 +221,7 @@ that runs their agent through this trust layer is the in-build demonstrator
 |---|---|---|---|---|
 | 1 | AI-for-RAN relevance & track fit | 20% | Adequate | DSA demonstrator in build → M1–2 / M5–6 |
 | 2 | Genuine innovation (audit binding only) | 18% | Strong (narrow) | Externally citable + Sigstore log → M11–12 |
-| 3 | Benchmarking-ready code & reproducibility | 16% | Strong | Live over-the-air I/Q (attack coverage now exhaustive: 5 families, 68 tests) → M5–6 |
+| 3 | Benchmarking-ready code & reproducibility | 16% | Strong | Live over-the-air I/Q (attack coverage now exhaustive: 5 families, 75 tests, + certified unlearning repair) → M5–6 |
 | 4 | Datasets | 10% | Adequate | Over-the-air testbed traces → M5–6 |
 | 5 | Deployment feasibility & openness | 14% | Strong / Adequate | Operator pilot + prod HSM → M9–10 |
 | 6 | Standardization contribution | 12% | Adequate | Calibrate TS 38.104; submit to WG11 → M1–2 / M11–12 |

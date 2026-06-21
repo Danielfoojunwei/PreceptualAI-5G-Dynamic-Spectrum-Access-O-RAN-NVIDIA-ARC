@@ -1,0 +1,110 @@
+{
+  "setup": {
+    "n_clients": 10,
+    "n_malicious": 1,
+    "rounds": 5,
+    "trigger_state": 0,
+    "target_channel": 5,
+    "attacker_note": "forces a channel the healthy policy avoids (max damage)",
+    "lineage": [
+      "Liu, Ye, Jiang, Shen, Guo, Tjuawinata & Lam, arXiv:2404.09724 (Starfish: certified client removal)",
+      "Liu, Jiang, Shen, Peng, Lam, Yuan & Liu, ACM Comput. Surv. 2024 (federated unlearning survey)",
+      "Han, Zhu, Zhang, Huo & Zhou, arXiv:2412.11476 (backdoor-certification verification)"
+    ]
+  },
+  "results": [
+    {
+      "method": "fedavg",
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "backdoor_success": {
+        "poisoned": {
+          "mean": 1.0,
+          "std": 0.0
+        },
+        "efficient_unlearn": {
+          "mean": 1.0,
+          "std": 0.0
+        },
+        "retrain_from_scratch": {
+          "mean": 0.0365,
+          "std": 0.0043
+        }
+      },
+      "certified_l2_distance_to_retrain": {
+        "efficient_unlearn": {
+          "mean": 13.9939,
+          "std": 1.2
+        },
+        "retrain_from_scratch": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      "certificate_verifies": {
+        "efficient_unlearn": true,
+        "retrain_from_scratch": true
+      },
+      "certificate_rejects_poisoned_model": true,
+      "cost_local_trainings": {
+        "retrain_from_scratch": 45,
+        "efficient_unlearn": 0
+      }
+    },
+    {
+      "method": "median",
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "backdoor_success": {
+        "poisoned": {
+          "mean": 0.0451,
+          "std": 0.0201
+        },
+        "efficient_unlearn": {
+          "mean": 0.0451,
+          "std": 0.0201
+        },
+        "retrain_from_scratch": {
+          "mean": 0.0503,
+          "std": 0.0137
+        }
+      },
+      "certified_l2_distance_to_retrain": {
+        "efficient_unlearn": {
+          "mean": 10.5726,
+          "std": 0.9337
+        },
+        "retrain_from_scratch": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      "certificate_verifies": {
+        "efficient_unlearn": true,
+        "retrain_from_scratch": true
+      },
+      "certificate_rejects_poisoned_model": true,
+      "cost_local_trainings": {
+        "retrain_from_scratch": 45,
+        "efficient_unlearn": 0
+      }
+    }
+  ],
+  "detection": {
+    "qtable_target_flagged": "cell-MAL",
+    "reward_poison_flagged": "cell-MAL",
+    "backdoor_flagged": "cell-MAL",
+    "note": "Whole-vector distance flags all three attacks in this configuration, including the backdoor \u2014 its boosted trigger row (boost=50) is large enough to screen \u2014 so the detection->unlearn->certify loop closes for each. The honest caveat: a NORM-MATCHED stealthy backdoor (scaled to blend with honest update norms, the regime that lets a backdoor survive robust aggregation) would evade this whole-vector screen; attributing it needs an independent signal, and there the deterministic Shield remains the backstop. Unlearning removes whatever is attributed; it cannot attribute what detection cannot see."
+  },
+  "honest_finding": [
+    "Under undefended FedAvg the backdoor lands at success ~1.0. retrain-from-scratch certified unlearning drives it to the clean baseline (~0.03) \u2014 it CLOSES the backdoor-survives-aggregation FAIL \u2014 and the signed certificate (certified L2 distance ~0 to the gold standard) verifies against the unlearned model and rejects the still-poisoned one.",
+    "The CHEAP efficient_unlearn (replay cached honest uploads) is INSUFFICIENT here: the backdoor propagated into the honest clients' warm-started Q-tables, so re-aggregating them keeps it. Its certified distance-to-retrain is LARGE, which is exactly the honest signal an operator needs to reject the cheap result and fall back to full retraining. The certificate never claims a removal that did not happen.",
+    "Unlearning is not a substitute for the Shield: it requires ATTRIBUTION. Here whole-vector detection flags all three attacks (the boosted backdoor row is large enough to screen), so the detection->unlearn->certify loop closes. But a NORM-MATCHED stealthy backdoor \u2014 the regime that survives robust aggregation \u2014 would evade detection, leaving nothing to attribute; there the deterministic Decision Safety Shield remains the backstop that bounds the emitted action to legal spectrum."
+  ]
+}
