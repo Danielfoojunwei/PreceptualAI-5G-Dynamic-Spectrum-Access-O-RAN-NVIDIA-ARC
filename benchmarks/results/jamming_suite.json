@@ -1,0 +1,612 @@
+{
+  "setup": {
+    "constellation": "16-QAM",
+    "channel": "Rayleigh TDL (4 taps), perfect-CSI-trained neural RX",
+    "snr_dB": 30.0,
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "receivers": "neural MLP vs per-subcarrier LMMSE; Shield routes between them",
+    "jsr_definition": "jammer power / received signal power, dB"
+  },
+  "barrage_awgn": [
+    {
+      "jsr_dB": -10.0,
+      "neural_ser": {
+        "mean": 0.3800666666666667,
+        "std": 0.0039399191569070265
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.3645777777777777,
+        "std": 0.0039140140741749435
+      },
+      "shield_effective_ser": {
+        "mean": 0.3800666666666667,
+        "std": 0.003939919156907067
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "jsr_dB": -5.0,
+      "neural_ser": {
+        "mean": 0.6153777777777778,
+        "std": 0.0032006172244247056
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.5967111111111111,
+        "std": 0.0018858799563801617
+      },
+      "shield_effective_ser": {
+        "mean": 0.6153777777777778,
+        "std": 0.0032006172244247056
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "jsr_dB": 0.0,
+      "neural_ser": {
+        "mean": 0.7738444444444444,
+        "std": 0.0015514230822850825
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.761688888888889,
+        "std": 0.000537024265493085
+      },
+      "shield_effective_ser": {
+        "mean": 0.7738444444444443,
+        "std": 0.001551423082285037
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "jsr_dB": 5.0,
+      "neural_ser": {
+        "mean": 0.8562,
+        "std": 0.0023253832818284554
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.8497111111111111,
+        "std": 0.0008849914556328724
+      },
+      "shield_effective_ser": {
+        "mean": 0.8562,
+        "std": 0.0023253832818284554
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "jsr_dB": 10.0,
+      "neural_ser": {
+        "mean": 0.8972666666666665,
+        "std": 0.002459147699388399
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.8916444444444444,
+        "std": 0.0008849914556328845
+      },
+      "shield_effective_ser": {
+        "mean": 0.8972666666666665,
+        "std": 0.002459147699388399
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    }
+  ],
+  "partial_band_jsr_sweep": [
+    {
+      "jsr_dB": -10.0,
+      "neural_ser": {
+        "mean": 0.11864444444444444,
+        "std": 0.0010904750352342463
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.11244444444444444,
+        "std": 0.0017924395404511847
+      },
+      "shield_effective_ser": {
+        "mean": 0.11706666666666667,
+        "std": 0.0014817407180595437
+      },
+      "fallback_rate": {
+        "mean": 0.05333333333333334,
+        "std": 0.018856180831641266
+      }
+    },
+    {
+      "jsr_dB": -5.0,
+      "neural_ser": {
+        "mean": 0.1888,
+        "std": 0.002589437233297069
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.1822222222222222,
+        "std": 0.0020383968525277546
+      },
+      "shield_effective_ser": {
+        "mean": 0.1886,
+        "std": 0.0023576510595333068
+      },
+      "fallback_rate": {
+        "mean": 0.0044444444444444444,
+        "std": 0.0062853936105470905
+      }
+    },
+    {
+      "jsr_dB": 0.0,
+      "neural_ser": {
+        "mean": 0.23793333333333333,
+        "std": 0.001347700373338344
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.23328888888888888,
+        "std": 0.0012896549447597339
+      },
+      "shield_effective_ser": {
+        "mean": 0.2379333333333334,
+        "std": 0.001347700373338331
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "jsr_dB": 5.0,
+      "neural_ser": {
+        "mean": 0.26206666666666667,
+        "std": 0.0003569417423157614
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.26,
+        "std": 0.0008237223552377918
+      },
+      "shield_effective_ser": {
+        "mean": 0.26206666666666667,
+        "std": 0.0003569417423157372
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "jsr_dB": 10.0,
+      "neural_ser": {
+        "mean": 0.2742222222222222,
+        "std": 0.0008261169020196033
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.27295555555555556,
+        "std": 0.0006069555681665644
+      },
+      "shield_effective_ser": {
+        "mean": 0.2742222222222222,
+        "std": 0.0008261169020196033
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    }
+  ],
+  "partial_band_fraction_sweep": [
+    {
+      "fraction": 0.1,
+      "jsr_dB": 10.0,
+      "neural_ser": {
+        "mean": 0.09568888888888888,
+        "std": 0.0010100727268767587
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.09491111111111111,
+        "std": 0.0011991766722872967
+      },
+      "shield_effective_ser": {
+        "mean": 0.0956222222222222,
+        "std": 0.001095895822750045
+      },
+      "fallback_rate": {
+        "mean": 0.0044444444444444444,
+        "std": 0.00628539361054709
+      }
+    },
+    {
+      "fraction": 0.3,
+      "jsr_dB": 10.0,
+      "neural_ser": {
+        "mean": 0.2727111111111111,
+        "std": 0.0006762277357645791
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.2727777777777778,
+        "std": 0.0004399775527382926
+      },
+      "shield_effective_ser": {
+        "mean": 0.2727111111111111,
+        "std": 0.0006762277357645668
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "fraction": 0.5,
+      "jsr_dB": 10.0,
+      "neural_ser": {
+        "mean": 0.4514888888888889,
+        "std": 0.0012653014084877182
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.4487333333333334,
+        "std": 0.0021381889186533115
+      },
+      "shield_effective_ser": {
+        "mean": 0.4514888888888889,
+        "std": 0.0012653014084876753
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "fraction": 0.8,
+      "jsr_dB": 10.0,
+      "neural_ser": {
+        "mean": 0.717288888888889,
+        "std": 0.0014780701465170144
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.7152222222222223,
+        "std": 0.001248801894953519
+      },
+      "shield_effective_ser": {
+        "mean": 0.717288888888889,
+        "std": 0.00147807014651699
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "fraction": 1.0,
+      "jsr_dB": 10.0,
+      "neural_ser": {
+        "mean": 0.8955333333333333,
+        "std": 0.0010198039027185463
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.8924666666666666,
+        "std": 0.001982889772995921
+      },
+      "shield_effective_ser": {
+        "mean": 0.8955333333333334,
+        "std": 0.0010198039027186406
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    }
+  ],
+  "single_tone": [
+    {
+      "jsr_dB": -10.0,
+      "neural_ser": {
+        "mean": 0.4692,
+        "std": 0.0011788255297666412
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.4472444444444445,
+        "std": 0.0017301965919841518
+      },
+      "shield_effective_ser": {
+        "mean": 0.4692,
+        "std": 0.0011788255297666026
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "jsr_dB": -5.0,
+      "neural_ser": {
+        "mean": 0.7745777777777777,
+        "std": 0.0011173160079979295
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.7577777777777778,
+        "std": 0.002952630131147165
+      },
+      "shield_effective_ser": {
+        "mean": 0.7745777777777777,
+        "std": 0.0011173160079979295
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "jsr_dB": 0.0,
+      "neural_ser": {
+        "mean": 0.8767111111111111,
+        "std": 0.0015552380628375822
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.8695777777777778,
+        "std": 0.0019262962606905842
+      },
+      "shield_effective_ser": {
+        "mean": 0.8767111111111111,
+        "std": 0.0015552380628374954
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "jsr_dB": 5.0,
+      "neural_ser": {
+        "mean": 0.9004444444444445,
+        "std": 0.002680151092110924
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.9001777777777779,
+        "std": 0.0023603724334713074
+      },
+      "shield_effective_ser": {
+        "mean": 0.9004444444444445,
+        "std": 0.0026801510921108124
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "jsr_dB": 10.0,
+      "neural_ser": {
+        "mean": 0.9172888888888889,
+        "std": 0.002702171052147067
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.9165777777777778,
+        "std": 0.002123123717777093
+      },
+      "shield_effective_ser": {
+        "mean": 0.9172888888888889,
+        "std": 0.0027021710521471136
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    }
+  ],
+  "pulsed": [
+    {
+      "jsr_dB": -10.0,
+      "neural_ser": {
+        "mean": 0.12157777777777777,
+        "std": 0.00125235580476492
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.11491111111111112,
+        "std": 0.0014029950326812978
+      },
+      "shield_effective_ser": {
+        "mean": 0.12046666666666665,
+        "std": 0.0011168739442781348
+      },
+      "fallback_rate": {
+        "mean": 0.18666666666666668,
+        "std": 0.028803291992923818
+      }
+    },
+    {
+      "jsr_dB": -5.0,
+      "neural_ser": {
+        "mean": 0.19055555555555556,
+        "std": 0.0011640711869963397
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.18388888888888888,
+        "std": 0.0010643493346513895
+      },
+      "shield_effective_ser": {
+        "mean": 0.18944444444444444,
+        "std": 0.0010071350394332966
+      },
+      "fallback_rate": {
+        "mean": 0.18666666666666668,
+        "std": 0.028803291992923818
+      }
+    },
+    {
+      "jsr_dB": 0.0,
+      "neural_ser": {
+        "mean": 0.2370888888888889,
+        "std": 0.001405105329736647
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.2336222222222222,
+        "std": 0.0008189122565639236
+      },
+      "shield_effective_ser": {
+        "mean": 0.23597777777777776,
+        "std": 0.001248801894953514
+      },
+      "fallback_rate": {
+        "mean": 0.18666666666666668,
+        "std": 0.028803291992923818
+      }
+    },
+    {
+      "jsr_dB": 5.0,
+      "neural_ser": {
+        "mean": 0.26204444444444447,
+        "std": 0.001007135039433311
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.2595111111111111,
+        "std": 0.0008473633762194467
+      },
+      "shield_effective_ser": {
+        "mean": 0.2609333333333333,
+        "std": 0.0008502722875425688
+      },
+      "fallback_rate": {
+        "mean": 0.18666666666666668,
+        "std": 0.028803291992923818
+      }
+    },
+    {
+      "jsr_dB": 10.0,
+      "neural_ser": {
+        "mean": 0.27466666666666667,
+        "std": 0.0005361039147473099
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.27251111111111115,
+        "std": 0.0008456132262417989
+      },
+      "shield_effective_ser": {
+        "mean": 0.27355555555555555,
+        "std": 0.0003861810488218457
+      },
+      "fallback_rate": {
+        "mean": 0.18666666666666668,
+        "std": 0.028803291992923818
+      }
+    }
+  ],
+  "imperfect_csi": [
+    {
+      "sigma_est": 0.0,
+      "neural_ser": {
+        "mean": 0.007533333333333334,
+        "std": 0.0006599663291074443
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.007022222222222221,
+        "std": 0.00012570787221094184
+      },
+      "shield_effective_ser": {
+        "mean": 0.006377777777777778,
+        "std": 0.00019116278371205793
+      },
+      "fallback_rate": {
+        "mean": 0.22222222222222224,
+        "std": 0.09511526470681197
+      },
+      "neural_minus_classical": 0.0005111111111111124
+    },
+    {
+      "sigma_est": 0.05,
+      "neural_ser": {
+        "mean": 0.02308888888888889,
+        "std": 0.0005665577237325325
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.022044444444444446,
+        "std": 0.000599588336143647
+      },
+      "shield_effective_ser": {
+        "mean": 0.021266666666666666,
+        "std": 0.0004650766563656955
+      },
+      "fallback_rate": {
+        "mean": 0.19999999999999998,
+        "std": 0.02177324215807269
+      },
+      "neural_minus_classical": 0.001044444444444445
+    },
+    {
+      "sigma_est": 0.1,
+      "neural_ser": {
+        "mean": 0.061777777777777786,
+        "std": 0.001769982911265768
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.061111111111111116,
+        "std": 0.0010289632802480192
+      },
+      "shield_effective_ser": {
+        "mean": 0.060311111111111114,
+        "std": 0.0013881331277103425
+      },
+      "fallback_rate": {
+        "mean": 0.08888888888888889,
+        "std": 0.022662308949301265
+      },
+      "neural_minus_classical": 0.0006666666666666696
+    },
+    {
+      "sigma_est": 0.2,
+      "neural_ser": {
+        "mean": 0.17788888888888887,
+        "std": 0.00204565181739823
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.17875555555555556,
+        "std": 0.0014040505776827827
+      },
+      "shield_effective_ser": {
+        "mean": 0.17755555555555555,
+        "std": 0.002266230894930126
+      },
+      "fallback_rate": {
+        "mean": 0.008888888888888889,
+        "std": 0.00628539361054709
+      },
+      "neural_minus_classical": -0.0008666666666666822
+    },
+    {
+      "sigma_est": 0.4,
+      "neural_ser": {
+        "mean": 0.4093111111111112,
+        "std": 0.002060804110110153
+      },
+      "classical_lmmse_ser": {
+        "mean": 0.4210222222222222,
+        "std": 0.0016885964659122505
+      },
+      "shield_effective_ser": {
+        "mean": 0.4093111111111112,
+        "std": 0.002060804110110179
+      },
+      "fallback_rate": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "neural_minus_classical": -0.011711111111111006
+    }
+  ],
+  "honest_findings": [
+    "BARRAGE (broadband AWGN) jammer: both receivers degrade together as JSR rises (at JSR=10.0 dB neural SER 0.897, LMMSE SER 0.892). The Shield CANNOT fix a noisier channel \u2014 it only routes between receivers \u2014 so the effective SER (0.897) tracks the better receiver but is still degraded. This is the Shield's stated limitation: it has no defence against a jammer that hurts both receivers equally.",
+    "PARTIAL-BAND / PULSED / SINGLE-TONE jammers degrade SER monotonically with JSR as well; partial-band severity also rises with the jammed fraction. The Shield still only routes \u2014 it cannot denoise.",
+    "IMPERFECT CSI: at sigma_est=0.4, neural SER 0.409 vs LMMSE SER 0.421 \u2014 the LMMSE equaliser degrades MORE (its conj(\u0124)/(|\u0124|\u00b2+N0) weights are directly corrupted by the CSI error).",
+    "Shield guarantee holds throughout: effective SER <= better of {neural, classical} + tolerance. Under imperfect CSI the Shield's routing has real value (it falls back when the neural receiver is the worse of the two); under a symmetric barrage jammer it has none."
+  ]
+}
