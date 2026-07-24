@@ -132,6 +132,30 @@ because of a framework quirk" objection available to a skeptic.
 
 ## 4. System architecture
 
+> A print-ready PDF of this report (with both figures rendered as vector
+> graphics) is committed at
+> [`docs/reports/Horizon-RIC-Technical-Report.pdf`](reports/Horizon-RIC-Technical-Report.pdf).
+
+**Figure 1 — Deployment topology.** Where the Horizon-RIC rApp sits in the O-RAN
+control hierarchy (SMO / Non-RT RIC), its R1 / A1 / O1 interfaces, the E2
+telemetry it grades decisions against, the external RFC-3161 timestamp
+authorities and HSM it anchors trust to, and the federated DSA client fleet whose
+shared policy it wraps.
+
+![Deployment topology of the Horizon-RIC rApp within the O-RAN control hierarchy](diagrams/topology.svg)
+
+**Figure 2 — Internal architecture and data flow** — the "AI proposes, Shield
+disposes" pipeline. A possibly-poisoned agent emits an action dict; the
+model-independent Shield projects it onto the ordered invariant chain (grading the
+neural receiver on *independent* CRC/HARQ telemetry); every disposition yields an
+immutable `SafetyCertificate` that is hash-chained, RFC-3161-anchored, and
+provenance-bound. The federated trust stack (honestly graded, with certified
+unlearning as the repair layer) produces the shared policy that drives the agent.
+
+![Internal architecture: the AI-proposes-Shield-disposes decision pipeline and evidence chain](diagrams/architecture.svg)
+
+The ASCII sketch below is the same pipeline in text form:
+
 ```
              ┌────────────────────────────────────────────────────────────┐
    agent  →  │  action (dict)  →  Shield.dispose()  →  (safe_action, cert) │  → SMO / Near-RT RIC (A1)
