@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7.5" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#334155"/>
+    </marker>
+    <marker id="arrG" markerWidth="9" markerHeight="9" refX="7.5" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#0d9488"/>
+    </marker>
+    <marker id="arrR" markerWidth="9" markerHeight="9" refX="7.5" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#b45309"/>
+    </marker>
+  </defs>
+  <style>
+    .box{stroke-width:1.5;rx:8;}
+    .lbl{font-size:13px;font-weight:700;fill:#0f172a;}
+    .sub{font-size:10.5px;fill:#475569;}
+    .iface{font-size:11px;font-weight:700;}
+    .note{font-size:10px;fill:#64748b;}
+    .zone{font-size:11px;font-weight:700;fill:#94a3b8;letter-spacing:1px;}
+  </style>
+
+  <!-- SMO / Non-RT RIC zone -->
+  <rect x="20" y="45" width="600" height="150" fill="#f8fafc" stroke="#cbd5e1" stroke-dasharray="5 4" rx="10"/>
+  <text x="34" y="66" class="zone">SMO  ·  NON-RT RIC  (control loop &gt; 1 s)</text>
+
+  <!-- Horizon-RIC rApp (the star) -->
+  <rect x="40" y="80" width="270" height="100" fill="#ecfeff" stroke="#0891b2" stroke-width="2.5" rx="8"/>
+  <text x="52" y="102" class="lbl" fill="#0e7490">Horizon-RIC  rApp  (this repo)</text>
+  <text x="52" y="120" class="sub">Decision Safety Shield · evidence chain</text>
+  <text x="52" y="135" class="sub">robust/secure/DP federated aggregation</text>
+  <text x="52" y="150" class="sub">provenance signing · counterfactuals</text>
+  <text x="52" y="168" class="sub" fill="#0e7490" font-weight="700">torch-free · numpy + pydantic</text>
+
+  <!-- Non-RT RIC framework -->
+  <rect x="345" y="80" width="255" height="100" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5" rx="8"/>
+  <text x="357" y="102" class="lbl">Non-RT RIC framework</text>
+  <text x="357" y="120" class="sub">OSC NONRTRIC / EIAP / MantaRay</text>
+  <text x="357" y="135" class="sub">R1 service exposure · A1 policy mgmt</text>
+  <text x="357" y="150" class="sub">O1 (NETCONF/YANG) OAM</text>
+  <text x="357" y="168" class="note">rApp registers over R1 (R1AP/R1GAP v06)</text>
+
+  <!-- R1 link -->
+  <line x1="310" y1="112" x2="345" y2="112" stroke="#334155" stroke-width="1.6" marker-end="url(#arr)" marker-start="url(#arr)"/>
+  <text x="312" y="106" class="iface" fill="#334155">R1</text>
+
+  <!-- Near-RT RIC zone -->
+  <rect x="20" y="250" width="600" height="120" fill="#f8fafc" stroke="#cbd5e1" stroke-dasharray="5 4" rx="10"/>
+  <text x="34" y="271" class="zone">NEAR-RT RIC  (10 ms – 1 s)</text>
+  <rect x="345" y="285" width="255" height="70" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5" rx="8"/>
+  <text x="357" y="307" class="lbl">Near-RT RIC + xApps</text>
+  <text x="357" y="325" class="sub">consumes A1 policy (QoS, steering,</text>
+  <text x="357" y="340" class="sub">admission, spectrum reservation)</text>
+
+  <!-- A1 link (Non-RT -> Near-RT) -->
+  <line x1="472" y1="180" x2="472" y2="285" stroke="#b45309" stroke-width="1.8" marker-end="url(#arrR)"/>
+  <text x="480" y="235" class="iface" fill="#b45309">A1</text>
+  <text x="480" y="250" class="note">policy PUT + status</text>
+
+  <!-- E2 nodes zone -->
+  <rect x="20" y="425" width="600" height="130" fill="#f8fafc" stroke="#cbd5e1" stroke-dasharray="5 4" rx="10"/>
+  <text x="34" y="446" class="zone">E2 NODES  ·  RAN  (real-time &lt; 10 ms)</text>
+  <rect x="40" y="460" width="175" height="80" fill="#fff" stroke="#64748b" stroke-width="1.5" rx="8"/>
+  <text x="52" y="482" class="lbl">O-CU / O-DU</text>
+  <text x="52" y="500" class="sub">MAC CRC / HARQ,</text>
+  <text x="52" y="515" class="sub">E2 KPM telemetry</text>
+  <text x="52" y="531" class="note">measured TBLER source</text>
+  <rect x="230" y="460" width="175" height="80" fill="#fff" stroke="#64748b" stroke-width="1.5" rx="8"/>
+  <text x="242" y="482" class="lbl">O-RU  /  neural-PHY</text>
+  <text x="242" y="500" class="sub">neural RX, learned</text>
+  <text x="242" y="515" class="sub">constellation (AI-PHY)</text>
+  <text x="242" y="531" class="note">emits the decisions shielded</text>
+  <rect x="420" y="460" width="180" height="80" fill="#fff" stroke="#64748b" stroke-width="1.5" rx="8"/>
+  <text x="432" y="482" class="lbl">NTN / LEO link</text>
+  <text x="432" y="500" class="sub">satellite power control,</text>
+  <text x="432" y="515" class="sub">PFD-ceiling scenario</text>
+  <text x="432" y="531" class="note">ITU-R RR Art.21</text>
+
+  <!-- O1 + E2 telemetry links -->
+  <line x1="130" y1="285" x2="130" y2="460" stroke="#334155" stroke-width="1.6" marker-end="url(#arr)" marker-start="url(#arr)"/>
+  <text x="80" y="410" class="iface" fill="#334155">O1</text>
+  <text x="62" y="424" class="note">NETCONF/YANG (ncclient)</text>
+  <line x1="300" y1="460" x2="300" y2="370" stroke="#0d9488" stroke-width="1.6" marker-end="url(#arrG)"/>
+  <text x="308" y="410" class="note" fill="#0d9488">E2 KPM / vendor</text>
+  <text x="308" y="423" class="note" fill="#0d9488">telemetry → Shield</text>
+
+  <!-- Right column: external trust anchors -->
+  <rect x="670" y="45" width="290" height="150" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5" rx="10"/>
+  <text x="684" y="66" class="zone" fill="#a16207">EXTERNAL TRUST ANCHORS</text>
+  <rect x="684" y="80" width="262" height="45" fill="#fff" stroke="#ca8a04" rx="6"/>
+  <text x="696" y="100" class="lbl">Public RFC-3161 TSAs</text>
+  <text x="696" y="116" class="sub">freetsa.org · timestamp.digicert.com</text>
+  <rect x="684" y="135" width="262" height="48" fill="#fff" stroke="#ca8a04" rx="6"/>
+  <text x="696" y="155" class="lbl">HSM (PKCS#11)</text>
+  <text x="696" y="171" class="sub">SoftHSM2 / CloudHSM · RSA-PSS keys</text>
+  <path d="M250,80 C 360,20 560,20 700,78" fill="none" stroke="#ca8a04" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+  <text x="405" y="30" class="note" fill="#a16207">evidence chain head → anchored</text>
+
+  <!-- Federated clients -->
+  <rect x="670" y="250" width="290" height="305" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" rx="10"/>
+  <text x="684" y="271" class="zone" fill="#4f46e5">FEDERATED DSA CLIENTS</text>
+  <rect x="684" y="285" width="123" height="55" fill="#fff" stroke="#6366f1" rx="6"/>
+  <text x="696" y="306" class="lbl">Client 1..k</text>
+  <text x="696" y="323" class="sub">honest cells</text>
+  <rect x="823" y="285" width="123" height="55" fill="#fff" stroke="#ef4444" rx="6"/>
+  <text x="835" y="306" class="lbl" fill="#b91c1c">Byzantine</text>
+  <text x="835" y="323" class="sub">poison/backdoor/free-rider</text>
+  <rect x="684" y="352" width="262" height="90" fill="#fff" stroke="#6366f1" rx="6"/>
+  <text x="696" y="373" class="lbl">Aggregation server(s)</text>
+  <text x="696" y="391" class="sub">robust: Krum / median / trimmed-mean</text>
+  <text x="696" y="406" class="sub">secure: Shamir · verifiable 2-server</text>
+  <text x="696" y="421" class="sub">DP-FedAvg + Rényi accountant</text>
+  <text x="696" y="436" class="note">→ shared DSA Q-policy</text>
+  <rect x="684" y="452" width="262" height="90" fill="#fff" stroke="#6366f1" rx="6"/>
+  <text x="696" y="473" class="lbl">Repair &amp; compliance</text>
+  <text x="696" y="491" class="sub">certified federated unlearning</text>
+  <text x="696" y="506" class="sub">GDPR Art.17 subject erasure</text>
+  <text x="696" y="521" class="sub">→ UnlearningCertificate (signed)</text>
+  <text x="696" y="537" class="note">removes what aggregation only bounds</text>
+
+  <line x1="815" y1="340" x2="815" y2="352" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="310" y1="165" x2="670" y2="400" stroke="#6366f1" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arr)" marker-start="url(#arr)"/>
+  <text x="332" y="222" class="note" fill="#4f46e5">shared policy in ↔ trust layer out</text>
+</svg>
