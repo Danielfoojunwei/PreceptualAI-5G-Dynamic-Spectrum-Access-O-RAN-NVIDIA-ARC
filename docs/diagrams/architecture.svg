@@ -108,7 +108,7 @@
   <text x="646" y="516" class="m">honest-but-curious · Feldman tamper-detect = 1.0</text>
   <rect x="636" y="531" width="298" height="40" fill="#fff" stroke="#4f46e5" rx="6"/>
   <text x="646" y="549" class="s"><tspan font-weight="700">DP-FedAvg</tspan> — Rényi accountant (ε,δ)</text>
-  <text x="646" y="564" class="m">MIA AUC 0.97 → 0.47 as ε falls</text>
+  <text x="646" y="564" class="m">MIA diagnostic: 10 seeds; z=8 CI crosses chance</text>
   <rect x="636" y="579" width="298" height="40" fill="#fff" stroke="#16a34a" rx="6"/>
   <text x="646" y="597" class="s"><tspan font-weight="700">Certified unlearning + GDPR erasure</tspan></text>
   <text x="646" y="612" class="m">backdoor 1.0 → 0.036 · signed certificate</text>

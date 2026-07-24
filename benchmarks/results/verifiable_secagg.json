@@ -113,6 +113,26 @@
     "drop_detection_rate": 1.0,
     "note": "Tamper and drop detection are 1.0: Feldman binding (discrete-log hardness in the order-q subgroup) means the reconstructed g^{\u03a3x} can only match the public product if every committed share is summed exactly once and unaltered."
   },
+  "collusion_resilience": {
+    "threat": "both aggregation servers collude and combine each client's shares",
+    "protection": "client-side Gaussian local DP before secret sharing",
+    "n_clients": 16,
+    "dim": 8,
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "public_clip_norm_C": 12.0,
+    "noise_multiplier": 4.0,
+    "replace_one_sensitivity": 24.0,
+    "delta": 1e-05,
+    "epsilon": 1.2675,
+    "mean_l2_raw_to_colluding_view": 258.2725,
+    "mean_l2_aggregate_error": 68.8738,
+    "all_aggregates_verified": true,
+    "scope_note": "Collusion destroys exact secret-sharing secrecy. In this opt-in mode the colluding view is a locally private release, not the raw update. The DP bound depends on the public clip/noise assumptions and the utility distortion is material."
+  },
   "cost": {
     "modulus_bits": 2048,
     "rows": [
@@ -120,11 +140,11 @@
         "dim": 1,
         "n_clients": 5,
         "repeats": 3,
-        "split_s_per_client": 0.009391,
-        "split_s_total_mean": 0.046957,
-        "aggregate_verify_s_mean": 0.007902,
-        "aggregate_verify_s_std": 0.010928,
-        "total_s_mean": 0.054859,
+        "split_s_per_client": 0.006749,
+        "split_s_total_mean": 0.033744,
+        "aggregate_verify_s_mean": 0.005758,
+        "aggregate_verify_s_std": 0.007975,
+        "total_s_mean": 0.039502,
         "modexps_per_split": 1,
         "modexps_per_verify": 6
       },
@@ -132,11 +152,11 @@
         "dim": 8,
         "n_clients": 5,
         "repeats": 3,
-        "split_s_per_client": 0.086735,
-        "split_s_total_mean": 0.433677,
-        "aggregate_verify_s_mean": 0.093853,
-        "aggregate_verify_s_std": 0.019297,
-        "total_s_mean": 0.527529,
+        "split_s_per_client": 0.062072,
+        "split_s_total_mean": 0.310361,
+        "aggregate_verify_s_mean": 0.066767,
+        "aggregate_verify_s_std": 0.013938,
+        "total_s_mean": 0.377128,
         "modexps_per_split": 8,
         "modexps_per_verify": 48
       },
@@ -144,11 +164,11 @@
         "dim": 32,
         "n_clients": 5,
         "repeats": 3,
-        "split_s_per_client": 0.379491,
-        "split_s_total_mean": 1.897456,
-        "aggregate_verify_s_mean": 0.383023,
-        "aggregate_verify_s_std": 0.060963,
-        "total_s_mean": 2.280479,
+        "split_s_per_client": 0.270258,
+        "split_s_total_mean": 1.351288,
+        "aggregate_verify_s_mean": 0.27542,
+        "aggregate_verify_s_std": 0.04458,
+        "total_s_mean": 1.626709,
         "modexps_per_split": 32,
         "modexps_per_verify": 192
       },
@@ -156,11 +176,11 @@
         "dim": 128,
         "n_clients": 5,
         "repeats": 3,
-        "split_s_per_client": 1.535541,
-        "split_s_total_mean": 7.677707,
-        "aggregate_verify_s_mean": 1.671951,
-        "aggregate_verify_s_std": 0.068947,
-        "total_s_mean": 9.349658,
+        "split_s_per_client": 1.10541,
+        "split_s_total_mean": 5.52705,
+        "aggregate_verify_s_mean": 1.195678,
+        "aggregate_verify_s_std": 0.047397,
+        "total_s_mean": 6.722728,
         "modexps_per_split": 128,
         "modexps_per_verify": 768
       }
@@ -169,6 +189,7 @@
   },
   "honest_finding": [
     "PRIVACY HOLDS ONLY UNDER NON-COLLUSION. A single server sees share_a (or share_b), a uniform one-time pad \u2014 information-theoretic privacy of the individual update. But share_a + share_b = x exactly: if the two servers collude they trivially recover every client's update. This is the explicit two-non-colluding-servers trust model, not a single-server guarantee.",
+    "THE OPT-IN LOCAL-DP MODE COVERS FULL SERVER COLLUSION DIFFERENTLY. Colluding servers can reconstruct each submitted value, but that value was clipped and Gaussian-noised on the client first. They therefore recover a release with the recorded (epsilon, delta) bound, not the raw update. This adds utility loss and does not make the exact mode collusion-resistant.",
     "FELDMAN COMMITMENTS ARE BINDING, NOT HIDING. A commitment reveals g^x mod p. That does not break privacy: the client owns x, and recovering x from g^x is the discrete-log problem in the order-q subgroup (hard at 2048 bits). The commitment buys PUBLIC VERIFIABILITY \u2014 anyone can check the aggregate \u2014 at the cost of publishing g^x, which carries no usable information about x.",
     "INTEGRITY IS PERFECT, NOT PROBABILISTIC, IN THIS SUITE. Over the tamper/drop trials the detection rate is 1.0 because verification is an exact modular equality (g^{\u03a3x} == \u03a0 Commit). A forgery would require finding a second preimage of a Feldman commitment, i.e. breaking discrete log \u2014 not a measured failure rate here.",
     "PER-COORDINATE COMMITMENT COST IS THE PRICE OF VERIFIABILITY. Each coordinate costs one 2048-bit modular exponentiation at split time and (n_clients + 1) at verify time. Wall-clock is linear in dim and client count. The additive sharing that provides privacy is cheap; the modexps that provide public proof are the dominant cost, reported honestly above."

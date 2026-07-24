@@ -63,7 +63,7 @@ class A1AdapterConfig:
         default_factory=lambda: dict(DEFAULT_POLICY_TYPES)
     )
     # ------------------------------------------------------------------
-    # OSC NONRTRIC dialect switch.
+    # A1 dialect switch.
     #
     # The OSC `nonrtric-plt-a1policymanagementservice` reference exposes
     # a *different* URL surface from the historical near-RT-RIC A1AP
@@ -77,9 +77,16 @@ class A1AdapterConfig:
     #     in the body (NOT nested under `/policytypes/{id}/policies`).
     #   - Policy delete / status are addressed only by `policy_id`.
     #
-    # When `dialect == "osc"` we honour the real OSC paths; the default
+    # When `dialect == "osc"` we honour the OSC NONRTRIC Policy Management
+    # Service northbound paths; the default
     # "legacy" mode retains the historical paths for back-compat with
     # the existing rapp-lifecycle unit tests.
+    #
+    # ``osc_a1`` addresses the OSC A1 2.1.0 Near-RT RIC interface directly.
+    # It is deliberately separate from ``osc``: the latter is the Non-RT
+    # RIC Policy Management Service API, while this dialect is the nested
+    # ``/a1-p/policytypes/{id}/policies/{id}`` interface implemented by the
+    # official o-ran-sc/sim-a1-interface project.
     #
     # EIAP dialect (Ericsson Intelligent Automation Platform / EIAP rApp SDK):
     #   - Base path: /A1-PolicyManagement/v2/
@@ -118,6 +125,12 @@ class A1Adapter:
 
     def __init__(self, config: A1AdapterConfig | None = None):
         self.cfg = config or A1AdapterConfig()
+        supported_dialects = {"legacy", "osc", "osc_a1", "eiap", "mantaray"}
+        if self.cfg.dialect not in supported_dialects:
+            choices = ", ".join(sorted(supported_dialects))
+            raise ValueError(
+                f"unsupported A1 dialect {self.cfg.dialect!r}; choose one of: {choices}"
+            )
         if self.cfg.auth is not None:
             from horizon_ric.rapp.auth import build_secure_async_client
 
@@ -183,6 +196,8 @@ class A1Adapter:
     # -- URL builders that honour the OSC vs legacy dialect ---------------
 
     def _policy_type_url(self, policy_type_id: int) -> str:
+        if self.cfg.dialect == "osc_a1":
+            return f"/a1-p/policytypes/{policy_type_id}"
         if self.cfg.dialect == "osc":
             # OSC PMS uses string policytype_id under /a1-policy/v2.
             return f"/a1-policy/v2/policy-types/{policy_type_id}"
@@ -195,6 +210,8 @@ class A1Adapter:
     def _policy_instance_url(
         self, policy_type_id: int, policy_id: str
     ) -> str:
+        if self.cfg.dialect == "osc_a1":
+            return f"/a1-p/policytypes/{policy_type_id}/policies/{policy_id}"
         if self.cfg.dialect == "osc":
             # OSC: flat, addressed only by policy_id.
             return f"/a1-policy/v2/policies/{policy_id}"
@@ -205,6 +222,8 @@ class A1Adapter:
         return f"/A1-P/v2/policytypes/{policy_type_id}/policies/{policy_id}"
 
     def _policy_create_url(self, policy_type_id: int) -> str:
+        if self.cfg.dialect == "osc_a1":
+            return f"/a1-p/policytypes/{policy_type_id}/policies"
         # OSC PMS uses a single flat PUT to /a1-policy/v2/policies; the
         # legacy near-RT-RIC mirror addresses the resource directly.
         if self.cfg.dialect == "osc":
@@ -217,6 +236,11 @@ class A1Adapter:
         return f"/A1-P/v2/policytypes/{policy_type_id}/policies"
 
     def _policy_status_url(self, policy_type_id: int, policy_id: str) -> str:
+        if self.cfg.dialect == "osc_a1":
+            return (
+                f"/a1-p/policytypes/{policy_type_id}"
+                f"/policies/{policy_id}/status"
+            )
         if self.cfg.dialect == "osc":
             return f"/a1-policy/v2/policies/{policy_id}/status"
         if self.cfg.dialect == "eiap":
@@ -229,6 +253,8 @@ class A1Adapter:
         )
 
     def _policy_list_url(self, policy_type_id: int) -> str:
+        if self.cfg.dialect == "osc_a1":
+            return f"/a1-p/policytypes/{policy_type_id}/policies"
         if self.cfg.dialect == "osc":
             return f"/a1-policy/v2/policies?policytype_id={policy_type_id}"
         if self.cfg.dialect == "eiap":

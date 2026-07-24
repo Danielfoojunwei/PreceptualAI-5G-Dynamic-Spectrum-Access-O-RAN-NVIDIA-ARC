@@ -51,6 +51,97 @@ class Invariant(Protocol):
 # RAN-physics / spectrum-regulatory invariants (terrestrial)
 # ---------------------------------------------------------------------------
 @dataclass
+class NumericSanityInvariant:
+    """Fail closed on malformed or non-physical numeric domains.
+
+    Physics and regulatory checks are only meaningful for finite values in
+    their declared domains. In particular, NaN comparisons are false in
+    surprising ways and a negative bandwidth can appear to fit inside a band.
+    This invariant is therefore first in each default chain.
+    """
+
+    id: str = "numeric_domain_sanity"
+
+    @staticmethod
+    def _number(value: Any) -> float | None:
+        try:
+            number = float(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        return number if math.isfinite(number) else None
+
+    def _problems(self, action: Action) -> list[str]:
+        problems: list[str] = []
+
+        frequency = self._number(action.get("frequency_hz"))
+        if frequency is None or frequency <= 0.0:
+            problems.append("frequency_hz must be finite and > 0")
+
+        bandwidth = self._number(action.get("bandwidth_hz"))
+        if bandwidth is None or bandwidth <= 0.0:
+            problems.append("bandwidth_hz must be finite and > 0")
+
+        tx_power = self._number(action.get("tx_power_dBm"))
+        if tx_power is None:
+            problems.append("tx_power_dBm must be finite")
+
+        for field_name in ("antenna_gain_dBi", "sat_antenna_gain_dBi"):
+            if field_name in action and self._number(action[field_name]) is None:
+                problems.append(f"{field_name} must be finite")
+
+        for field_name in ("predicted_tbler", "baseline_tbler", "demap_confidence"):
+            if field_name not in action:
+                continue
+            value = self._number(action[field_name])
+            if value is None or not 0.0 <= value <= 1.0:
+                problems.append(f"{field_name} must be finite and in [0, 1]")
+
+        if "papr_dB" in action:
+            papr = self._number(action["papr_dB"])
+            if papr is None or papr < 0.0:
+                problems.append("papr_dB must be finite and >= 0")
+
+        if "constellation_order" in action:
+            order = self._number(action["constellation_order"])
+            if order is None or order <= 0.0 or not order.is_integer():
+                problems.append("constellation_order must be a positive integer")
+
+        if bool(action.get("ntn", False)):
+            slant_range = self._number(action.get("slant_range_m"))
+            if slant_range is None or slant_range <= 0.0:
+                problems.append("slant_range_m must be finite and > 0 for NTN")
+
+        return problems
+
+    def evaluate(self, action: Action, context: Context) -> InvariantCheck:
+        problems = self._problems(action)
+        return InvariantCheck(
+            invariant_id=self.id,
+            satisfied=not problems,
+            margin=None,
+            unit="domain",
+            detail="numeric domains valid" if not problems else "; ".join(problems),
+        )
+
+    def project(
+        self, action: Action, context: Context
+    ) -> tuple[Action, list[ConstraintViolation]]:
+        problems = self._problems(action)
+        if not problems:
+            return dict(action), []
+        out = dict(action)
+        out["emit_blocked"] = True
+        return out, [
+            ConstraintViolation(
+                self.id,
+                "hard",
+                None,
+                "malformed/non-physical action blocked: " + "; ".join(problems),
+            )
+        ]
+
+
+@dataclass
 class SpectralMaskInvariant:
     """3GPP TS 38.104 §6.6 — the emitted carrier must sit inside the licensed
     channel. Occupied-bandwidth-within-band check: the carrier centred at
@@ -488,6 +579,7 @@ __all__ = [
     "Context",
     "FALLBACK_KEY",
     "Invariant",
+    "NumericSanityInvariant",
     "SpectralMaskInvariant",
     "MaxEirpInvariant",
     "PfdCeilingInvariant",

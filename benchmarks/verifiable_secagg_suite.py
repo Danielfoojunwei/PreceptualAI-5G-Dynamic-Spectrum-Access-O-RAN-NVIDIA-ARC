@@ -47,6 +47,7 @@ from pathlib import Path
 import numpy as np
 
 from horizon_ric.federated import verifiable_secagg as V
+from horizon_ric.federated.dp import DPConfig
 
 DEFAULT_OUT = "benchmarks/results/verifiable_secagg.json"
 
@@ -274,6 +275,72 @@ def cost_curve(dims: list[int], n_clients: int, repeats: int, seed: int) -> dict
     }
 
 
+def collusion_resilience_probe(
+    *,
+    dim: int,
+    n_clients: int,
+    seeds: list[int],
+    clip_norm: float = 12.0,
+    noise_multiplier: float = 4.0,
+    delta: float = 1e-5,
+) -> dict:
+    """Exercise full server collusion against the client-side local-DP mode."""
+    raw_to_colluding: list[float] = []
+    aggregate_error: list[float] = []
+    epsilons: list[float] = []
+    all_verified = True
+    config = DPConfig(clip_norm=clip_norm, noise_multiplier=noise_multiplier)
+
+    for seed in seeds:
+        rng = np.random.default_rng(50_000 + seed)
+        raw_updates = [rng.normal(size=dim) for _ in range(n_clients)]
+        contributions = [
+            V.split_private_contribution(
+                update,
+                dp_config=config,
+                delta=delta,
+                rng=rng,
+            )
+            for update in raw_updates
+        ]
+        colluding_views = [V.reconstruct_contribution(c) for c in contributions]
+        raw_to_colluding.extend(
+            float(np.linalg.norm(released - raw))
+            for released, raw in zip(colluding_views, raw_updates)
+        )
+        result = V.aggregate(contributions)
+        all_verified = all_verified and result.verified
+        raw_mean = np.mean(np.stack(raw_updates), axis=0)
+        aggregate_error.append(float(np.linalg.norm(result.mean_vector - raw_mean)))
+        epsilons.extend(
+            c.local_dp.epsilon
+            for c in contributions
+            if c.local_dp is not None
+        )
+
+    return {
+        "threat": "both aggregation servers collude and combine each client's shares",
+        "protection": "client-side Gaussian local DP before secret sharing",
+        "n_clients": n_clients,
+        "dim": dim,
+        "seeds": seeds,
+        "public_clip_norm_C": clip_norm,
+        "noise_multiplier": noise_multiplier,
+        "replace_one_sensitivity": 2.0 * clip_norm,
+        "delta": delta,
+        "epsilon": round(float(epsilons[0]), 4),
+        "mean_l2_raw_to_colluding_view": round(float(np.mean(raw_to_colluding)), 4),
+        "mean_l2_aggregate_error": round(float(np.mean(aggregate_error)), 4),
+        "all_aggregates_verified": all_verified,
+        "scope_note": (
+            "Collusion destroys exact secret-sharing secrecy. In this opt-in mode "
+            "the colluding view is a locally private release, not the raw update. "
+            "The DP bound depends on the public clip/noise assumptions and the "
+            "utility distortion is material."
+        ),
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", type=str, default=DEFAULT_OUT)
@@ -304,6 +371,11 @@ def main() -> int:
         ),
         "privacy": privacy_probe(dim=64, n_clients=8, n_bins=1 << 16, seeds=seeds),
         "integrity": integrity_trials(dim=8, n_clients=5, n_trials=200, seed=42),
+        "collusion_resilience": collusion_resilience_probe(
+            dim=8,
+            n_clients=16,
+            seeds=seeds,
+        ),
         "cost": cost_curve(dims=[1, 8, 32, 128], n_clients=5, repeats=3, seed=0),
         "honest_finding": [
             "PRIVACY HOLDS ONLY UNDER NON-COLLUSION. A single server sees share_a "
@@ -312,6 +384,12 @@ def main() -> int:
             "two servers collude they trivially recover every client's update. "
             "This is the explicit two-non-colluding-servers trust model, not a "
             "single-server guarantee.",
+            "THE OPT-IN LOCAL-DP MODE COVERS FULL SERVER COLLUSION DIFFERENTLY. "
+            "Colluding servers can reconstruct each submitted value, but that "
+            "value was clipped and Gaussian-noised on the client first. They "
+            "therefore recover a release with the recorded (epsilon, delta) bound, "
+            "not the raw update. This adds utility loss and does not make the "
+            "exact mode collusion-resistant.",
             "FELDMAN COMMITMENTS ARE BINDING, NOT HIDING. A commitment reveals "
             "g^x mod p. That does not break privacy: the client owns x, and "
             "recovering x from g^x is the discrete-log problem in the order-q "

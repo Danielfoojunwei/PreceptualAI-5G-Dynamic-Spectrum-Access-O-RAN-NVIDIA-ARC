@@ -120,6 +120,19 @@ def test_dp_fedavg_charges_exactly_one_step_per_call():
     assert acc.steps == 2
 
 
+def test_dp_fedavg_noise_uses_replace_one_sensitivity():
+    """Noise is calibrated to 2C, not C, for replace-one client adjacency."""
+    cfg = dp.DPConfig(clip_norm=3.0, noise_multiplier=2.0)
+    seed = 19
+    actual = dp.dp_fedavg(
+        [np.zeros(4)],
+        cfg,
+        rng=np.random.default_rng(seed),
+    )
+    expected = np.random.default_rng(seed).normal(0.0, 12.0, size=4)
+    assert np.allclose(actual, expected)
+
+
 def test_dp_fedavg_requires_at_least_one_update():
     rng = np.random.default_rng(0)
     with pytest.raises(ValueError):

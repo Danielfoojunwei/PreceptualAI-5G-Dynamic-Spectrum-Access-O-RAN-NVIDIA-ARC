@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 
 from horizon_ric.federated import verifiable_secagg as V
+from horizon_ric.federated.dp import DPConfig
 
 TOL = 1.0 / V.QUANT_SCALE  # one fixed-point quantum
 
@@ -110,3 +111,60 @@ def test_commitment_homomorphism_holds():
         cb = V.commit_vector([b])[0]
         exponent = (V._encode(a) + V._encode(b)) % V.Q
         assert pow(V.G, exponent, V.P) == (ca * cb) % V.P
+
+
+def test_client_side_dp_limits_colluding_servers_to_noised_release():
+    raw = np.array([0.5, -1.0, 2.0, 0.25])
+    config = DPConfig(clip_norm=3.0, noise_multiplier=4.0)
+    seed = 73
+
+    expected_rng = np.random.default_rng(seed)
+    expected_release = raw + expected_rng.normal(
+        0.0,
+        config.noise_multiplier * 2.0 * config.clip_norm,
+        size=raw.shape,
+    )
+    contribution = V.split_private_contribution(
+        raw,
+        dp_config=config,
+        delta=1e-5,
+        rng=np.random.default_rng(seed),
+    )
+    colluding_view = V.reconstruct_contribution(contribution)
+
+    assert np.allclose(
+        colluding_view,
+        expected_release,
+        atol=1.0 / V.QUANT_SCALE,
+    )
+    assert not np.allclose(colluding_view, raw)
+    assert contribution.local_dp is not None
+    assert contribution.local_dp.epsilon == pytest.approx(1.2675, abs=0.01)
+    assert contribution.local_dp.adjacency == "replace_one_client"
+
+
+def test_locally_private_contributions_still_verify_when_aggregated():
+    rng = np.random.default_rng(99)
+    config = DPConfig(clip_norm=2.0, noise_multiplier=2.0)
+    contributions = [
+        V.split_private_contribution(
+            rng.normal(size=3),
+            dp_config=config,
+            delta=1e-5,
+            rng=rng,
+        )
+        for _ in range(4)
+    ]
+    result = V.aggregate(contributions)
+    assert result.verified
+    assert result.n_clients == 4
+
+
+def test_local_dp_rejects_zero_noise():
+    with pytest.raises(ValueError, match="noise_multiplier"):
+        V.split_private_contribution(
+            np.ones(2),
+            dp_config=DPConfig(clip_norm=1.0, noise_multiplier=0.0),
+            delta=1e-5,
+            rng=np.random.default_rng(1),
+        )

@@ -1,4 +1,4 @@
-"""End-to-end multi-vendor integration test.
+"""A1 multi-dialect wire-contract tests.
 
 For each of the 4 supported A1 dialects (legacy, osc, eiap, mantaray)
 this suite drives emit_policy + get_policy_status + rollback_policy
@@ -6,15 +6,16 @@ through an httpx.MockTransport that records the URLs the adapter would
 hit on a real vendor stack. Each per-dialect test then asserts the URL
 shape matches the public spec for that vendor.
 
-This is the proof that Horizon-RIC's payloads conform to the published
-interfaces of:
+These mocks check Horizon-RIC's configured URL and payload mappings for:
     * legacy   — historical near-RT-RIC A1AP mirror (/A1-P/v2/...)
     * osc      — OSC NONRTRIC PMS reference (/a1-policy/v2/...)
     * eiap     — Ericsson EIAP rApp SDK (/A1-PolicyManagement/v2/...)
     * mantaray — Nokia MantaRay SMO via SDN-R (/sdn-r/api/v1/...)
 
-It deliberately uses a parametrised dispatch map so adding a 5th vendor
-later is a one-line change in :data:`DIALECTS`.
+Because the suite uses ``httpx.MockTransport``, it is not proof of deployment
+interoperability with OSC, Ericsson or Nokia. Direct live interoperability with
+the official OSC A1 simulator is exercised separately by
+``.github/workflows/osc-a1-integration.yml``.
 """
 
 from __future__ import annotations

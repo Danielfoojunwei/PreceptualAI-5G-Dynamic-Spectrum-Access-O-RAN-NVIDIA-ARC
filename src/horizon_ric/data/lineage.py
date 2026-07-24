@@ -104,26 +104,34 @@ class DataManifest(BaseModel):
         return v
 
 
-def _file_manifest_rows(root: Path) -> list[tuple[str, int]]:
-    """Walk a directory; return sorted (rel_path, size) rows.
+def _sha256_file(path: Path, *, chunk_size: int = 1024 * 1024) -> str:
+    """Return a streaming SHA-256 for ``path`` without loading it into memory."""
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while chunk := stream.read(chunk_size):
+            digest.update(chunk)
+    return digest.hexdigest()
 
-    File-content bytes are NOT hashed individually — too slow for large
-    corpora. The manifest captures (path, size) pairs, sorted; the SHA
-    of the canonical-JSON manifest is the ``dataset_sha256``.
+
+def _file_manifest_rows(root: Path) -> list[tuple[str, int, str]]:
+    """Walk a dataset and return sorted ``(path, size, content_sha256)`` rows.
+
+    Including the content hash is essential: a path-and-size-only manifest
+    cannot detect an in-place substitution with the same byte length.
     """
-    rows: list[tuple[str, int]] = []
+    rows: list[tuple[str, int, str]] = []
     if not root.exists():
         return rows
     if root.is_file():
-        return [(root.name, root.stat().st_size)]
+        return [(root.name, root.stat().st_size, _sha256_file(root))]
     for p in sorted(root.rglob("*")):
         if p.is_file():
-            rows.append((str(p.relative_to(root)), p.stat().st_size))
+            rows.append((str(p.relative_to(root)), p.stat().st_size, _sha256_file(p)))
     return rows
 
 
 def compute_dataset_sha256(root: Path) -> str:
-    """Deterministic SHA-256 of a dataset's (path, size) manifest."""
+    """Deterministic SHA-256 of paths, sizes, and every file's bytes."""
     rows = _file_manifest_rows(root)
     blob = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(blob).hexdigest()

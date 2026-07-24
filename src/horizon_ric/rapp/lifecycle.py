@@ -400,6 +400,7 @@ def _config_from_env() -> tuple[R1AdapterConfig, A1AdapterConfig, str, int]:
             "HORIZON_NEAR_RT_RIC_URL", A1AdapterConfig.near_rt_ric_base_url
         ),
         rapp_id=r1.rapp_id,
+        dialect=os.environ.get("HORIZON_A1_DIALECT", A1AdapterConfig.dialect),
     )
     host = os.environ.get("HORIZON_HEALTH_HOST", "0.0.0.0")
     port = int(os.environ.get("HORIZON_HEALTH_PORT", "8081"))

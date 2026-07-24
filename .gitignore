@@ -53,6 +53,8 @@ data/tle/
 data/deepmimo/*/
 !data/deepmimo/manifest.json
 !data/deepmimo/.gitkeep
+deepmimo_scenarios/
+datasets/deepmimo_asu_3p5/generated/
 
 # Local logs
 logs/

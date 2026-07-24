@@ -53,10 +53,16 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "pytest-timeout>=2.3",
+    "hypothesis==6.161.2",
     "ruff>=0.5",
     "mypy>=1.8",
     "bandit>=1.7",
     "z3-solver>=4.13",       # tests/test_rbac_smt_completeness.py
+]
+# Reproducible, externally sourced ray-tracing benchmark. DeepMIMO v4 requires
+# Python 3.11+, while the core Horizon-RIC runtime continues to support 3.10.
+realdata = [
+    "deepmimo==4.0.0; python_version >= '3.11'",
 ]
 # O-RAN southbound wire integrations (NETCONF/YANG for O1, ASN.1 for A1/E2).
 oran = [

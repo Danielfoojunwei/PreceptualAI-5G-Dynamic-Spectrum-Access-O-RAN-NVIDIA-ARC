@@ -1,0 +1,44 @@
+name: External dataset reproduction
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "datasets/deepmimo_asu_3p5/**"
+      - "benchmarks/deepmimo_dsa_benchmark.py"
+      - "benchmarks/results/deepmimo_dsa.json"
+      - "src/horizon_ric/data/lineage.py"
+      - ".github/workflows/realdata.yml"
+      - "pyproject.toml"
+
+permissions:
+  contents: read
+
+jobs:
+  deepmimo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install pinned dependencies
+        run: python -m pip install '.[dev,realdata]'
+      - name: Download, hash and transform DeepMIMO scenario
+        run: |
+          python datasets/deepmimo_asu_3p5/build.py \
+            --cache-dir "$RUNNER_TEMP/deepmimo" \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json"
+      - name: Reproduce aggregate benchmark
+        run: |
+          python benchmarks/deepmimo_dsa_benchmark.py \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json" \
+            --out "$RUNNER_TEMP/deepmimo_dsa.json"
+      - name: Verify committed evidence
+        run: |
+          diff -u datasets/deepmimo_asu_3p5/manifest.json "$RUNNER_TEMP/manifest.json"
+          diff -u benchmarks/results/deepmimo_dsa.json "$RUNNER_TEMP/deepmimo_dsa.json"

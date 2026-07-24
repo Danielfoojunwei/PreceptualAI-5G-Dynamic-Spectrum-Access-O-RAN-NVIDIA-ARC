@@ -1,7 +1,7 @@
 {
   "setup": {
-    "m_members": 8,
-    "k_nonmembers": 8,
+    "m_members": 64,
+    "k_nonmembers": 64,
     "noise_multipliers": [
       0.0,
       1.0,
@@ -11,17 +11,29 @@
     "delta": 1e-05,
     "eval_episodes": 20,
     "clip_norm_C": {
-      "mean": 11.0569,
-      "std": 0.2335,
-      "rule": "median member-update L2 norm (data-dependent; a mild DP-leak, reported not hidden)"
+      "value": 12.0,
+      "rule": "public pre-registered bound; independent of benchmark cohorts",
+      "observed_median_member_norm_mean": 11.0403,
+      "observed_median_member_norm_std": 0.0971
     },
     "seeds": [
       1,
       2,
-      3
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
     ],
+    "bootstrap_repetitions": 10000,
+    "confidence_unit": "independent cohort seed",
+    "client_adjacency": "replace one client; L2 sensitivity = 2C",
     "mia_score": "membership score = -||global - local||_2 (member is pulled closer => higher score)",
     "auc_rule": "P(score_member > score_nonmember) over all member x nonmember pairs (Mann-Whitney)",
+    "auc_interpretation": "attack-specific empirical diagnostic; AUC near 0.5 or a CI crossing 0.5 does not prove privacy",
     "lineage": [
       "Mironov, CSF 2017 (R\u00e9nyi differential privacy)",
       "Abadi, Chu, Goodfellow, McMahan, Mironov, Talwar & Zhang, CCS 2016 (DP-SGD / moments accountant)",
@@ -35,23 +47,48 @@
       "epsilon": {
         "mean": null,
         "std": null,
+        "ci95": [
+          null,
+          null
+        ],
+        "n_seeds": 10,
         "note": "infinite \u2014 no DP guarantee"
       },
       "mia_auc": {
-        "mean": 0.9688,
-        "std": 0.0255
+        "mean": 0.5974,
+        "std": 0.0796,
+        "ci95": [
+          0.5481,
+          0.642
+        ],
+        "n_seeds": 10
       },
       "throughput_per_slot": {
-        "mean": 1.0848,
-        "std": 0.0098
+        "mean": 1.2318,
+        "std": 0.0272,
+        "ci95": [
+          1.215,
+          1.2468
+        ],
+        "n_seeds": 10
       },
       "mean_member_distance": {
-        "mean": 7.298,
-        "std": 0.2136
+        "mean": 7.9807,
+        "std": 0.0694,
+        "ci95": [
+          7.9426,
+          8.0242
+        ],
+        "n_seeds": 10
       },
       "mean_nonmember_distance": {
-        "mean": 8.6735,
-        "std": 0.2442
+        "mean": 8.1439,
+        "std": 0.0951,
+        "ci95": [
+          8.0871,
+          8.198
+        ],
+        "n_seeds": 10
       },
       "accounted_steps": 0
     },
@@ -60,23 +97,48 @@
       "label": "z=1",
       "epsilon": {
         "mean": 5.3026,
-        "std": 0.0
+        "std": 0.0,
+        "ci95": [
+          5.3026,
+          5.3026
+        ],
+        "n_seeds": 10
       },
       "mia_auc": {
-        "mean": 0.6875,
-        "std": 0.071
+        "mean": 0.5507,
+        "std": 0.0639,
+        "ci95": [
+          0.5121,
+          0.5875
+        ],
+        "n_seeds": 10
       },
       "throughput_per_slot": {
-        "mean": 0.4803,
-        "std": 0.0284
+        "mean": 1.1,
+        "std": 0.0603,
+        "ci95": [
+          1.0635,
+          1.1336
+        ],
+        "n_seeds": 10
       },
       "mean_member_distance": {
-        "mean": 29.5421,
-        "std": 0.9903
+        "mean": 11.2432,
+        "std": 0.1806,
+        "ci95": [
+          11.1304,
+          11.3398
+        ],
+        "n_seeds": 10
       },
       "mean_nonmember_distance": {
-        "mean": 29.8448,
-        "std": 0.9605
+        "mean": 11.3257,
+        "std": 0.2166,
+        "ci95": [
+          11.1837,
+          11.4302
+        ],
+        "n_seeds": 10
       },
       "accounted_steps": 1
     },
@@ -85,23 +147,48 @@
       "label": "z=4",
       "epsilon": {
         "mean": 1.2675,
-        "std": 0.0
+        "std": 0.0,
+        "ci95": [
+          1.2675,
+          1.2675
+        ],
+        "n_seeds": 10
       },
       "mia_auc": {
-        "mean": 0.6042,
-        "std": 0.083
+        "mean": 0.5263,
+        "std": 0.0434,
+        "ci95": [
+          0.5005,
+          0.5513
+        ],
+        "n_seeds": 10
       },
       "throughput_per_slot": {
-        "mean": 0.1319,
-        "std": 0.0086
+        "mean": 0.4756,
+        "std": 0.0549,
+        "ci95": [
+          0.444,
+          0.5098
+        ],
+        "n_seeds": 10
       },
       "mean_member_distance": {
-        "mean": 122.1101,
-        "std": 3.6673
+        "mean": 33.2376,
+        "std": 1.2957,
+        "ci95": [
+          32.4993,
+          34.0047
+        ],
+        "n_seeds": 10
       },
       "mean_nonmember_distance": {
-        "mean": 122.171,
-        "std": 3.7394
+        "mean": 33.2662,
+        "std": 1.3224,
+        "ci95": [
+          32.512,
+          34.0591
+        ],
+        "n_seeds": 10
       },
       "accounted_steps": 1
     },
@@ -110,30 +197,55 @@
       "label": "z=8",
       "epsilon": {
         "mean": 0.6214,
-        "std": 0.0
+        "std": 0.0,
+        "ci95": [
+          0.6214,
+          0.6214
+        ],
+        "n_seeds": 10
       },
       "mia_auc": {
-        "mean": 0.4688,
-        "std": 0.1786
+        "mean": 0.5207,
+        "std": 0.0823,
+        "ci95": [
+          0.4696,
+          0.5647
+        ],
+        "n_seeds": 10
       },
       "throughput_per_slot": {
-        "mean": 0.0465,
-        "std": 0.0067
+        "mean": 0.1885,
+        "std": 0.0252,
+        "ci95": [
+          0.1732,
+          0.2028
+        ],
+        "n_seeds": 10
       },
       "mean_member_distance": {
-        "mean": 228.7023,
-        "std": 9.7622
+        "mean": 64.2467,
+        "std": 1.5593,
+        "ci95": [
+          63.25,
+          65.0725
+        ],
+        "n_seeds": 10
       },
       "mean_nonmember_distance": {
-        "mean": 228.6904,
-        "std": 9.5663
+        "mean": 64.2779,
+        "std": 1.6117,
+        "ci95": [
+          63.2568,
+          65.1589
+        ],
+        "n_seeds": 10
       },
       "accounted_steps": 1
     }
   ],
   "honest_finding": [
-    "WITHOUT DP (z=0) the membership-inference AUC sits well above 0.5: the global policy is measurably closer to its member clients than to fresh non-members, so membership leaks through update proximity. The mean member-distance is strictly below the mean non-member distance \u2014 the leakage is directional, not noise.",
-    "Adding DP-FedAvg noise drives the AUC toward 0.5 (less leakage) and the accountant's epsilon DOWN (more privacy) as z grows \u2014 z=1.0 < z=4.0 < z=8.0 in privacy. This is the privacy half of the trade-off, charged exactly once per aggregation round by the R\u00e9nyi-DP accountant.",
-    "The privacy is NOT free: throughput-per-slot falls sharply as z grows (the Gaussian noise, scaled by the clip C, swamps the aggregated signal in this single-round full-participation regime). We report the utility cost rather than hide it. At the strongest setting (z=8, epsilon~0.6) the AUC has fallen to ~0.5 \u2014 membership is no longer distinguishable \u2014 but the global policy's throughput has collapsed to near zero, so the privacy is bought at the price of an unusable policy. The honest takeaway is the SHAPE of the (epsilon, utility, leakage) curve: DP closes the membership leak, but on this single-round, no-subsampling DSA federation the useful operating point is a compromise, not a free lunch."
+    "The no-DP row measures whether this particular proximity attacker has a membership signal. Seed-level 95% confidence intervals expose the uncertainty instead of treating member\u00d7non-member pairs as independent.",
+    "The formal privacy evidence is the R\u00e9nyi accountant's (epsilon, delta) bound for one full-participation Gaussian round, a public clip bound, and conservative replace-one client adjacency. It does not cover code outside this mechanism or an unaccounted training lifecycle.",
+    "MIA AUC is only an empirical diagnostic for one attacker. A value near 0.5 cannot prove privacy; it can only show that this attack failed to distinguish the sampled cohorts. Throughput reports the corresponding utility cost."
   ]
 }

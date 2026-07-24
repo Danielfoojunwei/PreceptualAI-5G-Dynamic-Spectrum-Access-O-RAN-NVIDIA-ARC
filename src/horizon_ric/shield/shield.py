@@ -56,7 +56,23 @@ class Shield:
 
     # ── evaluation ──────────────────────────────────────────────────────
     def _evaluate(self, action: dict[str, Any], context: dict[str, Any]) -> list[InvariantCheck]:
-        return [inv.evaluate(action, context) for inv in self._invariants]
+        checks: list[InvariantCheck] = []
+        for inv in self._invariants:
+            try:
+                checks.append(inv.evaluate(action, context))
+            except (TypeError, ValueError, OverflowError, ZeroDivisionError) as exc:
+                # Untrusted action payloads must fail closed, never crash the
+                # control loop or skip the remaining evidence construction.
+                checks.append(
+                    InvariantCheck(
+                        invariant_id=inv.id,
+                        satisfied=False,
+                        margin=None,
+                        unit="error",
+                        detail=f"evaluation rejected malformed input: {type(exc).__name__}",
+                    )
+                )
+        return checks
 
     # ── main entry point ────────────────────────────────────────────────
     def dispose(
@@ -84,15 +100,28 @@ class Shield:
                 break
             projected = True
             for inv in self._invariants:
-                safe, corr = inv.project(safe, context)
-                corrections.extend(corr)
+                try:
+                    safe, corr = inv.project(safe, context)
+                    corrections.extend(corr)
+                except (TypeError, ValueError, OverflowError, ZeroDivisionError) as exc:
+                    safe["emit_blocked"] = True
+                    corrections.append(
+                        ConstraintViolation(
+                            inv.id,
+                            "hard",
+                            None,
+                            f"projection rejected malformed input: {type(exc).__name__}",
+                        )
+                    )
+                if safe.get("emit_blocked"):
+                    break
             if safe.get("emit_blocked"):
                 break
 
         final_checks = self._evaluate(safe, context)
         violated_ids = [c.invariant_id for c in final_checks if not c.satisfied]
         emit_blocked = bool(safe.get("emit_blocked")) or bool(violated_ids)
-        safe_ok = not violated_ids
+        safe_ok = not emit_blocked
         if emit_blocked and not safe.get("emit_blocked"):
             # Residual hard violation the projections could not resolve.
             safe["emit_blocked"] = True
@@ -153,10 +182,11 @@ def default_terrestrial_shield(
         LawfulInterceptInvariant,
         MaxEirpInvariant,
         NeuralRxEnvelopeInvariant,
+        NumericSanityInvariant,
         SpectralMaskInvariant,
     )
 
-    chain: list[Invariant] = []
+    chain: list[Invariant] = [NumericSanityInvariant()]
     if li_constraint is not None:
         chain.append(LawfulInterceptInvariant(li=li_constraint))
     chain.extend(
@@ -193,11 +223,12 @@ def default_ntn_shield(
         LawfulInterceptInvariant,
         MaxEirpInvariant,
         NeuralRxEnvelopeInvariant,
+        NumericSanityInvariant,
         PfdCeilingInvariant,
         SpectralMaskInvariant,
     )
 
-    chain: list[Invariant] = []
+    chain: list[Invariant] = [NumericSanityInvariant()]
     if li_constraint is not None:
         chain.append(LawfulInterceptInvariant(li=li_constraint))
     chain.extend(

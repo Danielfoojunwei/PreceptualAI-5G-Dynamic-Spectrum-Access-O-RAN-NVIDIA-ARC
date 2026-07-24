@@ -1,5 +1,12 @@
 # Anticipated evaluation criteria — Horizon-RIC
 
+> **Evidence notice (25 July 2026):** this file is a proposal self-assessment,
+> not an external evaluation. Scores do not prove the claims they grade. The
+> authoritative evidence boundary is
+> [`CLAIMS_EVIDENCE.json`](CLAIMS_EVIDENCE.json); live/operator/vendor
+> deployment, certification, carrier scale, global novelty and independent
+> validation are not established.
+>
 > **These criteria are to be finalized and approved by the AI-RAN Alliance Board.
 > This is our *anticipated* mapping**, derived from the Call for Innovation's six
 > required proposal sections, its five expected outputs, and the Alliance's

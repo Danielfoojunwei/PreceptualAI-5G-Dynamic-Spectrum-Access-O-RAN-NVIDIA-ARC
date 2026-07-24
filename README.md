@@ -41,7 +41,7 @@ emits in eight mechanisms:
 
 1. **Decision Safety Shield** — projects each proposed action onto enumerated,
    independently-measured radio invariants (spectral mask, EIRP, NTN/LEO PFD
-   ceiling, AI-PHY envelope, lawful-intercept), emitting a signed
+   ceiling, AI-PHY envelope, lawful-intercept), emitting a
    `SafetyCertificate`.
 2. **At-decision-time evidence** — a SHA-256 hash-chained, RFC-3161-anchored
    `DecisionRecord` with a replayable counterfactual.
@@ -55,12 +55,14 @@ emits in eight mechanisms:
    a signed `UnlearningCertificate` (distance-to-retrain bound + backdoor-probe).
    The **repair** layer for what robust aggregation only bounds — bridging the
    NTU/DTC federated-unlearning research (Lam et al., arXiv:2404.09724).
-6. **DP-FedAvg + Rényi-DP accountant** — clipping + Gaussian noise with a real
-   (ε, δ) budget that *bounds* membership/inversion leakage (MIA AUC 0.97→~0.5 as
-   ε falls); reports the honest privacy/utility curve.
-7. **Verifiable two-server secure aggregation** — 2-of-2 additive sharing (the
-   server learns nothing) + Feldman commitments, so a malicious server that tampers
-   or drops a contribution is *detected* (Starfish model, arXiv:2404.09724).
+6. **DP-FedAvg + Rényi-DP accountant** — public clipping + Gaussian noise with a
+   one-round (ε, δ) bound; the accompanying MIA diagnostic uses 64 members,
+   64 non-members and 10 independent seeds and is explicitly not treated as
+   privacy proof.
+7. **Verifiable two-server secure aggregation** — 2-of-2 additive sharing
+   (either server alone sees a masked share) + Feldman commitments, so tampering
+   or dropping a contribution is detected. Exact mode assumes non-collusion;
+   opt-in client-side local DP protects the reconstructed release differently.
 8. **Subject-level certified erasure (GDPR Art. 17)** — provable, audit-bound
    erasure of one *data subject*, verified against an independent retrain.
 
@@ -97,16 +99,15 @@ baseline under an unseen attack, not "immune".)
 
 ---
 
-## What is actually new — prior art & honest novelty scoping
+## Engineering contribution — prior art & novelty boundary
 
-We make **exactly one** novelty claim, and we state the prior art for everything
-else plainly.
-
-**The genuine contribution — and the only place we claim state-of-the-art — is
-the decision-level evidence / audit binding:** a per-decision `SafetyCertificate`
+The repository’s focal engineering contribution is the decision-level evidence /
+audit binding: a per-decision `SafetyCertificate`
 bound to a SHA-256 hash chain, an RFC-3161 timestamp anchor, a replayable
 counterfactual, and model-provenance threading, composed around a federated
-AI-RAN agent's decisions so a regulator can replay and verify them.
+AI-RAN agent's decisions so an auditor can replay and verify them. **Global
+novelty is not established**; that requires a systematic prior-art and patent
+search plus peer review.
 
 What is **not** novel here, with prior art:
 
@@ -213,40 +214,45 @@ RFC-3161 TSAs** (freetsa, DigiCert) with nonce + imprint verification.
 > updates from a curious-but-non-deviating server, not from a malicious one. It
 > also sits in tension with robustness — **secure aggregation hides exactly the
 > per-client information a robust aggregator needs to detect a poisoning client**
-> (the secure-agg ⊥ robustness tension). Reconciling the two (e.g. via verifiable
-> secret sharing) is a roadmap item (M3–4), not a solved problem here.
+> (the secure-agg ⊥ robustness tension). The verifiable two-server mode detects
+> tampering and dropped contributions but keeps a non-collusion assumption.
+> An opt-in client-side local-DP mode limits colluding servers to a noisy release,
+> at substantial measured utility cost; it does not make exact mode
+> collusion-resistant.
 
-What's novel: not the individual mechanisms, but **composing a model-independent
+The engineering contribution is **composing a model-independent
 invariant projection + at-decision-time, replayable evidence around a federated
 AI-RAN spectrum agent** — and binding each decision to a regulator-verifiable
-record. The demonstrator that exercises this end-to-end is the federated-DSA
-bridge below.
+record. This repository does **not** establish that the composition is globally
+novel; that requires a systematic prior-art search and peer review.
 
 ### Demonstrator — federated DSA on licensed / NTN spectrum
 
-To make the AI-for-RAN story concrete, a parallel work-stream is building a
-demonstrator that runs a federated DSA agent (in the spirit of the NTU/SCRIPTS
-publications) through the Horizon-RIC trust layer:
+The repository includes software demonstrators that run a federated DSA agent
+through the Horizon-RIC trust layer:
 
 - Federated DSA agent — `src/horizon_ric/spectrum/`.
 - Benchmark — `benchmarks/secure_dsa_benchmark.py`, results
   `benchmarks/results/secure_dsa.json`.
 - Committed dataset — `datasets/spectrum_dsa/` with `DATASHEET.md`.
+- External-data benchmark — DeepMIMO ASU Campus 3.5 GHz, with a pinned
+  download/transform workflow and committed aggregate results.
 - An **LEO PFD invariant** in the Shield.
 
-These artefacts are **in build**; the underlying trust mechanisms they depend on
-(Shield, robust / secure aggregation, evidence store) are already working code
-with tests. See [`docs/RESEARCH_ALIGNMENT.md`](docs/RESEARCH_ALIGNMENT.md) for the
-built-vs-roadmap breakdown.
+These are repository-level simulation/ray-tracing demonstrators, not completed
+OTA, operator or field demonstrations. See
+[`docs/TECHNICAL_REPORT.md`](docs/TECHNICAL_REPORT.md) and the executable
+[`docs/CLAIMS_EVIDENCE.json`](docs/CLAIMS_EVIDENCE.json) claim boundary.
 
 ---
 
 ## Deployment feasibility
 
-- **Drops in beside any O-RAN SMO.** Real R1 (registration), A1 (policy emit,
-  OSC / EIAP / MantaRay dialects), and O1 (NETCONF / YANG via `ncclient`)
-  adapters, behind circuit breakers, mTLS, OAuth2, and Casbin RBAC with tenant
-  domains.
+- **Implements O-RAN-facing adapters.** R1 registration, A1 policy emission
+  (OSC PMS, direct OSC A1, EIAP and MantaRay dialects), and O1 NETCONF/YANG via
+  `ncclient` sit behind circuit breakers, mTLS, OAuth2 and tenant-domain RBAC.
+  The direct OSC A1 path has a live official-simulator CI gate; deployed
+  Ericsson/Nokia and operator interoperability remain unverified.
 - **No accelerator, no lock-in.** Torch-free (numpy + pydantic); the Shield
   validates the *data* an agent emits (in production, from O-RAN E2 KPM / vendor
   telemetry), so it never needs to run the model. `pip install -e .` completes in
@@ -270,8 +276,8 @@ horizon-rapp --once                                          # boot + readiness 
 
 | Months | Milestone | Output |
 |---|---|---|
-| **M1–2** | Per-band invariant calibration — calibrate band-specific TS 38.104 emission masks and EIRP limits for FR1/FR3 target bands per deployment; land the federated-DSA demonstrator (`src/horizon_ric/spectrum/`), the committed `datasets/spectrum_dsa/` + `DATASHEET.md`, and the LEO PFD invariant; live R1/A1 against OSC NONRTRIC. | Calibrated Shield configs + DSA demonstrator + dataset |
-| **M3–4** | Strengthen FL security & benchmark — verifiable secret sharing (Feldman / Pedersen) toward malicious-server resistance; differential-privacy accountant for membership-inference / inversion; **add adaptive ALIE (Baruch) and Fang attackers to the benchmark**. | Upgraded `federated/`; adaptive-attack benchmark |
+| **M1–2** | Per-band invariant calibration and testbed preparation; the software DSA/LEO demonstrators and DeepMIMO evaluation are now present, while OTA validation remains open. | Calibrated Shield configs + testbed protocol |
+| **M3–4** | Extend the implemented verifiable two-server and local-DP modes with lifecycle composition, stronger cryptographic review and larger adaptive-attack evaluation. | Reviewed `federated/` assurance package |
 | **M5–6** | Live AI-PHY integration — run a real neural receiver / learned constellation through the Shield on real I/Q telemetry. | End-to-end demo against real I/Q |
 | **M7–8** | Loop-tiered evidence — dApp (sub-ms sampled), Near-RT (per-decision), Non-RT (full counterfactual); inference-API extraction rate-limiting. | Evidence architecture + extraction defence |
 | **M9–10** | Operator / testbed pilot — deploy alongside an SMO; 24-h soak; production PKCS#11 HSM custody; conformance dossier. | Pilot report + signed attestation packet |
@@ -282,16 +288,17 @@ horizon-rapp --once                                          # boot + readiness 
 ## Expected deliverables and impact
 
 **Deliverables**
-- A production-grade, open-source **AI-for-RAN trust & audit rApp** (this repo).
+- An open-source **AI-for-RAN trust & audit rApp demonstrator** (this repo).
 - The **decision-level evidence / audit binding** — `SafetyCertificate` + hash
-  chain + RFC-3161 anchor + counterfactual + provenance threading (the novel part).
+  chain + RFC-3161 anchor + counterfactual + provenance threading (an engineering
+  contribution; global novelty is not established).
 - The **Decision Safety Shield** invariant projection (an engineering
   composition of prior-art shielding).
 - **Robust + secure federated aggregation** baselines.
-- **Benchmarking-ready code + committed results** (`benchmarks/`), with the
-  federated-DSA demonstrator in build.
-- A **poisoned-AI-PHY-decision / DSA dataset** for reproducible evaluation
-  (`datasets/spectrum_dsa/`, in build).
+- **Benchmarking-ready code + committed results** (`benchmarks/`), including
+  the software federated-DSA and DeepMIMO ray-tracing evaluations.
+- A deterministic synthetic DSA dataset plus a non-redistributed, reproducible
+  DeepMIMO external-data transform with byte-level provenance.
 - A **threat-model → control mapping** (`docs/THREAT_MODEL.md`) as a candidate
   WG11 input.
 
@@ -311,10 +318,10 @@ horizon-rapp --once                                          # boot + readiness 
 
 | Call output | What we provide |
 |---|---|
-| **Prototypes** | The runnable rApp + R1/A1/O1 adapters + `horizon-rapp` daemon; federated-DSA demonstrator in build. |
-| **Algorithms or models** | The novel audit / certificate binding; the Shield invariant projection; Krum / median / trimmed-mean baselines; Shamir secure aggregation; RSA-PSS model-provenance. |
-| **Benchmarking-ready code** | `benchmarks/poisoning_shield_benchmark.py` + committed `results/`; `benchmarks/secure_dsa_benchmark.py` in build. |
-| **Datasets** | `datasets/spectrum_dsa/` + `DATASHEET.md` (in build); a synthetic poisoned-decision generator in the existing benchmark. |
+| **Prototypes** | The runnable rApp + R1/A1/O1 adapters + `horizon-rapp` daemon; software federated-DSA and LEO/PFD demonstrators. |
+| **Algorithms or models** | The audit / certificate binding; the Shield invariant projection; Krum / median / trimmed-mean baselines; Shamir and verifiable two-server aggregation; RSA-PSS model provenance. |
+| **Benchmarking-ready code** | Poisoning, secure DSA, DeepMIMO, privacy, secure-aggregation and local load suites with committed aggregate results. |
+| **Datasets** | Deterministic `datasets/spectrum_dsa/` plus a reproducible external DeepMIMO transform; the DeepMIMO raw archive is not redistributed. |
 | **Standardization contributions** | `docs/THREAT_MODEL.md` threat→control mapping as a **candidate input to O-RAN WG11** (not adopted). |
 
 A transparent, weighted self-assessment of these outputs — including where we
@@ -324,10 +331,10 @@ score a **Gap** — is in [`docs/EVALUATION_CRITERIA.md`](docs/EVALUATION_CRITER
 
 ## Honest status and gaps
 
-Real, not mocked: the Shield, provenance signing / verify, robust / secure
-aggregation, hash-chained evidence store, RFC-3161 TSA anchoring (real public
-TSAs), and the R1/A1/O1 wire adapters are all working code with tests. The full
-suite (490+ tests) is green in CI.
+The Shield, provenance signing/verification, federated controls, hash-chained
+evidence store and O-RAN-facing adapters are implemented and tested. Some tests
+use mocks. The direct OSC A1 workflow separately exercises the official
+O-RAN-SC simulator in CI; this is not commercial-vendor or operator validation.
 
 Known limitations (also in `docs/THREAT_MODEL.md`):
 
@@ -344,23 +351,24 @@ Known limitations (also in `docs/THREAT_MODEL.md`):
   action to legal spectrum even from a fully compromised model (0 illegal emits
   from a backdoored DSA policy), and the integrity/audit perimeter is unbroken
   (8/8 probes blocked).
-- **Secure aggregation is honest-but-curious only** (Bonawitz et al., CCS-17) and
-  is in tension with robustness (secure-agg ⊥ robustness). Verifiable secret
-  sharing for the malicious-server case is M3–4.
+- **Exact secure aggregation depends on non-collusion.** The verifiable
+  two-server mode detects tampering/drops but both servers together reconstruct
+  the submitted value. Opt-in client-side local DP changes that value into a
+  bounded noisy release, with material utility loss.
 - **Invariant coverage is enumerated, not complete.** The Shield guarantees only
   the listed, independently-measured invariants; behaviours not expressible as an
   invariant are outside the guarantee.
 - **Band numbers are calibrated, not byte-verified.** TS 38.104 EIRP / spectral-
   mask thresholds are pinned per licensed band in M1–2; we do not claim the spec
   numbers are byte-verified in this repo.
-- **No DP accountant yet; no Sigstore transparency log yet;** inference-API
-  extraction rate-limiting is roadmap (M7–8).
+- **The DP accountant is mechanism-scoped, not lifecycle-wide.** One-round
+  bounds are implemented; full composition, inference-API extraction
+  rate-limiting and a Sigstore transparency log remain open.
 - **HSM custody** ships with in-memory (RSA-2048) and SoftHSM2 (PKCS#11)
   backends; production CloudHSM / Luna wire in through the same PKCS#11 path
   (M9–10).
-- **The federated-DSA demonstrator** (`src/horizon_ric/spectrum/`,
-  `benchmarks/secure_dsa_benchmark.py`, `datasets/spectrum_dsa/`) is in build by
-  a parallel work-stream.
+- **DSA and LEO/PFD are software demonstrators.** The external DeepMIMO result is
+  ray-traced, not OTA; operator/testbed completion remains open.
 
 ## AI-RAN Alliance positioning
 

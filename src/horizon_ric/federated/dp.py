@@ -12,10 +12,11 @@ in the lineage of the NTU/DTC work that pairs unlearning with differential priva
 Privacy Preservation*, IEEE BigData 2024). The mechanism and accounting are the
 standard, peer-reviewed constructions:
 
-* **Per-client L2 clipping** to a bound ``C`` caps one client's contribution to the
-  aggregate sum — i.e. the L2 sensitivity is ``C`` (Abadi et al., CCS 2016).
-* **Gaussian mechanism**: add ``N(0, (z·C)²)`` to the summed updates; the noise
-  multiplier ``z`` trades utility for privacy.
+* **Per-client L2 clipping** to a public bound ``C`` caps every client update.
+  Under the conservative replace-one client adjacency used here, changing one
+  client can move the clipped sum by at most ``2C``.
+* **Gaussian mechanism**: add ``N(0, (z·2C)²)`` to the summed updates; the noise
+  multiplier ``z`` is defined relative to that replace-one sensitivity.
 * **Rényi-DP accounting** (Mironov, CSF 2017): the Gaussian mechanism is
   ``(α, α / (2 z²))``-RDP; RDP composes *additively* over rounds; convert to
   ``(ε, δ)``-DP via ``ε = ε_RDP(α) + log(1/δ)/(α−1)`` minimised over ``α``.
@@ -109,7 +110,13 @@ class RDPAccountant:
 
 @dataclass(frozen=True)
 class DPConfig:
-    """DP-FedAvg knobs: clip bound ``C`` and noise multiplier ``z`` (= σ / C)."""
+    """DP-FedAvg knobs for conservative replace-one client adjacency.
+
+    ``clip_norm`` must be selected independently of the private cohort (for
+    example from a public calibration set or a pre-registered deployment
+    policy). The Gaussian noise standard deviation on the *sum* is
+    ``noise_multiplier * 2 * clip_norm``.
+    """
 
     clip_norm: float = 1.0
     noise_multiplier: float = 1.0
@@ -125,16 +132,19 @@ def dp_fedavg(
     """One DP-FedAvg aggregation: clip each client update, sum, add Gaussian noise,
     average. If ``accountant`` is given, charge one Gaussian round to it.
 
-    Sensitivity of the *sum* to one client is ``clip_norm`` (each clipped update
-    has L2 ≤ C), so noise ``N(0, (z·C)²)`` per coordinate gives the ``(α, α/2z²)``
-    -RDP step the accountant records.
+    Under replace-one client adjacency, the sensitivity of the *sum* is at most
+    ``2 * clip_norm``: one clipped vector of norm at most C can be replaced by
+    another clipped vector of norm at most C. Noise
+    ``N(0, (z·2C)²)`` per coordinate therefore gives the
+    ``(α, α/2z²)``-RDP step the accountant records.
     """
     flats = [l2_clip(np.asarray(u, dtype=np.float64).ravel(), cfg.clip_norm) for u in updates]
     n = len(flats)
     if n == 0:
         raise ValueError("dp_fedavg needs at least one update")
     summed = np.sum(flats, axis=0)
-    sigma = cfg.noise_multiplier * cfg.clip_norm
+    replace_one_sensitivity = 2.0 * cfg.clip_norm
+    sigma = cfg.noise_multiplier * replace_one_sensitivity
     noise = rng.normal(0.0, sigma, size=summed.shape)
     if accountant is not None:
         accountant.step(cfg.noise_multiplier)

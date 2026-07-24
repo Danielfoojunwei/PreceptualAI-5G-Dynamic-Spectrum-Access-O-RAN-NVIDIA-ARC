@@ -1,0 +1,47 @@
+{
+  "benchmark": "single_process_shield_decision_path",
+  "environment": {
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "implementation": "CPython",
+    "logical_cpu_count": 9,
+    "platform": "Linux-6.12.13-x86_64-with-glibc2.39",
+    "python": "3.12.13"
+  },
+  "generated_at_utc": "2026-07-24T22:54:10.599553+00:00",
+  "parameters": {
+    "invariant_ids": [
+      "numeric_domain_sanity",
+      "spectral_mask_ts38104",
+      "max_eirp",
+      "neural_rx_envelope",
+      "constellation_legality"
+    ],
+    "iterations": 50000,
+    "traffic_mix": "deterministic valid and projectable terrestrial policy proposals",
+    "warmup_iterations": 1000
+  },
+  "results": {
+    "blocked_decisions": 0,
+    "decisions_per_second": 38932.350308722096,
+    "elapsed_seconds": 1.284279002,
+    "latency_microseconds": {
+      "maximum": 2930.086,
+      "mean": 25.456810320000002,
+      "p50": 28.342,
+      "p95": 29.875,
+      "p99": 40.399
+    },
+    "max_rss_kib": 79468,
+    "projected_decisions": 33334
+  },
+  "schema_version": "1.0",
+  "scope": {
+    "does_not_prove": [
+      "carrier-scale latency, throughput, availability or scalability",
+      "performance with SMO/RIC/radio/network I/O",
+      "multi-node concurrency, failover or 24-hour stability",
+      "performance on an operator production hardware target"
+    ],
+    "proves": "Measured local runtime of the in-process Shield and certificate construction for the stated deterministic traffic mix."
+  }
+}
