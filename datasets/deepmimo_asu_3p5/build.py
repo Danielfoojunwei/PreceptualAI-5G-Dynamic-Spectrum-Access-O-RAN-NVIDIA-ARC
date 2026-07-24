@@ -107,28 +107,42 @@ def _write_features(
             f"expected deepmimo=={DEEPMIMO_VERSION}, found {package_version}"
         )
 
-    # First load only enough data to choose receivers that have at least one
-    # ray-traced propagation path.
-    census = dm.load(
-        str(scenario_dir),
-        matrices=["rx_pos", "power"],
-        max_paths=10,
-    )
-    candidate_count = int(census.power.shape[0])
-    valid_indices = np.flatnonzero(np.any(np.isfinite(census.power), axis=1))
-    if sample_count > len(valid_indices):
-        raise ValueError(
-            f"requested {sample_count} rows but only {len(valid_indices)} receivers have paths"
+    # DeepMIMO 4.0 accepts an absolute scenario path for its data matrices but
+    # still resolves params.json through its configured scenarios directory.
+    # Point both lookups at the same downloaded tree, then restore global state.
+    previous_scenarios_folder = dm.config.get("scenarios_folder")
+    dm.config.set("scenarios_folder", str(scenario_dir.parent))
+    try:
+        # First load only enough data to choose receivers that have at least one
+        # ray-traced propagation path.
+        census = dm.load(
+            str(scenario_dir),
+            matrices=["rx_pos", "power"],
+            max_paths=10,
         )
+        candidate_count = int(census.power.shape[0])
+        valid_indices = np.flatnonzero(np.any(np.isfinite(census.power), axis=1))
+        if sample_count > len(valid_indices):
+            raise ValueError(
+                f"requested {sample_count} rows but only "
+                f"{len(valid_indices)} receivers have paths"
+            )
 
-    sample_offsets = np.linspace(0, len(valid_indices) - 1, sample_count, dtype=np.int64)
-    receiver_indices = valid_indices[sample_offsets]
-    dataset = dm.load(
-        str(scenario_dir),
-        rx_sets={0: receiver_indices},
-        matrices=MATRICES,
-        max_paths=10,
-    )
+        sample_offsets = np.linspace(
+            0,
+            len(valid_indices) - 1,
+            sample_count,
+            dtype=np.int64,
+        )
+        receiver_indices = valid_indices[sample_offsets]
+        dataset = dm.load(
+            str(scenario_dir),
+            rx_sets={0: receiver_indices},
+            matrices=MATRICES,
+            max_paths=10,
+        )
+    finally:
+        dm.config.set("scenarios_folder", previous_scenarios_folder)
 
     params = dm.ChannelParameters()
     params.bs_antenna.shape = [1, 1]
