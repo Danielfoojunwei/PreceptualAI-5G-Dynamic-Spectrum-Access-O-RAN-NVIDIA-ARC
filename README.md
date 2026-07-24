@@ -297,8 +297,9 @@ horizon-rapp --once                                          # boot + readiness 
 - **Robust + secure federated aggregation** baselines.
 - **Benchmarking-ready code + committed results** (`benchmarks/`), including
   the software federated-DSA and DeepMIMO ray-tracing evaluations.
-- A deterministic synthetic DSA dataset plus a non-redistributed, reproducible
-  DeepMIMO external-data transform with byte-level provenance.
+- A deterministic synthetic DSA dataset plus a non-redistributed DeepMIMO
+  external-data transform with byte-level source provenance and tolerance-checked
+  cross-host reproduction.
 - A **threat-model → control mapping** (`docs/THREAT_MODEL.md`) as a candidate
   WG11 input.
 

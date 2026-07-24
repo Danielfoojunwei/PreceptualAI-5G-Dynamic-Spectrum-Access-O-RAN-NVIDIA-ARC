@@ -215,6 +215,14 @@ from 85,157 receivers with finite paths, and this transform: SISO isotropic,
 
 `ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af`
 
+This derived hash identifies the exact JSONL bytes generated on the report
+host. DeepMIMO channel synthesis showed a 0.000008 dB cross-runner difference
+in CI, so the report does not claim cross-hardware byte identity for derived
+floating-point features. The CI verifier requires exact archive/tree hashes,
+transform, structure, counts and safety outcomes; binds each benchmark to its
+own derived-feature hash; and permits at most 0.0001 dB absolute drift in JSON
+floating outputs.
+
 Dataset lineage hashes each file’s relative path, size and byte SHA-256. A test
 replaces a file with different bytes of the same size and requires the dataset
 hash to change, closing the old name-and-size-only weakness.
@@ -463,8 +471,11 @@ python3 -m venv .venv
 .venv/bin/python benchmarks/deepmimo_dsa_benchmark.py
 ```
 
-CI regenerates both the manifest and aggregate result in temporary storage and
-requires byte-for-byte equality with the committed JSON.
+CI regenerates both the manifest and aggregate result in temporary storage.
+`scripts/verify_deepmimo_reproduction.py` requires exact provenance, structure,
+configuration, counts and safety outcomes, and compares floating outputs with
+the declared 0.0001 dB cross-host tolerance. Exact generated hashes and
+aggregate JSON are retained as workflow artifacts.
 
 ### 13.3 Privacy, collusion and local load
 
@@ -498,15 +509,6 @@ contain:
 3. operator/testbed topology, hardware, radio configuration and calibration;
 4. actual OSC/Ericsson/Nokia versions and endpoint configuration;
 5. raw timestamped logs, captures, workload generators and result hashes;
-6. hazard analysis linking each safety requirement to an invariant and test;
-7. privacy composition across the full training/release lifecycle;
-8. capacity, saturation, endurance, failover and recovery results;
-9. jurisdiction-specific standards/legal assessment; and
-10. signed conclusions with explicit exceptions.
-
-Until such a package exists, the strongest accurate description is:
-
-> Horizon-RIC is a tested repository-level runtime-assurance and evidence
-> demonstrator with a reproducible public ray-tracing benchmark and an
-> official open-source OSC simulator gate. It is not yet a field-validated,
-> certified, carrier-grade or independently validated RIC product.
+6. linked hazard analysis and full-lifecycle privacy composition;
+7. capacity, endurance, failover and recovery results; and
+8. jurisdiction-specific legal assessment and signed exceptions.

@@ -68,7 +68,7 @@ def render(output: Path) -> None:
             "--toc-depth=2",
             "--metadata=lang:en",
             "--variable=papersize:a4",
-            "--variable=geometry:margin=18mm",
+            "--variable=geometry:margin=17mm",
             "--variable=fontsize:9pt",
             "--variable=mainfont:DejaVu Sans",
             "--variable=sansfont:DejaVu Sans",

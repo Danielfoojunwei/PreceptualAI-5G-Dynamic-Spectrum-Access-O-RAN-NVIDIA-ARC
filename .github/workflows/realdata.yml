@@ -8,6 +8,7 @@ on:
       - "benchmarks/deepmimo_dsa_benchmark.py"
       - "benchmarks/results/deepmimo_dsa.json"
       - "src/horizon_ric/data/lineage.py"
+      - "scripts/verify_deepmimo_reproduction.py"
       - ".github/workflows/realdata.yml"
       - "pyproject.toml"
 
@@ -40,5 +41,16 @@ jobs:
             --out "$RUNNER_TEMP/deepmimo_dsa.json"
       - name: Verify committed evidence
         run: |
-          diff -u datasets/deepmimo_asu_3p5/manifest.json "$RUNNER_TEMP/manifest.json"
-          diff -u benchmarks/results/deepmimo_dsa.json "$RUNNER_TEMP/deepmimo_dsa.json"
+          python scripts/verify_deepmimo_reproduction.py \
+            --expected-manifest datasets/deepmimo_asu_3p5/manifest.json \
+            --actual-manifest "$RUNNER_TEMP/manifest.json" \
+            --expected-result benchmarks/results/deepmimo_dsa.json \
+            --actual-result "$RUNNER_TEMP/deepmimo_dsa.json" \
+            --absolute-float-tolerance 0.0001
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deepmimo-reproduction-evidence
+          path: |
+            ${{ runner.temp }}/manifest.json
+            ${{ runner.temp }}/deepmimo_dsa.json

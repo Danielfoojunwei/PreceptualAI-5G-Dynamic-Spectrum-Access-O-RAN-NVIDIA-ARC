@@ -16,6 +16,7 @@ def test_deepmimo_manifest_has_byte_level_provenance():
     assert len(manifest["source_archive_sha256"]) == 64
     assert len(manifest["source_tree_sha256"]) == 64
     assert len(manifest["features_sha256"]) == 64
+    assert "0.0001 dB absolute tolerance" in manifest["features_sha256_scope"]
     assert manifest["sampled_receivers"] >= 4096
     assert manifest["features_committed"] is False
     assert "not over-the-air" in manifest["data_kind"]

@@ -21,6 +21,14 @@ archive SHA-256, extracted scenario tree SHA-256, transformation, row count, and
 derived feature SHA-256. The hash of a dataset tree includes every file's bytes,
 not only names and sizes.
 
+The derived feature hash records the exact JSONL bytes produced on the report
+host. DeepMIMO's floating-point channel synthesis can differ by a few
+millionths of a dB across CPUs, so CI does not pretend those bytes are
+cross-platform identical. It requires exact source/tree hashes, transform,
+structure, counts and safety outcomes, requires each result to bind its own
+feature hash, and compares floating outputs with a 0.0001 dB absolute
+tolerance.
+
 The downloaded scenario did not contain a separate dataset license file.
 Consequently this repository does not redistribute the raw archive or row-level
 derived features. CI downloads and regenerates them from the provider. Only

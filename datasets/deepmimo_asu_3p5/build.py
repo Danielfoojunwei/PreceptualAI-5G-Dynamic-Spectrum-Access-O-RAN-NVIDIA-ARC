@@ -208,6 +208,11 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         "source_archive_sha256": _sha256_file(source_archive),
         "source_tree_sha256": compute_dataset_sha256(scenario_dir),
         "features_sha256": compute_dataset_sha256(args.features),
+        "features_sha256_scope": (
+            "Exact JSONL bytes for this build. Cross-host CI requires the same "
+            "source hashes, transform, structure and safety outcomes, and compares "
+            "floating outputs with 0.0001 dB absolute tolerance."
+        ),
         "features_committed": False,
         "licensing": {
             "deepmimo_tool": "Apache-2.0",

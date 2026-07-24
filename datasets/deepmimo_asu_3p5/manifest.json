@@ -7,6 +7,7 @@
   "deepmimo_version": "4.0.0",
   "features_committed": false,
   "features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
+  "features_sha256_scope": "Exact JSONL bytes for this build. Cross-host CI requires the same source hashes, transform, structure and safety outcomes, and compares floating outputs with 0.0001 dB absolute tolerance.",
   "licensing": {
     "deepmimo_tool": "Apache-2.0",
     "scenario_archive": "No separate license file was present in the downloaded scenario archive; raw and row-level derived data are therefore not redistributed here."

@@ -30,9 +30,10 @@
         "datasets/deepmimo_asu_3p5/manifest.json",
         "datasets/deepmimo_asu_3p5/build.py",
         "benchmarks/results/deepmimo_dsa.json",
+        "scripts/verify_deepmimo_reproduction.py",
         ".github/workflows/realdata.yml"
       ],
-      "conditions": "DeepMIMO 4.0.0, source and tree hashes in the manifest, 4,096 sampled receivers, stated OFDM transform.",
+      "conditions": "DeepMIMO 4.0.0, exact source and tree hashes, 4,096 sampled receivers, stated OFDM transform, exact counts/safety outcomes and 0.0001 dB cross-host tolerance for floating outputs.",
       "excludes": "Over-the-air capture, operator traffic, vendor interoperability and RF conformance."
     },
     {
