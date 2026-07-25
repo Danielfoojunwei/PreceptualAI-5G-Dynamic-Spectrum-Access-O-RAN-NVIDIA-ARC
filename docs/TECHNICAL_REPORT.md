@@ -1,514 +1,567 @@
 ---
-title: Horizon-RIC Technical Evidence Report
-subtitle: Repository assurance boundary and reproducible results
+title: Horizon-RIC Technical Validation and Benchmarking Dossier
+subtitle: Test setup, proof objectives, measured results and assurance boundaries
 date: 25 July 2026
 ---
 
-**Repository:** `Danielfoojunwei/PreceptualAI-Horizon-RIC`\
-**Report version:** 2.0\
-**Report date:** 25 July 2026\
-**Status:** repository technical report; not an independent laboratory report\
-**Machine-readable claim register:** [`CLAIMS_EVIDENCE.json`](CLAIMS_EVIDENCE.json)
+# Executive proof statement
 
-> This report distinguishes executable repository evidence from external
-> validation. “Verified” below always means verified under the stated software,
-> data and test conditions. It does not mean certified, field-proven,
-> carrier-grade or independently validated.
+Horizon-RIC is a deterministic runtime-assurance layer placed after an AI
+decision and before a radio-facing policy is emitted:
 
----
+> **AI proposes. The Shield decides. Every emitted action carries replayable
+> evidence.**
 
-## 1. Executive answer: what is proven
+The measured evidence supports a specific proposition:
 
-The repository establishes the following limited propositions:
+> Under the stated software, data and simulator conditions, Horizon-RIC
+> prevented every independently graded unsafe emission in the poisoned
+> benchmark, preserved legal operation across 16,384 external-data DSA
+> decisions, produced replayable evidence, and completed an official
+> open-source A1 policy lifecycle with local p99 decision-path latency of
+> 40.399 microseconds.
 
-1. **Programmed Shield invariants hold over the exercised inputs.** For a
-   terrestrial action, the Shield either fails closed or returns an action that
-   satisfies every invariant in its configured chain. A Hypothesis test explores
-   500 randomized finite actions, while separate generated cases inject NaN,
-   infinities, strings and nulls. The new numeric-domain invariant blocks
-   malformed or non-physical values before ordinary comparisons can mishandle
-   them.
-2. **A reproducible external-data DSA experiment exists.** A pinned DeepMIMO
-   4.0.0 pipeline downloads the public `asu_campus_3p5` ray-tracing scenario,
-   hashes the archive and every extracted file byte, generates channel features
-   for 4,096 receivers, and reproduces the committed aggregate results in CI.
-3. **The reported differential-privacy bound is correctly scoped to one
-   mechanism invocation.** The Gaussian mechanism uses a public clipping bound
-   $C=12$, conservative replace-one client sensitivity $2C=24$, and a
-   Rényi-DP accountant. It reports one-round $(\varepsilon,\delta)$ values,
-   not an end-to-end privacy claim.
-4. **The membership-inference result is now a meaningful diagnostic, but not a
-   proof.** Each independent seed uses 64 members and 64 non-members; the report
-   aggregates 10 seeds and gives seed-level bootstrap intervals. The earlier
-   eight-versus-eight result and its `0.469` point estimate are retired.
-5. **Two-server collusion has an explicit mitigation mode.** Exact additive
-   sharing still reveals raw updates if both servers collude. In the opt-in
-   local-DP mode, each client clips and Gaussian-noises its update before
-   sharing, so colluding servers reconstruct the stated DP release rather than
-   the raw update. The large measured utility distortion is reported.
-6. **An actual open-source OSC interoperability gate exists.** A GitHub Actions
-   job builds the official O-RAN-SC A1 simulator from a pinned source commit and
-   exercises policy-type registration, policy create, list, status and delete
-   over OSC 2.1.0. This proposition is established for a commit only when that
-   live CI job passes.
-7. **A measured local control-path baseline exists.** On the recorded host, the
-   in-process Shield and certificate path processed 50,000 decisions with zero
-   blocked post-projection decisions and a measured p99 of 40.399 μs. This is a
-   single-process microbenchmark, not carrier-scale evidence.
-8. **The DSA and LEO/PFD work streams exist as executable software
-   demonstrators.** The DSA path now includes externally sourced ray-tracing
-   data. The LEO path includes a PFD invariant and tests. Neither is a completed
-   over-the-air or operator demonstrator.
+“Verified” in this report always means verified under the declared input
+domain, dependency versions, dataset, threat model and execution environment.
+It does not mean certified, field-proven, carrier-grade or independently
+validated.
 
-These propositions are supported by source, tests, committed JSON results and
-reproduction workflows. They are narrower than the product-level claims that
-would require an operator, vendor, accredited laboratory or certification body.
+## Measured anchors
 
-### Evidence classes
-
-| Label | Meaning |
-|---|---|
-| Verified—repository | Executable test or committed benchmark under declared conditions |
-| Verified—external dataset | Public source is pinned and hash-checked; transformation and aggregate output reproduce |
-| CI external simulator | A real external simulator is exercised; valid only if the job passes for the reviewed commit |
-| Repository demonstrator | Working software exists; field completion does not |
-| Not established | Required evidence is absent |
-
----
-
-## 2. What is not proven
-
-The following claims remain **not established**:
-
-- **Live O-RAN operation, real radios or operator traffic.** No operator/testbed
-  run or radio capture is present. Closing this requires a named testbed,
-  topology, calibrated equipment, traffic description and raw signed logs.
-- **Interoperability with deployed OSC, Ericsson or Nokia platforms.** The new
-  live test covers the official OSC A1 simulator only; Ericsson/Nokia tests use
-  `httpx.MockTransport`. Closing this requires identified product versions,
-  deployment records and end-to-end results.
-- **Coverage of every unsafe RF behaviour.** Only enumerated and configured
-  invariants are guaranteed. A complete, independently reviewed hazard analysis,
-  calibration and traceability are absent.
-- **Formal O-RAN, 3GPP, ITU-R, GDPR, NIS2 or telecom
-  compliance/certification.** Standards references and engineering controls
-  are not certification. Jurisdiction-specific legal review and competent
-  conformity assessment are required.
-- **Security against unknown attacks or arbitrary compromised components.**
-  Tests exercise named threat models. A broader red-team program, component
-  compromise analysis and continuing vulnerability evidence are required.
-- **Exact-mode secrecy when both secure-aggregation servers collude.** Two
-  shares reconstruct the exact submitted update. Use the local-DP mode or a
-  different cryptographic trust model.
-- **Carrier-scale latency, throughput, availability or scalability.** The
-  committed timing result is one local process without network or platform I/O.
-  Representative multi-node load, endurance, capacity and failover tests are
-  required.
-- **Global novelty of the evidence-binding design.** No systematic prior-art
-  search or peer review was performed.
-- **Independent external validation.** No reviewer identity, credentials,
-  signed raw logs or external laboratory report is included.
-- **Completed field DSA or LEO demonstrator.** Current demonstrations are
-  software/ray-tracing based. OTA/testbed acceptance evidence is absent.
-
-The report therefore makes no claim of certification, production readiness,
-commercial-vendor interoperability, global novelty or independent review.
-
----
-
-## 3. System and assurance boundary
-
-Horizon-RIC implements an “AI proposes, Shield disposes” control pattern. A
-possibly learned policy proposes an action; a deterministic Shield checks and
-projects it; a safety certificate records the outcome; an adapter can then emit
-the accepted policy.
-
-![Horizon-RIC deployment topology](diagrams/topology.svg)
-
-![Horizon-RIC internal assurance path](diagrams/architecture.svg)
-
-The assurance boundary is important:
-
-- The Shield reasons about the fields and context it receives.
-- It enforces only the invariants present in the configured chain.
-- Correct calibration of bands, power limits, PFD limits and independent
-  telemetry remains a deployment responsibility.
-- Tests and simulations do not establish what happens after a real RIC, radio
-  unit or operator network accepts a policy.
-
----
-
-## 4. Decision Safety Shield
-
-### 4.1 Enforced mechanism
-
-`src/horizon_ric/shield/shield.py` applies an ordered check–project–recheck loop.
-If a projection cannot produce a state satisfying every configured invariant
-within the bounded number of passes, the action is marked `emit_blocked`.
-
-The terrestrial chain now begins with `NumericSanityInvariant`, followed by the
-configured spectrum, power and AI-PHY controls. The numeric invariant requires:
-
-- finite positive frequency and bandwidth;
-- finite transmit power and antenna gain;
-- bounded probabilities/confidences when supplied;
-- non-negative PAPR and a positive integer constellation order; and
-- a finite positive slant range for NTN actions.
-
-Malformed evaluation or projection raises no control-path exception: the Shield
-constructs a failed check, marks the action blocked and returns a certificate
-with `safe=false`.
-
-### 4.2 Executable property
-
-`tests/test_shield_properties.py` expresses the actual guarantee:
-
-> For every generated action in the exercised input domain, if the Shield allows
-> emission, every programmed invariant in the returned certificate is satisfied.
-
-The test independently checks occupied bandwidth, maximum EIRP, legal
-constellation order and PAPR. It also generates non-finite and malformed fields
-and requires fail-closed behavior.
-
-This is strong evidence for the implementation property. It is not evidence that
-the invariant list is a complete model of RF safety or that deployment constants
-match a particular licence.
-
-### 4.3 Existing adversarial result
-
-The committed poisoned-stream benchmark still reports 1,983 out-of-spec and 489
-in-spec-but-harmful unguarded decisions, versus zero after the configured Shield
-over 10,000 generated decisions. That result demonstrates the benchmarked
-invariants and oracle; it does not generalize to all RF hazards.
-
----
-
-## 5. External DeepMIMO dataset and DSA result
-
-### 5.1 Data source and dependency
-
-The new pipeline uses [DeepMIMO v4.0.0](https://github.com/DeepMIMO/DeepMIMO/releases/tag/v4.0.0)
-and its published [ASU Campus 3.5 GHz scenario workflow](https://deepmimo.net/docs/tutorials/1_getting_started.html).
-DeepMIMO supplies site-specific Wireless InSite ray-tracing data. It is not an
-OTA capture.
-
-The dependency is pinned in the `realdata` extra:
-
-```toml
-deepmimo==4.0.0
-```
-
-The generated manifest records scenario `asu_campus_3p5`, DeepMIMO release
-commit `cbe3a3eae426d0d0a2bd1fdf95ce011c536a3dd9`, a sample of 4,096 receivers
-from 85,157 receivers with finite paths, and this transform: SISO isotropic,
-3.5 GHz, 100 MHz, 1,024 total / 60 selected OFDM subcarriers, six subbands.
-
-**Downloaded archive SHA-256**
-
-`80e4a4983847023158ed61a5a489025d72f4edcdac89edf4ee1323699e1b7da3`
-
-**Extracted tree SHA-256**
-
-`42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7`
-
-**Derived feature SHA-256**
-
-`ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af`
-
-This derived hash identifies the exact JSONL bytes generated on the report
-host. DeepMIMO channel synthesis showed a 0.000008 dB cross-runner difference
-in CI, so the report does not claim cross-hardware byte identity for derived
-floating-point features. The CI verifier requires exact archive/tree hashes,
-transform, structure, counts and safety outcomes; binds each benchmark to its
-own derived-feature hash; and permits at most 0.0001 dB absolute drift in JSON
-floating outputs.
-
-Dataset lineage hashes each file’s relative path, size and byte SHA-256. A test
-replaces a file with different bytes of the same size and requires the dataset
-hash to change, closing the old name-and-size-only weakness.
-
-The downloaded scenario archive did not contain a separate dataset licence
-file. Raw data and row-level derived features are therefore not redistributed.
-CI downloads them from the provider; only aggregate results and provenance
-hashes are committed.
-
-### 5.2 Measured DSA result
-
-The benchmark compares four deterministic subband-selection strategies:
-
-| Strategy | Decisions | Mean regret | p95 regret | Illegal post-Shield emits |
-|---|---:|---:|---:|---:|
-| Best subband | 4,096 | 0.000 dB | 0.000 dB | 0 |
-| Fixed subband 0 | 4,096 | 1.730 dB | 5.733 dB | 0 |
-| Seeded random | 4,096 | 1.726 dB | 5.485 dB | 0 |
-| Worst subband | 4,096 | 3.702 dB | 8.835 dB | 0 |
-
-The proposed power deliberately exceeds the configured EIRP ceiling, so all
-16,384 strategy decisions are projected by the Shield. This tests the DSA
-selection and configured power invariant on external ray-traced channels. It
-does not test interference dynamics, a real scheduler, radios or operator
-traffic.
-
----
-
-## 6. Differential privacy and membership inference
-
-### 6.1 Formal mechanism statement
-
-`src/horizon_ric/federated/dp.py` clips each participating client vector to a
-public L2 bound $C$ and calibrates the Gaussian standard deviation to
-
-$$
-\sigma = z \cdot 2C
-$$
-
-for replace-one client adjacency. A Rényi-DP accountant, following
-[Mironov (CSF 2017)](https://doi.org/10.1109/CSF.2017.11), converts the
-one-step RDP values to $(\varepsilon,\delta)$.
-
-The formal statement is limited to the declared one-round Gaussian mechanism,
-public clipping rule, adjacency model and accounting parameters. Composition
-must include every later release before any lifecycle privacy claim can be made.
-
-### 6.2 Corrected experiment
-
-The previous report’s eight-member/eight-non-member AUC was underpowered and is
-not retained as evidence. The replacement uses:
-
-- 64 members and 64 non-members per cohort;
-- 10 independently seeded cohorts;
-- disjoint seed bands for members and non-members;
-- 10,000 seed-level bootstrap resamples; and
-- a fixed, public $C=12$, independent of the sampled cohorts.
-
-| Noise multiplier $z$ | One-round ε at δ=1e-5 | MIA AUC mean | Seed-level 95% CI | Throughput/slot |
-|---:|---:|---:|---:|---:|
-| 0 | no guarantee | 0.5974 | [0.5481, 0.6420] | 1.2318 |
-| 1 | 5.3026 | 0.5507 | [0.5121, 0.5875] | 1.1000 |
-| 4 | 1.2675 | 0.5263 | [0.5005, 0.5513] | 0.4756 |
-| 8 | 0.6214 | 0.5207 | [0.4696, 0.5647] | 0.1885 |
-
-The z=8 interval crosses chance. That means this particular proximity attacker
-did not reliably distinguish these cohorts; it does **not** prove privacy.
-Privacy evidence comes from the stated DP mechanism and accountant, while the
-AUC is an empirical attack diagnostic.
-
----
-
-## 7. Secure aggregation and collusion
-
-Exact mode uses two-of-two additive shares and public Feldman commitments over
-the [RFC 3526 group-14 modulus](https://www.rfc-editor.org/rfc/rfc3526).
-The committed test suite reports:
-
-- all honest fixed-point aggregates verified;
-- tamper detection rate 1.0 over 200 trials; and
-- dropped-share detection rate 1.0 over 200 trials.
-
-Those results establish the tested integrity behavior. Exact-mode privacy still
-depends on non-collusion: together, the two servers reconstruct every submitted
-value.
-
-`split_private_contribution` adds an explicit alternative:
-
-1. clip locally to public $C$;
-2. add client-side Gaussian noise using replace-one sensitivity $2C$;
-3. secret-share and commit to the noisy release; and
-4. publish the local-DP metadata with the contribution.
-
-In the committed 16-client, eight-dimensional probe with $C=12$, $z=4$ and
-$\delta=10^{-5}$, the one-release bound is $\varepsilon=1.2675$. The mean L2
-distance from a raw update to the colluding view is 258.2725, and mean aggregate
-error is 68.8738. The result makes the trade-off explicit: colluding servers see
-a private release, but utility distortion is material.
-
-This does not cover broken client randomness, compromised clients, unaccounted
-composition, side channels or unknown attacks.
-
----
-
-## 8. O-RAN interoperability evidence
-
-### 8.1 Official OSC simulator
-
-The adapter now separates two interfaces that were previously easy to conflate:
-
-- `osc`: the OSC Non-RT RIC Policy Management Service northbound API; and
-- `osc_a1`: the OSC 2.1.0 nested A1 interface implemented by the official
-  Near-RT RIC simulator.
-
-The live workflow fetches
-[o-ran-sc/sim-a1-interface at `be2943f5…`](https://github.com/o-ran-sc/sim-a1-interface/commit/be2943f57211f62095dc5434099e331df237aafb),
-builds its container, starts `A1_VERSION=OSC_2.1.0`, waits on
-`/a1-p/healthcheck`, and uses Horizon-RIC to:
-
-1. register all four policy types;
-2. create a QoS policy;
-3. confirm it appears in the list;
-4. retrieve an enforcement-status body;
-5. delete the policy; and
-6. confirm it no longer appears.
-
-The upstream Dockerfile is first verified against its expected SHA-256. The CI
-recipe then relaxes only its obsolete exact Alpine `python3` package-revision
-pin; application source and the upstream Flask/Connexion pins are unchanged.
-
-The O-RAN-SC repository describes the component as a simulator. Accordingly,
-even a passing CI result is evidence of open-source simulator REST
-interoperability—not a live OSC platform, a real RIC, conformance or production
-readiness.
-
-### 8.2 Ericsson and Nokia
-
-The EIAP and MantaRay suites replace the HTTP transport with
-`httpx.MockTransport`. They verify paths and payload shapes in repository code;
-they do not communicate with deployed Ericsson or Nokia systems. This report
-does not call them vendor interoperability tests.
-
----
-
-## 9. Local performance evidence
-
-`benchmarks/control_plane_load_suite.py` measures the in-process Shield and
-certificate-construction path on deterministic valid/projectable inputs:
-
-| Field | Result |
+| Measure | Result |
 |---|---:|
-| Timed decisions | 50,000 |
-| Warm-up decisions | 1,000 |
-| Projected decisions | 33,334 |
-| Blocked decisions after projection | 0 |
-| Mean latency | 25.457 μs |
-| p50 / p95 / p99 | 28.342 / 29.875 / 40.399 μs |
-| Throughput | 38,932 decisions/s |
-| Recorded host | CPython 3.12.13, AMD EPYC 9V74, Linux x86-64 |
+| Poisoned decision stream | 10,000 decisions; 1,983 unsafe emissions reduced to 0 |
+| In-spec but harmful decisions | 489 reduced to 0 |
+| External DeepMIMO DSA | 16,384 decisions; 0 illegal post-Shield emissions |
+| Best-subband gain | +1.730053 dB over fixed; +1.726286 dB over seeded random |
+| Local decision path | p99 40.399 microseconds; 38,932 decisions/s |
+| Named integrity attacks | 8/8 detected or blocked |
+| AI-PHY PGD fallback | TBLER 0.7625 reduced to 0.0650 |
+| Exact subject erasure | L2 distance to retrain 0.0 |
 
-The benchmark excludes SMO, RIC, radio, network, database and multi-node I/O.
-It includes no failover, endurance or availability measurement. The maximum
-sample of 2.930 ms also shows why a distribution matters more than only a mean.
-No carrier-grade conclusion follows from this result.
+## Proof-objective map
 
----
+| ID | What must be proven | Current result | Evidence class |
+|---|---|---|---|
+| P1 | Every emitted action satisfies every programmed invariant | Verified in the generated property domains | Property/unit test |
+| P2 | Poisoned proposals cannot produce unsafe emissions under the configured oracle | 1,983 to 0 illegal; 489 to 0 harmful | Adversarial benchmark |
+| P3 | DSA utility and safety reproduce on outside channel data | 16,384 decisions; 0 illegal; +1.730 dB vs fixed | External dataset |
+| P4 | The local gate has measurable overhead | p99 40.399 microseconds; 38,932 decisions/s | Microbenchmark |
+| P5 | Model and evidence tamper are detected | 8/8 named attacks detected or blocked | Integration/adversarial test |
+| P6 | Decision legality remains independent of poisoned policy quality | 0 illegal emissions in the audited DSA attacks | Adversarial simulation |
+| P7 | One Gaussian release has a reproducible privacy bound | One-round accountant verified; MIA remains diagnostic | Statistical simulation |
+| P8 | Secure aggregation is correct and tamper-evident under its trust model | All honest cells verify; tamper/drop detection 1.0 | Functional/crypto benchmark |
+| P9 | AI-PHY fallback limits neural degradation to a certified baseline | PGD TBLER 0.7625 to 0.0650 | Receiver simulation |
+| P10 | Attributed removal can be certified against retraining | Exact recompute distance 0.0 | Retraining comparison |
+| P11 | The adapter completes a real A1 lifecycle with an outside implementation | Register/create/list/status/delete passed | External simulator |
+| P12 | The gate can enforce an NTN PFD ceiling | Projection reaches or stays below the configured ceiling | Software demonstrator |
 
-## 10. Evidence, lineage and provenance
+# 1. System breakdown
 
-The evidence store canonicalizes each `DecisionRecord` and computes
+The system follows one linear action path:
 
-$$
-H_i = \operatorname{SHA256}(H_{i-1} \parallel \operatorname{canonicalJSON}(R_i)).
-$$
+1. **Observe.** Receive the context needed by the configured controls: band,
+   bandwidth, transmit power, antenna gain, receiver telemetry, confidence and,
+   for NTN actions, slant range and PFD parameters.
+2. **Propose.** Allow a learned or conventional policy to suggest an action.
+   The policy remains responsible for quality and does not self-certify
+   legality.
+3. **Certify.** Evaluate numeric, spectral, EIRP, receiver-envelope,
+   constellation, lawful-intercept and NTN controls.
+4. **Dispose.** Pass a compliant action, project a repairable action, route to
+   a certified fallback, or block if safety cannot be recovered.
+5. **Emit.** Deliver only the disposed policy through the configured interface.
+6. **Record.** Bind the proposal, checks, correction, selected action, model
+   identity and context into a certificate and tenant-scoped evidence chain.
 
-Per-tenant chains and serialized append operations prevent cross-tenant
-verification coupling and the reproduced concurrent-append race. RFC-3161
-support can externally timestamp a chain head, addressing the limitation that a
-chain author could otherwise rewrite all records and hashes.
+Robust aggregation, differential privacy, verifiable secure aggregation and
+certified erasure govern how a future policy is built. They never bypass the
+decision gate.
 
-Model provenance signs the weights hash, manifest hash and trainer identity and
-checks the embedded key against a trusted key. Dataset provenance now hashes
-content bytes as well as paths and sizes.
+## Programmed invariant chain
 
-These controls support integrity and traceability under their key-management,
-timestamp-authority and storage assumptions. They do not themselves establish
-legal admissibility, retention compliance, non-repudiation in every
-jurisdiction, or external validation.
+| Control | Programmed proposition | Disposition |
+|---|---|---|
+| Numeric domain | Values are finite and physical; required bounds and NTN range are valid | Fail closed |
+| Spectral mask | Occupied carrier and guard band stay inside the configured band | Project or block |
+| Maximum EIRP | Transmit power plus antenna gain stays below the configured ceiling | Reduce power |
+| Neural-RX envelope | Independent measured quality stays within the certified baseline tolerance | Fallback |
+| Constellation legality | Order and PAPR remain inside the configured set/envelope | Project or block |
+| Lawful-intercept gate | Required context or an audited deployment exception is present | Fail closed |
+| NTN PFD ceiling | Downlink power-flux density stays below the configured surface ceiling | Reduce power |
 
----
+This is an implemented control list, not a complete RF hazard analysis.
 
-## 11. Other repository evidence
+# 2. Validation design and environment
 
-The repository also contains:
+The validation program follows six rules:
 
-- tabular federated DSA, robust aggregation and named poisoning campaigns;
-- certified client unlearning and subject-tagged erasure experiments;
-- a NumPy neural receiver with finite-difference gradient tests;
-- white-box and black-box evasion experiments;
-- a classical-receiver fallback path;
-- RBAC, JWT rotation, HSM abstractions, incident reporting and evidence stores;
-- YANG parsing gates and build/SBOM workflows; and
-- executable LEO/PFD invariant tests.
+- grade with an independent oracle whenever possible;
+- pin outside datasets and simulators to identifiable versions;
+- report distributions and confidence intervals instead of isolated means;
+- use independent seeds as the statistical unit;
+- state robust-aggregation breakdown and cryptographic trust assumptions; and
+- separate a passing mechanism test from field, scale and certification claims.
 
-These are meaningful implementation and laboratory artifacts. Their detailed
-results remain scoped to the source, parameters and test environments. A
-passing unit test or simulator benchmark is not substituted for operational,
-regulatory or independent evidence.
+## Recorded environment
 
----
+| Field | Value |
+|---|---|
+| Operating system | Linux 6.12.13, x86-64 |
+| Python | CPython 3.12.13 |
+| Processor | AMD EPYC 9V74; 9 logical CPUs visible |
+| Memory | 15 GiB; no swap |
+| NumPy | 2.2.6 |
+| pytest | 9.1.1 |
+| Hypothesis | 6.161.2 |
+| DeepMIMO | 4.0.0 |
+| httpx | 0.28.1 |
 
-## 12. Compliance and novelty position
+Five cloud gates completed successfully for the reviewed snapshot: build, fast
+tests, lint, outside-data reproduction and OSC A1 live integration.
 
-The source maps some controls to O-RAN, 3GPP, ITU-R, GDPR and NIS2 concepts.
-That traceability may help prepare an assurance case, but this report does not
-interpret it as formal compliance. For example, implementing incident timers
-that resemble NIS2 reporting periods does not establish that the organization
-meets all duties under the
-[NIS2 Directive](https://eur-lex.europa.eu/eli/dir/2022/2555/oj), and an erasure
-experiment does not by itself establish compliance with the
-[GDPR](https://eur-lex.europa.eu/eli/reg/2016/679/oj).
+A direct managed-workspace recheck selected 514 fast tests: 506 passed, 3
+skipped and 1 was an expected failure. Four watchdog tests could not create
+Unix datagram sockets because that operation is blocked by the workspace.
+Excluding that environment-blocked module, the selected run completed with 503
+passes, 3 skips and 1 expected failure.
 
-Likewise, the report makes no global novelty claim for decision-level evidence
-binding. Cryptographic logging, runtime assurance, provenance and safety
-certificates all have substantial prior art. A global novelty conclusion
-requires a systematic literature and patent search plus peer review.
+# 3. P1 — Deterministic invariant enforcement
 
----
+**Objective.** Show that the gate does not emit an action that its configured
+invariant chain marks unsafe.
 
-## 13. Reproduction
+**Hypothesis.**
 
-### 13.1 Fast repository checks
+`emitted => certificate.safe AND every programmed invariant is satisfied`
 
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -e ".[dev,oran,otel,persistence]"
-.venv/bin/python -m pytest tests/ -m "not integration and not slow" -q
-.venv/bin/ruff check src/ tests/ benchmarks/ scripts/
-```
+**Setup.**
 
-### 13.2 External DeepMIMO result
+- 500 generated finite examples over frequency, bandwidth, transmit power,
+  antenna gain, constellation order and PAPR;
+- no deadline in the principal property test; and
+- a second generator injects NaN, positive/negative infinity, strings and nulls
+  into four RF fields.
 
-```bash
-.venv/bin/python -m pip install -e ".[realdata]"
-.venv/bin/python datasets/deepmimo_asu_3p5/build.py
-.venv/bin/python benchmarks/deepmimo_dsa_benchmark.py
-```
+**Acceptance.**
 
-CI regenerates both the manifest and aggregate result in temporary storage.
-`scripts/verify_deepmimo_reproduction.py` requires exact provenance, structure,
-configuration, counts and safety outcomes, and compares floating outputs with
-the declared 0.0001 dB cross-host tolerance. Exact generated hashes and
-aggregate JSON are retained as workflow artifacts.
+- zero emitted actions with a failed programmed invariant; and
+- every malformed or non-finite case blocks and identifies the numeric-domain
+  invariant.
 
-### 13.3 Privacy, collusion and local load
+**Observed result.** The tests passed. Emitted actions met the independently
+asserted band, EIRP, constellation and PAPR conditions; malformed fields failed
+closed.
 
-```bash
-.venv/bin/python benchmarks/dp_privacy_suite.py
-.venv/bin/python benchmarks/verifiable_secagg_suite.py
-.venv/bin/python benchmarks/control_plane_load_suite.py
-```
+**What this proves.** Implementation consistency over the generated domains.
 
-### 13.4 Live OSC A1 simulator
+**What it does not prove.** Completeness of the invariant list, correctness of
+deployment telemetry or calibration for a particular licence.
 
-The reproducible entrypoint is
-`.github/workflows/osc-a1-integration.yml`. A local Docker host can follow the
-same steps: build the pinned official simulator source, expose port 8085, then
-run:
+# 4. P2 — Poisoned decision containment
 
-```bash
-.venv/bin/python scripts/osc_a1_live_smoke.py \
-  --base-url http://127.0.0.1:8085
-```
+**Objective.** Measure whether poisoned AI outputs reach emission as unsafe RF
+actions.
 
----
+**Setup.**
 
-## 14. Required external validation package
+- 10,000 decisions;
+- poison probability 30%;
+- 2,995 poisoned inputs; and
+- out-of-band, excessive EIRP, illegal constellation, high PAPR, receiver
+  regression and in-band spectral-regrowth attacks.
 
-To advance beyond repository evidence, a future validation package should
-contain:
+The grading oracle integrates a carrier power spectral density and measures
+out-of-band leakage, adjacent-channel leakage and EIRP. It is not a copy of the
+Shield’s band-edge test.
 
-1. reviewer and institution identity, competence and conflict disclosure;
-2. exact reviewed commit, dependency lock/SBOM and signed container digest;
-3. operator/testbed topology, hardware, radio configuration and calibration;
-4. actual OSC/Ericsson/Nokia versions and endpoint configuration;
-5. raw timestamped logs, captures, workload generators and result hashes;
-6. linked hazard analysis and full-lifecycle privacy composition;
-7. capacity, endurance, failover and recovery results; and
-8. jurisdiction-specific legal assessment and signed exceptions.
+**Acceptance.** Zero illegal post-Shield emissions and zero in-spec-but-harmful
+post-Shield emissions.
+
+| Metric | Unguarded | After Shield |
+|---|---:|---:|
+| Illegal emissions | 1,983 | 0 |
+| In-spec but harmful | 489 | 0 |
+| Blocked emissions | — | 0 |
+
+**Result.** Pass for the configured adversary, oracle and RF parameters.
+
+**Boundary.** The oracle is not every RF hazard and is not a calibrated
+spectrum-analyser test.
+
+# 5. P3 — External-data DSA
+
+**Objective.** Reproduce DSA selection quality and post-Shield legality on an
+outside site-specific channel dataset.
+
+**Dataset.**
+
+- DeepMIMO 4.0.0;
+- ASU Campus 3.5 GHz Wireless InSite ray tracing;
+- 131,931 candidate receivers;
+- 85,157 receivers with finite paths;
+- 4,096 deterministic samples;
+- SISO isotropic antenna;
+- 3.5 GHz carrier and 100 MHz bandwidth;
+- 1,024 total and 60 selected OFDM subcarriers;
+- 10 paths per receiver; and
+- 6 subbands.
+
+**Acceptance.**
+
+- exact source archive and extracted-tree hashes;
+- exact transform, structure, counts and safety outcomes;
+- cross-host floating values within 0.0001 dB absolute tolerance; and
+- zero illegal post-Shield emissions.
+
+| Strategy | N | Mean gain (dBW) | Mean regret (dB) | p95 regret (dB) | Illegal |
+|---|---:|---:|---:|---:|---:|
+| Best subband | 4,096 | -136.520841 | 0.000000 | 0.000000 | 0 |
+| Fixed subband 0 | 4,096 | -138.250894 | 1.730053 | 5.732700 | 0 |
+| Seeded random | 4,096 | -138.247127 | 1.726286 | 5.484528 | 0 |
+| Worst subband | 4,096 | -140.222845 | 3.702003 | 8.834999 | 0 |
+
+Every decision was projected from an intentionally excessive EIRP proposal; no
+decision was blocked and no post-Shield action was illegal.
+
+**Lineage.**
+
+- source archive SHA-256:
+  `80e4a4983847023158ed61a5a489025d72f4edcdac89edf4ee1323699e1b7da3`
+- extracted tree SHA-256:
+  `42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7`
+- derived feature SHA-256:
+  `ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af`
+
+The scenario archive contained no separate dataset licence file. Raw and
+row-level derived data are therefore not redistributed.
+
+**Boundary.** Ray tracing is not OTA capture. This experiment contains no live
+interference dynamics, scheduler, radio or operator traffic.
+
+# 6. P4 — Local control-path performance
+
+**Objective.** Establish a transparent local baseline for invariant evaluation
+and certificate construction.
+
+**Setup.**
+
+- 1,000 warm-up and 50,000 timed decisions;
+- deterministic valid and projectable terrestrial proposals;
+- numeric, spectral, EIRP, receiver-envelope and constellation controls; and
+- no network, database, SMO, RIC or radio I/O.
+
+| Metric | Result |
+|---|---:|
+| Throughput | 38,932.350 decisions/s |
+| Mean latency | 25.457 microseconds |
+| p50 | 28.342 microseconds |
+| p95 | 29.875 microseconds |
+| p99 | 40.399 microseconds |
+| Maximum | 2.930 milliseconds |
+| Projected | 33,334 |
+| Blocked | 0 |
+| Maximum RSS | 77.6 MiB |
+
+This is a descriptive baseline; no production threshold was pre-registered.
+It excludes network/platform I/O, concurrency, failover, endurance and
+availability.
+
+# 7. P5 — Evidence integrity and provenance
+
+**Objective.** Detect the named model, manifest, evidence and control-path
+manipulations.
+
+**Acceptance.** Eight of eight detected or blocked; zero bypasses.
+
+| # | Attack | Primary control | Result |
+|---:|---|---|---|
+| 1 | Model swap / untrusted signer | Trusted-key pin | Detected |
+| 2 | Weight-byte tamper | Vault integrity + SHA-256 | Detected |
+| 3 | Training-manifest tamper | RSA-PSS coverage of manifest hash | Detected |
+| 4 | Evidence field tamper | Previous-hash chain | Detected |
+| 5 | Evidence reorder / replay | Ordered tenant chain | Detected |
+| 6 | Shield self-report spoof | Independent measured receiver telemetry | Contained |
+| 7 | Illegal emit attempt | Project/fallback/block disposition | Contained |
+| 8 | Lawful-intercept bypass | Fail-closed context gate | Blocked |
+
+Decision records use:
+
+`H_i = SHA-256(H_(i-1) || canonicalJSON(R_i))`
+
+A current host timing probe used one warm-up plus three measured iterations:
+
+| Chain size | Append median | Verify median | Verify per record |
+|---:|---:|---:|---:|
+| 100 | 32.45 ms | 2.68 ms | 26.76 microseconds |
+| 1,000 | 2,804.71 ms | 26.48 ms | 26.48 microseconds |
+
+An internal hash chain detects mutation but does not stop its author from
+rebuilding the whole chain. An RFC 3161 timestamp can externally anchor a chain
+head.
+
+# 8. P6 — Federated robustness and safety independence
+
+**Objective.** Separate policy-quality resilience from decision legality.
+
+**Setup.**
+
+- tabular Q-learning DSA;
+- 6 channels and 3 users;
+- 12 clients, including 3 malicious clients (25%);
+- FedAvg, coordinate median, trimmed mean and Krum; and
+- q-table target, ALIE and Fang attacks.
+
+Clean throughput was 1.0717 per slot. Under the blunt q-table target, FedAvg
+throughput fell to 0.0. That proves a poisoned model can destroy utility.
+
+The legality audit deliberately used the weakest quality defence, plain FedAvg:
+
+| Attack | Decisions | Emitted | Illegal after Shield | Evidence chain |
+|---|---:|---:|---:|---|
+| Q-table target | 300 | 300 | 0 | Intact |
+| ALIE | 300 | 295 | 0 | Intact |
+| Fang-median | 300 | 290 | 0 | Intact |
+
+**Result.** Legality remained independent of policy quality in the tested
+attacks.
+
+**Boundary.** Robust aggregation is conditional:
+
+- FedAvg has a 0% breakdown point;
+- Krum requires `n > 2f + 2` and is high variance;
+- coordinate median needs fewer than roughly 50% Byzantine values per
+  coordinate; and
+- trimmed mean requires `beta >= f` and `n > 2beta`.
+
+The eight-attack breakdown sweep used 12 honest clients, 80 dimensions, 8 seeds
+and Byzantine fractions from 7.7% to 42.9%. Optimised attacks defeated robust
+aggregators near their breakdown assumptions. No aggregator is a universal
+defence.
+
+# 9. P7 — Differential privacy and membership inference
+
+**Objective.** Validate one declared Gaussian release and quantify its
+privacy/utility trade-off.
+
+**Setup.**
+
+- 64 members and 64 non-members per seed;
+- 10 independent seeds;
+- 10,000 seed-level bootstrap resamples;
+- 20 evaluation episodes;
+- public clipping norm `C = 12`;
+- replace-one client sensitivity `2C = 24`;
+- `delta = 1e-5`; and
+- noise multipliers `z in {0, 1, 4, 8}`.
+
+| Release | One-round epsilon | MIA AUC | 95% seed CI | Throughput/slot |
+|---|---:|---:|---:|---:|
+| No DP | No guarantee | 0.5974 | [0.5481, 0.6420] | 1.2318 |
+| z=1 | 5.3026 | 0.5507 | [0.5121, 0.5875] | 1.1000 |
+| z=4 | 1.2675 | 0.5263 | [0.5005, 0.5513] | 0.4756 |
+| z=8 | 0.6214 | 0.5207 | [0.4696, 0.5647] | 0.1885 |
+
+At z=8, the interval crosses chance. This says that this attacker was not
+reliably better than chance over the tested seeds. It does not prove privacy.
+The mechanism and accountant carry the formal one-release claim.
+
+The result excludes lifecycle composition, unaccounted releases and other
+attackers.
+
+# 10. P8 — Verifiable secure aggregation
+
+**Objective.** Validate aggregation correctness, one-server masking,
+tamper/drop detection, cost and the collusion boundary.
+
+**Setup.**
+
+- 2-of-2 additive sharing with Feldman commitments;
+- 2,048-bit prime and 2,047-bit subgroup;
+- generator 2;
+- fixed-point scale 65,536; and
+- correctness grid of 2/5/10 clients by 1/4/16 dimensions.
+
+| Test | Scale | Result |
+|---|---|---|
+| Correctness | 9 client/dimension cells | All verified; max mean error 0.000006171 |
+| One-server masking probe | 1,536 samples | 0 masking violations; top-bit chi-square z=1.653 |
+| Integrity | 200 trials | Honest verify 1.0; tamper 1.0; drop 1.0 |
+| Colluding-server local DP | 16 clients × 8 dimensions × 3 seeds | epsilon 1.2675; all aggregates verified |
+| Collusion utility cost | Raw-to-view / aggregate distortion | Mean L2 258.2725 / 68.8738 |
+
+Exact sharing does not survive server collusion: the two shares reconstruct the
+submitted update. In the opt-in local-DP mode, clients clip and noise before
+sharing, so colluding servers receive the stated private release instead of the
+raw update.
+
+The cost for five clients was 0.0395 s at one dimension, 0.3771 s at eight,
+1.6267 s at 32 and 6.7227 s at 128. Modular exponentiations dominate and cost
+grows approximately linearly with dimension.
+
+# 11. P9 — AI-PHY fallback
+
+**Objective.** Contain neural-receiver degradation without encoding individual
+attack signatures.
+
+**Primary setup.**
+
+- 16-QAM;
+- SNR 22 dB;
+- white-box PGD with L-infinity epsilon 0.12;
+- 100 symbols per block; and
+- 20-block CRC window.
+
+| Receiver route | PGD TBLER |
+|---|---:|
+| Neural receiver | 0.7625 |
+| Classical baseline | 0.0650 |
+| Shield effective | 0.0650 |
+
+Fallback rate was 1.0 and attack reduction was 11.73 times.
+
+An extended suite exercised FGSM, BIM, MIM, transfer and decision-based
+boundary attacks across AWGN and four-tap Rayleigh fading with three seeds.
+The effective receiver stayed within the configured baseline envelope at every
+exercised point.
+
+Under Rayleigh fading, the large AWGN neural/classical gap collapsed because
+deep fades amplified perturbations for both receivers. A barrage jammer at JSR
++10 dB produced neural SER 0.897 and classical SER 0.892; routing could not
+repair the degraded channel. The gate is fallback, not denoising.
+
+# 12. P10 — Certified unlearning and subject erasure
+
+**Objective.** Verify attributed removal against a gold-standard retrain.
+
+**Subject-erasure setup.**
+
+- 4 clients and 3 subjects per client;
+- one subject removed;
+- FedAvg and coordinate median;
+- seeds 1–3; and
+- 400 transitions erased.
+
+| Aggregator | Certified L2 to retrain | Independent L2 | Cheap residual | Tamper rejected |
+|---|---:|---:|---:|---|
+| FedAvg | 0.0 | 0.0 | 0.0 | Yes |
+| Median | 0.0 | 0.0 | 0.566558 mean; 0.587105 max | Yes |
+
+For the non-linear median, exactness required a full recompute. The cheap linear
+shortcut did not equal retraining.
+
+In the client-unlearning experiment, a targeted FedAvg backdoor had success
+1.0. Full retraining reduced it to 0.0365, while the zero-cost cached shortcut
+remained at 1.0. The certificate correctly reported the shortcut’s large
+distance to retraining instead of claiming removal.
+
+Attribution remains a prerequisite; a stealthy update that is never attributed
+cannot be unlearned.
+
+# 13. P11 — O-RAN A1 interoperability
+
+**Objective.** Exercise the adapter against an outside A1 implementation.
+
+**Setup.**
+
+- official O-RAN-SC sim-a1-interface;
+- pinned revision `be2943f57211f62095dc5434099e331df237aafb`;
+- `OSC_2.1.0`; and
+- a hash-checked container build.
+
+| Lifecycle stage | Acceptance | Result |
+|---|---|---|
+| Health | Live health endpoint responds | Pass |
+| Register | Policy types 20001–20004 accepted | Pass |
+| Create | QoS priority policy created | Pass |
+| List | Created ID appears | Pass |
+| Status | `enforceStatus` appears | Pass |
+| Delete | ID disappears after deletion | Pass |
+
+The O-RAN-SC project describes this component as a simulator used to test
+Non-RT RIC services without deploying a Near-RT RIC. A passing result therefore
+proves simulator REST interoperability, not a deployed OSC platform, operator
+network, vendor stack or conformance.
+
+Ericsson and Nokia contract tests use an in-process HTTP transport and are not
+counted as vendor interoperability.
+
+# 14. P12 — NTN PFD demonstrator
+
+**Objective.** Validate NTN PFD computation and projection.
+
+The invariant computes:
+
+`PFD = EIRP_dBW - 10log10(4*pi*d^2) - 10log10(BW_MHz)`
+
+**Acceptance.**
+
+- analytic link-budget error below `1e-9`;
+- high-power action reduced;
+- post-projection PFD at or below `-146 dBW/m^2/MHz + 1e-6`; and
+- final certificate safe.
+
+Five tests cover a terrestrial no-op, analytic equality, high-power violation,
+low-power compliance and full NTN-Shield disposition. All passed.
+
+The ceiling is representative and must be calibrated to the applicable
+service, allocation, geometry and jurisdiction. No satellite link, spectrum
+analyser or regulator witnessed the test.
+
+# 15. What is and is not proven
+
+## Proven within the declared scope
+
+- a functioning deterministic gate and machine-readable certificate;
+- programmed invariants held across the exercised property and adversarial
+  domains;
+- DSA utility and safety reproduced on pinned outside ray-tracing data;
+- eight named model, evidence and control manipulations were detected or
+  contained;
+- decision legality remained separate from federated policy quality; and
+- the adapter completed a real lifecycle with the official O-RAN-SC simulator.
+
+## Not established
+
+- operation on a live O-RAN network, real radios or operator traffic;
+- deployed Ericsson, Nokia or full OSC RIC/SMO interoperability;
+- complete coverage of every unsafe RF behaviour;
+- formal O-RAN, 3GPP, ITU-R, GDPR, NIS2 or telecom certification;
+- security against unknown attacks or arbitrary compromised components;
+- exact-share secrecy when both aggregation servers collude;
+- carrier-scale latency, throughput, availability, failover or endurance;
+- global novelty; or
+- independent validation by an identifiable outside institution.
+
+# 16. Next validation campaign
+
+| Objective | Required setup | Required acceptance evidence |
+|---|---|---|
+| Live closed loop | Named O-RAN testbed, Near-RT RIC, RU/DU or SDR, calibrated RF path and representative traffic | Zero post-gate violations in shadow and controlled runs; retained spectrum and telemetry evidence |
+| Commercial interoperability | Named product versions and endpoint/security configuration | Pre-registered lifecycle, rollback and negative tests pass on each target |
+| Hazard completeness | Independent RF hazard analysis mapped to requirements and calibration sources | Every hazard controlled, accepted or explicitly excluded with sign-off |
+| Carrier-scale performance | Representative topology, I/O, concurrency and hardware | Operator-agreed p99 budget, zero evidence loss, capacity margin, 24-hour soak and recovery |
+| Security assurance | Independent red team including key/storage/collusion/wire-input scenarios | No unresolved critical finding; every residual risk has treatment |
+| Privacy lifecycle | Enumerate every release, sampling rule and removal event | Full composition meets a pre-approved privacy budget |
+| Regulatory/conformance | Qualified reviewers, jurisdiction and standards edition | Signed assessment or certification scope with traceable exceptions |
+| Independent validation | Named institution, credentials, conflict disclosure and signed raw logs | Reproducible outside report with findings and limits |
+
+Until this package exists, the defensible position is **validated software
+assurance layer and field-pilot candidate**, not certified carrier-grade
+control system.
+
+# External sources
+
+1. DeepMIMO, Getting Started:
+   <https://deepmimo.net/docs/tutorials/1_getting_started.html>
+2. DeepMIMO Quickstart: <https://deepmimo.net/docs/quickstart.html>
+3. O-RAN Software Community, A1 Simulator Overview:
+   <https://docs.o-ran-sc.org/projects/o-ran-sc-sim-a1-interface/en/latest/overview.html>
+4. O-RAN Software Community, Simulator API:
+   <https://docs.o-ran-sc.org/projects/o-ran-sc-sim-a1-interface/en/latest/simulator-api.html>
+5. Hypothesis documentation: <https://hypothesis.readthedocs.io/>
+6. pytest skip and xfail semantics:
+   <https://docs.pytest.org/en/stable/how-to/skipping.html>
+7. I. Mironov, “Rényi Differential Privacy,” IEEE CSF 2017:
+   <https://doi.org/10.1109/CSF.2017.11>
+8. RFC 3526: <https://www.rfc-editor.org/rfc/rfc3526>
