@@ -1,0 +1,18 @@
+[submodule "third_party/ric-plt-lib-rmr"]
+	path = third_party/ric-plt-lib-rmr
+	url = https://gerrit.o-ran-sc.org/r/ric-plt/lib/rmr
+[submodule "third_party/ric-plt-a1"]
+	path = third_party/ric-plt-a1
+	url = https://gerrit.o-ran-sc.org/r/ric-plt/a1
+[submodule "third_party/ric-app-hw-python"]
+	path = third_party/ric-app-hw-python
+	url = https://gerrit.o-ran-sc.org/r/ric-app/hw-python
+[submodule "third_party/sim-a1-interface"]
+	path = third_party/sim-a1-interface
+	url = https://gerrit.o-ran-sc.org/r/sim/a1-interface
+[submodule "third_party/ocudu"]
+	path = third_party/ocudu
+	url = https://gitlab.com/ocudu/ocudu.git
+[submodule "third_party/flexric"]
+	path = third_party/flexric
+	url = https://gitlab.eurecom.fr/mosaic5g/flexric.git

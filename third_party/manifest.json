@@ -1,0 +1,107 @@
+{
+  "schema": "horizon-ric-third-party-manifest/1",
+  "generated": "2026-07-27",
+  "policy": "All source dependencies are vendored as git submodules pinned to the exact commits used for the recorded evidence runs. Submodules store only URL + commit in the superproject; large trees, build outputs and venvs are never committed as blobs. scripts/fetch_dependencies.sh reproduces the same checkouts without submodules and applies the one local patch.",
+  "dependencies": [
+    {
+      "name": "ric-plt-lib-rmr",
+      "role": "RMR message router (C library) - RIC message bus between A1 mediator and xApp",
+      "origin_url": "https://gerrit.o-ran-sc.org/r/ric-plt/lib/rmr",
+      "pinned_commit": "8b9a214906a40b338def981d5c16b4ea247176fb",
+      "version": "4.9.4",
+      "license": "Apache-2.0",
+      "build_command": "mkdir .build && cd .build && cmake .. -DDEV_PKG=1 -DCMAKE_INSTALL_PREFIX=/usr/local && make install && cd .. && mkdir .build-rt && cd .build-rt && cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local && make install && ldconfig",
+      "submodule": true,
+      "local_patch": null
+    },
+    {
+      "name": "ric-plt-a1",
+      "role": "Near-RT RIC A1 mediator (Go) - A1-P /A1-P/v2 northbound REST, forwards A1_POLICY_REQ over RMR, records enforceStatus in SDL (redis)",
+      "origin_url": "https://gerrit.o-ran-sc.org/r/ric-plt/a1",
+      "pinned_commit": "09a757b4fd63198d8690d50b52bfd04552d47f1f",
+      "version": "3.2.3",
+      "license": "Apache-2.0",
+      "build_command": "go build -o a1mediator ./cmd/a1.go  # Go >= 1.22 (go.mod); go1.24.7 used; librmr must be installed",
+      "submodule": true,
+      "local_patch": "deploy/xapp-e2e/patches/a1mediator-policy-resp-type.patch"
+    },
+    {
+      "name": "ric-app-hw-python",
+      "role": "Official O-RAN-SC reference xApp - real A1 policy consumer over RMR in the xApp E2E proof",
+      "origin_url": "https://gerrit.o-ran-sc.org/r/ric-app/hw-python",
+      "pinned_commit": "a6d00525aa2f62f2457d84731da2b7d89e0b1013",
+      "version": "1.1.1 (python pkg 0.0.1)",
+      "license": "Apache-2.0",
+      "build_command": "python3.11 -m venv venv-xapp && venv-xapp/bin/pip install -e . && venv-xapp/bin/pip install 'protobuf==3.20.3'",
+      "submodule": true,
+      "local_patch": null,
+      "note": "Not a patch: deploy/xapp-e2e/run_stack.sh adds \"xapp_name\": \"hw-python\" to init/config-file.json at run time (upstream expects the RIC helm configmap to inject that key) and reformats the JSON in doing so."
+    },
+    {
+      "name": "sim-a1-interface",
+      "role": "O-RAN-SC A1 simulator (near-rt-ric-simulator, STD_2.0.0) - OSC A1 conformance smoke target for scripts/osc_a1_live_smoke.py",
+      "origin_url": "https://gerrit.o-ran-sc.org/r/sim/a1-interface",
+      "pinned_commit": "be2943f57211f62095dc5434099e331df237aafb",
+      "version": "2.8.1-13-gbe2943f (master tip at pin time)",
+      "license": "Apache-2.0",
+      "build_command": "docker build near-rt-ric-simulator/  # or run near-rt-ric-simulator/src with the deps/locks/a1sim.txt venv",
+      "submodule": true,
+      "local_patch": null,
+      "note": "Local build inserted this sandbox's HTTPS-proxy CA into the Dockerfile and relaxed the python3=3.10.15-r0 apk pin (that alpine package revision is no longer served). Environment-specific build fixes; deliberately not vendored."
+    },
+    {
+      "name": "ocudu",
+      "role": "OCUDU O-RAN CU/DU stack (C++17, srsRAN lineage) - RAN-side component for E2 integration; build still in progress when this manifest was written, no OCUDU-derived evidence recorded yet",
+      "origin_url": "https://gitlab.com/ocudu/ocudu.git",
+      "pinned_commit": "f46f5804e53fede1e5c3353420ce1bcd3f4e57c6",
+      "version": "dev branch tip 2026-07-24 (origin/HEAD at pin time)",
+      "license": "BSD-3-Clause-Open-MPI",
+      "build_command": "cmake -B build && cmake --build build",
+      "submodule": true,
+      "local_patch": null
+    },
+    {
+      "name": "flexric",
+      "role": "FlexRIC (Mosaic5G/OAI) near-RT RIC + E2 agent - pinned for the E2 leg of the stack; not yet built or exercised in this session",
+      "origin_url": "https://gitlab.eurecom.fr/mosaic5g/flexric.git",
+      "pinned_commit": "ef6d722f22191eea74089966983da1f5ec1fedd4",
+      "version": "v2.0.0-224-gef6d722f (dev tip at pin time)",
+      "license": "OAI Collaborative Standards Software License v1.0 (CSSL); per-file SPDX in LICENSES/",
+      "build_command": "mkdir build && cd build && cmake .. && make  # upstream flow; not yet validated here",
+      "submodule": true,
+      "local_patch": null
+    }
+  ],
+  "python_environments": [
+    {
+      "name": "horizon",
+      "lockfile": "deps/locks/horizon.txt",
+      "python": "3.11.15",
+      "authoritative_spec": "pyproject.toml",
+      "purpose": "Horizon-RIC rApp / tests / benchmarks environment"
+    },
+    {
+      "name": "xapp",
+      "lockfile": "deps/locks/xapp.txt",
+      "python": "3.11.15 (<=3.11 required: hiredis 2.0.0 setup.py imports removed stdlib 'imp')",
+      "key_pins": ["ricxappframe==2.2.0", "protobuf==3.20.3", "hw-python editable @ a6d00525aa2f62f2457d84731da2b7d89e0b1013"],
+      "purpose": "hw-python xApp runtime; protobuf pinned because ricxappframe ships pre-3.19 _pb2.py stubs"
+    },
+    {
+      "name": "a1sim",
+      "lockfile": "deps/locks/a1sim.txt",
+      "python": "3.11.15",
+      "key_pins": ["Flask==2.2.5", "connexion==2.14.2"],
+      "purpose": "A1 simulator outside docker; same top-level pins as upstream Dockerfile"
+    }
+  ],
+  "system_dependencies": {
+    "rmr": {"apt": ["build-essential", "cmake"]},
+    "a1_mediator": {"toolchain": "Go >= 1.22 (go.mod); go1.24.7 used here", "apt": ["golang-go (if >= 1.22; upstream tarball otherwise)"], "runtime": ["librmr (built from ric-plt-lib-rmr)"]},
+    "sdl_backend": {"apt": ["redis-server"], "note": "the O-RAN-SC dbaas image is plain redis"},
+    "hw_python_xapp": {"apt": ["python3.11", "python3.11-venv", "python3.11-dev"], "pypi_pin": "protobuf==3.20.3", "runtime": ["librmr"]},
+    "a1_simulator": {"apt": ["docker.io"], "alternative": "python3.11 + deps/locks/a1sim.txt"},
+    "ocudu": {"apt": ["cmake", "build-essential", "libfftw3-dev", "libmbedtls-dev", "libsctp-dev", "libyaml-cpp-dev", "libgtest-dev", "libzmq3-dev"]},
+    "flexric": {"apt": ["cmake", "build-essential"], "note": "not yet built here; see upstream README for optional SWIG bindings"}
+  }
+}

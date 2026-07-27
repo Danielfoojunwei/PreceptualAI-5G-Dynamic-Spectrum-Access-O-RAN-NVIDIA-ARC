@@ -26,6 +26,13 @@ from horizon_ric.data.lineage import compute_dataset_sha256
 SCENARIO = "asu_campus_3p5"
 DEEPMIMO_VERSION = "4.0.0"
 DEEPMIMO_RELEASE_COMMIT = "cbe3a3eae426d0d0a2bd1fdf95ce011c536a3dd9"
+# Pinned SHA-256 of the downloaded scenario archive (asu_campus_3p5
+# *downloaded.zip). The build hard-fails on any mismatch so a changed or
+# corrupted upstream artifact can never silently enter the pipeline. Matches
+# the tracked manifest.json "source_archive_sha256".
+SOURCE_ARCHIVE_SHA256 = (
+    "80e4a4983847023158ed61a5a489025d72f4edcdac89edf4ee1323699e1b7da3"
+)
 SCENARIO_DOCS_URL = "https://deepmimo.net/docs/tutorials/1_getting_started.html"
 DEEPMIMO_RELEASE_URL = "https://github.com/DeepMIMO/DeepMIMO/releases/tag/v4.0.0"
 MATRICES = [
@@ -192,6 +199,13 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         cache_dir=args.cache_dir,
         source_archive=args.source_archive,
     )
+    source_archive_sha256 = _sha256_file(source_archive)
+    if source_archive_sha256 != SOURCE_ARCHIVE_SHA256:
+        raise RuntimeError(
+            "DeepMIMO scenario archive failed its pinned checksum: expected "
+            f"{SOURCE_ARCHIVE_SHA256}, got {source_archive_sha256} for "
+            f"{source_archive}"
+        )
     stats = _write_features(
         scenario_dir=scenario_dir,
         features_path=args.features,
@@ -205,7 +219,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         "deepmimo_release_commit": DEEPMIMO_RELEASE_COMMIT,
         "deepmimo_release_url": DEEPMIMO_RELEASE_URL,
         "scenario_docs_url": SCENARIO_DOCS_URL,
-        "source_archive_sha256": _sha256_file(source_archive),
+        "source_archive_sha256": source_archive_sha256,
         "source_tree_sha256": compute_dataset_sha256(scenario_dir),
         "features_sha256": compute_dataset_sha256(args.features),
         "features_sha256_scope": (
