@@ -69,6 +69,12 @@ kafka = [
 hsm = [
     "python-pkcs11>=0.7",
 ]
+# Sionna link-level PHY simulation (phy/sionna_bridge.py guarded import).
+# NVIDIA Sionna 2.x is PyTorch-backed; pair with the realdata extra to source
+# ray-traced MIMO channels from DeepMIMO. Heavy (pulls torch) — not in dev.
+phy = [
+    "sionna>=1.0",
+]
 # Reproducible, externally sourced ray-tracing benchmark. DeepMIMO v4 requires
 # Python 3.11+, while the core Horizon-RIC runtime continues to support 3.10.
 realdata = [
