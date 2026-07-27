@@ -1,5 +1,10 @@
 # Exploration truncation and graduation under the Shield — real-DeepMIMO proof
 
+> **Corrections:** an adversarial post-mortem found several headline claims in this
+> document to be artifacts of the experiment harness rather than properties of the
+> Shield. Read [`ERRATA.md`](ERRATA.md) alongside it. The safety results stand; most
+> of the learning claims do not.
+
 The Decision Safety Shield projects every unsafe proposal onto the nearest
 legal action, so a learner training on its own decision history **never
 observes a single real outcome inside the infeasible region**. This artifact

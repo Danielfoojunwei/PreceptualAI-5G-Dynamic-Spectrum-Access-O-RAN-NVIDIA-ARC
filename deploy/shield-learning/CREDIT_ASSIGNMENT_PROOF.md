@@ -1,5 +1,10 @@
 # Shield projection bias on real DeepMIMO — credit-assignment proof
 
+> **Corrections:** an adversarial post-mortem found several headline claims in this
+> document to be artifacts of the experiment harness rather than properties of the
+> Shield. Read [`ERRATA.md`](ERRATA.md) alongside it. The safety results stand; most
+> of the learning claims do not.
+
 This is the Horizon artifact that answers a question the earlier benchmarks
 could not: **does the Decision Safety Shield's projection operator bias what a
 learner learns?** Every prior Shield exercise ran on tasks whose optimum was

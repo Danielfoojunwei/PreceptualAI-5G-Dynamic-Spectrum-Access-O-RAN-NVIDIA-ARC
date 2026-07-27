@@ -1,5 +1,10 @@
 # Federated + trust core on real DeepMIMO — coverage-map proof
 
+> **Corrections:** an adversarial post-mortem found several headline claims in this
+> document to be artifacts of the experiment harness rather than properties of the
+> Shield. Read [`../shield-learning/ERRATA.md`](../shield-learning/ERRATA.md) alongside it. The safety results stand; most
+> of the learning claims do not.
+
 This is the Horizon artifact that drives the **federated learning and trust
 core** with real measured-physics data — no synthetic gradient vectors anywhere
 in the loop. It answers the honest-accounting question "which core capabilities

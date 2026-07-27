@@ -1,5 +1,10 @@
 # The safety–utility frontier on real DeepMIMO — what the Shield costs
 
+> **Corrections:** an adversarial post-mortem found several headline claims in this
+> document to be artifacts of the experiment harness rather than properties of the
+> Shield. Read [`ERRATA.md`](ERRATA.md) alongside it. The safety results stand; most
+> of the learning claims do not.
+
 Every earlier Horizon benchmark exercised the Decision Safety Shield on tasks
 whose optimum was already **inside** the feasible set — DSA subband selection
 and the coverage power-fill — where the projection is provably free
