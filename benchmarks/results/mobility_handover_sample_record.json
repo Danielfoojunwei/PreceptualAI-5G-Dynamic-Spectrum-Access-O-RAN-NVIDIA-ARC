@@ -1,0 +1,48 @@
+{
+  "hash": "80b42944ad044f9951b914cff88b5486f4aaea8ef173b52e0e15b99698f37681",
+  "record": {
+    "actual_outcome_1min": null,
+    "actual_outcome_30s": null,
+    "actual_outcome_5min": null,
+    "chosen_action": {
+      "from_beam": 1,
+      "guard_refused": false,
+      "label": "a3-confirmed-handover",
+      "policy_type": "horizon.mobility.handover",
+      "projected": false,
+      "requested_eirp_dbm": 32.0,
+      "safe_eirp_dbm": 32.0,
+      "target_beam": 0
+    },
+    "constraint_corrections": [],
+    "decision_id": "mro-beam-handover",
+    "model_versions": {
+      "constraint_layer": "terrestrial-shield",
+      "dyna": "none",
+      "encoder": "none",
+      "policy": "mro",
+      "rapp": "0.2.0",
+      "risk_heads": "beam-tracker"
+    },
+    "operator_override": false,
+    "operator_override_reason": null,
+    "predicted_outcome_chosen": {
+      "constraint_violations": [],
+      "energy_kwh": 0.0,
+      "gateway_loads": {},
+      "ntn_capacity_used": 0.0,
+      "sla_risk_1min": 0.1,
+      "sla_risk_30s": 0.1,
+      "sla_risk_5min": 0.1
+    },
+    "random_seed": null,
+    "rapp_instance_id": "mobility-handover",
+    "rejected_alternatives": [],
+    "sla_breach_context": null,
+    "state_blob_uri": null,
+    "state_hash": "beam-1-to-0",
+    "tenant_id": "_unscoped_",
+    "timestamp": "2026-07-27T12:51:47.228452Z"
+  },
+  "tenant_id": "_unscoped_"
+}

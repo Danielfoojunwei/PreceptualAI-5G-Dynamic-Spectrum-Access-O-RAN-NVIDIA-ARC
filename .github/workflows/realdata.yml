@@ -11,11 +11,17 @@ on:
       - "benchmarks/results/federated_coverage.json"
       - "benchmarks/beam_management_loop.py"
       - "benchmarks/results/beam_management.json"
+      - "benchmarks/mobility_handover_loop.py"
+      - "benchmarks/results/mobility_handover.json"
+      - "benchmarks/antijam_loop.py"
+      - "benchmarks/results/antijam.json"
       - "src/horizon_ric/data/lineage.py"
       - "src/horizon_ric/federated/**"
       - "scripts/verify_deepmimo_reproduction.py"
       - "scripts/verify_federated_coverage.py"
       - "scripts/verify_beam_management.py"
+      - "scripts/verify_mobility_handover.py"
+      - "scripts/verify_antijam.py"
       - ".github/workflows/realdata.yml"
       - "pyproject.toml"
 
@@ -91,6 +97,38 @@ jobs:
             --committed-result benchmarks/results/beam_management.json \
             --actual-result "$RUNNER_TEMP/beam_management.json" \
             --actual-manifest "$RUNNER_TEMP/angular_manifest.json"
+      - name: Reproduce mobility/handover loop on real angular data
+        # Exits non-zero unless Doppler is on, A3 hysteresis reduces ping-pong
+        # vs greedy at bounded outage, a real beam handover occurs, the
+        # over-EIRP handover is corrected, and the evidence chain holds + catches
+        # a tamper.
+        run: |
+          python benchmarks/mobility_handover_loop.py \
+            --features "$RUNNER_TEMP/angular_features.jsonl" \
+            --manifest "$RUNNER_TEMP/angular_manifest.json" \
+            --out "$RUNNER_TEMP/mobility_handover.json"
+      - name: Verify committed mobility/handover evidence
+        run: |
+          python scripts/verify_mobility_handover.py \
+            --committed-result benchmarks/results/mobility_handover.json \
+            --actual-result "$RUNNER_TEMP/mobility_handover.json" \
+            --actual-manifest "$RUNNER_TEMP/angular_manifest.json"
+      - name: Reproduce anti-jam loop on real angular data
+        # Exits non-zero unless the SMI nuller restores a positive SINR gain,
+        # more receivers become usable, the effective jammer suppression clears
+        # the bound, the over-EIRP null-steer is corrected, and the evidence
+        # chain holds + catches a tamper.
+        run: |
+          python benchmarks/antijam_loop.py \
+            --features "$RUNNER_TEMP/angular_features.jsonl" \
+            --manifest "$RUNNER_TEMP/angular_manifest.json" \
+            --out "$RUNNER_TEMP/antijam.json"
+      - name: Verify committed anti-jam evidence
+        run: |
+          python scripts/verify_antijam.py \
+            --committed-result benchmarks/results/antijam.json \
+            --actual-result "$RUNNER_TEMP/antijam.json" \
+            --actual-manifest "$RUNNER_TEMP/angular_manifest.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -100,3 +138,5 @@ jobs:
             ${{ runner.temp }}/deepmimo_dsa.json
             ${{ runner.temp }}/federated_coverage.json
             ${{ runner.temp }}/beam_management.json
+            ${{ runner.temp }}/mobility_handover.json
+            ${{ runner.temp }}/antijam.json

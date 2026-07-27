@@ -1,0 +1,114 @@
+{
+  "beam_codebook": {
+    "boresights_deg": [
+      -61.04,
+      -38.68,
+      -22.02,
+      -7.18,
+      7.18,
+      22.02,
+      38.68,
+      61.04
+    ],
+    "type": "8-beam DFT over an 8-element half-wavelength ULA"
+  },
+  "benchmark": "Beam-level mobility / handover with Doppler on real DeepMIMO ray geometry",
+  "bs_position_m": [
+    166.0,
+    104.0,
+    22.0
+  ],
+  "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+  "dataset": "DeepMIMO ASU Campus 3.5 GHz (angular ray geometry)",
+  "doppler": {
+    "coherence_time_s": 0.003021,
+    "enabled": true,
+    "max_shift_hz": 140.0,
+    "model": "per-path f_d = (|v|/lambda) * cos(heading - aoa_az); phase advanced by accumulated 2*pi*f_d*dt along the real trajectory"
+  },
+  "features_sha256": "13eb2f6b8d8f648f45b00c28e0b8b46c3afdbd6a2e36543792b04025092a6884",
+  "greedy": {
+    "beams_visited": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "handovers": 29,
+    "outage_fraction": 0.0,
+    "ping_pongs": 19,
+    "policy": "serve argmax beam every sample (hysteresis 0 dB, TTT 1)"
+  },
+  "hysteresis": {
+    "beams_visited": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "final_serving_beam": 0,
+    "handovers": 3,
+    "hyst_db": 3.0,
+    "outage_fraction": 0.101,
+    "outage_margin_db": 3.0,
+    "ping_pong_window_samples": 5,
+    "ping_pongs": 0,
+    "policy": "A3 event: candidate > serving + HYST for TTT consecutive samples",
+    "ttt_samples": 3
+  },
+  "receivers": 4096,
+  "scenario": "asu_campus_3p5",
+  "scope_note": "Intra-cell BEAM handover: a single base station at [166, 104, 22] with an 8-element ULA; the handover is between beams of its 8-beam DFT codebook, not between gNBs. The trajectory, path powers/phases and AoD/AoA angles are real Wireless InSite ray tracing; the Doppler is synthesized from that real per-path AoA geometry plus a chosen UE velocity (12 m/s along the corridor). Site-specific ray tracing, not OTA capture; one scenario.",
+  "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+  "task": "O-RAN Mobility-Robustness-Optimization (MRO) rApp, intra-cell beam handover",
+  "trajectory": {
+    "corridor": {
+      "direction": "west-to-east",
+      "x_max_m": 184.449,
+      "x_min_m": -224.551,
+      "y_center_m": 80.0,
+      "y_halfwidth_m": 5.0
+    },
+    "delta_t_s": 0.4438,
+    "points": 198,
+    "total_distance_m": 1049.2,
+    "total_time_s": 87.4,
+    "ue_speed_mps": 12.0
+  },
+  "trust_chain": {
+    "evidence_chain_length": 2,
+    "gate_records": [
+      {
+        "corrected": false,
+        "emitted_clean": true,
+        "from_beam": 1,
+        "guard_refused": [],
+        "label": "a3-confirmed-handover",
+        "projected": false,
+        "requested_eirp_dbm": 32.0,
+        "safe": true,
+        "safe_eirp_dbm": 32.0,
+        "target_beam": 0
+      },
+      {
+        "corrected": true,
+        "emitted_clean": false,
+        "from_beam": 1,
+        "guard_refused": [
+          "corrections_not_audited"
+        ],
+        "label": "over-eirp-handover",
+        "projected": true,
+        "requested_eirp_dbm": 46.0,
+        "safe": true,
+        "safe_eirp_dbm": 33.0,
+        "target_beam": 0
+      }
+    ],
+    "overpower_handover_corrected": true,
+    "overpower_handover_reached_ran": false,
+    "overpower_handover_safe_eirp_dbm": 33.0,
+    "verify_after_tamper_index": 1,
+    "verify_first_broken_index": -1
+  }
+}
