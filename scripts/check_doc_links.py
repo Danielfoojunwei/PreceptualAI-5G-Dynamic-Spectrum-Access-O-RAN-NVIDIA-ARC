@@ -46,6 +46,10 @@ _SKIP_DIRS = {
     "node_modules",
     ".venv",
     "venv",
+    # Vendored upstream source (git submodules / fetch_dependencies.sh
+    # output): upstream docs are not ours to lint.
+    "third_party",
+    "oran-deps-src",
 }
 
 

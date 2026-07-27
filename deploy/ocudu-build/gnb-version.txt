@@ -1,0 +1,4 @@
+
+--== OCUDU gNB (commit f46f580) ==--
+
+OCUDU 5G gNB version 26.04.0 (f46f580)

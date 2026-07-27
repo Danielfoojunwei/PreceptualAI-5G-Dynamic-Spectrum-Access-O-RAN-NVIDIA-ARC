@@ -1,0 +1,22 @@
+E2 parameters
+Usage: /home/user/oran-deps/ocudu/build/apps/gnb/gnb e2 [OPTIONS]
+
+Options:
+  -h,--help                   Print this help message and exit
+  --enable_cu_cp_e2 BOOLEAN [false] 
+                              Enable CU E2 agent
+  --enable_cu_up_e2 BOOLEAN [false] 
+                              Enable CU-UP E2 agent
+  --enable_du_e2 BOOLEAN [false] 
+                              Enable DU E2 agent
+  --addrs,--addr [[127.0.0.1]] 
+                              RIC addresses to be used for E2 interface. Multiple addresses can be specified for SCTP multi-homing
+  --port :INT in [20000 - 40000] [36421] 
+                              RIC port
+  --bind_addrs,--bind_addr [[127.0.0.1]] 
+                              Local bind addresses to be used for E2 interface. Multiple addresses can be specified for SCTP multi-homing. If left empty, implicit bind is performed
+  --sctp_rto_initial          SCTP initial RTO value in milliseconds (-1 to use system default)
+  --sctp_rto_min              SCTP RTO min in milliseconds (-1 to use system default)
+  --sctp_rto_max              SCTP RTO max in milliseconds (-1 to use system default)
+  --sctp_init_max_attempts    SCTP init max attempts (-1 to use system default)
+  --sctp_max_init_timeo       SCTP max init timeout in milliseconds (-1 to use system default)

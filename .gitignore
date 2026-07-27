@@ -56,6 +56,10 @@ data/deepmimo/*/
 deepmimo_scenarios/
 datasets/deepmimo_asu_3p5/generated/
 
+# scripts/fetch_dependencies.sh default output (plain-clone alternative to
+# the third_party/ submodules)
+/oran-deps-src/
+
 # Local logs
 logs/
 *.log
