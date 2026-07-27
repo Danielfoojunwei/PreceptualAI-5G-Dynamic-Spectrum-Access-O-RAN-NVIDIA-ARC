@@ -111,7 +111,8 @@ def key_fingerprint(public_key: Ed25519PublicKey) -> str:
 
 def sign_certificate(cert: SafetyCertificate, private_key: Ed25519PrivateKey) -> str:
     """Return the hex Ed25519 signature over the certificate's canonical JSON."""
-    return private_key.sign(canonical_certificate_bytes(cert)).hex()
+    signature: bytes = private_key.sign(canonical_certificate_bytes(cert))
+    return signature.hex()
 
 
 def signed_certificate(

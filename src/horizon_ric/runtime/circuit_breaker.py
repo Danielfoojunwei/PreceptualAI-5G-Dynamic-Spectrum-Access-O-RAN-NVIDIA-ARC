@@ -141,7 +141,7 @@ def _is_failure(exc: BaseException) -> bool:
     """
 
     if isinstance(exc, httpx.HTTPStatusError):
-        return 500 <= exc.response.status_code < 600
+        return bool(500 <= exc.response.status_code < 600)
     if isinstance(
         exc,
         (
@@ -196,11 +196,11 @@ class AsyncCircuitBreaker:
     @property
     def state(self) -> str:
         """Current state name: 'closed', 'open', or 'half-open'."""
-        return self._breaker.current_state
+        return str(self._breaker.current_state)
 
     @property
     def fail_counter(self) -> int:
-        return self._breaker.fail_counter
+        return int(self._breaker.fail_counter)
 
     @property
     def name(self) -> str:

@@ -56,8 +56,17 @@ clone_pin ric-plt/a1 ric-plt-a1 "$A1_PIN"
   && go build -o "$WORK/bin/a1mediator" ./cmd/a1.go )
 
 # 3. hw-python xApp (+ pinned ricxappframe from PyPI).
+#
+# The xApp stack is old: ricxappframe -> redis -> hiredis, and the hiredis
+# version it resolves ships a setup.py that imports the stdlib `imp`
+# module, removed in Python 3.12 (ModuleNotFoundError: No module named
+# 'imp'). Build the xApp venv against a <=3.11 interpreter — the Horizon
+# pipeline itself still runs on whatever `python3` the caller uses.
+# Override with XAPP_PYTHON (CI points it at a setup-python 3.11 install).
 clone_pin ric-app/hw-python ric-app-hw-python "$HW_PIN"
-python3 -m venv "$WORK/venv-xapp"
+XAPP_PYTHON="${XAPP_PYTHON:-$(command -v python3.11 || command -v python3)}"
+echo "Building xApp venv with: $XAPP_PYTHON ($("$XAPP_PYTHON" --version))"
+"$XAPP_PYTHON" -m venv "$WORK/venv-xapp"
 "$WORK/venv-xapp/bin/pip" install -q -U pip
 "$WORK/venv-xapp/bin/pip" install -q -e "$WORK/ric-app-hw-python"
 python3 - "$WORK/ric-app-hw-python/init/config-file.json" <<'EOF'

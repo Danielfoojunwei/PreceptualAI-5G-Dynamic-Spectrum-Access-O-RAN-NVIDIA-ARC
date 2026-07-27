@@ -111,7 +111,12 @@ ignore = ["E501", "E402", "E741", "E731"]
 "benchmarks/*" = ["F401", "F841"]
 
 [tool.mypy]
-python_version = "3.10"
+# Target the newest supported grammar: modern numpy ships PEP 695 `type`
+# statements in its stubs, which mypy rejects when told to parse with a
+# 3.10/3.11 grammar ("Type statement is only supported in Python 3.12+",
+# aborting the whole run). Runtime 3.10 compatibility is enforced by the
+# test matrix, not by mypy's target version.
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 strict_optional = true
