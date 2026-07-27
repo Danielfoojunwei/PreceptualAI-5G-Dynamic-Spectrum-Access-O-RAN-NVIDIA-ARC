@@ -80,5 +80,5 @@ var/state/
 data/e2e/
 dump.rdb
 
-# Ephemeral federated-DSA evidence chain (tampered in-proof, regenerated each run)
-benchmarks/results/federated_dsa_audit.jsonl
+# Ephemeral federated-coverage evidence chain (tampered in-proof, regenerated each run)
+benchmarks/results/federated_coverage_audit.jsonl

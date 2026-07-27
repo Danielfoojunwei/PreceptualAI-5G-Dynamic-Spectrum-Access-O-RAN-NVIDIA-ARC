@@ -1,27 +1,27 @@
 {
-  "hash": "58f80f5c36d6db8d45f373fa3a40618d52b221dc62c49cb4003bf05870ef054c",
+  "hash": "620a3ab4b49524755352d0ab5ccb7f2dfaf18278fbda501999dd540f0de91311",
   "record": {
     "actual_outcome_1min": null,
     "actual_outcome_30s": null,
     "actual_outcome_5min": null,
     "chosen_action": {
       "guard_refused": false,
-      "label": "robust-selected-subband",
-      "policy_type": "horizon.spectrum.reservation",
+      "label": "robust-selected-cell",
+      "policy_type": "horizon.coverage.power_fill",
       "projected": false,
-      "requested_frequency_hz": 3541666666.6666665,
-      "safe_frequency_hz": 3541666666.6666665,
-      "subband": 5
+      "requested_eirp_dbm": 32.0,
+      "safe_eirp_dbm": 32.0,
+      "target_receiver_index": 9
     },
     "constraint_corrections": [],
-    "decision_id": "fed-robust-selected",
+    "decision_id": "cov-robust-fill",
     "model_versions": {
       "constraint_layer": "terrestrial-shield",
       "dyna": "none",
       "encoder": "none",
-      "policy": "dsa",
+      "policy": "cco",
       "rapp": "0.2.0",
-      "risk_heads": "fed-subband-prior"
+      "risk_heads": "fed-coverage-map"
     },
     "operator_override": false,
     "operator_override_reason": null,
@@ -35,13 +35,13 @@
       "sla_risk_5min": 0.1
     },
     "random_seed": null,
-    "rapp_instance_id": "federated-dsa",
+    "rapp_instance_id": "federated-coverage",
     "rejected_alternatives": [],
     "sla_breach_context": null,
     "state_blob_uri": null,
-    "state_hash": "subband-5",
+    "state_hash": "cell-9",
     "tenant_id": "_unscoped_",
-    "timestamp": "2026-07-27T11:01:29.342172Z"
+    "timestamp": "2026-07-27T11:18:10.037177Z"
   },
   "tenant_id": "_unscoped_"
 }

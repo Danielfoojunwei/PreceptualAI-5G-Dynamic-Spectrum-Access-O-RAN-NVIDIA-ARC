@@ -1,0 +1,147 @@
+{
+  "baseline_predict_mean_rmse_db": 20.1097,
+  "benchmark": "Federated coverage-map learning on real DeepMIMO channels",
+  "closed_form_rmse_db": 11.7729,
+  "coverage_dynamic_range_db": 103.7397,
+  "coverage_fill_misdirection": {
+    "clean_target_receiver": 9,
+    "naive_poisoned_target_receiver": 62468,
+    "poison_moved_the_fill": true,
+    "robust_target_receiver": 9
+  },
+  "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+  "dataset": "DeepMIMO ASU Campus 3.5 GHz",
+  "features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
+  "federation": {
+    "dp_delta": 1e-05,
+    "dp_noise_multiplier": 8.0,
+    "local_solver": "FedProx proximal ridge",
+    "model": "linear over whitened quadratic position features",
+    "n_malicious": 3,
+    "n_sites": 10,
+    "poison": "model-replacement / scaling (Bagdasaryan 2020)",
+    "poison_boost": 6.0,
+    "prox_eta": 0.6,
+    "prox_lambda": 2.0,
+    "rounds": 40
+  },
+  "outcomes": {
+    "clean_fedavg": {
+      "diverged": false,
+      "epsilon": null,
+      "method": "fedavg",
+      "poisoned": false,
+      "rmse_db": 11.8738,
+      "w_norm": 0.8056,
+      "worst_cov_position": [
+        -216.6,
+        -160.2
+      ],
+      "worst_cov_receiver_index": 9
+    },
+    "dp_fedavg_clean": {
+      "diverged": false,
+      "epsilon": 4.1447,
+      "method": "dp_fedavg",
+      "poisoned": false,
+      "rmse_db": 350.5237,
+      "w_norm": 17.8041,
+      "worst_cov_position": [
+        -225.6,
+        -143.2
+      ],
+      "worst_cov_receiver_index": 6987
+    },
+    "poisoned_fedavg": {
+      "diverged": true,
+      "epsilon": null,
+      "method": "fedavg",
+      "poisoned": true,
+      "rmse_db": 11420000.0,
+      "w_norm": 567870.9866,
+      "worst_cov_position": [
+        181.4,
+        -9.2
+      ],
+      "worst_cov_receiver_index": 62468
+    },
+    "poisoned_krum": {
+      "diverged": false,
+      "epsilon": null,
+      "method": "krum",
+      "poisoned": true,
+      "rmse_db": 19.4596,
+      "w_norm": 1.0126,
+      "worst_cov_position": [
+        -216.6,
+        -160.2
+      ],
+      "worst_cov_receiver_index": 9
+    },
+    "poisoned_median": {
+      "diverged": false,
+      "epsilon": null,
+      "method": "median",
+      "poisoned": true,
+      "rmse_db": 22.1645,
+      "w_norm": 0.7024,
+      "worst_cov_position": [
+        -216.6,
+        -160.2
+      ],
+      "worst_cov_receiver_index": 9
+    },
+    "poisoned_trimmed_mean": {
+      "diverged": false,
+      "epsilon": null,
+      "method": "trimmed_mean",
+      "poisoned": true,
+      "rmse_db": 35.814,
+      "w_norm": 1.2038,
+      "worst_cov_position": [
+        163.4,
+        -158.2
+      ],
+      "worst_cov_receiver_index": 1211
+    }
+  },
+  "receivers": 4096,
+  "scenario": "asu_campus_3p5",
+  "scope_note": "Real DeepMIMO ray tracing drives real federated learning (FedProx), real Byzantine-robust aggregation, a real RDP privacy accountant, real Shield legality and a real tamper-evident evidence chain. This is site-specific ray tracing, not OTA capture; one scenario.",
+  "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+  "task": "O-RAN Coverage-and-Capacity-Optimization (CCO) rApp",
+  "trust_chain": {
+    "evidence_chain_length": 2,
+    "gate_records": [
+      {
+        "corrected": false,
+        "emitted_clean": true,
+        "guard_refused": [],
+        "label": "robust-selected-cell",
+        "projected": false,
+        "requested_eirp_dbm": 32.0,
+        "safe": true,
+        "safe_eirp_dbm": 32.0,
+        "target_receiver_index": 9
+      },
+      {
+        "corrected": true,
+        "emitted_clean": false,
+        "guard_refused": [
+          "corrections_not_audited"
+        ],
+        "label": "over-eirp-fill",
+        "projected": true,
+        "requested_eirp_dbm": 46.0,
+        "safe": true,
+        "safe_eirp_dbm": 33.0,
+        "target_receiver_index": 9
+      }
+    ],
+    "overpower_fill_corrected": true,
+    "overpower_fill_reached_ran": false,
+    "overpower_fill_safe_eirp_dbm": 33.0,
+    "verify_after_tamper_index": 1,
+    "verify_first_broken_index": -1
+  }
+}

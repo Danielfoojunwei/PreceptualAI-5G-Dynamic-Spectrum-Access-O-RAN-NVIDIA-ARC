@@ -7,8 +7,12 @@ on:
       - "datasets/deepmimo_asu_3p5/**"
       - "benchmarks/deepmimo_dsa_benchmark.py"
       - "benchmarks/results/deepmimo_dsa.json"
+      - "benchmarks/federated_coverage_loop.py"
+      - "benchmarks/results/federated_coverage.json"
       - "src/horizon_ric/data/lineage.py"
+      - "src/horizon_ric/federated/**"
       - "scripts/verify_deepmimo_reproduction.py"
+      - "scripts/verify_federated_coverage.py"
       - ".github/workflows/realdata.yml"
       - "pyproject.toml"
 
@@ -47,6 +51,21 @@ jobs:
             --expected-result benchmarks/results/deepmimo_dsa.json \
             --actual-result "$RUNNER_TEMP/deepmimo_dsa.json" \
             --absolute-float-tolerance 0.0001
+      - name: Reproduce federated coverage loop on real data
+        # Exits non-zero unless clean FL learns, the poison diverges plain
+        # FedAvg, Krum defends, the over-power fill is corrected and the
+        # evidence chain verifies then catches a tamper — all on real channels.
+        run: |
+          python benchmarks/federated_coverage_loop.py \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json" \
+            --out "$RUNNER_TEMP/federated_coverage.json"
+      - name: Verify committed federated-coverage evidence
+        run: |
+          python scripts/verify_federated_coverage.py \
+            --committed-result benchmarks/results/federated_coverage.json \
+            --actual-result "$RUNNER_TEMP/federated_coverage.json" \
+            --actual-manifest "$RUNNER_TEMP/manifest.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -54,3 +73,4 @@ jobs:
           path: |
             ${{ runner.temp }}/manifest.json
             ${{ runner.temp }}/deepmimo_dsa.json
+            ${{ runner.temp }}/federated_coverage.json
