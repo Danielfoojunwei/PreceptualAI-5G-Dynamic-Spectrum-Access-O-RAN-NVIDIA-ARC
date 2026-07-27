@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -137,6 +138,17 @@ def main() -> int:
     parser.add_argument("--mediator-log", type=Path, required=True)
     parser.add_argument("--xapp-log", type=Path, required=True)
     parser.add_argument("--out", type=Path)
+    parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=120.0,
+        help=(
+            "Bounded wait for the lagging witnesses. Enforcement status, the "
+            "mediator's A1_POLICY_RESP log lines, and — most slowly — the "
+            "xApp's periodic RMR send-stats line all trail the emit by up to "
+            "~30s, so the proof polls rather than reads once."
+        ),
+    )
     args = parser.parse_args()
 
     report = json.loads(args.report.read_text())
@@ -146,67 +158,90 @@ def main() -> int:
         return 1
 
     entries = _policy_entries(report)
+
+    def _rmr_succ_to_mediator(xapp_log_text: str) -> int:
+        best = 0
+        for line in xapp_log_text.splitlines():
+            if "target=127.0.0.1:4562" in line and "succ=" in line:
+                try:
+                    best = max(best, int(line.split("succ=")[1].split(" ")[0]))
+                except (IndexError, ValueError):
+                    continue
+        return best
+
+    # Poll all three witnesses to convergence: each trails the emit by a
+    # different amount (enforcement is quick, the RMR stats line is the
+    # slowest). last_reason holds the most recent unmet condition so a
+    # timeout reports exactly what never converged.
     statuses: list[dict[str, Any]] = []
-    with httpx.Client(base_url=args.a1_base_url, timeout=10.0) as client:
-        health = client.get("/A1-P/v2/healthcheck")
-        health.raise_for_status()
-        _resolve_type_ids(client, entries)
-        for entry in entries:
-            type_id = entry.get("policy_type_id")
-            if not type_id:
-                print(f"FAIL: could not resolve policy type for {entry['policy_id']}")
-                return 1
-            resp = client.get(
-                f"/A1-P/v2/policytypes/{type_id}/policies/{entry['policy_id']}/status"
-            )
-            resp.raise_for_status()
-            body = resp.json()
-            enforce = body.get("enforceStatus") or body.get("instance_status")
-            statuses.append(
-                {
-                    "policy_id": entry["policy_id"],
-                    "policy_type_id": type_id,
-                    "enforce_status": enforce,
-                }
-            )
-            if enforce not in ("ENFORCED", "IN EFFECT"):
-                print(f"FAIL: {entry['policy_id']} not enforced: {body!r}")
-                return 1
-
-    mediator_lines = args.mediator_log.read_text(errors="replace").splitlines()
     xapp_acks: list[str] = []
-    for entry in entries:
-        pid = entry["policy_id"]
-        # Per-line, per-payload check: some mediator log line must embed a
-        # JSON payload (properly unescaped) that carries BOTH this
-        # policy_instance_id AND handler_id == "hw-python". No file-wide
-        # containment fallback — that would accept unrelated co-occurrence.
-        if not any(_line_acks_policy(line, pid) for line in mediator_lines):
-            print(
-                f"FAIL: no mediator log line embeds an A1_POLICY_RESP payload "
-                f"with policy_instance_id={pid} and handler_id="
-                f"{XAPP_HANDLER_ID!r} in {args.mediator_log}"
-            )
-            return 1
-        xapp_acks.append(pid)
-
-    xapp_log = args.xapp_log.read_text(errors="replace")
     rmr_succ = 0
-    for line in xapp_log.splitlines():
-        if "target=127.0.0.1:4562" in line and "succ=" in line:
-            try:
-                rmr_succ = max(
-                    rmr_succ,
-                    int(line.split("succ=")[1].split(" ")[0]),
+    deadline = time.monotonic() + args.timeout_seconds
+    last_reason = "not evaluated"
+    health_status = 0
+    while True:
+        with httpx.Client(base_url=args.a1_base_url, timeout=10.0) as client:
+            health = client.get("/A1-P/v2/healthcheck")
+            health.raise_for_status()
+            health_status = health.status_code
+            _resolve_type_ids(client, entries)
+            statuses = []
+            enforced_ok = True
+            for entry in entries:
+                type_id = entry.get("policy_type_id")
+                if not type_id:
+                    last_reason = f"unresolved policy type for {entry['policy_id']}"
+                    enforced_ok = False
+                    break
+                resp = client.get(
+                    f"/A1-P/v2/policytypes/{type_id}/policies/{entry['policy_id']}/status"
                 )
-            except (IndexError, ValueError):
-                continue
-    if rmr_succ < accepted:
-        print(
-            f"FAIL: xApp RMR stats show {rmr_succ} sends to the mediator; "
-            f"expected >= {accepted}"
-        )
-        return 1
+                resp.raise_for_status()
+                body = resp.json()
+                enforce = body.get("enforceStatus") or body.get("instance_status")
+                statuses.append(
+                    {
+                        "policy_id": entry["policy_id"],
+                        "policy_type_id": type_id,
+                        "enforce_status": enforce,
+                    }
+                )
+                if enforce not in ("ENFORCED", "IN EFFECT"):
+                    last_reason = f"{entry['policy_id']} not enforced yet: {enforce!r}"
+                    enforced_ok = False
+                    break
+
+        # Witness 3a: mediator log embeds a hw-python A1_POLICY_RESP per policy.
+        mediator_lines = args.mediator_log.read_text(errors="replace").splitlines()
+        xapp_acks = []
+        acks_ok = True
+        for entry in entries:
+            pid = entry["policy_id"]
+            if any(_line_acks_policy(line, pid) for line in mediator_lines):
+                xapp_acks.append(pid)
+            else:
+                last_reason = (
+                    f"no mediator A1_POLICY_RESP with policy_instance_id={pid} "
+                    f"and handler_id={XAPP_HANDLER_ID!r} yet"
+                )
+                acks_ok = False
+                break
+
+        # Witness 3b: xApp RMR send-stats line (periodic flush, slowest).
+        rmr_succ = _rmr_succ_to_mediator(args.xapp_log.read_text(errors="replace"))
+        rmr_ok = rmr_succ >= accepted
+        if not rmr_ok:
+            last_reason = (
+                f"xApp RMR stats show {rmr_succ} sends to the mediator; "
+                f"expected >= {accepted}"
+            )
+
+        if enforced_ok and acks_ok and rmr_ok:
+            break
+        if time.monotonic() >= deadline:
+            print(f"FAIL: witnesses did not converge in {args.timeout_seconds:.0f}s: {last_reason}")
+            return 1
+        time.sleep(3.0)
 
     proof = {
         "schema_version": "1.0",
@@ -227,7 +262,7 @@ def main() -> int:
                 ),
             },
             "a1_mediator": {
-                "healthcheck": health.status_code,
+                "healthcheck": health_status,
                 "policy_statuses": statuses,
             },
             "hw_python_xapp": {
