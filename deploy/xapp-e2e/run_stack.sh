@@ -69,6 +69,12 @@ echo "Building xApp venv with: $XAPP_PYTHON ($("$XAPP_PYTHON" --version))"
 "$XAPP_PYTHON" -m venv "$WORK/venv-xapp"
 "$WORK/venv-xapp/bin/pip" install -q -U pip
 "$WORK/venv-xapp/bin/pip" install -q -e "$WORK/ric-app-hw-python"
+# ricxappframe ships protobuf _pb2.py stubs generated with protoc < 3.19,
+# which the protobuf 4.x/5.x runtime refuses to import ("Descriptors
+# cannot be created directly"). Pin the last compatible runtime — the
+# xApp SDK has no upper bound of its own, so a fresh install otherwise
+# resolves an incompatible major.
+"$WORK/venv-xapp/bin/pip" install -q "protobuf==3.20.3"
 python3 - "$WORK/ric-app-hw-python/init/config-file.json" <<'EOF'
 import json, sys
 p = sys.argv[1]
