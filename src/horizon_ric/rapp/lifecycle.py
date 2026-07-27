@@ -390,17 +390,140 @@ class HorizonRAppLifecycle:
 
 
 def _config_from_env() -> tuple[R1AdapterConfig, A1AdapterConfig, str, int]:
-    """Build configs from environment variables (Docker/K8s deployment)."""
+    """Build configs from environment variables (Docker/K8s deployment).
+
+    A1 auth (O-RAN WG11 §6): an ``AuthConfig`` is attached iff at least one
+    complete credential group is present in the environment —
+
+      * ``A1_CLIENT_TOKEN`` — static bearer token (this exact name is what
+        the Helm secret injects);
+      * the OAuth2 client-credentials triple ``HORIZON_A1_OAUTH_TOKEN_URL`` +
+        ``HORIZON_A1_OAUTH_CLIENT_ID`` + ``HORIZON_A1_OAUTH_CLIENT_SECRET``
+        (optional ``HORIZON_A1_OAUTH_SCOPE``);
+      * the mTLS pair ``HORIZON_A1_CLIENT_CERT_PATH`` +
+        ``HORIZON_A1_CLIENT_KEY_PATH`` (optional ``HORIZON_A1_CA_BUNDLE_PATH``).
+
+    Empty-string values count as unset (Helm ``b64enc`` of "" yields an empty
+    string). With no credentials configured ``auth=None`` preserves the
+    plain-HTTP path used against the OSC reference Near-RT RIC sandbox.
+
+    Partially-configured credential groups are dropped with a structured
+    ``config.auth.partial_credential_group`` warning naming the missing
+    variables. ``HORIZON_A1_VERIFY_TLS`` / ``HORIZON_PRODUCTION_MODE`` are
+    parsed unconditionally, and disabling TLS verification while production
+    mode is on raises ``ValueError`` at startup (WG11 §6 fail-fast) even
+    when no credential group is complete. ``HORIZON_A1_TIMEOUT_S`` governs
+    the authenticated client too (it is passed into ``AuthConfig``).
+    """
+
+    def _env(name: str) -> str | None:
+        value = os.environ.get(name)
+        return value if value else None
+
+    def _flag(name: str, default: bool = True) -> bool:
+        raw = _env(name)
+        if raw is None:
+            return default
+        return raw.strip().lower() not in {"0", "false", "no"}
+
     r1 = R1AdapterConfig(
         smo_base_url=os.environ.get("HORIZON_SMO_URL", R1AdapterConfig.smo_base_url),
         rapp_id=os.environ.get("HORIZON_RAPP_ID", R1AdapterConfig.rapp_id),
     )
+
+    static_token = _env("A1_CLIENT_TOKEN")
+    oauth_token_url = _env("HORIZON_A1_OAUTH_TOKEN_URL")
+    oauth_client_id = _env("HORIZON_A1_OAUTH_CLIENT_ID")
+    oauth_client_secret = _env("HORIZON_A1_OAUTH_CLIENT_SECRET")
+    has_oauth = bool(oauth_token_url and oauth_client_id and oauth_client_secret)
+    cert_path = _env("HORIZON_A1_CLIENT_CERT_PATH")
+    key_path = _env("HORIZON_A1_CLIENT_KEY_PATH")
+    has_mtls = bool(cert_path and key_path)
+
+    # Partially-configured credential groups are dropped — but NEVER
+    # silently: name exactly which variables are missing so a typo'd Helm
+    # values file shows up in the boot log instead of as plain HTTP.
+    _oauth_group = {
+        "HORIZON_A1_OAUTH_TOKEN_URL": oauth_token_url,
+        "HORIZON_A1_OAUTH_CLIENT_ID": oauth_client_id,
+        "HORIZON_A1_OAUTH_CLIENT_SECRET": oauth_client_secret,
+    }
+    if any(_oauth_group.values()) and not has_oauth:
+        logger.warning(
+            "config.auth.partial_credential_group",
+            group="oauth2_client_credentials",
+            present=[k for k, v in _oauth_group.items() if v],
+            missing=[k for k, v in _oauth_group.items() if not v],
+            note="incomplete OAuth2 triple ignored — no OAuth2 auth configured",
+        )
+    _mtls_group = {
+        "HORIZON_A1_CLIENT_CERT_PATH": cert_path,
+        "HORIZON_A1_CLIENT_KEY_PATH": key_path,
+    }
+    if any(_mtls_group.values()) and not has_mtls:
+        logger.warning(
+            "config.auth.partial_credential_group",
+            group="mtls",
+            present=[k for k, v in _mtls_group.items() if v],
+            missing=[k for k, v in _mtls_group.items() if not v],
+            note="incomplete mTLS pair ignored — no client certificate configured",
+        )
+
+    # TLS-posture flags are parsed UNCONDITIONALLY (not only when a
+    # credential group is complete) so the WG11 §6 fail-fast below fires
+    # even for a misconfigured deployment with no working credentials.
+    verify_tls = _flag("HORIZON_A1_VERIFY_TLS", default=True)
+    production_mode = _flag("HORIZON_PRODUCTION_MODE", default=True)
+    if production_mode and not verify_tls:
+        raise ValueError(
+            "HORIZON_A1_VERIFY_TLS is disabled while HORIZON_PRODUCTION_MODE "
+            "is on. WG11 §6 prohibits skipping certificate verification in "
+            "production — set HORIZON_PRODUCTION_MODE=false ONLY in test/dev, "
+            "or re-enable HORIZON_A1_VERIFY_TLS."
+        )
+
+    # HORIZON_A1_TIMEOUT_S applies to the whole A1 client — including the
+    # authenticated one, whose httpx timeout comes from AuthConfig.
+    timeout_seconds = float(
+        _env("HORIZON_A1_TIMEOUT_S") or A1AdapterConfig.timeout_seconds
+    )
+
+    auth = None
+    if static_token or has_oauth or has_mtls:
+        from horizon_ric.rapp.auth import AuthConfig
+
+        ca_bundle = _env("HORIZON_A1_CA_BUNDLE_PATH")
+        auth = AuthConfig(
+            static_bearer_token=static_token,
+            token_url=oauth_token_url if has_oauth else None,
+            client_id=oauth_client_id if has_oauth else None,
+            client_secret=oauth_client_secret if has_oauth else None,
+            scope=_env("HORIZON_A1_OAUTH_SCOPE") if has_oauth else None,
+            client_cert_path=Path(cert_path) if has_mtls else None,
+            client_key_path=Path(key_path) if has_mtls else None,
+            ca_bundle_path=Path(ca_bundle) if ca_bundle else None,
+            verify_tls=verify_tls,
+            production_mode=production_mode,
+            timeout_seconds=timeout_seconds,
+        )
+
+    # A single HORIZON_A1_RIC_ID covers all dialects; each vendor id can be
+    # overridden individually when one rApp addresses several RICs.
+    ric_id = _env("HORIZON_A1_RIC_ID")
     a1 = A1AdapterConfig(
         near_rt_ric_base_url=os.environ.get(
             "HORIZON_NEAR_RT_RIC_URL", A1AdapterConfig.near_rt_ric_base_url
         ),
+        timeout_seconds=timeout_seconds,
         rapp_id=r1.rapp_id,
+        auth=auth,
         dialect=os.environ.get("HORIZON_A1_DIALECT", A1AdapterConfig.dialect),
+        osc_ric_id=_env("HORIZON_A1_OSC_RIC_ID") or ric_id or A1AdapterConfig.osc_ric_id,
+        eiap_ric_id=_env("HORIZON_A1_EIAP_RIC_ID") or ric_id or A1AdapterConfig.eiap_ric_id,
+        mantaray_ric_id=_env("HORIZON_A1_MANTARAY_RIC_ID")
+        or ric_id
+        or A1AdapterConfig.mantaray_ric_id,
+        osc_service_id=_env("HORIZON_A1_SERVICE_ID") or r1.rapp_id,
     )
     host = os.environ.get("HORIZON_HEALTH_HOST", "0.0.0.0")
     port = int(os.environ.get("HORIZON_HEALTH_PORT", "8081"))
@@ -427,7 +550,7 @@ def _build_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         help="Optional path to a connector config YAML. When provided, the "
-             "production daemon entrypoint (scripts.run_horizon_rapp) is used "
+             "production daemon entrypoint (horizon_ric.rapp.daemon) is used "
              "instead of the bare lifecycle loop.",
     )
     p.add_argument(
@@ -463,7 +586,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Delegate to the production daemon when a source config is supplied.
     if args.source_config:
-        from scripts.run_horizon_rapp import run_daemon
+        from horizon_ric.rapp.daemon import run_daemon
 
         return run_daemon(source_config=args.source_config, once=args.once)
 

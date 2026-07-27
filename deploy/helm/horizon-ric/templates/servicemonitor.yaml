@@ -13,7 +13,14 @@ spec:
     matchLabels:
       {{- include "horizon-ric.selectorLabels" . | nindent 6 }}
   endpoints:
+    # /metrics lives on the metrics port in pipeline mode but on the health
+    # port in bare-lifecycle mode (see the port story in values.yaml) —
+    # scrape whichever port the active mode actually serves.
+    {{- if .Values.pipeline.enabled }}
     - port: metrics
+    {{- else }}
+    - port: health
+    {{- end }}
       path: /metrics
       interval: {{ .Values.serviceMonitor.interval }}
       scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}

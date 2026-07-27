@@ -73,3 +73,5 @@ Thumbs.db
 # Runtime state (per-deploy)
 var/evidence/
 var/state/
+data/e2e/
+dump.rdb

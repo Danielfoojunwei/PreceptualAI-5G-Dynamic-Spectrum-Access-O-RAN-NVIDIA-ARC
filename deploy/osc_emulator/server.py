@@ -71,7 +71,6 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
-
 SPECS_DIR = Path(__file__).resolve().parent.parent / "osc_specs"
 
 
@@ -80,8 +79,10 @@ def _load_spec(name: str) -> dict[str, Any]:
 
 
 def make_app() -> FastAPI:
-    pms_spec = _load_spec("pms-api.json")
-    rac_spec = _load_spec("rac-api.json")
+    # Loaded for the side effect only: fail fast at startup if the cached
+    # OSC spec files (pms-api.json / rac-api.json) are missing or invalid.
+    _load_spec("pms-api.json")
+    _load_spec("rac-api.json")
 
     app = FastAPI(
         title="OSC NONRTRIC Emulator (Horizon-RIC dev stack)",

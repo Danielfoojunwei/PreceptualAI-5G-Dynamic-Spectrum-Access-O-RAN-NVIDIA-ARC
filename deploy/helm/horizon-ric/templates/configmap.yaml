@@ -8,7 +8,62 @@ data:
   HORIZON_RAPP_ID: {{ .Values.config.rappId | quote }}
   HORIZON_SMO_URL: {{ .Values.config.smoUrl | quote }}
   HORIZON_NEAR_RT_RIC_URL: {{ .Values.config.nearRtRicUrl | quote }}
-  HORIZON_LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  {{- /* HORIZON_LOG_LEVEL and HORIZON_METRICS_PORT are intentionally NOT
+       rendered: no runtime code path reads either (structlog configures
+       its own level; pipeline mode takes its ports from the source config,
+       lifecycle mode from HORIZON_HEALTH_PORT). Re-add only alongside a
+       real consumer.
+
+       The code reads HORIZON_STATE_PATH (full checkpoint file path, see
+       horizon_ric.rapp.lifecycle). HORIZON_STATE_DIR is kept as the
+       base-dir convention shared with the Docker image and ops tooling,
+       but no runtime code path consumes it directly. */}}
+  HORIZON_STATE_PATH: {{ printf "%s/state.json" .Values.config.stateDir | quote }}
   HORIZON_STATE_DIR: {{ .Values.config.stateDir | quote }}
   HORIZON_HEALTH_PORT: {{ .Values.healthPort | quote }}
-  HORIZON_METRICS_PORT: {{ .Values.metricsPort | quote }}
+  {{- if .Values.dashboard.enabled }}
+  HORIZON_API_PORT: {{ .Values.dashboard.port | quote }}
+  {{- end }}
+  HORIZON_A1_DIALECT: {{ .Values.config.a1Dialect | quote }}
+  HORIZON_A1_TIMEOUT_S: {{ .Values.config.a1TimeoutS | quote }}
+  {{- with .Values.config.a1RicId }}
+  HORIZON_A1_RIC_ID: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.a1ServiceId }}
+  HORIZON_A1_SERVICE_ID: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.auth.oauthTokenUrl }}
+  HORIZON_A1_OAUTH_TOKEN_URL: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.auth.oauthClientId }}
+  HORIZON_A1_OAUTH_CLIENT_ID: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.auth.oauthScope }}
+  HORIZON_A1_OAUTH_SCOPE: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.auth.clientCertPath }}
+  HORIZON_A1_CLIENT_CERT_PATH: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.auth.clientKeyPath }}
+  HORIZON_A1_CLIENT_KEY_PATH: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.auth.caBundlePath }}
+  HORIZON_A1_CA_BUNDLE_PATH: {{ . | quote }}
+  {{- end }}
+  {{- /* verifyTls / productionMode use an explicit empty-check instead of
+       `with`: `with` treats false (and the string can arrive as a bool via
+       --set) as absent, silently dropping an operator's explicit
+       verifyTls=false / productionMode=false. printf "%v" normalises
+       bools to "true"/"false". */}}
+  {{- if ne (printf "%v" .Values.config.auth.verifyTls) "" }}
+  HORIZON_A1_VERIFY_TLS: {{ printf "%v" .Values.config.auth.verifyTls | quote }}
+  {{- end }}
+  {{- if ne (printf "%v" .Values.config.auth.productionMode) "" }}
+  HORIZON_PRODUCTION_MODE: {{ printf "%v" .Values.config.auth.productionMode | quote }}
+  {{- end }}
+  HORIZON_SHIELD_BAND_LO_HZ: {{ .Values.pipeline.shield.bandLoHz | quote }}
+  HORIZON_SHIELD_BAND_HI_HZ: {{ .Values.pipeline.shield.bandHiHz | quote }}
+  HORIZON_SHIELD_MAX_EIRP_DBM: {{ .Values.pipeline.shield.maxEirpDbm | quote }}
+  HORIZON_DECISION_BUDGET_MS: {{ .Values.pipeline.decisionBudgetMs | quote }}
+  HORIZON_A1_STATUS_POLL_ATTEMPTS: {{ .Values.pipeline.statusPoll.attempts | quote }}
+  HORIZON_A1_STATUS_POLL_INTERVAL_S: {{ .Values.pipeline.statusPoll.intervalS | quote }}

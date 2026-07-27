@@ -1,0 +1,12 @@
+{"event_id": "replay-0000", "modality": "kpm_5g", "source_id": "e2e-replay", "ts_utc": "2026-07-27T05:00:00+00:00", "sequence": 0, "payload": {"sla_risk_30s": 0.05, "cell_id": "cell-0", "slice_id": "slice-0"}}
+{"event_id": "replay-0001", "modality": "kpm_5g", "source_id": "e2e-replay", "ts_utc": "2026-07-27T05:00:01+00:00", "sequence": 1, "payload": {"sla_risk_30s": 0.08, "cell_id": "cell-1", "slice_id": "slice-1"}}
+{"event_id": "replay-0002", "modality": "kpm_5g", "source_id": "e2e-replay", "ts_utc": "2026-07-27T05:00:02+00:00", "sequence": 2, "payload": {"sla_risk_30s": 0.12, "cell_id": "cell-2", "slice_id": "slice-0"}}
+{"event_id": "replay-0003", "modality": "kpm_5g", "source_id": "e2e-replay", "ts_utc": "2026-07-27T05:00:03+00:00", "sequence": 3, "payload": {"sla_risk_30s": 0.22, "cell_id": "cell-0", "slice_id": "slice-1"}}
+{"event_id": "replay-0004", "modality": "kpm_5g", "source_id": "e2e-replay", "ts_utc": "2026-07-27T05:00:04+00:00", "sequence": 4, "payload": {"sla_risk_30s": 0.35, "cell_id": "cell-1", "slice_id": "slice-0"}}
+{"event_id": "replay-0005", "modality": "kpm_5g", "source_id": "e2e-replay", "ts_utc": "2026-07-27T05:00:05+00:00", "sequence": 5, "payload": {"sla_risk_30s": 0.42, "cell_id": "cell-2", "slice_id": "slice-1"}}
+{"event_id": "replay-0006", "modality": "kpm_5g", "source_id": "e2e-replay", "ts_utc": "2026-07-27T05:00:06+00:00", "sequence": 6, "payload": {"sla_risk_30s": 0.55, "cell_id": "cell-0", "slice_id": "slice-0"}}
+{"event_id": "replay-0007", "modality": "kpm_5g", "source_id": "e2e-replay", "ts_utc": "2026-07-27T05:00:07+00:00", "sequence": 7, "payload": {"sla_risk_30s": 0.62, "cell_id": "cell-1", "slice_id": "slice-1"}}
+{"event_id": "replay-0008", "modality": "kpm_5g", "source_id": "e2e-replay", "ts_utc": "2026-07-27T05:00:08+00:00", "sequence": 8, "payload": {"sla_risk_30s": 0.71, "cell_id": "cell-2", "slice_id": "slice-0"}}
+{"event_id": "replay-0009", "modality": "kpm_5g", "source_id": "e2e-replay", "ts_utc": "2026-07-27T05:00:09+00:00", "sequence": 9, "payload": {"sla_risk_30s": 0.85, "cell_id": "cell-0", "slice_id": "slice-1"}}
+{"event_id": "replay-0010", "modality": "kpm_5g", "source_id": "e2e-replay", "ts_utc": "2026-07-27T05:00:10+00:00", "sequence": 10, "payload": {"sla_risk_30s": 0.28, "cell_id": "cell-1", "slice_id": "slice-0"}}
+{"event_id": "replay-0011", "modality": "kpm_5g", "source_id": "e2e-replay", "ts_utc": "2026-07-27T05:00:11+00:00", "sequence": 11, "payload": {"sla_risk_30s": 0.15, "cell_id": "cell-2", "slice_id": "slice-1"}}

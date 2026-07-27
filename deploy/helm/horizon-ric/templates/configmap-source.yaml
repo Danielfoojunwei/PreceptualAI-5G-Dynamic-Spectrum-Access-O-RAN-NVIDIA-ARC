@@ -1,0 +1,13 @@
+{{- if .Values.pipeline.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "horizon-ric.fullname" . }}-source
+  labels:
+    {{- include "horizon-ric.labels" . | nindent 4 }}
+data:
+  # Connector config consumed by `horizon-rapp --source-config` — rendered
+  # verbatim from .Values.pipeline.sourceConfig and mounted at /etc/horizon.
+  source.yaml: |
+    {{- toYaml .Values.pipeline.sourceConfig | nindent 4 }}
+{{- end }}

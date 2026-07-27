@@ -32,7 +32,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /opt/horizon
 
 # Create the venv we will copy to the runtime stage.
-RUN python -m venv /opt/horizon/.venv \
+# The optional `ca-bundle` secret lets builds behind a TLS-intercepting
+# egress proxy trust its CA without baking it into the image:
+#   docker build --secret id=ca-bundle,src=/path/to/ca.crt ...
+RUN --mount=type=secret,id=ca-bundle,target=/tmp/ca-bundle.crt \
+    if [ -s /tmp/ca-bundle.crt ]; then export PIP_CERT=/tmp/ca-bundle.crt; fi \
+    && python -m venv /opt/horizon/.venv \
     && /opt/horizon/.venv/bin/pip install --upgrade pip setuptools wheel
 
 # Copy only the build metadata first, so dep installs cache cleanly.
@@ -41,8 +46,19 @@ COPY src/ ./src/
 
 # Install the package (no [dev] in the runtime image — keeps it slim, but
 # we install dev for the test image variant via a build arg if needed).
-ARG INSTALL_EXTRAS="oran,crypto"
-RUN /opt/horizon/.venv/bin/pip install --no-cache-dir ".[${INSTALL_EXTRAS}]"
+# uvicorn is a declared runtime dependency in pyproject.toml (the lifecycle
+# daemon and run_horizon_rapp health/metrics servers), so no explicit pin.
+# Extras must exist in pyproject [project.optional-dependencies]:
+#   oran        — NETCONF/YANG + ASN.1 southbound wire integrations
+#   persistence — psycopg for the Postgres/TimescaleDB evidence store
+#                 (HORIZON_EVIDENCE_DSN); SQLite needs no extra.
+#   kafka       — aiokafka for the Kafka telemetry source/sink
+#                 (pipeline source.type: kafka).
+#   hsm         — python-pkcs11 for HSM-backed signing (security/hsm.py).
+ARG INSTALL_EXTRAS="oran,persistence,kafka,hsm"
+RUN --mount=type=secret,id=ca-bundle,target=/tmp/ca-bundle.crt \
+    if [ -s /tmp/ca-bundle.crt ]; then export PIP_CERT=/tmp/ca-bundle.crt; fi \
+    && /opt/horizon/.venv/bin/pip install --no-cache-dir ".[${INSTALL_EXTRAS}]"
 
 # --------------------------------------------------------------------------
 # Stage 2: runtime
@@ -66,6 +82,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HORIZON_VERSION=${VERSION} \
     VIRTUAL_ENV=/opt/horizon/.venv \
     PATH=/opt/horizon/.venv/bin:$PATH \
+    # The daemon now ships inside the package (horizon_ric.rapp.daemon);
+    # PYTHONPATH is kept only so the historical `scripts.run_horizon_rapp`
+    # shim import path keeps working for tooling that still uses it.
+    PYTHONPATH=/opt/horizon \
     HORIZON_HEALTH_HOST=0.0.0.0 \
     HORIZON_HEALTH_PORT=8081 \
     HORIZON_METRICS_PORT=8082 \
@@ -101,8 +121,13 @@ USER horizon
 
 EXPOSE 8081 8082
 
+# Port story: the bare lifecycle daemon (default CMD, no args) serves
+# /healthz on 8081; pipeline mode (`--source-config ...`) serves it on the
+# metrics port 8082 instead — probe both so either mode reports healthy.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -fsS http://localhost:8081/healthz || exit 1
+    CMD curl -fsS http://localhost:8081/healthz \
+        || curl -fsS http://localhost:8082/healthz \
+        || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/opt/horizon/.venv/bin/horizon-rapp"]
 CMD []

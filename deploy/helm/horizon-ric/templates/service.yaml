@@ -10,6 +10,10 @@ metadata:
   {{- end }}
 spec:
   type: {{ .Values.service.type }}
+  # Port story (see values.yaml): pipeline mode answers /healthz, /readyz and
+  # /metrics on the metrics port only; the bare lifecycle daemon answers all
+  # three on the health port only. Both are exposed so a mode flip needs no
+  # Service change.
   ports:
     - name: health
       port: {{ .Values.service.healthPort }}
@@ -19,5 +23,11 @@ spec:
       port: {{ .Values.service.metricsPort }}
       targetPort: metrics
       protocol: TCP
+    {{- if .Values.dashboard.enabled }}
+    - name: dashboard
+      port: {{ .Values.service.dashboardPort }}
+      targetPort: dashboard
+      protocol: TCP
+    {{- end }}
   selector:
     {{- include "horizon-ric.selectorLabels" . | nindent 4 }}

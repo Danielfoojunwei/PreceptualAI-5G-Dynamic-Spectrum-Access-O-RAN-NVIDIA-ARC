@@ -1,0 +1,73 @@
+name: xApp E2E (real A1 mediator + hw-python)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/horizon_ric/rapp/**"
+      - "scripts/run_horizon_rapp.py"
+      - "scripts/xapp_e2e_proof.py"
+      - "deploy/xapp-e2e/**"
+      - ".github/workflows/xapp-e2e.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  xapp-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: System deps (cmake, redis, build tools)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake build-essential redis-server
+      - name: Install Horizon-RIC
+        run: python -m pip install '.[dev]'
+      - name: Build and start real O-RAN-SC stack (RMR + A1 mediator + hw-python)
+        run: |
+          # run_stack.sh installs RMR to /usr/local (needs sudo on hosted
+          # runners) — build as root, keeping the workspace user-owned.
+          # Invoked via `bash` so the job never depends on the executable
+          # bit surviving the checkout (belt and braces; the bit is also
+          # set in the git index).
+          sudo -E env "PATH=$PATH" XAPP_E2E_WORK="$RUNNER_TEMP/oran" \
+            bash deploy/xapp-e2e/run_stack.sh
+      - name: Drive full Horizon pipeline against the live mediator
+        env:
+          HORIZON_A1_DIALECT: legacy
+          HORIZON_NEAR_RT_RIC_URL: http://127.0.0.1:10000
+          HORIZON_ONCE_REQUIRE_ACCEPTED: "1"
+        run: |
+          python scripts/run_horizon_rapp.py \
+            --source-config deploy/xapp-e2e/source-replay.yaml \
+            --once --once-max-events 12 \
+            --report-json "$RUNNER_TEMP/pipeline-report.json"
+      - name: Verify xApp received and ACKed the policies
+        run: |
+          python scripts/xapp_e2e_proof.py \
+            --a1-base-url http://127.0.0.1:10000 \
+            --report "$RUNNER_TEMP/pipeline-report.json" \
+            --mediator-log "$RUNNER_TEMP/oran/a1mediator.log" \
+            --xapp-log "$RUNNER_TEMP/oran/hwxapp.log" \
+            --out "$RUNNER_TEMP/xapp-e2e-proof.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xapp-e2e-proof
+          path: |
+            ${{ runner.temp }}/pipeline-report.json
+            ${{ runner.temp }}/xapp-e2e-proof.json
+      - name: Stack logs
+        if: always()
+        run: |
+          tail -n 100 "$RUNNER_TEMP/oran/a1mediator.log" || true
+          tail -n 100 "$RUNNER_TEMP/oran/hwxapp.log" || true

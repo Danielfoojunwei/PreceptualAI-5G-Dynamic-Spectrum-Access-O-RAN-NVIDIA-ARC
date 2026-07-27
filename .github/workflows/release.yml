@@ -40,16 +40,47 @@ jobs:
         with:
           cosign-release: "v2.4.1"
 
-      - name: Sign image (tag)
+      # Sign THE image the build workflow publishes: build.yml pushes
+      # ghcr.io/<owner-lowercase>/horizon-ric:<version> (v-prefix stripped)
+      # on tag pushes — same registry/repo/tag scheme must be used here.
+      - name: Compute image ref (GHCR, lowercase)
+        id: img
+        run: |
+          owner="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "ref=ghcr.io/${owner}/horizon-ric:${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # build.yml runs in parallel on the same tag push and is the workflow
+      # that actually pushes the image — wait for it to land before signing.
+      - name: Wait for build workflow to publish the image
+        run: |
+          for i in $(seq 1 40); do
+            if docker manifest inspect "${{ steps.img.outputs.ref }}" >/dev/null 2>&1; then
+              echo "image ${{ steps.img.outputs.ref }} is available"
+              exit 0
+            fi
+            echo "waiting for ${{ steps.img.outputs.ref }} (attempt $i/40)..."
+            sleep 30
+          done
+          echo "image ${{ steps.img.outputs.ref }} never appeared in GHCR" >&2
+          exit 1
+
+      - name: Sign image (release key) + attach SBOM
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
         run: |
           echo "${{ secrets.COSIGN_KEY }}" > /tmp/cosign.key
           cosign sign --yes --key /tmp/cosign.key \
-            horizonric/rapp:${GITHUB_REF_NAME#v}
+            "${{ steps.img.outputs.ref }}"
           cosign attach sbom --type cyclonedx \
             --sbom deploy/sbom/horizon-ric-sbom.json \
-            horizonric/rapp:${GITHUB_REF_NAME#v}
+            "${{ steps.img.outputs.ref }}"
           rm /tmp/cosign.key
 
       - name: Helm package + publish

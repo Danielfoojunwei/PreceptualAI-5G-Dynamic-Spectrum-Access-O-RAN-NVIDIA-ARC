@@ -1,5 +1,14 @@
 """Horizon-RIC operator REST API v1 — data surface (port 8083).
 
+STATUS (2026-07): this module is the SDK quickstart/demo API, NOT the
+API the rApp serves. It seeds a temp evidence store with fabricated
+DecisionRecords and returns synthetic SLA timelines, so its responses
+must never be presented as live data. The deployed surface is
+`horizon_ric.rapp.dashboard_api` (mounted by
+`HorizonRAppLifecycle._serve_api()` on port 8083), and the committed
+OpenAPI artifact `docs/openapi/horizon-ric-rapp.yaml` is now generated
+from that module. See docs/API_SURFACES.md for the full module map.
+
 Stakeholder-facing read/control endpoints for SLA, policy, audit and
 connector management. Distinct from:
 

@@ -22,6 +22,10 @@ from fastapi.testclient import TestClient
 # a deterministic secret across the suite.
 os.environ.setdefault("HORIZON_API_JWT_SECRET", "test-secret-do-not-use-in-prod")
 os.environ.setdefault("HORIZON_API_USERS", "alice:wonderland:operator,bob:builder:viewer")
+# These fixtures use dev-only plaintext credentials; production mode (the
+# default) refuses them. tests/test_dashboard_api_security.py covers the
+# hashed-credential + production-mode paths.
+os.environ.setdefault("HORIZON_PRODUCTION_MODE", "false")
 
 from horizon_ric.evidence.schema import (  # noqa: E402
     DecisionRecord,

@@ -8,8 +8,12 @@
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now horizon-rapp
 #
-# The service uses Type=notify and WatchdogSec=30; the rApp lifecycle pings
-# WATCHDOG=1 every 15s via horizon_ric.rapp.sd_notify.
+# The service uses Type=notify and WatchdogSec=30; the rApp pings WATCHDOG=1
+# every 15s via horizon_ric.rapp.sd_notify. Both run modes speak the
+# sd_notify protocol — the bare lifecycle daemon (default ExecStart) and the
+# full-pipeline daemon (`--source-config`, sd_notify support landed for
+# pipeline mode) — so Type=notify + WatchdogSec stay valid whichever
+# ExecStart line below is active.
 
 [Unit]
 Description=Horizon-RIC rApp — NTN-Aware AI-RAN Resource-Orchestration
@@ -30,6 +34,30 @@ WorkingDirectory=/opt/horizon
 EnvironmentFile=-/etc/horizon/horizon.env
 
 ExecStart=/opt/horizon/.venv/bin/horizon-rapp
+
+# Full-pipeline mode — telemetry source → planner → Shield → A1 emit instead
+# of the bare lifecycle loop. Swap ExecStart for the line below and point
+# --source-config at a connector YAML (schema: scripts/local-dev.yaml).
+# The pipeline daemon sends READY=1/WATCHDOG=1 too, so no Type= change is
+# needed. NOTE: a `file` source whose path does not exist is a HARD ERROR
+# at startup in daemon mode — stage real telemetry (under /var/lib/horizon,
+# which is in ReadWritePaths) or use a `synthetic` source for dry runs.
+#ExecStart=/opt/horizon/.venv/bin/horizon-rapp --source-config /etc/horizon/source.yaml
+
+# A1 dialect + auth env contract, read by the daemon at boot. Prefer setting
+# these in /etc/horizon/horizon.env (EnvironmentFile above) — secrets like
+# A1_CLIENT_TOKEN and HORIZON_A1_OAUTH_CLIENT_SECRET must ONLY live there,
+# never in this unit file. Defaults shown; uncomment to override per-host.
+#Environment=HORIZON_A1_DIALECT=osc
+#Environment=HORIZON_A1_RIC_ID=ric_emulated_horizon
+#Environment=HORIZON_A1_SERVICE_ID=horizon-ric-rapp
+#Environment=HORIZON_A1_TIMEOUT_S=10
+#Environment=HORIZON_SHIELD_BAND_LO_HZ=3.40e9
+#Environment=HORIZON_SHIELD_BAND_HI_HZ=3.50e9
+#Environment=HORIZON_SHIELD_MAX_EIRP_DBM=33.0
+#Environment=HORIZON_DECISION_BUDGET_MS=1000
+#Environment=HORIZON_A1_STATUS_POLL_ATTEMPTS=3
+#Environment=HORIZON_A1_STATUS_POLL_INTERVAL_S=1.0
 
 # Graceful shutdown — give the rApp 25s to deregister + flush evidence chain.
 TimeoutStartSec=60

@@ -36,10 +36,15 @@ kubectl -n $NS describe pod -l app.kubernetes.io/name=horizon-ric | head -120
 # Recent logs (last 200 lines, JSON via structlog).
 kubectl -n $NS logs -l app.kubernetes.io/name=horizon-ric --tail=200 | jq .
 
-# Probe the health server directly.
-kubectl -n $NS port-forward svc/$APP 8081:8081 &
-curl -fsS http://localhost:8081/healthz
-curl -fsS http://localhost:8081/readyz
+# Probe the health server directly. Port story: in pipeline mode (the chart
+# default, pipeline.enabled=true) /healthz, /readyz and /metrics are ALL on
+# the metrics port 8082; in bare-lifecycle mode they are all on 8081.
+kubectl -n $NS port-forward svc/$APP 8082:8082 &
+curl -fsS http://localhost:8082/healthz
+curl -fsS http://localhost:8082/readyz
+# Bare-lifecycle mode (pipeline.enabled=false) instead:
+#   kubectl -n $NS port-forward svc/$APP 8081:8081 &
+#   curl -fsS http://localhost:8081/healthz
 ```
 
 On bare-metal:
@@ -92,11 +97,19 @@ kubectl -n $NS exec deploy/$APP -- \
 ### Mitigate
 
 * If SMO is the issue, do **not** restart the rApp — DEGRADED is the correct posture; wait for SMO to recover. Confirm the Non-RT RIC team sees the same.
-* If only A1 emit is broken, throttle the rApp to read-only:
+* If only A1 emit is broken, flip the dry-run kill switch:
 
   ```sh
   kubectl -n $NS set env deploy/$APP HORIZON_A1_DRY_RUN=true
   ```
+
+  With `HORIZON_A1_DRY_RUN` truthy the pipeline still runs the planner,
+  Shield and guard chain per event, but **skips the A1 PUT**: each
+  suppressed decision is appended to the audit chain with
+  `chosen_action.dry_run: true` and counted in the
+  `horizon_dry_run_decisions_total` metric (the daemon report counts it
+  under `dry_run`, not `accepted`). Unset the variable (and restart) to
+  resume live emits.
 
 ### Root-cause
 
@@ -123,7 +136,9 @@ kubectl -n $NS logs deploy/$APP --tail=500 | jq 'select(.event=="a1.emit")'
 ### Mitigate
 
 ```sh
-# Pause emits, keep observing.
+# Pause emits, keep observing. Decisions still run the Shield + guards and
+# land in the audit chain flagged `dry_run: true`; the A1 PUT is skipped and
+# horizon_dry_run_decisions_total counts each suppressed emit.
 kubectl -n $NS set env deploy/$APP HORIZON_A1_DRY_RUN=true
 ```
 
@@ -224,6 +239,78 @@ kubectl -n $NS scale deploy/$APP --replicas=3
 * Hot-path regression in the planner; bisect against the last green deploy.
 * Upstream burst (operator override flood, weather event); confirm via the
   source connector's metrics.
+
+---
+
+## Full-pipeline mode and A1 dialect/auth configuration
+
+The chart runs the container in full-pipeline mode by default
+(`pipeline.enabled=true`): the pod gets
+`args: ["--source-config", "/etc/horizon/source.yaml"]`, where `source.yaml`
+is the `<fullname>-source` ConfigMap rendered verbatim from
+`pipeline.sourceConfig` (telemetry source → planner → Shield → A1 emit).
+Set `pipeline.enabled=false` to fall back to the bare lifecycle daemon
+(register with the SMO and idle) — the pre-wave behavior.
+
+### Environment contract → Helm values
+
+All knobs are env vars read by the daemon at boot (`_config_from_env()` in
+`horizon_ric.rapp.lifecycle`). Non-secret vars land in the `-config`
+ConfigMap; secrets in the `-credentials` Secret. Empty values are *omitted*
+from the ConfigMap so the adapter's defaults apply.
+
+| Env var | Helm value | Default / notes |
+| --- | --- | --- |
+| `HORIZON_A1_DIALECT` | `config.a1Dialect` | `osc` — OSC NONRTRIC PMS, the reference SMO path. Also: `legacy`, `osc_a1`, `eiap`, `mantaray`. |
+| `HORIZON_A1_RIC_ID` | `config.a1RicId` | empty → per-dialect default. Per-dialect overrides `HORIZON_A1_OSC_RIC_ID` / `HORIZON_A1_EIAP_RIC_ID` / `HORIZON_A1_MANTARAY_RIC_ID` can be injected via `extraVolumes`-style env if you run mixed SMOs. |
+| `HORIZON_A1_SERVICE_ID` | `config.a1ServiceId` | empty → adapter default. |
+| `HORIZON_A1_TIMEOUT_S` | `config.a1TimeoutS` | `10` |
+| `A1_CLIENT_TOKEN` | `secret.data.a1ClientToken` | static bearer; see flow note below. |
+| `HORIZON_A1_OAUTH_TOKEN_URL` | `config.auth.oauthTokenUrl` | OAuth2 client-credentials token endpoint. |
+| `HORIZON_A1_OAUTH_CLIENT_ID` | `config.auth.oauthClientId` | |
+| `HORIZON_A1_OAUTH_CLIENT_SECRET` | `secret.data.a1OauthClientSecret` | secret — never in the ConfigMap. |
+| `HORIZON_A1_OAUTH_SCOPE` | `config.auth.oauthScope` | |
+| `HORIZON_A1_CLIENT_CERT_PATH` | `config.auth.clientCertPath` | mTLS client cert; mount the material via `extraVolumes`/`extraVolumeMounts`. |
+| `HORIZON_A1_CLIENT_KEY_PATH` | `config.auth.clientKeyPath` | |
+| `HORIZON_A1_CA_BUNDLE_PATH` | `config.auth.caBundlePath` | |
+| `HORIZON_A1_VERIFY_TLS` | `config.auth.verifyTls` | `"true"`/`"false"`; empty → adapter default. |
+| `HORIZON_PRODUCTION_MODE` | `config.auth.productionMode` | `"true"` hard-fails insecure A1 config. |
+| `HORIZON_SHIELD_BAND_LO_HZ` | `pipeline.shield.bandLoHz` | `3.40e9` |
+| `HORIZON_SHIELD_BAND_HI_HZ` | `pipeline.shield.bandHiHz` | `3.50e9` |
+| `HORIZON_SHIELD_MAX_EIRP_DBM` | `pipeline.shield.maxEirpDbm` | `33.0` |
+| `HORIZON_DECISION_BUDGET_MS` | `pipeline.decisionBudgetMs` | `1000` |
+| `HORIZON_A1_STATUS_POLL_ATTEMPTS` | `pipeline.statusPoll.attempts` | `3` |
+| `HORIZON_A1_STATUS_POLL_INTERVAL_S` | `pipeline.statusPoll.intervalS` | `1.0` |
+| `HORIZON_ONCE_REQUIRE_ACCEPTED` | — (set via `kubectl set env` / CI) | `--once` smoke gates on ACCEPTED policy status when `1`. |
+
+On bare metal the same contract applies — see the commented `Environment=`
+block and the `--source-config` ExecStart example in
+`deploy/systemd/horizon-rapp.service`; secrets go in
+`/etc/horizon/horizon.env` (EnvironmentFile), never in the unit file.
+
+### Token flow (static bearer)
+
+`A1_CLIENT_TOKEN` now flows end-to-end: chart Secret (`-credentials`) →
+pod env via `envFrom.secretRef` → `AuthConfig` in the daemon →
+`Authorization: Bearer <token>` header on every A1 call. Rotating the
+Secret and restarting the deployment rotates the header.
+
+Precedence (matches `horizon_ric.rapp.auth.build_secure_async_client`):
+a configured **static bearer token beats OAuth2** — when both
+`A1_CLIENT_TOKEN` and the OAuth2 triple are set, the static token is
+sent and the OAuth2 client-credentials flow is not used. mTLS is
+orthogonal and **composes with either** bearer mechanism (the client
+cert/key ride on the TLS layer regardless of which Authorization header
+is chosen).
+
+### Vendor SMO dialects
+
+* `eiap` (Ericsson Intelligent Automation Platform) and `mantaray`
+  (Nokia MantaRay SMO) reuse the same env contract with their own URL and
+  payload shapes — see `deploy/onboarding/` for the vendor onboarding
+  packages and `docs/SMO_INTEGRATION.md` for the dialect matrix.
+* Wire behavior per dialect is covered by `tests/test_a1_eiap_dialect.py`
+  and `tests/test_a1_mantaray_dialect.py`.
 
 ---
 

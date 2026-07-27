@@ -1,6 +1,6 @@
 # HSM Key Custody for Federated Aggregation
 
-> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
 
 **Scope.** Horizon-RIC's secure aggregation path (`ShamirSecretSharing` /
