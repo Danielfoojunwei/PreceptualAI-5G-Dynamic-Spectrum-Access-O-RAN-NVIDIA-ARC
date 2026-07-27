@@ -1,0 +1,49 @@
+{
+  "hash": "9c807ea77b2c568c67ad7b7245a8a43ec3952a856fdb898d5dda07f3fe98bd34",
+  "record": {
+    "actual_outcome_1min": null,
+    "actual_outcome_30s": null,
+    "actual_outcome_5min": null,
+    "chosen_action": {
+      "guard_refused": true,
+      "label": "unconstrained-optimum-cap20",
+      "policy_type": "horizon.spectrum.reservation",
+      "projected": true,
+      "requested_frequency_hz": 3458333333.3333335,
+      "requested_tx_power_dBm": 103.7653905387311,
+      "reward": 0.13916015625,
+      "safe_frequency_hz": 3460000000.0,
+      "safe_tx_power_dBm": 14.0
+    },
+    "constraint_corrections": [],
+    "decision_id": "frontier-cap20-step0",
+    "model_versions": {
+      "constraint_layer": "terrestrial-shield",
+      "dyna": "none",
+      "encoder": "none",
+      "policy": "unconstrained-optimum-cap20",
+      "rapp": "0.2.0",
+      "risk_heads": "shield-feedback"
+    },
+    "operator_override": false,
+    "operator_override_reason": null,
+    "predicted_outcome_chosen": {
+      "constraint_violations": [],
+      "energy_kwh": 0.0,
+      "gateway_loads": {},
+      "ntn_capacity_used": 0.0,
+      "sla_risk_1min": 0.1,
+      "sla_risk_30s": 0.1,
+      "sla_risk_5min": 0.1
+    },
+    "random_seed": null,
+    "rapp_instance_id": "safety-utility-frontier",
+    "rejected_alternatives": [],
+    "sla_breach_context": null,
+    "state_blob_uri": null,
+    "state_hash": "freq-3458333333",
+    "tenant_id": "_unscoped_",
+    "timestamp": "2026-07-27T13:51:22.253981Z"
+  },
+  "tenant_id": "_unscoped_"
+}

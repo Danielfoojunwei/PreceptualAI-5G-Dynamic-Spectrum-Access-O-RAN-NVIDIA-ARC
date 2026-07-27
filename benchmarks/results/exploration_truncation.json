@@ -1,0 +1,125 @@
+{
+  "action_space": {
+    "eirp_bins_dbm": {
+      "count": 33,
+      "hi": 52.0,
+      "lo": 20.0,
+      "step": 1.0
+    },
+    "frequency_bins": {
+      "in_band": 6,
+      "out_of_band": 3
+    },
+    "infeasible_fraction": 0.717172,
+    "n_arms": 297,
+    "n_infeasible_arms": 213
+  },
+  "benchmark": "Exploration truncation and graduation under the Decision Safety Shield on real DeepMIMO channels",
+  "counterfactual_harm_prevented": {
+    "correction_aware_blocked": 225,
+    "illegal_actions_blocked_total": 1068,
+    "max_counterfactual_reward_of_blocked_proposals": 0.610107,
+    "max_over_cap_excess_db": 19.0,
+    "out_of_band_proposals_total": 202,
+    "over_cap_proposals_total": 980,
+    "reward_only_blocked": 843,
+    "worst_unshielded_eirp_dbm": 52.0
+  },
+  "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+  "dataset": "DeepMIMO ASU Campus 3.5 GHz",
+  "env": {
+    "band_hi_hz": 3550000000.0,
+    "band_lo_hz": 3450000000.0,
+    "eirp_cap_dbm": 33.0,
+    "noise_dbm": -93.9897,
+    "reward": "served fraction"
+  },
+  "features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
+  "learners": {
+    "correction_aware": {
+      "closed_loop_summary": {
+        "final_proposed_eirp_dbm": 33.0,
+        "final_reward": 0.347412,
+        "illegal_proposal_rate": 0.234375,
+        "mean_executed_eirp_dbm": 32.1063,
+        "mean_proposed_eirp_dbm": 33.975,
+        "mean_reward": 0.333358,
+        "projection_rate": 0.265625,
+        "steps": 960
+      },
+      "executed_out_of_band_steps": 0,
+      "graduated": true,
+      "illegal_proposal_rate_q1": 0.7125,
+      "illegal_proposal_rate_q2": 0.225,
+      "illegal_proposal_rate_q3": 0.0,
+      "illegal_proposal_rate_q4": 0.0,
+      "illegal_proposals_blocked": 225,
+      "infeasible_belief": {
+        "mean_abs_error_vs_oracle_above_cap": 0.40573,
+        "true_unconstrained_reward_at_eirp_50_dbm": 0.591797,
+        "value_estimate_at_eirp_50_dbm": 0.097412
+      },
+      "max_executed_eirp_dbm": 33.0,
+      "max_over_cap_excess_db": 19.0,
+      "name": "correction_aware",
+      "realised_mean_reward": 0.333358,
+      "shield_interventions_q4": 0,
+      "shield_interventions_total": 255,
+      "steps": 960,
+      "unobserved_infeasible_bins": 213
+    },
+    "reward_only": {
+      "closed_loop_summary": {
+        "final_proposed_eirp_dbm": 40.0,
+        "final_reward": 0.347412,
+        "illegal_proposal_rate": 0.878125,
+        "mean_executed_eirp_dbm": 32.1063,
+        "mean_proposed_eirp_dbm": 40.3552,
+        "mean_reward": 0.333358,
+        "projection_rate": 0.909375,
+        "steps": 960
+      },
+      "executed_out_of_band_steps": 0,
+      "graduated": false,
+      "illegal_proposal_rate_q1": 0.7125,
+      "illegal_proposal_rate_q2": 0.891667,
+      "illegal_proposal_rate_q3": 0.954167,
+      "illegal_proposal_rate_q4": 0.954167,
+      "illegal_proposals_blocked": 843,
+      "infeasible_belief": {
+        "mean_abs_error_vs_oracle_above_cap": 0.15573,
+        "true_unconstrained_reward_at_eirp_50_dbm": 0.591797,
+        "value_estimate_at_eirp_50_dbm": 0.347412
+      },
+      "max_executed_eirp_dbm": 33.0,
+      "max_over_cap_excess_db": 19.0,
+      "name": "reward_only",
+      "realised_mean_reward": 0.333358,
+      "shield_interventions_q4": 229,
+      "shield_interventions_total": 873,
+      "steps": 960,
+      "unobserved_infeasible_bins": 213
+    }
+  },
+  "optimal_feasible_reward": 0.347412,
+  "receivers": 4096,
+  "scenario": "asu_campus_3p5",
+  "scope_note": "Real DeepMIMO ray tracing (not over-the-air capture), one scenario. The learners are tabular bandits over a discretised action space, not deep RL, and graduation is shown for this learner and reward shape only (served fraction, monotone in EIRP, deterministic). Realised utility is nearly identical for both learners because the Shield rescues every illegal proposal onto the cap; what differs is who does the safety work. The counterfactual oracle is used for reporting only and is never trained on.",
+  "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+  "task": "O-RAN dynamic spectrum access rApp: shielded EIRP/frequency selection",
+  "training": {
+    "batch_per_round": 24,
+    "correction_penalty": 0.25,
+    "learner": "tabular bandit, optimistic init 1.0, greedy with seeded random tie-breaks, learning rate 1.0 (deterministic environment)",
+    "replay": "value table rebuilt each round exclusively from load_transitions() over the verified hash chain",
+    "rounds": 40,
+    "seed": 7,
+    "steps_per_learner": 960
+  },
+  "trust_chain": {
+    "evidence_chain_length": 1920,
+    "tampered_chain_refused": true,
+    "verify_after_tamper_index": 1,
+    "verify_first_broken_index": -1
+  }
+}

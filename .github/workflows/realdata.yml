@@ -15,6 +15,17 @@ on:
       - "benchmarks/results/mobility_handover.json"
       - "benchmarks/antijam_loop.py"
       - "benchmarks/results/antijam.json"
+      - "benchmarks/credit_assignment_loop.py"
+      - "benchmarks/results/credit_assignment.json"
+      - "benchmarks/exploration_truncation_loop.py"
+      - "benchmarks/results/exploration_truncation.json"
+      - "benchmarks/safety_utility_frontier_loop.py"
+      - "benchmarks/results/safety_utility_frontier.json"
+      - "src/horizon_ric/learning/**"
+      - "tests/test_shield_env.py"
+      - "scripts/verify_credit_assignment.py"
+      - "scripts/verify_exploration_truncation.py"
+      - "scripts/verify_safety_utility_frontier.py"
       - "src/horizon_ric/data/lineage.py"
       - "src/horizon_ric/federated/**"
       - "scripts/verify_deepmimo_reproduction.py"
@@ -129,6 +140,26 @@ jobs:
             --committed-result benchmarks/results/antijam.json \
             --actual-result "$RUNNER_TEMP/antijam.json" \
             --actual-manifest "$RUNNER_TEMP/angular_manifest.json"
+      - name: Exercise the shielded closed-loop substrate on real channels
+        # tests/test_shield_env.py skips without the licence-gated features; here
+        # they exist, so this is the one place the substrate is tested for real.
+        run: |
+          mkdir -p datasets/deepmimo_asu_3p5/generated
+          ln -sf "$RUNNER_TEMP/channel_features.jsonl" \
+            datasets/deepmimo_asu_3p5/generated/channel_features.jsonl
+          pytest tests/test_shield_env.py -q
+      - name: Reproduce shield-learning experiments on real data
+        run: |
+          for exp in credit_assignment exploration_truncation safety_utility_frontier; do
+            python "benchmarks/${exp}_loop.py" \
+              --features "$RUNNER_TEMP/channel_features.jsonl" \
+              --manifest "$RUNNER_TEMP/manifest.json" \
+              --out "$RUNNER_TEMP/${exp}.json"
+            python "scripts/verify_${exp}.py" \
+              --committed-result "benchmarks/results/${exp}.json" \
+              --actual-result "$RUNNER_TEMP/${exp}.json" \
+              --actual-manifest "$RUNNER_TEMP/manifest.json"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -137,6 +168,9 @@ jobs:
             ${{ runner.temp }}/manifest.json
             ${{ runner.temp }}/deepmimo_dsa.json
             ${{ runner.temp }}/federated_coverage.json
+            ${{ runner.temp }}/credit_assignment.json
+            ${{ runner.temp }}/exploration_truncation.json
+            ${{ runner.temp }}/safety_utility_frontier.json
             ${{ runner.temp }}/beam_management.json
             ${{ runner.temp }}/mobility_handover.json
             ${{ runner.temp }}/antijam.json
