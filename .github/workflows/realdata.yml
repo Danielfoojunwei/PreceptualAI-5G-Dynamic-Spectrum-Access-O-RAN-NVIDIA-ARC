@@ -9,10 +9,13 @@ on:
       - "benchmarks/results/deepmimo_dsa.json"
       - "benchmarks/federated_coverage_loop.py"
       - "benchmarks/results/federated_coverage.json"
+      - "benchmarks/beam_management_loop.py"
+      - "benchmarks/results/beam_management.json"
       - "src/horizon_ric/data/lineage.py"
       - "src/horizon_ric/federated/**"
       - "scripts/verify_deepmimo_reproduction.py"
       - "scripts/verify_federated_coverage.py"
+      - "scripts/verify_beam_management.py"
       - ".github/workflows/realdata.yml"
       - "pyproject.toml"
 
@@ -66,6 +69,28 @@ jobs:
             --committed-result benchmarks/results/federated_coverage.json \
             --actual-result "$RUNNER_TEMP/federated_coverage.json" \
             --actual-manifest "$RUNNER_TEMP/manifest.json"
+      - name: Build real angular ray geometry
+        # Reuses the already-downloaded, checksum-pinned scenario cache.
+        run: |
+          python datasets/deepmimo_asu_3p5/build_angular.py \
+            --cache-dir "$RUNNER_TEMP/deepmimo" \
+            --features "$RUNNER_TEMP/angular_features.jsonl" \
+            --manifest "$RUNNER_TEMP/angular_manifest.json"
+      - name: Reproduce beam-management loop on real angular data
+        # Exits non-zero unless real coherent array gain and misalignment
+        # recovery hold, the codebook is genuinely swept, the over-EIRP beam is
+        # corrected, and the evidence chain verifies then catches a tamper.
+        run: |
+          python benchmarks/beam_management_loop.py \
+            --features "$RUNNER_TEMP/angular_features.jsonl" \
+            --manifest "$RUNNER_TEMP/angular_manifest.json" \
+            --out "$RUNNER_TEMP/beam_management.json"
+      - name: Verify committed beam-management evidence
+        run: |
+          python scripts/verify_beam_management.py \
+            --committed-result benchmarks/results/beam_management.json \
+            --actual-result "$RUNNER_TEMP/beam_management.json" \
+            --actual-manifest "$RUNNER_TEMP/angular_manifest.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -74,3 +99,4 @@ jobs:
             ${{ runner.temp }}/manifest.json
             ${{ runner.temp }}/deepmimo_dsa.json
             ${{ runner.temp }}/federated_coverage.json
+            ${{ runner.temp }}/beam_management.json

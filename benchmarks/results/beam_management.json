@@ -1,0 +1,77 @@
+{
+  "beam_selection_histogram": [
+    970,
+    1020,
+    750,
+    934,
+    104,
+    78,
+    75,
+    165
+  ],
+  "benchmark": "Analog beam management on real DeepMIMO ray-traced AoD geometry",
+  "bs_array": {
+    "carrier_hz": 3500000000.0,
+    "elements": 8,
+    "geometry": "uniform linear array (ULA)",
+    "spacing_wavelengths": 0.5
+  },
+  "codebook": {
+    "beams": 8,
+    "boresight_beam_index": 3,
+    "kind": "DFT, sin-space tiling u_b=(2b+1)/8-1"
+  },
+  "coherent_combining_bound_db": 9.0309,
+  "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+  "dataset": "DeepMIMO ASU Campus 3.5 GHz (angular ray geometry)",
+  "distinct_beams_selected": 8,
+  "dominant_aod_az_deg_max": 179.656,
+  "dominant_aod_az_deg_min": -179.934,
+  "features_sha256": "13eb2f6b8d8f648f45b00c28e0b8b46c3afdbd6a2e36543792b04025092a6884",
+  "fraction_non_boresight": 0.772,
+  "max_array_gain_db": 9.0308,
+  "mean_array_gain_db": 7.0469,
+  "mean_misalignment_recovery_db": 11.4228,
+  "median_array_gain_db": 7.2178,
+  "median_misalignment_recovery_db": 12.7725,
+  "modal_beam_index": 1,
+  "receivers": 4096,
+  "scenario": "asu_campus_3p5",
+  "scope_note": "Single-BS analog beam management: an 8-beam DFT codebook swept over real ray-traced per-path power/phase/AoD azimuth from DeepMIMO ASU 3.5 GHz, with Shield legality and a tamper-evident evidence chain on the selected beam. This is site-specific ray tracing, not OTA capture; one scenario, one base station, azimuth-plane ULA.",
+  "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+  "task": "O-RAN beam-management rApp (SSB-style 8-beam DFT sweep + selection)",
+  "trust_chain": {
+    "evidence_chain_length": 2,
+    "gate_records": [
+      {
+        "corrected": false,
+        "emitted_clean": true,
+        "guard_refused": [],
+        "label": "modal-serving-beam",
+        "projected": false,
+        "requested_eirp_dbm": 32.0,
+        "safe": true,
+        "safe_eirp_dbm": 32.0,
+        "serving_beam_index": 1
+      },
+      {
+        "corrected": true,
+        "emitted_clean": false,
+        "guard_refused": [
+          "corrections_not_audited"
+        ],
+        "label": "over-eirp-beam",
+        "projected": true,
+        "requested_eirp_dbm": 46.0,
+        "safe": true,
+        "safe_eirp_dbm": 33.0,
+        "serving_beam_index": 1
+      }
+    ],
+    "overpower_beam_corrected": true,
+    "overpower_beam_reached_ran": false,
+    "overpower_beam_safe_eirp_dbm": 33.0,
+    "verify_after_tamper_index": 1,
+    "verify_first_broken_index": -1
+  }
+}
