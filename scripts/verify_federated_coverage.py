@@ -37,14 +37,25 @@ def verify(*, committed: dict[str, Any], fresh: dict[str, Any], manifest: dict[s
         if not cond:
             errors.append(msg)
 
-    # 1. Real-data binding: the fresh run consumed the canonical feature build.
+    # 1. Real-data binding. The fresh run must be bound to its own rebuilt
+    #    feature file, and derived from the *same raw ray-tracing scenario* as
+    #    the committed result. features_sha256 is deliberately NOT compared
+    #    cross-host: it is computed on gains rounded to 6 dB decimals, so
+    #    last-ULP float differences in DeepMIMO's channel computation across
+    #    machines change a few bytes (the same reason the DSA reproducer binds on
+    #    source_tree_sha256 and compares floats with tolerance). source_tree and
+    #    receiver count are host-independent and are the real binding.
     check(
         fresh.get("features_sha256") == manifest.get("features_sha256"),
         "fresh result is not bound to the rebuilt manifest features_sha256",
     )
     check(
-        fresh.get("features_sha256") == committed.get("features_sha256"),
-        "fresh features_sha256 differs from the committed result",
+        fresh.get("source_tree_sha256") == committed.get("source_tree_sha256"),
+        "fresh run derives from a different raw scenario than the committed result",
+    )
+    check(
+        fresh.get("source_tree_sha256") == manifest.get("source_tree_sha256"),
+        "fresh result source_tree_sha256 does not match the rebuilt manifest",
     )
     check(fresh.get("receivers") == 4096, "fresh run did not use 4096 receivers")
 
