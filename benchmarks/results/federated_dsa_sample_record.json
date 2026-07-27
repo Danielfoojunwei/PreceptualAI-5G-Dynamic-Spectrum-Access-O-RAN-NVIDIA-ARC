@@ -1,0 +1,47 @@
+{
+  "hash": "58f80f5c36d6db8d45f373fa3a40618d52b221dc62c49cb4003bf05870ef054c",
+  "record": {
+    "actual_outcome_1min": null,
+    "actual_outcome_30s": null,
+    "actual_outcome_5min": null,
+    "chosen_action": {
+      "guard_refused": false,
+      "label": "robust-selected-subband",
+      "policy_type": "horizon.spectrum.reservation",
+      "projected": false,
+      "requested_frequency_hz": 3541666666.6666665,
+      "safe_frequency_hz": 3541666666.6666665,
+      "subband": 5
+    },
+    "constraint_corrections": [],
+    "decision_id": "fed-robust-selected",
+    "model_versions": {
+      "constraint_layer": "terrestrial-shield",
+      "dyna": "none",
+      "encoder": "none",
+      "policy": "dsa",
+      "rapp": "0.2.0",
+      "risk_heads": "fed-subband-prior"
+    },
+    "operator_override": false,
+    "operator_override_reason": null,
+    "predicted_outcome_chosen": {
+      "constraint_violations": [],
+      "energy_kwh": 0.0,
+      "gateway_loads": {},
+      "ntn_capacity_used": 0.0,
+      "sla_risk_1min": 0.1,
+      "sla_risk_30s": 0.1,
+      "sla_risk_5min": 0.1
+    },
+    "random_seed": null,
+    "rapp_instance_id": "federated-dsa",
+    "rejected_alternatives": [],
+    "sla_breach_context": null,
+    "state_blob_uri": null,
+    "state_hash": "subband-5",
+    "tenant_id": "_unscoped_",
+    "timestamp": "2026-07-27T11:01:29.342172Z"
+  },
+  "tenant_id": "_unscoped_"
+}
