@@ -95,17 +95,27 @@ def test_save_creates_parent_dir(tmp_path):
     assert load_state(nested) == {"x": 1}
 
 
+# Wait on the checkpointer's own progress rather than on wall-clock. Sleeping
+# for N intervals and asserting N ticks happened assumes the scheduler keeps up;
+# a loaded CI runner can deliver one tick where the test expected five, which is
+# a false failure about the runner rather than about the checkpointer.
+TICK_TIMEOUT_S = 10.0
+
+
 @pytest.mark.asyncio
 async def test_periodic_checkpoint_writes_snapshots(tmp_path):
     p = tmp_path / "state.json"
     counter = {"i": 0}
+    ticked = asyncio.Event()
 
     def provider():
         counter["i"] += 1
+        if counter["i"] >= 3:
+            ticked.set()
         return {"i": counter["i"]}
 
-    async with with_periodic_checkpoint(provider, p, interval_s=0.05) as task:
-        await asyncio.sleep(0.25)
+    async with with_periodic_checkpoint(provider, p, interval_s=0.01) as task:
+        await asyncio.wait_for(ticked.wait(), timeout=TICK_TIMEOUT_S)
         assert not task.done()
 
     # After exit a final snapshot is written. Should reflect a high i.
@@ -118,15 +128,19 @@ async def test_periodic_checkpoint_writes_snapshots(tmp_path):
 async def test_periodic_checkpoint_provider_failure_doesnt_kill_loop(tmp_path):
     p = tmp_path / "state.json"
     state = {"v": 0}
+    survived_failure = asyncio.Event()
 
     def provider():
         state["v"] += 1
         if state["v"] == 2:
             raise RuntimeError("transient")
+        if state["v"] >= 3:
+            # Reached only if the loop kept running past the raise above.
+            survived_failure.set()
         return {"v": state["v"]}
 
-    async with with_periodic_checkpoint(provider, p, interval_s=0.05) as task:
-        await asyncio.sleep(0.25)
+    async with with_periodic_checkpoint(provider, p, interval_s=0.01) as task:
+        await asyncio.wait_for(survived_failure.wait(), timeout=TICK_TIMEOUT_S)
         assert not task.done(), "checkpoint loop must survive provider failure"
 
     # The most recent successful snapshot is on disk.
