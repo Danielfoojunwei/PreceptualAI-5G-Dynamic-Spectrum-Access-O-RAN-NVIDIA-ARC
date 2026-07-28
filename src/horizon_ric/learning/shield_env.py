@@ -13,6 +13,16 @@ projection operator bias what a learner learns?* It provides
 2. :func:`load_transitions` — a **verify-gated** replay buffer. It refuses to
    emit training data from a chain whose hash links do not verify, so a tampered
    decision log cannot silently become training data.
+3. A **feasibility mask derived from the Shield's own predicate**
+   (:meth:`ShieldedSpectrumEnv.is_feasible`,
+   :meth:`ShieldedSpectrumEnv.feasible_mask_grid`), so a benchmark never has to
+   restate the constraint in its own words. Restating it is exactly how the
+   published exploration-truncation rates came to be measured against the wrong
+   feasible set: a centre-frequency-in-band test calls the two edge subbands
+   legal, while the Shield's occupied-bandwidth-in-band test (TS 38.104) does
+   not. Masking is **defence in depth** — :meth:`step` still disposes every
+   action through the Shield unconditionally, so a caller that ignores the mask
+   is exactly as safe as before.
 
 Why this environment is the honest test case
 --------------------------------------------
@@ -204,6 +214,99 @@ class ShieldedSpectrumEnv:
                 best = max(best, value)
         return best
 
+    # -- feasibility (the Shield's OWN predicate, promoted for masking) ----
+    def action_payload(self, action: SpectrumAction) -> dict[str, Any]:
+        """The exact Shield action dict :meth:`step` would build for ``action``.
+
+        Public so that a feasibility mask is computed over *the same payload*
+        the closed loop actually disposes — the mask cannot drift from the
+        enforcement path because there is only one constructor.
+        """
+        return {
+            "block": "policy_emit",
+            "policy_type": "horizon.spectrum.reservation",
+            "frequency_hz": action.frequency_hz,
+            "bandwidth_hz": self.bandwidth_hz,
+            "tx_power_dBm": action.tx_power_dbm,
+            "antenna_gain_dBi": ANTENNA_GAIN_DBI,
+        }
+
+    def is_feasible(self, action: SpectrumAction) -> bool:
+        """``True`` iff the Shield would not have to correct ``action``.
+
+        Delegates to :meth:`horizon_ric.shield.Shield.is_feasible` — the
+        analytic constraint the Shield enforces, not a benchmark's private
+        restatement of it. Note this is *occupied-bandwidth*-in-band (the
+        carrier's ``bandwidth_hz`` must fit inside the licensed channel), which
+        is strictly stronger than centre-frequency-in-band: the two edge
+        subbands have legal centres but their 20 MHz allocation spills past a
+        band edge, so they are **infeasible**.
+        """
+        return self._shield.is_feasible(self.action_payload(action))
+
+    def infeasibility_reasons(self, action: SpectrumAction) -> list[str]:
+        """Invariant ids ``action`` would violate (empty iff feasible)."""
+        return [
+            check.invariant_id
+            for check in self._shield.violations(self.action_payload(action))
+        ]
+
+    def feasible_mask(self, actions: Sequence[SpectrumAction]) -> np.ndarray:
+        """Boolean mask over ``actions``, ``True`` where the Shield need not correct."""
+        return np.asarray([self.is_feasible(a) for a in actions], dtype=bool)
+
+    def feasible_mask_grid(
+        self,
+        freq_bins_hz: Sequence[float] | np.ndarray,
+        eirp_bins_dbm: Sequence[float] | np.ndarray,
+        *,
+        fast: bool = True,
+    ) -> np.ndarray:
+        """Feasibility mask over a (frequency x EIRP) product grid.
+
+        Returns shape ``(len(freq_bins_hz), len(eirp_bins_dbm))``. ``.ravel()``
+        yields the flat arm order ``arm = f_idx * len(eirp_bins) + e_idx`` used
+        by the exploration loop's action space, so
+        ``env.feasible_mask_grid(freq_bins, eirp_bins).ravel()[arm]`` is the
+        mask for that arm. A 1-D EIRP grid at a fixed centre frequency (the
+        credit loop's geometry) is ``feasible_mask_grid([f], eirps)[0]``.
+
+        ``fast=True`` uses a vectorised pure predicate; it is asserted
+        equivalent to the full per-action Shield evaluation over the whole grid
+        by ``tests/test_shield_feasibility_api.py``. Pass ``fast=False`` to run
+        the Shield itself on every cell.
+        """
+        freqs = np.asarray(freq_bins_hz, dtype=np.float64)
+        eirps = np.asarray(eirp_bins_dbm, dtype=np.float64)
+        if not fast:
+            return np.asarray(
+                [
+                    [
+                        self.is_feasible(SpectrumAction(float(f), float(e) - ANTENNA_GAIN_DBI))
+                        for e in eirps
+                    ]
+                    for f in freqs
+                ],
+                dtype=bool,
+            ).reshape(len(freqs), len(eirps))
+        # Vectorised restatement of the three invariants that can bite on a
+        # spectrum-reservation payload (numeric sanity, TS 38.104 occupied-
+        # bandwidth-in-band, EIRP ceiling). The neural-RX and constellation
+        # invariants are n/a for block="policy_emit" with no constellation.
+        bw = float(self.bandwidth_hz)
+        bw_ok = bool(np.isfinite(bw) and bw > 0.0)
+        row_ok = (
+            np.isfinite(freqs)
+            & (freqs > 0.0)
+            & (freqs - bw / 2.0 >= self.band_lo_hz)
+            & (freqs + bw / 2.0 <= self.band_hi_hz)
+        ) & bw_ok
+        # Reproduce the caller's tx = eirp - gain round trip exactly, because
+        # MaxEirpInvariant recomputes tx_power_dBm + antenna_gain_dBi.
+        eirp_eff = (eirps - ANTENNA_GAIN_DBI) + ANTENNA_GAIN_DBI
+        col_ok = np.isfinite(eirp_eff) & (eirp_eff <= self.max_eirp_dbm)
+        return row_ok[:, None] & col_ok[None, :]
+
     # -- closed loop ------------------------------------------------------
     def step(
         self,
@@ -215,14 +318,7 @@ class ShieldedSpectrumEnv:
         policy_label: str = "learner",
     ) -> StepResult:
         """Project ``proposed`` through the Shield, execute it, record it."""
-        action_dict: dict[str, Any] = {
-            "block": "policy_emit",
-            "policy_type": "horizon.spectrum.reservation",
-            "frequency_hz": proposed.frequency_hz,
-            "bandwidth_hz": self.bandwidth_hz,
-            "tx_power_dBm": proposed.tx_power_dbm,
-            "antenna_gain_dBi": ANTENNA_GAIN_DBI,
-        }
+        action_dict: dict[str, Any] = self.action_payload(proposed)
         disposition = self._shield.dispose(action_dict, {}, decision_id=decision_id)
         certificate = disposition.certificate
         guard_fails = run_guard_chain(certificate=certificate, elapsed_ms=1.0)

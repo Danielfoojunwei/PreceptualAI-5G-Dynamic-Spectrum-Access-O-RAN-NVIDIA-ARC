@@ -54,12 +54,29 @@ class Shield:
     def invariant_ids(self) -> list[str]:
         return [inv.id for inv in self._invariants]
 
-    # ── evaluation ──────────────────────────────────────────────────────
-    def _evaluate(self, action: dict[str, Any], context: dict[str, Any]) -> list[InvariantCheck]:
+    # ── evaluation (public feasibility API) ──────────────────────────────
+    def check(
+        self, action: dict[str, Any], context: dict[str, Any] | None = None
+    ) -> list[InvariantCheck]:
+        """Evaluate every invariant against ``action`` **without** projecting.
+
+        This is the Shield's own feasibility oracle, promoted from the private
+        ``_evaluate`` so callers (benchmarks, learners, planners) can mask their
+        action space with the *same* predicate the Shield enforces instead of
+        re-implementing a subtly different one. Returns one
+        :class:`InvariantCheck` per invariant, in chain order; a check that
+        raises on a malformed payload is reported as **unsatisfied** (fail
+        closed), never propagated.
+
+        Masking with this predicate is *defence in depth*: :meth:`dispose` still
+        projects unconditionally, so a caller that ignores the mask is exactly
+        as safe as before.
+        """
+        ctx = context if context is not None else {}
         checks: list[InvariantCheck] = []
         for inv in self._invariants:
             try:
-                checks.append(inv.evaluate(action, context))
+                checks.append(inv.evaluate(action, ctx))
             except (TypeError, ValueError, OverflowError, ZeroDivisionError) as exc:
                 # Untrusted action payloads must fail closed, never crash the
                 # control loop or skip the remaining evidence construction.
@@ -73,6 +90,37 @@ class Shield:
                     )
                 )
         return checks
+
+    def violations(
+        self, action: dict[str, Any], context: dict[str, Any] | None = None
+    ) -> list[InvariantCheck]:
+        """The subset of :meth:`check` that ``action`` would violate (may be empty)."""
+        return [c for c in self.check(action, context) if not c.satisfied]
+
+    def is_feasible(
+        self, action: dict[str, Any], context: dict[str, Any] | None = None
+    ) -> bool:
+        """``True`` iff the Shield would **not** have to correct ``action``.
+
+        Exactly equivalent to ``dispose(action, context).certificate.projected is
+        False`` (and to ``dispose(...).safe_action == action``): :meth:`dispose`
+        enters its projection loop if and only if this returns ``False``, since
+        both read the same :meth:`check` result. Short-circuits on the first
+        violated invariant, so it is cheaper than a full ``check``.
+        """
+        ctx = context if context is not None else {}
+        for inv in self._invariants:
+            try:
+                if not inv.evaluate(action, ctx).satisfied:
+                    return False
+            except (TypeError, ValueError, OverflowError, ZeroDivisionError):
+                return False
+        return True
+
+    # Retained so the internal projection loop and any existing caller keep
+    # working; ``check`` is the supported public spelling.
+    def _evaluate(self, action: dict[str, Any], context: dict[str, Any]) -> list[InvariantCheck]:
+        return self.check(action, context)
 
     # ── main entry point ────────────────────────────────────────────────
     def dispose(

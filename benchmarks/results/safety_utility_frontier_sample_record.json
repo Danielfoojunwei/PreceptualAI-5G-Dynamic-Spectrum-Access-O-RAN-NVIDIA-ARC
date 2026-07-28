@@ -1,5 +1,5 @@
 {
-  "hash": "81fe193208f61bd78585d936315f92f8cd4f74da14192d98a40325f9f804ac07",
+  "hash": "2af030bcc59f220136ea8084b85a926527bc2841016fb29eca80e1a095887ea5",
   "record": {
     "actual_outcome_1min": null,
     "actual_outcome_30s": null,
@@ -9,10 +9,10 @@
       "label": "unconstrained-optimum-cap20",
       "policy_type": "horizon.spectrum.reservation",
       "projected": true,
-      "requested_frequency_hz": 3458333333.3333335,
-      "requested_tx_power_dBm": 103.7653905387311,
-      "reward": 0.13916015625,
-      "safe_frequency_hz": 3460000000.0,
+      "requested_frequency_hz": 3525000000.0,
+      "requested_tx_power_dBm": 105.3647245387311,
+      "reward": 0.138427734375,
+      "safe_frequency_hz": 3525000000.0,
       "safe_tx_power_dBm": 14.0
     },
     "constraint_corrections": [],
@@ -41,9 +41,9 @@
     "rejected_alternatives": [],
     "sla_breach_context": null,
     "state_blob_uri": null,
-    "state_hash": "freq-3458333333",
+    "state_hash": "freq-3525000000",
     "tenant_id": "_unscoped_",
-    "timestamp": "2026-07-28T00:10:46.102935Z"
+    "timestamp": "2026-07-28T08:02:29.901381Z"
   },
   "tenant_id": "_unscoped_"
 }

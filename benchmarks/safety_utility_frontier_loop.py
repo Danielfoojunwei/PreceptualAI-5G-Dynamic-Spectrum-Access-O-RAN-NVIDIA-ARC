@@ -27,15 +27,43 @@ Definitions, stated precisely so the cost cannot be softened:
   the real channel gains — physically enormous, which is itself part of the
   honest picture (the last receivers are ~110 dB below the strongest).
 * ``best_feasible_reward(cap)`` — the best served fraction achievable by any
-  legal action under that cap (best subband at the cap EIRP).
+  legal action under that cap (best **Shield-feasible** subband at the cap
+  EIRP). "Feasible" is the Shield's own predicate, not this file's opinion of
+  it — see below.
 * ``utility_forgone(cap) = unconstrained_optimum_reward - best_feasible_reward``
   — the served fraction the licence condition costs at that cap.
 * ``marginal price of safety`` — served fraction lost per dB of cap tightening
   between adjacent sweep points; the headline curve.
+* ``constant_cap_policy_reward(cap)`` / ``realised_regret(cap)`` — the
+  **zero-data baseline** and the loop's regret against it. This loop has no
+  learner: it proposes a fixed enormous demand and lets the Shield clamp. The
+  realised regret against "just transmit at the cap on the best feasible
+  subband, with no data and no adaptation" is reported at every cap so nobody
+  can read the frontier as evidence that the loop's optimiser did anything.
 
-The contrast case runs a task whose optimum IS feasible (pick the best subband
-at a fixed legal EIRP of 32 dBm): the Shield applies no correction and costs
-exactly zero utility there. Together the two regimes give the honest boundary:
+Feasibility comes from the Shield (P1)
+--------------------------------------
+Every feasible set in this file is derived from
+:meth:`ShieldedSpectrumEnv.is_feasible`, which delegates to
+:meth:`horizon_ric.shield.Shield.is_feasible` — the same analytic predicate the
+Shield enforces at dispose time. Earlier revisions of this loop ranked subbands
+over **all six** centres and re-derived in-band membership with a local
+``centre ± bandwidth/2`` test. That was wrong twice over: the ranking selected
+subbands 0 and 5, whose 20 MHz occupied bandwidth spills past a band edge and
+which the Shield therefore refuses (``spectral_mask_ts38104``), so a field named
+``best_feasible_reward`` was being computed over **infeasible** actions and then
+rescued by a silent 1.7 MHz frequency projection. Deriving the set from the
+Shield removes both the wrong number and the local rule that could drift from
+it. Masking remains **defence in depth**: :meth:`ShieldedSpectrumEnv.step` still
+disposes every action through the Shield unconditionally.
+
+The contrast case runs a task whose optimum IS feasible (pick the best
+Shield-feasible subband at a fixed legal EIRP of 32 dBm): the Shield applies no
+correction and costs exactly zero utility there. That case is **small**: the
+whole subband decision is worth 15 receivers of 4096 at its own operating point
+(12 of 4096 at the 33 dBm cap over all six subbands), and its argmax is
+power-dependent, so it is reported as a bounded, power-indexed quantity rather
+than a stable identity. Together the two regimes give the honest boundary:
 **the Shield is free when the optimum is feasible, and costs a measurable,
 reported amount when the constraint binds.** Whether that cost is acceptable is
 a regulatory question — the EIRP cap is a licence condition, not a tunable the
@@ -86,15 +114,55 @@ SEED = 20260727
 DSA_CROSS_EVIDENCE = Path(__file__).resolve().parent / "results" / "deepmimo_dsa.json"
 
 
-def _best_feasible(env: ShieldedSpectrumEnv) -> tuple[int, float]:
-    """Best legal action under ``env``'s cap: (subband, served fraction at the cap)."""
-    best_subband, best_reward = 0, -1.0
+def _subband_action(subband: int, eirp_dbm: float) -> SpectrumAction:
+    """The action this loop means by "subband ``b`` at ``eirp_dbm`` EIRP"."""
+    return SpectrumAction(subband_center_hz(subband), eirp_dbm - ANTENNA_GAIN_DBI)
+
+
+def shield_feasible_subbands(env: ShieldedSpectrumEnv) -> tuple[list[int], dict[str, list[str]]]:
+    """The subbands the **Shield itself** accepts, plus why the rest are refused.
+
+    P1. This is the single source of feasibility for this benchmark. It calls
+    :meth:`ShieldedSpectrumEnv.is_feasible`, which is
+    :meth:`horizon_ric.shield.Shield.is_feasible` on the exact payload
+    :meth:`ShieldedSpectrumEnv.step` disposes — so the set cannot drift from
+    what the Shield actually permits, and no local restatement of the
+    constraint (a ``centre ± bandwidth/2`` in-band test, say) exists here to go
+    stale. Probed *at* the cap, where the EIRP invariant holds with zero margin,
+    so the verdict isolates **frequency** admissibility — the EIRP ceiling is
+    what the sweep varies.
+    """
+    probe_eirp = env.max_eirp_dbm
+    feasible: list[int] = []
+    refused: dict[str, list[str]] = {}
     for b in range(N_SUBBANDS):
-        value = env.reward(
-            SpectrumAction(subband_center_hz(b), env.max_eirp_dbm - ANTENNA_GAIN_DBI)
-        )
+        action = _subband_action(b, probe_eirp)
+        if env.is_feasible(action):
+            feasible.append(b)
+        else:
+            refused[str(b)] = env.infeasibility_reasons(action)
+    if not feasible:  # pragma: no cover - the licensed band always admits some subband.
+        raise RuntimeError("the Shield admits no subband; the benchmark has no feasible set")
+    return feasible, refused
+
+
+def _best_feasible(env: ShieldedSpectrumEnv) -> tuple[int, float]:
+    """Best legal action under ``env``'s cap: (subband, served fraction at the cap).
+
+    Ranks only over :func:`shield_feasible_subbands`. Ranking over all six
+    centres — as this function used to — selects the two edge subbands, whose
+    20 MHz occupied bandwidth leaves the licensed band, so the reported
+    "best feasible reward" was the reward of an action the Shield refuses.
+    """
+    feasible, _ = shield_feasible_subbands(env)
+    best_subband, best_reward = feasible[0], -1.0
+    for b in feasible:
+        value = env.reward(_subband_action(b, env.max_eirp_dbm))
         if value is not None and value > best_reward:
             best_subband, best_reward = b, value
+    # Defence in depth: the winner must survive the Shield's own predicate.
+    if not env.is_feasible(_subband_action(best_subband, env.max_eirp_dbm)):
+        raise RuntimeError("best_feasible selected a Shield-infeasible action")
     return best_subband, best_reward
 
 
@@ -106,7 +174,10 @@ def _reference_anchors(
     The served-fraction objective saturates, so "how much does the cap cost?"
     has no single answer — it depends on the baseline. Reporting the curve makes
     the anchor explicit instead of letting one number stand in for all of them.
+    Ranked over the Shield-feasible subbands only, for the same reason
+    :func:`_best_feasible` is.
     """
+    feasible, _ = shield_feasible_subbands(env)
     anchors = [
         (46.0, "high-power small cell (~40 W EIRP)"),
         (52.0, "sweep top; the credit_assignment action-grid top (~158 W EIRP)"),
@@ -115,10 +186,7 @@ def _reference_anchors(
     ]
     rows: list[dict[str, Any]] = []
     for eirp, label in anchors:
-        best = max(
-            env.reward(SpectrumAction(subband_center_hz(b), eirp - ANTENNA_GAIN_DBI)) or 0.0
-            for b in range(N_SUBBANDS)
-        )
+        best = max(env.reward(_subband_action(b, eirp)) or 0.0 for b in feasible)
         rows.append(
             {
                 "anchor_eirp_dbm": eirp,
@@ -153,10 +221,12 @@ def _sweep_one_cap(
 ) -> dict[str, Any]:
     """Closed loop at one cap: the optimiser demands full service, the Shield projects.
 
-    On the two edge subbands the Shield also nudges the centre frequency by
-    ~1.7 MHz so the 20 MHz reservation mask stays inside the band; the nudged
-    centre still maps to the same measured subband, so the realised reward is
-    the best feasible reward and the reported gap is purely the EIRP cap's.
+    The proposal sits on a **Shield-feasible** subband (P1), so the only
+    correction the Shield ever applies here is the EIRP clamp and the reported
+    gap is purely the cap's. Earlier revisions proposed on subbands 0/5 at some
+    caps and relied on a silent ~1.7 MHz frequency nudge to make the emit legal;
+    that also meant ``best_feasible_reward`` was the reward of an action the
+    Shield refuses.
     """
     env = ShieldedSpectrumEnv(gains, max_eirp_dbm=cap_dbm)
     subband, best_feasible = _best_feasible(env)
@@ -185,12 +255,21 @@ def _sweep_one_cap(
     counterfactuals = [r.counterfactual_reward for r in results]
     if any(c is None for c in counterfactuals):
         raise RuntimeError("in-band unconstrained proposal lost its counterfactual reward")
+
+    # P3: the zero-data baseline. "Transmit at the cap on the best feasible
+    # subband, forever, with no data and no adaptation" is exactly what the
+    # Shield's clamp realises here, so the regret of this whole closed loop
+    # against a policy that learns nothing is reported at every cap.
+    constant_cap_policy_reward = best_feasible
+    realised_mean = float(np.mean(realised))
     return {
         "eirp_cap_dbm": cap_dbm,
         "steps": len(results),
         "best_feasible_subband": subband,
         "best_feasible_reward": round(best_feasible, 6),
-        "realised_mean_reward": round(float(np.mean(realised)), 6),
+        "constant_cap_policy_reward": round(constant_cap_policy_reward, 6),
+        "realised_regret": round(constant_cap_policy_reward - realised_mean, 6),
+        "realised_mean_reward": round(realised_mean, 6),
         "counterfactual_mean_reward": round(float(np.mean([float(c) for c in counterfactuals])), 6),
         "utility_forgone": round(unconstrained_reward - best_feasible, 6),
         "projection_rate": round(float(np.mean([r.projected for r in results])), 6),
@@ -208,29 +287,64 @@ def _free_constraint_case(gains: np.ndarray, store: JsonlEvidenceStore) -> dict[
     """The contrast: best subband at a fixed legal EIRP — the optimum is feasible.
 
     The task selects among *fully legal* actions: EIRP 32 dBm (< the 33 dBm
-    cap) on a subband whose whole 20 MHz reservation mask fits inside the
-    licensed band — which excludes the two edge subbands, whose centres sit
-    closer than 10 MHz to a band edge and would themselves be frequency-
-    projected. Because the task optimum is inside the feasible set the Shield
-    has nothing to project: no correction, no refusal, zero utility cost. The
+    cap) on a subband the **Shield** accepts (P1). The candidate set is
+    :func:`shield_feasible_subbands`, not a local ``centre ± bandwidth/2``
+    in-band test as it used to be; the two rules agree on this band today, and
+    the point of deriving it from the Shield is that they cannot silently stop
+    agreeing. Because the task optimum is inside the feasible set the Shield has
+    nothing to project: no correction, no refusal, zero utility cost. The
     committed DSA benchmark is the standing 4096-decision evidence for the
     same conclusion and is cited verbatim in the returned record.
+
+    **How much this decision is worth, stated plainly.** The subband choice is
+    small and power-dependent, and the record says so rather than letting
+    "the optimum is feasible" imply the optimisation mattered:
+
+    * ``decision_value_served_fraction`` — best minus worst candidate at the
+      free case's own 32 dBm: **0.003662**, i.e. **15 receivers of 4096**.
+    * ``decision_value_at_operational_cap`` — the same spread over *all six*
+      subbands at the 33 dBm cap: **0.002930**, i.e. **12 of 4096** (the figure
+      quoted in ``deploy/shield-learning/ERRATA.md`` item 12).
+    * ``argmax_subband_by_eirp`` — the argmax is **not** an identity. Over all
+      six it is 0 at 20 dBm, 1 at 26, 5 at 32, 3 at 33/40/46, 5 at 52; over the
+      Shield-feasible four it is 4, 1, 2, 3, 3, 3, 4. Any downstream assertion
+      must use a reward tolerance, never an exact subband compare.
     """
     env = ShieldedSpectrumEnv(gains, max_eirp_dbm=OPERATIONAL_CAP_DBM)
     fixed_eirp = FREE_CASE_TX_POWER_DBM + ANTENNA_GAIN_DBI
-    half_bw = env.bandwidth_hz / 2.0
     per_subband = {
         b: float(env.reward(SpectrumAction(subband_center_hz(b), FREE_CASE_TX_POWER_DBM)) or 0.0)
         for b in range(N_SUBBANDS)
     }
-    candidates = [
-        b
-        for b in range(N_SUBBANDS)
-        if subband_center_hz(b) - half_bw >= BAND_LO_HZ
-        and subband_center_hz(b) + half_bw <= BAND_HI_HZ
-    ]
+    candidates, refused = shield_feasible_subbands(env)
     best_subband = max(candidates, key=lambda b: per_subband[b])
     task_optimum = per_subband[best_subband]
+
+    # Every candidate the Shield accepted must actually be emittable at the
+    # free case's EIRP, or "the optimum is feasible" is not a claim we hold.
+    for b in candidates:
+        if not env.is_feasible(SpectrumAction(subband_center_hz(b), FREE_CASE_TX_POWER_DBM)):
+            raise RuntimeError(f"candidate subband {b} is not Shield-feasible at the free EIRP")
+
+    at_cap = {
+        b: float(env.reward(_subband_action(b, OPERATIONAL_CAP_DBM)) or 0.0)
+        for b in range(N_SUBBANDS)
+    }
+    n_rx = int(len(gains))
+    spread_candidates = max(per_subband[b] for b in candidates) - min(
+        per_subband[b] for b in candidates
+    )
+    spread_all_at_cap = max(at_cap.values()) - min(at_cap.values())
+    argmax_by_eirp = []
+    for eirp in (20.0, 26.0, fixed_eirp, 33.0, 40.0, 46.0, 52.0):
+        vals = {b: float(env.reward(_subband_action(b, eirp)) or 0.0) for b in range(N_SUBBANDS)}
+        argmax_by_eirp.append(
+            {
+                "eirp_dbm": eirp,
+                "argmax_all_subbands": max(range(N_SUBBANDS), key=lambda b: vals[b]),
+                "argmax_shield_feasible": max(candidates, key=lambda b: vals[b]),
+            }
+        )
 
     results: list[StepResult] = []
     for step in range(FREE_CASE_STEPS):
@@ -267,13 +381,19 @@ def _free_constraint_case(gains: np.ndarray, store: JsonlEvidenceStore) -> dict[
 
     return {
         "task": (
-            "pick the best fully-legal subband (20 MHz mask in band) at a fixed legal "
-            "EIRP of 32 dBm (tx 26 dBm + 6 dBi < 33 dBm cap): the task optimum is feasible"
+            "pick the best Shield-feasible subband at a fixed legal EIRP of 32 dBm "
+            "(tx 26 dBm + 6 dBi < 33 dBm cap): the task optimum is feasible"
         ),
         "fixed_eirp_dbm": fixed_eirp,
         "steps": len(results),
         "candidate_subbands": candidates,
+        "candidate_subband_source": (
+            "horizon_ric.learning.shield_env.ShieldedSpectrumEnv.is_feasible "
+            "(delegates to horizon_ric.shield.Shield.is_feasible)"
+        ),
+        "refused_subbands": refused,
         "best_subband": best_subband,
+        "best_subband_is_reproducible_identity": False,
         "per_subband_reward": [round(per_subband[b], 6) for b in range(N_SUBBANDS)],
         "task_optimum_reward": round(task_optimum, 6),
         "realised_mean_reward": round(realised_mean, 6),
@@ -281,6 +401,24 @@ def _free_constraint_case(gains: np.ndarray, store: JsonlEvidenceStore) -> dict[
         "guard_refused_rate": round(float(np.mean([r.guard_refused for r in results])), 6),
         "corrected": bool(corrected),
         "utility_cost": round(task_optimum - realised_mean, 6),
+        # P3: the zero-data baseline for this case is "sit at the cap on the
+        # best feasible subband"; the free case runs 1 dB below it on purpose.
+        "constant_cap_policy_reward": round(max(at_cap[b] for b in candidates), 6),
+        "realised_regret": round(max(at_cap[b] for b in candidates) - realised_mean, 6),
+        # How much the subband decision is actually worth, and how unstable it is.
+        "decision_value_served_fraction": round(spread_candidates, 6),
+        "decision_value_receivers": int(round(spread_candidates * n_rx)),
+        "decision_value_at_operational_cap": round(spread_all_at_cap, 6),
+        "decision_value_receivers_at_operational_cap": int(round(spread_all_at_cap * n_rx)),
+        "argmax_subband_by_eirp": argmax_by_eirp,
+        "decision_value_note": (
+            "The subband choice is worth decision_value_receivers of "
+            f"{n_rx} receivers at this case's own {fixed_eirp:g} dBm, and "
+            "decision_value_receivers_at_operational_cap over all six subbands at the "
+            "33 dBm cap (the figure in ERRATA.md item 12). The argmax is power-dependent "
+            "(argmax_subband_by_eirp), so best_subband is NOT a reproducible identity: "
+            "assert on the achieved reward with a tolerance, never on the index."
+        ),
         "max_executed_eirp_dbm": round(float(max(r.executed.eirp_dbm for r in results)), 4),
         "executed_frequency_hz": float(results[0].executed.frequency_hz),
         "committed_cross_evidence": cross,
@@ -312,11 +450,11 @@ def run(
         _full_service_eirp_dbm(env_ref, gains, b) for b in range(N_SUBBANDS)
     ]
     demand_subband = int(np.argmin(fs_per_subband))
+    feasible_subbands, refused_subbands = shield_feasible_subbands(env_ref)
+    demand_subband_feasible = min(feasible_subbands, key=lambda b: fs_per_subband[b])
     unconstrained_reward = 1.0
     op_subband, op_best_feasible = _best_feasible(env_ref)
-    eirp50_reference = env_ref.reward(
-        SpectrumAction(subband_center_hz(op_subband), 50.0 - ANTENNA_GAIN_DBI)
-    )
+    eirp50_reference = env_ref.reward(_subband_action(op_subband, 50.0))
 
     # --- The sweep, all steps on ONE hash-chained evidence store. -------------
     ap = audit_path or Path("benchmarks/results/safety_utility_frontier_audit.jsonl")
@@ -401,6 +539,23 @@ def run(
             "antenna_gain_dbi": float(ANTENNA_GAIN_DBI),
             "reward": "served fraction (receivers with EIRP + measured_gain - noise >= 0 dB)",
         },
+        # P1. Every feasible set in this result is the Shield's own predicate.
+        "feasibility": {
+            "source": (
+                "horizon_ric.learning.shield_env.ShieldedSpectrumEnv.is_feasible "
+                "(delegates to horizon_ric.shield.Shield.is_feasible)"
+            ),
+            "shield_feasible_subbands": feasible_subbands,
+            "refused_subbands": refused_subbands,
+            "note": (
+                "The Shield's in-band test is occupied-bandwidth-in-band (TS 38.104), not "
+                "centre-frequency-in-band: the two edge subbands have legal centres but "
+                "their 20 MHz allocation spills past a band edge, so they are infeasible. "
+                "best_feasible_reward and reference_anchors rank over the feasible set "
+                "only. Masking is defence in depth — ShieldedSpectrumEnv.step still "
+                "disposes every action through the Shield unconditionally."
+            ),
+        },
         "unconstrained_optimum": {
             "definition": (
                 "true argmax of the served-fraction objective with no cap: serve every "
@@ -409,8 +564,39 @@ def run(
             "reward": unconstrained_reward,
             "demand_eirp_dbm": round(fs_per_subband[demand_subband], 4),
             "demand_subband": demand_subband,
+            "demand_subband_shield_feasible": demand_subband_feasible,
+            "demand_eirp_dbm_shield_feasible": round(fs_per_subband[demand_subband_feasible], 4),
             "full_service_eirp_dbm_per_subband": [round(v, 4) for v in fs_per_subband],
             "eirp50_reference_reward": round(float(eirp50_reference), 6),
+            "eirp50_reference_note": (
+                "Measured on the operational cap's best feasible subband; like the credit "
+                "loop's value_mae_infeasible this quantity is a pure function of the chosen "
+                "reference EIRP, not a property of the Shield."
+            ),
+        },
+        # P3. This loop has NO learner. Its realised reward at every cap is,
+        # by construction, exactly what a zero-data policy that transmits at
+        # the cap on the best feasible subband would get. Reported so the
+        # frontier cannot be read as evidence that its optimiser did anything.
+        "zero_data_baseline": {
+            "policy": (
+                "constant: transmit at the EIRP cap on the best Shield-feasible subband, "
+                "with no data, no learning and no adaptation"
+            ),
+            "constant_cap_policy_reward_by_cap": {
+                f"{f['eirp_cap_dbm']:g}": f["constant_cap_policy_reward"] for f in frontier
+            },
+            "realised_regret_by_cap": {
+                f"{f['eirp_cap_dbm']:g}": f["realised_regret"] for f in frontier
+            },
+            "max_realised_regret": round(max(f["realised_regret"] for f in frontier), 6),
+            "note": (
+                "max_realised_regret is 0.0: the closed loop realises precisely the "
+                "zero-data constant-cap reward at every swept cap, because the Shield "
+                "clamps the loop's ~110 dBm demand straight onto the cap. That is a "
+                "statement about the Shield's projection being exact, NOT evidence that "
+                "the optimiser contributed anything — it contributed nothing measurable."
+            ),
         },
         "frontier": frontier,
         "marginal_price_per_db": marginal,
@@ -470,6 +656,20 @@ def _invariants_hold(result: dict[str, Any]) -> bool:
         and abs(free["utility_cost"]) < 1e-12
         and free["max_executed_eirp_dbm"] <= result["operational_cap_dbm"] + 1e-9
     )
+    # P1: every ranked subband came from the Shield's own predicate, and the
+    # winner of each ranking is inside that set.
+    feasible = result["feasibility"]["shield_feasible_subbands"]
+    shield_derived = (
+        "Shield.is_feasible" in result["feasibility"]["source"]
+        and free["candidate_subbands"] == feasible
+        and free["best_subband"] in feasible
+        and all(f["best_feasible_subband"] in feasible for f in frontier)
+    )
+    # P3: no cap may beat its own zero-data constant-cap baseline, and the
+    # regret against that baseline must be emitted at every cap.
+    regret_reported = all(
+        "realised_regret" in f and "constant_cap_policy_reward" in f for f in frontier
+    ) and all(f["realised_regret"] >= -1e-9 for f in frontier)
     legal = all(
         f["max_executed_eirp_dbm"] <= f["eirp_cap_dbm"] + 1e-9
         and BAND_LO_HZ <= f["executed_frequency_hz"] <= BAND_HI_HZ
@@ -481,7 +681,16 @@ def _invariants_hold(result: dict[str, Any]) -> bool:
         and tc["tampered_chain_refused"] is True
         and tc["verify_after_tamper_index"] not in (None, -1)
     )
-    return monotone and binds and marginal_positive and free_is_free and legal and chain_ok
+    return (
+        monotone
+        and binds
+        and marginal_positive
+        and free_is_free
+        and shield_derived
+        and regret_reported
+        and legal
+        and chain_ok
+    )
 
 
 def main() -> int:

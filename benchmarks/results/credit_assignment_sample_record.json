@@ -1,12 +1,12 @@
 {
-  "hash": "eb4c949b16b9a8e923cb12b855a24533fded06bd9ee678a964c93f33be89ab71",
+  "hash": "04a3c9a8dd9f6ef2d308915fbaa9238bf4d99c92af3fb2ded6f0bd6a3115f8a9",
   "record": {
     "actual_outcome_1min": null,
     "actual_outcome_30s": null,
     "actual_outcome_5min": null,
     "chosen_action": {
       "guard_refused": false,
-      "label": "naive_proposed_credit",
+      "label": "unmasked:naive_proposed_credit",
       "policy_type": "horizon.spectrum.reservation",
       "projected": false,
       "requested_frequency_hz": 3508333333.3333335,
@@ -16,12 +16,12 @@
       "safe_tx_power_dBm": 14.0
     },
     "constraint_corrections": [],
-    "decision_id": "credit-naive_proposed_credit-0000",
+    "decision_id": "credit-unmasked-naive_proposed_credit-0000",
     "model_versions": {
       "constraint_layer": "terrestrial-shield",
       "dyna": "none",
       "encoder": "none",
-      "policy": "naive_proposed_credit",
+      "policy": "unmasked:naive_proposed_credit",
       "rapp": "0.2.0",
       "risk_heads": "shield-feedback"
     },
@@ -43,7 +43,7 @@
     "state_blob_uri": null,
     "state_hash": "freq-3508333333",
     "tenant_id": "_unscoped_",
-    "timestamp": "2026-07-28T03:52:23.976547Z"
+    "timestamp": "2026-07-28T09:35:44.853587Z"
   },
   "tenant_id": "_unscoped_"
 }

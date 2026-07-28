@@ -13,11 +13,28 @@ host-stable and meaningful:
   never hurts; the constraint genuinely binds at the operational 33 dBm cap;
   tightening the cap loses served fraction somewhere; every executed action is
   legal under its own cap; the free-constraint task costs nothing);
+* **every feasible set in the run came from the Shield's own predicate** (P1),
+  and every ranked winner — the free case's ``best_subband`` and each cap's
+  ``best_feasible_subband`` — lies inside it;
+* **the zero-data baseline is reported** (P3): every cap emits
+  ``constant_cap_policy_reward`` and ``realised_regret``, and no cap is allowed
+  to claim it beat a policy that transmits at the cap with no data at all;
 * the host-stable decisions reproduce the committed result within tolerance
   bands (same cap grid, best-feasible served fractions within 0.005, positive
   utility forgone at 33 dBm, zero-cost free case) — NOT byte-compares;
 * the trust chain verifies intact, the tampered chain is refused for replay,
   and the tamper index is pinpointed.
+
+**Why no subband index is ever exact-compared.** The argmax subband is not a
+reproducible identity: it moves with EIRP (over all six it is 0 at 20 dBm, 1 at
+26, 5 at 32, 3 at 33/40/46, 5 at 52) and the whole subband decision is worth
+only ~12-15 receivers of 4096, which is inside the last-ULP threshold-flip band
+this verifier already tolerates for served fractions. An exact
+``best_subband == 2`` assertion would therefore be a latent CI flake that fails
+on a re-tie without anything being wrong. What *is* stable and meaningful — and
+what this verifier gates on — is the **achieved reward within
+``SERVED_FRACTION_TOL``**, plus the structural facts that the winner is
+Shield-feasible and that the candidate set is the Shield's.
 
 Exit non-zero on any violation.
 """
@@ -112,6 +129,52 @@ def verify(*, committed: dict[str, Any], fresh: dict[str, Any], manifest: dict[s
         "free-constraint case exceeded the operational cap",
     )
 
+    # 2b. P1 — every feasible set is the Shield's, and every winner is in it.
+    feasibility = fresh.get("feasibility", {})
+    shield_feasible = feasibility.get("shield_feasible_subbands")
+    check(
+        "Shield.is_feasible" in str(feasibility.get("source", "")),
+        "the fresh run did not derive its feasible set from Shield.is_feasible",
+    )
+    check(
+        isinstance(shield_feasible, list) and len(shield_feasible) > 0,
+        "the fresh run reported no Shield-feasible subbands",
+    )
+    if isinstance(shield_feasible, list):
+        check(
+            free.get("candidate_subbands") == shield_feasible,
+            "the free-constraint case ranked a candidate set that is not the Shield's",
+        )
+        check(
+            free.get("best_subband") in shield_feasible,
+            "the free-constraint case selected a Shield-infeasible subband",
+        )
+        for f in frontier:
+            check(
+                f["best_feasible_subband"] in shield_feasible,
+                f"best_feasible_subband at cap {f['eirp_cap_dbm']} dBm is Shield-infeasible",
+            )
+
+    # 2c. P3 — the zero-data baseline must be emitted, and must not be beaten.
+    for f in frontier:
+        cap = f["eirp_cap_dbm"]
+        check(
+            "constant_cap_policy_reward" in f and "realised_regret" in f,
+            f"cap {cap} dBm did not report its zero-data constant-cap baseline",
+        )
+        check(
+            f.get("realised_regret", -1.0) >= -1e-9,
+            f"cap {cap} dBm claims to beat a zero-data constant-cap policy",
+        )
+        check(
+            abs(f.get("constant_cap_policy_reward", -1.0) - f["best_feasible_reward"]) < 1e-9,
+            f"constant_cap_policy_reward at cap {cap} dBm is not the best feasible reward",
+        )
+    check(
+        "realised_regret" in free and "constant_cap_policy_reward" in free,
+        "the free-constraint case did not report its zero-data constant-cap baseline",
+    )
+
     # 3. Host-stable decisions reproduce the committed result (tolerance bands).
     committed_frontier = committed.get("frontier", [])
     check(
@@ -135,9 +198,23 @@ def verify(*, committed: dict[str, Any], fresh: dict[str, Any], manifest: dict[s
         committed.get("utility_forgone_at_operational_cap", 0.0) > 0.0,
         "committed result does not show a binding constraint at 33 dBm",
     )
+    committed_free = committed.get("free_constraint_case", {})
     check(
-        committed.get("free_constraint_case", {}).get("utility_cost") == 0.0,
+        committed_free.get("utility_cost") == 0.0,
         "committed free-constraint case is not zero-cost",
+    )
+    # The free case reproduces on its ACHIEVED REWARD within tolerance, never on
+    # its subband index — see the module docstring. The index is power-dependent
+    # and the whole decision is worth ~15 receivers of 4096, well inside the
+    # threshold-flip band; an exact compare would be a latent flake.
+    check(
+        abs(committed_free.get("task_optimum_reward", 0.0) - free.get("task_optimum_reward", 1e9))
+        <= SERVED_FRACTION_TOL,
+        f"free-constraint task optimum moved by more than {SERVED_FRACTION_TOL} vs committed",
+    )
+    check(
+        free.get("candidate_subbands") == committed_free.get("candidate_subbands"),
+        "the Shield admitted a different set of subbands than in the committed result",
     )
 
     # 4. Trust chain.
