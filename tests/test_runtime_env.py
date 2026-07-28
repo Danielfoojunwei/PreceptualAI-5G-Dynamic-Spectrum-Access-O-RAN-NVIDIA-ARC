@@ -7,8 +7,10 @@ participates in a reproduction assertion.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
@@ -16,6 +18,11 @@ import pytest
 from horizon_ric.runtime_env import runtime_environment, stamp
 
 RESULTS = Path(__file__).resolve().parents[1] / "benchmarks" / "results"
+
+# Valid lowercase SHA-256 digests: the verifier checks hash *shape* before
+# comparing, so placeholder strings are rejected before the logic under test.
+_SHA_A = "a" * 64
+_SHA_B = "b" * 64
 
 # The committed results that are reproduced by the realdata workflow.
 STAMPED_RESULTS = [
@@ -61,17 +68,87 @@ def test_committed_results_carry_a_runtime_block(name: str) -> None:
     assert runtime["python_version"]
 
 
-@pytest.mark.parametrize("name", STAMPED_RESULTS)
-def test_no_verifier_asserts_the_runtime_block(name: str) -> None:
-    """The stamp is diagnostic, never a gate.
+def _load_reproduction_verifier() -> Any:
+    """Import scripts/verify_deepmimo_reproduction.py by path (not a package)."""
+    path = (
+        Path(__file__).resolve().parents[1] / "scripts" / "verify_deepmimo_reproduction.py"
+    )
+    spec = importlib.util.spec_from_file_location("verify_deepmimo_reproduction", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
-    CI legitimately runs a different numpy than the machine that committed the
-    result (the realdata extra pulls deepmimo==4.0.0, which caps numpy at <2.3),
-    so any verifier comparing this block would fail on every run.
+
+def test_reproduction_verifier_ignores_a_differing_runtime_block() -> None:
+    """The stamp is diagnostic, never a gate — exercised, not grepped.
+
+    An earlier version of this test scanned verifier *source* for the string
+    "runtime". That passed while the behaviour was broken, because
+    verify_deepmimo_reproduction walks the document generically and never names
+    the key. CI caught it:
+
+        AssertionError: result.runtime.numpy_version: expected '2.4.6', got '2.2.6'
+
+    So compare two documents that differ *only* in the runtime block — exactly
+    the committed-vs-CI situation — and require it to pass.
     """
-    scripts = (Path(__file__).resolve().parents[1] / "scripts").glob("verify_*.py")
-    for script in scripts:
-        source = script.read_text()
-        assert '"runtime"' not in source and "'runtime'" not in source, (
-            f"{script.name} references the runtime block; it must stay diagnostic"
+    verifier = _load_reproduction_verifier()
+    manifest = {"features_sha256": _SHA_A}
+    committed = {
+        "features_sha256": _SHA_A,
+        "mean_regret_db": 1.730053,
+        "runtime": {"numpy_version": "2.4.6", "python_version": "3.11.15"},
+    }
+    reproduced = {
+        "features_sha256": _SHA_B,  # differs cross-host by design
+        "mean_regret_db": 1.730053,
+        "runtime": {"numpy_version": "2.2.6", "python_version": "3.12.13"},
+    }
+    verifier.verify_documents(
+        expected_manifest=manifest,
+        actual_manifest={"features_sha256": _SHA_B},
+        expected_result=committed,
+        actual_result=reproduced,
+        absolute_float_tolerance=1e-4,
+    )
+
+
+def test_reproduction_verifier_still_catches_a_real_regression() -> None:
+    """Skipping the runtime block must not blunt the verifier."""
+    verifier = _load_reproduction_verifier()
+    manifest = {"features_sha256": _SHA_A}
+    committed = {
+        "features_sha256": _SHA_A,
+        "mean_regret_db": 1.730053,
+        "runtime": {"numpy_version": "2.4.6"},
+    }
+    regressed = {
+        "features_sha256": _SHA_A,
+        "mean_regret_db": 2.5,  # a genuine physics change
+        "runtime": {"numpy_version": "2.4.6"},
+    }
+    with pytest.raises(AssertionError, match="mean_regret_db"):
+        verifier.verify_documents(
+            expected_manifest=manifest,
+            actual_manifest=manifest,
+            expected_result=committed,
+            actual_result=regressed,
+            absolute_float_tolerance=1e-4,
+        )
+
+
+def test_runtime_key_must_still_be_present_on_both_sides() -> None:
+    """Exempt from *comparison*, not from existence — a dropped stamp is a bug."""
+    verifier = _load_reproduction_verifier()
+    manifest = {"features_sha256": _SHA_A}
+    committed = {"features_sha256": _SHA_A, "runtime": {"numpy_version": "2.4.6"}}
+    stampless = {"features_sha256": _SHA_A}
+    with pytest.raises(AssertionError, match="key mismatch"):
+        verifier.verify_documents(
+            expected_manifest=manifest,
+            actual_manifest=manifest,
+            expected_result=committed,
+            actual_result=stampless,
+            absolute_float_tolerance=1e-4,
         )

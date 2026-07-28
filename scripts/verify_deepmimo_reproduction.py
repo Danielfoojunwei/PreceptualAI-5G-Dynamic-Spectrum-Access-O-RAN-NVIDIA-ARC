@@ -18,6 +18,19 @@ from pathlib import Path
 from typing import Any
 
 FEATURE_HASH = "features_sha256"
+
+# Environment provenance stamped by horizon_ric.runtime_env. Recorded so that a
+# reproduction failure can be told apart from a dependency change, and therefore
+# deliberately NOT compared: CI legitimately runs a different numpy than the
+# machine that committed the result (the realdata extra pulls deepmimo==4.0.0,
+# which caps numpy at <2.3, while the runtime lockfile pins 2.4.6). Comparing it
+# would fail on every run. See docs/REPRODUCIBILITY.md.
+RUNTIME_BLOCK = "runtime"
+
+# Keys skipped by the recursive comparison. Both documents must still *have*
+# them — the key-set check above this is unchanged — only their values are
+# exempt from equality.
+_UNCOMPARED_KEYS = frozenset({FEATURE_HASH, RUNTIME_BLOCK})
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -44,7 +57,7 @@ def _compare(
             extra = sorted(set(actual) - set(expected))
             raise AssertionError(f"{path}: key mismatch; missing={missing}, extra={extra}")
         for key in sorted(expected):
-            if key == FEATURE_HASH:
+            if key in _UNCOMPARED_KEYS:
                 continue
             _compare(
                 expected[key],
