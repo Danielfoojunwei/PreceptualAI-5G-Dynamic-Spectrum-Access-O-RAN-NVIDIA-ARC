@@ -1,0 +1,113 @@
+{
+  "benchmark": "projection distortion vs value-model capacity (2x2 + depth sweep)",
+  "boundary_optimal": {
+    "optimal_feasible_reward": 0.347656,
+    "smooth_poly2": {
+      "max_executed_eirp_dbm": 33.0,
+      "max_loss_fraction": 0.0,
+      "mean_loss_fraction": 0.0,
+      "std_loss_fraction": 0.0
+    },
+    "tabular": {
+      "max_executed_eirp_dbm": 33.0,
+      "max_loss_fraction": 0.0,
+      "mean_loss_fraction": 0.0,
+      "std_loss_fraction": 0.0
+    },
+    "true_argmax_dbm": 52.0
+  },
+  "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+  "dataset": "DeepMIMO ASU Campus 3.5 GHz",
+  "eirp_cap_dbm": 33.0,
+  "features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
+  "findings": {
+    "boundary_optimal_hides_the_defect": true,
+    "no_illegal_action_executed": true,
+    "smooth_loss_max_fraction": 0.518461,
+    "smooth_loss_min_fraction": 0.105683,
+    "tabular_loss_is_zero_everywhere": true
+  },
+  "interior_optimal_sweep": [
+    {
+      "gap_below_cap_db": 5.0,
+      "harm_weight": 0.0003,
+      "optimal_feasible_reward": 0.090976,
+      "smooth_poly2": {
+        "max_executed_eirp_dbm": 33.0,
+        "max_loss_fraction": 0.105683,
+        "mean_loss_fraction": 0.105683,
+        "std_loss_fraction": 0.0
+      },
+      "smooth_poly3": {
+        "max_executed_eirp_dbm": 31.0,
+        "max_loss_fraction": 0.074754,
+        "mean_loss_fraction": 0.074754,
+        "std_loss_fraction": 0.0
+      },
+      "tabular": {
+        "max_executed_eirp_dbm": 28.0,
+        "max_loss_fraction": 0.0,
+        "mean_loss_fraction": 0.0,
+        "std_loss_fraction": 0.0
+      },
+      "true_argmax_dbm": 28.0
+    },
+    {
+      "gap_below_cap_db": 7.0,
+      "harm_weight": 0.00036,
+      "optimal_feasible_reward": 0.057106,
+      "smooth_poly2": {
+        "max_executed_eirp_dbm": 20.0,
+        "max_loss_fraction": 0.405123,
+        "mean_loss_fraction": 0.405123,
+        "std_loss_fraction": 0.0
+      },
+      "smooth_poly3": {
+        "max_executed_eirp_dbm": 24.0,
+        "max_loss_fraction": 0.00623,
+        "mean_loss_fraction": 0.00623,
+        "std_loss_fraction": 0.0
+      },
+      "tabular": {
+        "max_executed_eirp_dbm": 26.0,
+        "max_loss_fraction": 0.0,
+        "mean_loss_fraction": 0.0,
+        "std_loss_fraction": 0.0
+      },
+      "true_argmax_dbm": 26.0
+    },
+    {
+      "gap_below_cap_db": 9.0,
+      "harm_weight": 0.00045,
+      "optimal_feasible_reward": 0.017837,
+      "smooth_poly2": {
+        "max_executed_eirp_dbm": 20.0,
+        "max_loss_fraction": 0.518461,
+        "mean_loss_fraction": 0.518461,
+        "std_loss_fraction": 0.0
+      },
+      "smooth_poly3": {
+        "max_executed_eirp_dbm": 20.0,
+        "max_loss_fraction": 0.518461,
+        "mean_loss_fraction": 0.518461,
+        "std_loss_fraction": 0.0
+      },
+      "tabular": {
+        "max_executed_eirp_dbm": 24.0,
+        "max_loss_fraction": 0.0,
+        "mean_loss_fraction": 0.0,
+        "std_loss_fraction": 0.0
+      },
+      "true_argmax_dbm": 24.0
+    }
+  ],
+  "receivers": 4096,
+  "runtime": {
+    "numpy_version": "2.4.6",
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "rng_stream_guarantee": "numpy.random.Generator provides no cross-version bit-stream compatibility guarantee; a numpy change can act as a reseed"
+  },
+  "scenario": "asu_campus_3p5",
+  "scope_note": "Real measured propagation; the incumbent coexistence penalty is MODELLED, not measured, and exists only to move the unconstrained optimum inside the feasible set. Loss magnitude depends strongly on how far that optimum sits below the cap, so a sweep is reported rather than a single headline."
+}
