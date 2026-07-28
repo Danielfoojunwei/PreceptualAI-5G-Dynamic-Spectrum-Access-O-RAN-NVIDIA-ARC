@@ -95,12 +95,16 @@ flowchart TB
 ```
 
 One deliberate asymmetry in this picture: the OC→FR edge is drawn solid
-because both ends are real and running here, but they have not yet been
-joined — the live FlexRIC association in
+because both ends are real and running here. They are now **joined**: the
+real OCUDU gNB completes an E2 Setup against the real FlexRIC near-RT RIC,
+which registers it as an `ngran_gNB` and accepts its E2SM-KPM and E2SM-RC RAN
+functions — [`../deploy/e2-companion/OCUDU_E2_JOIN_PROOF.md`](../deploy/e2-companion/OCUDU_E2_JOIN_PROOF.md).
+The earlier association in
 [`../deploy/e2-companion/E2_KPM_PROOF.md`](../deploy/e2-companion/E2_KPM_PROOF.md)
-used FlexRIC's emulated E2 agent, not the OCUDU binaries from
+used FlexRIC's emulated E2 agent; that one uses the OCUDU binaries from
 [`../deploy/ocudu-build/OCUDU_BUILD_PROOF.md`](../deploy/ocudu-build/OCUDU_BUILD_PROOF.md).
-Joining them is roadmap item 2 (§5).
+Two limits remain: only the CU-CP agent attaches (the DU-side agent does not
+start), and there is no UE, so KPM indications would carry zeros.
 
 ## 4. What has actually been built and run this session
 
@@ -175,7 +179,7 @@ roadmap there; items 5–7 of that table remain in force.
 | # | Priority | Integration | Effort | Blocked on |
 |---|---|---|---|---|
 | 1 | **P1** | **Finish the Sionna link-level → Horizon path**: complete the `deploy/sionna-phy/` harness + proof doc around [`../src/horizon_ric/phy/sionna_bridge.py`](../src/horizon_ric/phy/sionna_bridge.py), CI-gate the pure-Python half, publish headline KPIs. | S | Nothing hard — CPU-runnable (Sionna runs on CPU, slower); the only cost is the sionna/framework install weight, kept out of core deps. |
-| 2 | **P1** | **OCUDU gNB as the live E2 node behind FlexRIC**: point the built OCUDU E2 agent ([proof](../deploy/ocudu-build/OCUDU_BUILD_PROOF.md)) at the FlexRIC nearRT-RIC that already ran live ([proof](../deploy/e2-companion/E2_KPM_PROOF.md)), replacing FlexRIC's emulated agent, and re-run the capture→bridge→A1 loop. | M | An SCTP-capable kernel (this sandbox has none; the disclosed UDP shim works for FlexRIC's one-to-many sockets but OCUDU's SCTP use must be checked) and a UE-side traffic source (ZMQ RF + a UE stack). |
+| 2 | **P1** | ~~**OCUDU gNB as the live E2 node behind FlexRIC**~~ — **done for E2 Setup** ([proof](../deploy/e2-companion/OCUDU_E2_JOIN_PROOF.md)): the real gNB registers as an `ngran_gNB` with E2SM-KPM and E2SM-RC accepted. The UDP shim was extended for OCUDU's one-to-one client calls (`sctp_bindx`/`sctp_connectx`/`sctp_getpaddrs` and, decisively, `getsockopt(IPPROTO_SCTP)`). **Remaining**: the DU-side E2 agent does not start despite `enable_du_e2`, and there is no UE, so the capture→bridge→A1 loop still runs on FlexRIC's emulated agent. | M | A UE-side traffic source (ZMQ RF + a UE stack) for non-zero KPMs; an SCTP-capable kernel for conformant transport. |
 | 3 | **P2** | **Sionna RT channel generation** alongside DeepMIMO: same `PhyMeasurement` path, but channels ray-traced in-repo (differentiable, scene-controllable) instead of downloaded — mirroring the pinning/hash discipline of the [DeepMIMO datasheet](../datasets/deepmimo_asu_3p5/DATASHEET.md). | S–M | Nothing — CPU-runnable. |
 | 4 | **P2** | **Aerial cuBB / pyaerial neural-RX decisions → Shield**: exercise the declared production seam — run a pyaerial channel-estimation/neural-RX block, feed its decisions and independently measured TBLER through `NeuralRxEnvelopeInvariant` and the AI-PHY lineage records. | M | **NVIDIA GPU** (none in this environment; ARC-Compact-class L4 is the documented minimum shape for cuBB L1 work). |
 | 5 | **P3** | **AI-RAN Alliance Data-for-AI mapping**: `TelemetryEvent`/`FeatureFrame` onto the Alliance's data-collection blueprints (carried from [SIXG_READINESS.md §5](SIXG_READINESS.md) item 6). | S–M | Blueprint publication cadence; membership question is open ([§6](#6-honest-boundaries)). |

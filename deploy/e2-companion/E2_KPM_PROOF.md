@@ -2,6 +2,13 @@
 
 Date: 2026-07-27. Host: Ubuntu 24.04 sandbox (4 cores), loopback only.
 
+> **Update, 2026-07-28.** The E2 node in this document is FlexRIC's
+> `emu_agent_gnb` emulator. The **real OCUDU gNB** has since been joined to
+> the same RIC and completes a real E2 Setup with E2SM-KPM and E2SM-RC
+> accepted — [`OCUDU_E2_JOIN_PROOF.md`](OCUDU_E2_JOIN_PROOF.md). The
+> capture→bridge→A1 loop below still runs against the emulator, because the
+> real gNB has no UE attached and its DU-side E2 agent does not start.
+
 ## What was proven
 
 A **real near-RT RIC E2 termination** (FlexRIC) was built and run: a
