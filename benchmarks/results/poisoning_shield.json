@@ -1,22 +1,89 @@
 {
+  "benchmark": "Poisoning -> Shield / robust-aggregation benchmark on real DeepMIMO measured propagation",
+  "dataset": "DeepMIMO ASU Campus 3.5 GHz",
+  "scenario": "asu_campus_3p5",
+  "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+  "features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
+  "source_archive_sha256": "80e4a4983847023158ed61a5a489025d72f4edcdac89edf4ee1323699e1b7da3",
+  "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+  "receivers": 4096,
+  "data_provenance": {
+    "decision_stream": "real \u2014 carrier, power and modulation order derived from each receiver's measured position and per-subband channel gain",
+    "federated_clients": "real \u2014 geographic cohorts of measured receivers",
+    "benign_updates": "real \u2014 FedProx steps on each cohort's own measurements",
+    "decision_poisoning": "SYNTHETIC \u2014 modelled failure modes of a poisoned neural-PHY model (out-of-band, over-EIRP, illegal order, blown PAPR, TBLER regression, in-spec-but-ACLR-harmful). No capture of a compromised RAN model's outputs is publicly available.",
+    "malicious_updates": "ALGORITHMIC, CITED \u2014 ALIE (Baruch et al., NeurIPS 2019); Fang et al. (USENIX Security 2020), applied to the real updates.",
+    "declared_constants": {
+      "band_hz": [
+        3400000000.0,
+        3500000000.0
+      ],
+      "max_eirp_dBm": 33.0,
+      "carrier_bw_hz": 16000000.0,
+      "guard_band_hz": 2000000.0,
+      "noise_figure_dB": 7.0,
+      "target_sinr_dB": 20.0,
+      "ru_max_tx_dBm": 46.0,
+      "antenna_gain_dBi": 6.0
+    }
+  },
   "shield": {
-    "decisions": 10000,
-    "poison_rate": 0.3,
-    "poisoned_inputs": 2995,
+    "decisions": 8000,
+    "poison_rate": 0.35,
+    "poisoned_inputs": 2701,
     "oracle": "independent emission-mask / ACLR integral (NOT Shield constants)",
-    "unguarded_illegal_emits": 1983,
+    "decision_stream": "REAL \u2014 each decision serves a measured DeepMIMO receiver on its measured best subband, at closed-loop power-control power against its measured path gain",
+    "measured_request_population": {
+      "receivers": 4096,
+      "measured_best_subband_gain_db": {
+        "min": -171.752,
+        "median": -103.849,
+        "max": -67.37
+      },
+      "power_controlled_request_dBm": {
+        "min": -10.0,
+        "median": 22.89,
+        "max": 46.0
+      },
+      "fraction_requesting_over_licence_eirp": 0.46,
+      "requested_order_histogram": {
+        "4": 146,
+        "16": 432,
+        "64": 3518,
+        "256": 0
+      },
+      "note": "the request distribution is measured campus geometry; the power-control set point, noise figure and MCS thresholds are declared constants"
+    },
+    "eirp_projections_applied": 3678,
+    "eirp_projection_rate": 0.4597,
+    "unguarded_illegal_from_poisoning": 2216,
+    "unguarded_illegal_from_real_geometry": 2442,
+    "unguarded_illegal_emits": 4658,
     "shielded_illegal_emits": 0,
     "shielded_blocked_emits": 0,
-    "shield_prevented": 1983,
-    "in_spec_but_harmful_unguarded": 489,
+    "shield_prevented": 4658,
+    "in_spec_but_harmful_unguarded": 461,
     "in_spec_but_harmful_after_shield": 0,
-    "result": "PASS"
+    "result": "PASS",
+    "honest_findings": [
+      "Most unguarded illegal emissions here are NOT the poisoning: they come from real geometry. Closed-loop power control solving for a 20 dB SINR against the MEASURED path loss of cell-edge receivers asks for more EIRP than the licence permits on 2442 of the un-poisoned decisions. The Shield's EIRP projection is doing routine regulatory work on real data before any adversary shows up.",
+      "The poisoned decisions add the qualitatively different failures (out-of-band carriers, illegal modulation orders, spectral regrowth that is band-edge-legal but ACLR-harmful): 2216 unguarded violations by the independent oracle.",
+      "After the Shield, the independent ACLR oracle finds zero illegal emissions in either class."
+    ]
   },
   "federated": {
+    "clients": 20,
     "n_honest": 16,
     "n_byzantine": 4,
     "byzantine_fraction": 0.2,
-    "dim": 200,
+    "dim": 36,
+    "update_provenance": "REAL \u2014 FedProx proximal ridge steps computed by geographic client cohorts on their own measured ray-traced subband gains",
+    "malicious_provenance": "ALGORITHMIC, CITED \u2014 ALIE (Baruch et al., NeurIPS 2019) and Fang et al. (USENIX Security 2020) applied to those real updates. No corpus of captured malicious FL updates exists.",
+    "real_client_receivers": {
+      "min": 126,
+      "max": 239
+    },
+    "honest_update_norm": 0.198999,
     "alie_z": 0.1573,
     "krum_breakdown_ok": true,
     "breakdown_points": {
@@ -27,39 +94,46 @@
     },
     "no_attack_baseline_dist": {
       "fedavg": 0.0,
-      "krum": 12.196867167126614,
-      "median": 2.4680238353808197,
-      "trimmed_mean": 0.6065188231500388,
-      "note": "distance from honest mean with NO attack \u2014 Krum is far because it returns ONE client's update, not an average."
+      "krum": 0.18751784220355922,
+      "median": 0.04696372193427483,
+      "trimmed_mean": 0.012882306907199291,
+      "note": "distance from the honest mean of REAL client updates with NO attack \u2014 Krum is far because it returns ONE client's update, not an average, and these clients are geographically non-IID."
     },
     "dist_from_honest_mean": {
       "alie": {
-        "fedavg": 0.43175198527362646,
-        "krum": 2.1587599263681323,
+        "fedavg": 0.011986739582020732,
+        "krum": 0.05993369791010367,
         "krum_selected_honest": false,
-        "median": 1.9910735709547576,
-        "trimmed_mean": 1.297927720298796
+        "median": 0.05993369791010367,
+        "trimmed_mean": 0.04240596925884335
       },
       "fang_krum": {
-        "fedavg": 1.7677669529663689,
-        "krum": 8.838834764831844,
+        "fedavg": 0.04687500000000001,
+        "krum": 0.234375,
         "krum_selected_honest": false,
-        "median": 4.81567013850247,
-        "trimmed_mean": 3.0482658244438876
+        "median": 0.17171230933203246,
+        "trimmed_mean": 0.0786224870700801
       },
       "fang_median": {
-        "fedavg": 8.233744329869157,
-        "krum": 12.196867167126614,
+        "fedavg": 0.22859362287662732,
+        "krum": 0.18751784220355922,
         "krum_selected_honest": true,
-        "median": 4.95805240333847,
-        "trimmed_mean": 5.809181291847292
+        "median": 0.17971611055682588,
+        "trimmed_mean": 0.15806271400768956
       }
     },
     "honest_findings": [
-      "Krum returns a single client update, so its distance from the honest mean is large EVEN WITH NO ATTACK (~12 here) \u2014 it is high-variance.",
+      "The honest updates are real measured-physics updates, so the bias below is bias leaked into a real coverage model, not into an aggregate of noise.",
+      "Krum returns a single client update, so its distance from the honest mean is large EVEN WITH NO ATTACK \u2014 and on genuinely non-IID geographic clients that penalty is larger than on IID synthetic ones.",
       "ALIE hides inside the benign variance envelope: it leaks a small but nonzero bias through median/trimmed-mean (it does NOT zero out).",
       "Fang's directed-deviation attack leaks more bias through every robust aggregator; tuned against Krum it can pull Krum's selection.",
-      "No robust aggregator is a silver bullet: they BOUND the damage, they do not eliminate it. Below the breakdown fraction the bias is small; near it, the bias grows sharply."
+      "No robust aggregator is a silver bullet: they BOUND the damage, they do not eliminate it."
     ]
+  },
+  "runtime": {
+    "numpy_version": "2.4.6",
+    "python_version": "3.11.15",
+    "python_implementation": "CPython",
+    "rng_stream_guarantee": "numpy.random.Generator provides no cross-version bit-stream compatibility guarantee; a numpy change can act as a reseed"
   }
 }

@@ -1,110 +1,181 @@
 {
+  "benchmark": "Certified federated unlearning of a real false-measurement injector",
+  "provenance": {
+    "dataset": "DeepMIMO ASU Campus 3.5 GHz",
+    "scenario": "asu_campus_3p5",
+    "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+    "source_archive_sha256": "80e4a4983847023158ed61a5a489025d72f4edcdac89edf4ee1323699e1b7da3",
+    "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+    "features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
+    "deepmimo_version": "4.0.0",
+    "carrier_frequency_hz": 3500000000,
+    "receivers_total": 4096,
+    "public_root_receivers": 512,
+    "private_subject_receivers": 3584,
+    "subject_definition": "one real DeepMIMO receiver (receiver_index); its private record is its real position_m and its 6 real subband_gain_dbw values",
+    "public_standardisation": {
+      "center_dbw": -153.00267,
+      "scale_db": 27.764992,
+      "source": "midpoint and quarter-range of the manifest-published subband_gain_dbw_min / subband_gain_dbw_max, which are already committed public aggregates of this build"
+    },
+    "scope_note": "These are ray-traced DeepMIMO receivers, not mobile subscribers. A 'data subject' here is one simulated receiver grid point whose real measured subband gains and real position form its private record. Every epsilon, membership-inference AUC and erasure bound below is a property of the stated mechanism on that population under the stated adjacency convention. It is NOT a measurement of privacy risk to real subscribers, and no personal data was used. The DeepMIMO scenario archive carries no separate licence file, so no raw or row-level derived data is redistributed - only the manifest hashes and these aggregate results. The 'attack' is a simulated falsification of ray-traced measurements, not an observed real-world incident."
+  },
   "setup": {
     "n_clients": 10,
     "n_malicious": 1,
-    "rounds": 5,
-    "trigger_state": 0,
-    "target_channel": 5,
-    "attacker_note": "forces a channel the healthy policy avoids (max damage)",
+    "client_size_min": 272,
+    "client_size_max": 463,
+    "rounds": 12,
+    "model_dim": 36,
+    "task": "federated per-subband path-loss regression on real measured gains",
+    "attack": "one real cell falsifies its measurement reports, adding +20.0 dB to subband 0 before fitting its local model; every position and every other subband is its real ray-traced value",
+    "damage_metric": "fraction of real held-out receivers for which the global model now recommends subband 0, and the mean dB advantage it hallucinates for it",
+    "evaluation_receivers": "the 512 public server-held receivers, never given to any client",
+    "partition_seed": 1234,
     "lineage": [
       "Liu, Ye, Jiang, Shen, Guo, Tjuawinata & Lam, arXiv:2404.09724 (Starfish: certified client removal)",
-      "Liu, Jiang, Shen, Peng, Lam, Yuan & Liu, ACM Comput. Surv. 2024 (federated unlearning survey)",
-      "Han, Zhu, Zhang, Huo & Zhou, arXiv:2412.11476 (backdoor-certification verification)"
+      "Liu, Jiang, Shen, Peng, Lam, Yuan & Liu, ACM Comput. Surv. 2024 (federated unlearning survey)"
     ]
   },
   "results": [
     {
       "method": "fedavg",
-      "seeds": [
-        1,
-        2,
-        3
-      ],
-      "backdoor_success": {
+      "rounds": 12,
+      "damage": {
+        "clean_all_honest": {
+          "target_subband_selection_rate": 0.0527,
+          "hallucinated_target_advantage_db": -0.0829,
+          "rmse_db": 14.4076
+        },
         "poisoned": {
-          "mean": 1.0,
-          "std": 0.0
+          "target_subband_selection_rate": 0.709,
+          "hallucinated_target_advantage_db": 1.3265,
+          "rmse_db": 14.5132
         },
         "efficient_unlearn": {
-          "mean": 1.0,
-          "std": 0.0
+          "target_subband_selection_rate": 0.2617,
+          "hallucinated_target_advantage_db": -0.9281,
+          "rmse_db": 13.8778
         },
         "retrain_from_scratch": {
-          "mean": 0.0365,
-          "std": 0.0043
+          "target_subband_selection_rate": 0.043,
+          "hallucinated_target_advantage_db": -0.1041,
+          "rmse_db": 14.0829
         }
       },
       "certified_l2_distance_to_retrain": {
-        "efficient_unlearn": {
-          "mean": 13.9939,
-          "std": 1.2
-        },
-        "retrain_from_scratch": {
-          "mean": 0.0,
-          "std": 0.0
-        }
+        "efficient_unlearn": 0.112775,
+        "retrain_from_scratch": 0.0,
+        "note": "the retrain row is 0 by construction (the gold standard is its own reference); it is a self-consistency check on the certificate plumbing, not evidence. The efficient_unlearn row is the one that carries information."
       },
+      "poisoned_l2_distance_to_retrain": 0.125382,
       "certificate_verifies": {
         "efficient_unlearn": true,
         "retrain_from_scratch": true
       },
       "certificate_rejects_poisoned_model": true,
-      "cost_local_trainings": {
-        "retrain_from_scratch": 45,
+      "certificate_rejects_manifest_tamper": true,
+      "cost_local_fits": {
+        "retrain_from_scratch": 108,
         "efficient_unlearn": 0
       }
     },
     {
       "method": "median",
-      "seeds": [
-        1,
-        2,
-        3
-      ],
-      "backdoor_success": {
+      "rounds": 12,
+      "damage": {
+        "clean_all_honest": {
+          "target_subband_selection_rate": 0.1152,
+          "hallucinated_target_advantage_db": -0.1424,
+          "rmse_db": 15.9367
+        },
         "poisoned": {
-          "mean": 0.0451,
-          "std": 0.0201
+          "target_subband_selection_rate": 0.6406,
+          "hallucinated_target_advantage_db": 1.0097,
+          "rmse_db": 16.1974
         },
         "efficient_unlearn": {
-          "mean": 0.0451,
-          "std": 0.0201
+          "target_subband_selection_rate": 0.373,
+          "hallucinated_target_advantage_db": -1.7214,
+          "rmse_db": 17.5768
         },
         "retrain_from_scratch": {
-          "mean": 0.0503,
-          "std": 0.0137
+          "target_subband_selection_rate": 0.1035,
+          "hallucinated_target_advantage_db": -0.1374,
+          "rmse_db": 17.2467
         }
       },
       "certified_l2_distance_to_retrain": {
-        "efficient_unlearn": {
-          "mean": 10.5726,
-          "std": 0.9337
-        },
-        "retrain_from_scratch": {
-          "mean": 0.0,
-          "std": 0.0
-        }
+        "efficient_unlearn": 0.322239,
+        "retrain_from_scratch": 0.0,
+        "note": "the retrain row is 0 by construction (the gold standard is its own reference); it is a self-consistency check on the certificate plumbing, not evidence. The efficient_unlearn row is the one that carries information."
       },
+      "poisoned_l2_distance_to_retrain": 0.254088,
       "certificate_verifies": {
         "efficient_unlearn": true,
         "retrain_from_scratch": true
       },
       "certificate_rejects_poisoned_model": true,
-      "cost_local_trainings": {
-        "retrain_from_scratch": 45,
+      "certificate_rejects_manifest_tamper": true,
+      "cost_local_fits": {
+        "retrain_from_scratch": 108,
         "efficient_unlearn": 0
       }
     }
   ],
   "detection": {
-    "qtable_target_flagged": "cell-MAL",
-    "reward_poison_flagged": "cell-MAL",
-    "backdoor_flagged": "cell-MAL",
-    "note": "Whole-vector distance flags all three attacks in this configuration, including the backdoor \u2014 its boosted trigger row (boost=50) is large enough to screen \u2014 so the detection->unlearn->certify loop closes for each. The honest caveat: a NORM-MATCHED stealthy backdoor (scaled to blend with honest update norms, the regime that lets a backdoor survive robust aggregation) would evade this whole-vector screen; attributing it needs an independent signal, and there the deterministic Shield remains the backstop. Unlearning removes whatever is attributed; it cannot attribute what detection cannot see."
+    "screen": "whole-vector L2 distance-to-mean outlier detection (U.detect_outliers)",
+    "trials": {
+      "measurement_falsification": {
+        "flagged_client": 5,
+        "attacker_client": 9,
+        "attacker_flagged": false,
+        "attacker_update_norm": 0.11299,
+        "honest_update_norm_median": 0.218784,
+        "attacker_norm_ratio": 0.5164,
+        "damage": {
+          "target_subband_selection_rate": 0.6406,
+          "hallucinated_target_advantage_db": 1.0097,
+          "rmse_db": 16.1974
+        },
+        "note": "the shipped attack: a well-formed local fit to fabricated measurements"
+      },
+      "norm_matched_falsification": {
+        "flagged_client": 5,
+        "attacker_client": 9,
+        "attacker_flagged": false,
+        "attacker_update_norm": 0.218912,
+        "honest_update_norm_median": 0.218912,
+        "attacker_norm_ratio": 1.0,
+        "damage": {
+          "target_subband_selection_rate": 0.6602,
+          "hallucinated_target_advantage_db": 1.5141,
+          "rmse_db": 15.8805
+        },
+        "note": "the same attack rescaled to the honest median update norm"
+      },
+      "scaling_attack_control": {
+        "flagged_client": 9,
+        "attacker_client": 9,
+        "attacker_flagged": true,
+        "attacker_update_norm": 0.959942,
+        "honest_update_norm_median": 0.219049,
+        "attacker_norm_ratio": 4.3823,
+        "damage": {
+          "target_subband_selection_rate": 0.1152,
+          "hallucinated_target_advantage_db": -0.1424,
+          "rmse_db": 15.9367
+        },
+        "note": "positive control: 10x update scaling"
+      }
+    },
+    "finding": "Whole-vector screening does NOT attribute this attack. The rogue cell's update is a legitimate local fit, and because it is fitting a global that its own lie has already shifted, its update norm is 0.5164x the honest median - it is SMALLER than an honest client's, not larger. The positive control confirms the screen itself works (attacker_flagged=True at 10x scaling), so this is a real blind spot, not a broken detector. Unlearning removes whatever is attributed; it cannot attribute what detection cannot see, and there the deterministic Decision Safety Shield remains the backstop that bounds the emitted action."
   },
   "honest_finding": [
-    "Under undefended FedAvg the backdoor lands at success ~1.0. retrain-from-scratch certified unlearning drives it to the clean baseline (~0.03) \u2014 it CLOSES the backdoor-survives-aggregation FAIL \u2014 and the signed certificate (certified L2 distance ~0 to the gold standard) verifies against the unlearned model and rejects the still-poisoned one.",
-    "The CHEAP efficient_unlearn (replay cached honest uploads) is INSUFFICIENT here: the backdoor propagated into the honest clients' warm-started Q-tables, so re-aggregating them keeps it. Its certified distance-to-retrain is LARGE, which is exactly the honest signal an operator needs to reject the cheap result and fall back to full retraining. The certificate never claims a removal that did not happen.",
-    "Unlearning is not a substitute for the Shield: it requires ATTRIBUTION. Here whole-vector detection flags all three attacks (the boosted backdoor row is large enough to screen), so the detection->unlearn->certify loop closes. But a NORM-MATCHED stealthy backdoor \u2014 the regime that survives robust aggregation \u2014 would evade detection, leaving nothing to attribute; there the deterministic Decision Safety Shield remains the backstop that bounds the emitted action to legal spectrum."
+    "The injection works on real data and robust aggregation does not stop it. On the real held-out receivers the clean model recommends subband 0 for 5.3% of them; one falsifying cell out of ten drives that to 70.9% under FedAvg and still 64.1% under coordinate median. The update is a legitimate fit to fabricated data, so it is not an outlier in shape - which is exactly why a robust aggregator bounds it rather than removes it.",
+    "Retrain-from-scratch unlearning closes it. Recommending subband 0 returns to 4.3% (FedAvg), matching the clean baseline, and the hallucinated advantage returns to -0.1041 dB. It costs 108 local fits over real receiver rows.",
+    "The cheap replay is measurably insufficient, and its certificate says so. Re-aggregating the cached honest uploads leaves the target-subband rate at 26.2% (FedAvg) because the honest clients warm-started from poisoned globals, so the poison is baked into their own cached uploads. Its certified L2 distance to the gold standard is 0.113 against 0 for the retrain - the honest signal an operator needs to reject the cheap result. The certificate never claims a removal that did not happen.",
+    "Attribution is the precondition and it FAILS here. Whole-vector outlier screening does not flag the falsifying cell (attacker_flagged=False): its update norm is 0.5164x the honest median, i.e. SMALLER than an honest client's, because it is fitting a global its own lie already moved. A 10x scaling control is flagged (True), so the screen works - this attack is simply invisible to it. The certified unlearning machinery below is therefore only as good as some independent attribution signal, and the deterministic Shield remains the backstop when there is none.",
+    "Scope. These are ray-traced receivers and a simulated falsification, not a measured real-world attack."
   ]
 }

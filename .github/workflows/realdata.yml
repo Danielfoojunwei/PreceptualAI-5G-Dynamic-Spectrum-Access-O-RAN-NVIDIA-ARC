@@ -30,6 +30,7 @@ on:
       - "src/horizon_ric/federated/**"
       - "scripts/verify_deepmimo_reproduction.py"
       - "scripts/verify_federated_coverage.py"
+      - "scripts/verify_data_dependence.py"
       - "scripts/verify_beam_management.py"
       - "scripts/verify_mobility_handover.py"
       - "scripts/verify_antijam.py"
@@ -82,13 +83,46 @@ jobs:
             --absolute-float-tolerance 0.0001
       - name: Reproduce federated coverage loop on real data
         # Exits non-zero unless clean FL learns, the poison diverges plain
-        # FedAvg, Krum defends, the over-power fill is corrected and the
+        # FedAvg, FLTrust defends, the over-power fill is corrected and the
         # evidence chain verifies then catches a tamper — all on real channels.
+        # Krum is no longer the defence claim: its poison tax is exactly 0.00 dB
+        # (poisoned == clean == 14.4572), i.e. all of its cost is non-IID
+        # aggregation tax, and its fill lands in the clean model's bottom
+        # coverage decile at only 7/12 seeds. FLTrust is 12/12.
         run: |
           python benchmarks/federated_coverage_loop.py \
             --features "$RUNNER_TEMP/channel_features.jsonl" \
             --manifest "$RUNNER_TEMP/manifest.json" \
             --out "$RUNNER_TEMP/federated_coverage.json"
+      - name: Federated gates must survive seeds and bite on regressions
+        # The load-bearing evidence is no longer a single run: the gates are
+        # claimed to hold across seeds, and a gate that cannot fail is worse
+        # than no gate. Prove both here rather than trusting the committed JSON.
+        run: |
+          python benchmarks/federated_coverage_loop.py \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json" \
+            --seed-sweep --seeds 12
+          for mode in krum_off fltrust_uniform_trust dp_legacy_clip; do
+            if python benchmarks/federated_coverage_loop.py \
+                 --features "$RUNNER_TEMP/channel_features.jsonl" \
+                 --manifest "$RUNNER_TEMP/manifest.json" \
+                 --inject-regression "$mode" \
+                 --out "$RUNNER_TEMP/injected_$mode.json"; then
+              echo "::error::injected regression '$mode' did NOT fail the gates"
+              exit 1
+            fi
+            echo "injected regression '$mode' correctly rejected"
+          done
+      - name: Benchmarks claiming real data must actually depend on it
+        # Provenance is not proof. A benchmark can load the real features,
+        # ignore them, report a synthetic draw and still stamp features_sha256
+        # into its JSON. This perturbs the real measurements and requires each
+        # benchmark to either move its numbers or reject the input as physically
+        # inconsistent. --quick keeps the job inside its timeout; the full
+        # 13-benchmark sweep runs via workflow_dispatch and locally.
+        run: |
+          python scripts/verify_data_dependence.py --quick
       - name: Verify committed federated-coverage evidence
         run: |
           python scripts/verify_federated_coverage.py \

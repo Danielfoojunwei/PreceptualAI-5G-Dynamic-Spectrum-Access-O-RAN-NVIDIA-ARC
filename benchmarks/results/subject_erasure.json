@@ -1,80 +1,549 @@
 {
+  "benchmark": "GDPR Art. 17 subject erasure on real DeepMIMO receivers",
+  "provenance": {
+    "dataset": "DeepMIMO ASU Campus 3.5 GHz",
+    "scenario": "asu_campus_3p5",
+    "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+    "source_archive_sha256": "80e4a4983847023158ed61a5a489025d72f4edcdac89edf4ee1323699e1b7da3",
+    "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+    "features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
+    "deepmimo_version": "4.0.0",
+    "carrier_frequency_hz": 3500000000,
+    "receivers_total": 4096,
+    "public_root_receivers": 512,
+    "private_subject_receivers": 3584,
+    "subject_definition": "one real DeepMIMO receiver (receiver_index); its private record is its real position_m and its 6 real subband_gain_dbw values",
+    "public_standardisation": {
+      "center_dbw": -153.00267,
+      "scale_db": 27.764992,
+      "source": "midpoint and quarter-range of the manifest-published subband_gain_dbw_min / subband_gain_dbw_max, which are already committed public aggregates of this build"
+    },
+    "scope_note": "These are ray-traced DeepMIMO receivers, not mobile subscribers. A 'data subject' here is one simulated receiver grid point whose real measured subband gains and real position form its private record. Every epsilon, membership-inference AUC and erasure bound below is a property of the stated mechanism on that population under the stated adjacency convention. It is NOT a measurement of privacy risk to real subscribers, and no personal data was used. The DeepMIMO scenario archive carries no separate licence file, so no raw or row-level derived data is redistributed - only the manifest hashes and these aggregate results. 'Erasure' here removes one simulated receiver's measurements from a model; it is not a legal opinion and not a statement about any real person's data."
+  },
   "setup": {
-    "n_clients": 4,
-    "subjects_per_client": 3,
-    "erasure": "one subject from one client (GDPR Art. 17, sample-level)",
-    "gold_standard": "from-scratch retrain of the whole federation with the subject's rows absent from the target client (other clients recomputed)",
+    "n_clients": 8,
+    "client_size_min": 268,
+    "client_size_max": 525,
+    "rounds": 12,
+    "model_dim": 36,
+    "subject": "one real DeepMIMO receiver (receiver_index) and its 6 measured gains",
+    "erasure_mechanism": "exact rank-1 downdate of the client's sufficient statistics (D\u1d40D, D\u1d40T, n), replayed through every warm-started round",
+    "gold_standard": "independent from-scratch retrain of the whole federation from the raw real rows with the subject's row physically deleted",
+    "partition_seed": 1234,
     "lineage": [
-      "Lam et al., Certifying the Right to be Forgotten: Primal-Dual Optimization for Sample and Label Unlearning in VFL, IEEE TIFS"
+      "Lam et al., Certifying the Right to be Forgotten: Primal-Dual Optimization for Sample and Label Unlearning in VFL, IEEE TIFS",
+      "Yeom, Giacomelli, Fredrikson & Jha, CSF 2018 (loss-threshold membership inference)"
     ]
   },
   "results": [
     {
       "method": "fedavg",
-      "seeds": [
-        1,
-        2,
-        3
+      "rounds": 12,
+      "n_erasures": 8,
+      "erased_subject_ids": [
+        "deepmimo-rx-106298",
+        "deepmimo-rx-17730",
+        "deepmimo-rx-57512",
+        "deepmimo-rx-83924",
+        "deepmimo-rx-54512",
+        "deepmimo-rx-75120",
+        "deepmimo-rx-77763",
+        "deepmimo-rx-91399"
       ],
       "global_changed": true,
-      "n_transitions_erased": 400,
-      "n_transitions_erased_matches_log": true,
-      "certified_l2_distance_to_retrain": {
-        "mean": 0.0,
-        "std": 0.0,
-        "max": 0.0
+      "influence_l2_before_vs_after": {
+        "mean": 0.000417027,
+        "max": 0.00123371,
+        "min": 0.00010957
       },
-      "independent_exact_distance_to_retrain": {
-        "mean": 0.0,
-        "std": 0.0,
-        "max": 0.0
+      "influence_prediction_shift_db": {
+        "mean": 0.00757114,
+        "max": 0.0208039,
+        "min": 0.000433111
+      },
+      "certified_l2_distance_to_retrain": {
+        "mean": 1.52555e-16,
+        "max": 2.29509e-16,
+        "min": 4.04604e-17
       },
       "cheap_linear_shortcut_residual_to_retrain": {
-        "mean": 0.0,
-        "std": 0.0,
-        "max": 0.0
+        "mean": 0.000349466,
+        "max": 0.00103287,
+        "min": 8.84839e-05
+      },
+      "single_round": {
+        "certified_l2_distance_to_retrain": {
+          "mean": 1.54373e-17,
+          "max": 3.63879e-17,
+          "min": 0.0
+        },
+        "cheap_linear_shortcut_residual_to_retrain": {
+          "mean": 2.63554e-17,
+          "max": 3.71247e-17,
+          "min": 1.58041e-17
+        },
+        "note": "at rounds=1 there is no warm-start propagation, so the cheap linear patch IS the retrain under the linear aggregator (FedAvg) and is not under the non-linear one (median)"
       },
       "certificate_verifies_after": true,
       "certificate_rejects_before": true,
       "certificate_pin_verify_ok": true,
       "certificate_wrong_pin_fails": true,
-      "certificate_rejects_manifest_tamper": true
+      "certificate_rejects_manifest_tamper": true,
+      "certificate_binds_features_sha256": true,
+      "per_erasure": [
+        {
+          "method": "fedavg",
+          "target_client": "cell-0",
+          "subject_id": "deepmimo-rx-106298",
+          "subject_receiver_index": 106298,
+          "subject_position_m": [
+            34.449,
+            97.831
+          ],
+          "client_subjects": 456,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.000297106129,
+          "influence_prediction_shift_db": 0.006072858,
+          "certified_l2_distance_to_retrain": 1.90409e-16,
+          "model_norm_for_scale": 1.37652,
+          "cheap_linear_shortcut_residual_to_retrain": 0.00025578,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "fedavg",
+          "target_client": "cell-1",
+          "subject_id": "deepmimo-rx-17730",
+          "subject_receiver_index": 17730,
+          "subject_position_m": [
+            -168.551,
+            -117.169
+          ],
+          "client_subjects": 416,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.000215087205,
+          "influence_prediction_shift_db": 0.003939508,
+          "certified_l2_distance_to_retrain": 2.03015e-16,
+          "model_norm_for_scale": 1.37667,
+          "cheap_linear_shortcut_residual_to_retrain": 0.000179361,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "fedavg",
+          "target_client": "cell-2",
+          "subject_id": "deepmimo-rx-57512",
+          "subject_receiver_index": 57512,
+          "subject_position_m": [
+            157.449,
+            -21.169
+          ],
+          "client_subjects": 459,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.000436605747,
+          "influence_prediction_shift_db": 0.009887674,
+          "certified_l2_distance_to_retrain": 1.44722e-16,
+          "model_norm_for_scale": 1.37639,
+          "cheap_linear_shortcut_residual_to_retrain": 0.000394177,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "fedavg",
+          "target_client": "cell-3",
+          "subject_id": "deepmimo-rx-83924",
+          "subject_receiver_index": 83924,
+          "subject_position_m": [
+            -145.551,
+            43.831
+          ],
+          "client_subjects": 504,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.000109570094,
+          "influence_prediction_shift_db": 0.000433111,
+          "certified_l2_distance_to_retrain": 2.29509e-16,
+          "model_norm_for_scale": 1.3767,
+          "cheap_linear_shortcut_residual_to_retrain": 8.84839e-05,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "fedavg",
+          "target_client": "cell-4",
+          "subject_id": "deepmimo-rx-54512",
+          "subject_receiver_index": 54512,
+          "subject_position_m": [
+            34.449,
+            -28.169
+          ],
+          "client_subjects": 525,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.000166823934,
+          "influence_prediction_shift_db": 0.002976679,
+          "certified_l2_distance_to_retrain": 6.47217e-17,
+          "model_norm_for_scale": 1.37679,
+          "cheap_linear_shortcut_residual_to_retrain": 0.000124633,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "fedavg",
+          "target_client": "cell-5",
+          "subject_id": "deepmimo-rx-75120",
+          "subject_receiver_index": 75120,
+          "subject_position_m": [
+            92.449,
+            21.831
+          ],
+          "client_subjects": 506,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.000504369049,
+          "influence_prediction_shift_db": 0.01006795,
+          "certified_l2_distance_to_retrain": 2.21936e-16,
+          "model_norm_for_scale": 1.37711,
+          "cheap_linear_shortcut_residual_to_retrain": 0.000413868,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "fedavg",
+          "target_client": "cell-6",
+          "subject_id": "deepmimo-rx-77763",
+          "subject_receiver_index": 77763,
+          "subject_position_m": [
+            -141.551,
+            28.831
+          ],
+          "client_subjects": 268,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.00123370541,
+          "influence_prediction_shift_db": 0.020803889,
+          "certified_l2_distance_to_retrain": 4.04604e-17,
+          "model_norm_for_scale": 1.37635,
+          "cheap_linear_shortcut_residual_to_retrain": 0.00103287,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "fedavg",
+          "target_client": "cell-7",
+          "subject_id": "deepmimo-rx-91399",
+          "subject_receiver_index": 91399,
+          "subject_position_m": [
+            -68.551,
+            61.831
+          ],
+          "client_subjects": 450,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.000372945773,
+          "influence_prediction_shift_db": 0.006387425,
+          "certified_l2_distance_to_retrain": 1.25669e-16,
+          "model_norm_for_scale": 1.37691,
+          "cheap_linear_shortcut_residual_to_retrain": 0.000306559,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        }
+      ]
     },
     {
       "method": "median",
-      "seeds": [
-        1,
-        2,
-        3
+      "rounds": 12,
+      "n_erasures": 8,
+      "erased_subject_ids": [
+        "deepmimo-rx-106298",
+        "deepmimo-rx-17730",
+        "deepmimo-rx-57512",
+        "deepmimo-rx-83924",
+        "deepmimo-rx-54512",
+        "deepmimo-rx-75120",
+        "deepmimo-rx-77763",
+        "deepmimo-rx-91399"
       ],
       "global_changed": true,
-      "n_transitions_erased": 400,
-      "n_transitions_erased_matches_log": true,
-      "certified_l2_distance_to_retrain": {
-        "mean": 0.0,
-        "std": 0.0,
-        "max": 0.0
+      "influence_l2_before_vs_after": {
+        "mean": 0.000687588,
+        "max": 0.00184618,
+        "min": 5.62985e-05
       },
-      "independent_exact_distance_to_retrain": {
-        "mean": 0.0,
-        "std": 0.0,
-        "max": 0.0
+      "influence_prediction_shift_db": {
+        "mean": 0.00424409,
+        "max": 0.0163771,
+        "min": 0.000229177
+      },
+      "certified_l2_distance_to_retrain": {
+        "mean": 1.61723e-16,
+        "max": 2.28642e-16,
+        "min": 1.00614e-16
       },
       "cheap_linear_shortcut_residual_to_retrain": {
-        "mean": 0.566558333333,
-        "std": 0.016891197655,
-        "max": 0.587105
+        "mean": 0.000669126,
+        "max": 0.00182713,
+        "min": 5.87931e-05
+      },
+      "single_round": {
+        "certified_l2_distance_to_retrain": {
+          "mean": 1.59667e-17,
+          "max": 4.16334e-17,
+          "min": 0.0
+        },
+        "cheap_linear_shortcut_residual_to_retrain": {
+          "mean": 9.50869e-05,
+          "max": 0.000264017,
+          "min": 2.13015e-05
+        },
+        "note": "at rounds=1 there is no warm-start propagation, so the cheap linear patch IS the retrain under the linear aggregator (FedAvg) and is not under the non-linear one (median)"
       },
       "certificate_verifies_after": true,
       "certificate_rejects_before": true,
       "certificate_pin_verify_ok": true,
       "certificate_wrong_pin_fails": true,
-      "certificate_rejects_manifest_tamper": true
+      "certificate_rejects_manifest_tamper": true,
+      "certificate_binds_features_sha256": true,
+      "per_erasure": [
+        {
+          "method": "median",
+          "target_client": "cell-0",
+          "subject_id": "deepmimo-rx-106298",
+          "subject_receiver_index": 106298,
+          "subject_position_m": [
+            34.449,
+            97.831
+          ],
+          "client_subjects": 456,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.000114599409,
+          "influence_prediction_shift_db": 0.000229177,
+          "certified_l2_distance_to_retrain": 1.37208e-16,
+          "model_norm_for_scale": 1.25992,
+          "cheap_linear_shortcut_residual_to_retrain": 0.000112482,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "median",
+          "target_client": "cell-1",
+          "subject_id": "deepmimo-rx-17730",
+          "subject_receiver_index": 17730,
+          "subject_position_m": [
+            -168.551,
+            -117.169
+          ],
+          "client_subjects": 416,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.000282307265,
+          "influence_prediction_shift_db": 0.005231079,
+          "certified_l2_distance_to_retrain": 2.10496e-16,
+          "model_norm_for_scale": 1.25997,
+          "cheap_linear_shortcut_residual_to_retrain": 0.000262929,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "median",
+          "target_client": "cell-2",
+          "subject_id": "deepmimo-rx-57512",
+          "subject_receiver_index": 57512,
+          "subject_position_m": [
+            157.449,
+            -21.169
+          ],
+          "client_subjects": 459,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.000158845341,
+          "influence_prediction_shift_db": 0.001033348,
+          "certified_l2_distance_to_retrain": 1.00614e-16,
+          "model_norm_for_scale": 1.25979,
+          "cheap_linear_shortcut_residual_to_retrain": 0.000153493,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "median",
+          "target_client": "cell-3",
+          "subject_id": "deepmimo-rx-83924",
+          "subject_receiver_index": 83924,
+          "subject_position_m": [
+            -145.551,
+            43.831
+          ],
+          "client_subjects": 504,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 5.6298498e-05,
+          "influence_prediction_shift_db": 0.000488205,
+          "certified_l2_distance_to_retrain": 2.28642e-16,
+          "model_norm_for_scale": 1.2599,
+          "cheap_linear_shortcut_residual_to_retrain": 5.87931e-05,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "median",
+          "target_client": "cell-4",
+          "subject_id": "deepmimo-rx-54512",
+          "subject_receiver_index": 54512,
+          "subject_position_m": [
+            34.449,
+            -28.169
+          ],
+          "client_subjects": 525,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.000513461546,
+          "influence_prediction_shift_db": 0.004189153,
+          "certified_l2_distance_to_retrain": 1.41441e-16,
+          "model_norm_for_scale": 1.26,
+          "cheap_linear_shortcut_residual_to_retrain": 0.000490409,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "median",
+          "target_client": "cell-5",
+          "subject_id": "deepmimo-rx-75120",
+          "subject_receiver_index": 75120,
+          "subject_position_m": [
+            92.449,
+            21.831
+          ],
+          "client_subjects": 506,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.00103019659,
+          "influence_prediction_shift_db": 0.003349356,
+          "certified_l2_distance_to_retrain": 1.61171e-16,
+          "model_norm_for_scale": 1.25989,
+          "cheap_linear_shortcut_residual_to_retrain": 0.00100124,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "median",
+          "target_client": "cell-6",
+          "subject_id": "deepmimo-rx-77763",
+          "subject_receiver_index": 77763,
+          "subject_position_m": [
+            -141.551,
+            28.831
+          ],
+          "client_subjects": 268,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.00184617977,
+          "influence_prediction_shift_db": 0.003055334,
+          "certified_l2_distance_to_retrain": 1.76874e-16,
+          "model_norm_for_scale": 1.26089,
+          "cheap_linear_shortcut_residual_to_retrain": 0.00182713,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        },
+        {
+          "method": "median",
+          "target_client": "cell-7",
+          "subject_id": "deepmimo-rx-91399",
+          "subject_receiver_index": 91399,
+          "subject_position_m": [
+            -68.551,
+            61.831
+          ],
+          "client_subjects": 450,
+          "global_changed": true,
+          "influence_l2_before_vs_after": 0.00149881171,
+          "influence_prediction_shift_db": 0.016377075,
+          "certified_l2_distance_to_retrain": 1.37339e-16,
+          "model_norm_for_scale": 1.26084,
+          "cheap_linear_shortcut_residual_to_retrain": 0.00144653,
+          "certificate_verifies_after": true,
+          "certificate_rejects_before": true,
+          "certificate_pin_verify_ok": true,
+          "certificate_wrong_pin_fails": true,
+          "certificate_rejects_manifest_tamper": true,
+          "certificate_binds_features_sha256": true
+        }
+      ]
     }
   ],
+  "erasure_audit": {
+    "method": "fedavg",
+    "subjects_erased": 200,
+    "paired_leave_one_out": {
+      "fraction_loss_rose_after_own_erasure": 0.815,
+      "mean_loss_rise_db2": 0.310632,
+      "max_loss_rise_db2": 4.48231,
+      "reading": "the reported fraction is the achieved value, not a target. A majority above 0.5 means the erasure really does remove a fitted influence: the model that held the receiver predicted it better than the model produced by erasing it. The remainder are receivers whose own removal happened to improve their fit, which real spatial heterogeneity produces at this effect size - one subject out of hundreds barely moves a 36-parameter model, so the per-subject signal sits close to numerical noise."
+    },
+    "population_auc": {
+      "never_seen_reference_receivers": 78,
+      "reference_selection": "public server-held root receivers whose nearest client centroid is the target client (geography-matched, never held by a client)",
+      "membership_auc_before_erasure": 0.514,
+      "membership_auc_after_erasure": 0.5134,
+      "confound": "even geography-matched, this AUC mixes membership with residual spatial heterogeneity of the real campus; only the change before->after is attributable to erasure"
+    },
+    "mean_model_l2_shift_per_erasure": 0.000473998,
+    "max_model_l2_shift_per_erasure": 0.00232013,
+    "statistic": "loss-threshold membership score = -mean squared dB error of the released model on that receiver's real measured subband gains (Yeom et al., CSF 2018)"
+  },
   "honest_finding": [
-    "For FedAvg subject erasure is EXACT and PROVABLE: the cheap re-aggregation equals a from-scratch retrain that never saw the subject, so the certified L2 distance-to-retrain is 0.0 \u2014 the strong Art. 17 'as if the data was never used' guarantee, not an approximation. The independently computed distance to our own gold-standard retrain is 0.0 too, so the certificate is not self-referential hand-waving.",
-    "For a NON-LINEAR aggregator (median; krum is likewise non-linear) the cheap LINEAR re-aggregation shortcut an operator would use to avoid a full recompute is NOT the retrain: it leaves a small, non-zero residual (cheap_linear_shortcut_residual_to_retrain), reported honestly rather than hidden. The module's certificate still reaches distance 0.0 there only because it pays for a full EXACT recompute of the affected local before re-aggregating \u2014 exactness under non-linearity costs the recompute, and the residual quantifies what the cheap path would have left behind.",
-    "Erasure is bound to a signed, audit-chainable ErasureCertificate (RSA-PSS via the real provenance HSM): it verifies against the post-erasure global, rejects the pre-erasure global and any manifest tamper, pin-verifies against the embedded public key, and records the exact number of the subject's transitions that were erased."
+    "Erasure of a real receiver is EXACT and the exactness is measured, not claimed. The rank-1 sufficient-statistic downdate and an independent from-scratch retrain from the raw rows are different code paths, and their L2 distance is 2.3e-16 (FedAvg, worst of 8 real erasures) and 2.29e-16 (median) - floating-point noise on a model whose own norm is order 1.",
+    "Erasing one real receiver out of ~525 moves the model by 0.000417 in L2 and shifts its predicted gain at that receiver by 0.00757 dB. The erasure is small because one subject out of hundreds is small - but it is non-zero, which is why it has to be done exactly.",
+    "The cheap shortcut is NOT the retrain once rounds warm-start. Patching only the final aggregate leaves a residual of 0.000349 under FedAvg and 0.000669 under coordinate median at 12 rounds. At a single round the FedAvg shortcut is exact (3.71e-17) and the median shortcut still is not (9.51e-05). Exactness under warm-starting or non-linearity costs the replay; the residual is what an operator who skips it is left holding.",
+    "The erasure audit reports the achieved value. Over 200 real receivers erased one at a time, the paired leave-one-out test shows the subject's own loss rose in 81.5% of cases once it was erased (mean +0.311 dB^2). The influence being removed is real and measured. The population AUC against geography-matched never-seen receivers moves 0.514 -> 0.5134; that absolute level is confounded by real spatial heterogeneity and only its change is attributable to erasure. Neither test proves a stronger attacker would fail.",
+    "The erasure is bound to a signed ErasureCertificate (RSA-PSS via the real provenance HSM) that verifies against the post-erasure model, rejects the pre-erasure model, rejects a manifest tamper, pin-verifies against the embedded key, and records the dataset features_sha256 so the erasure is bound to the exact data build."
   ]
 }

@@ -1,33 +1,331 @@
 {
+  "benchmark": "White-box PGD on a neural receiver over real DeepMIMO channels",
+  "dataset": "DeepMIMO ASU Campus 3.5 GHz (per-path ray geometry)",
+  "scenario": "asu_campus_3p5",
+  "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+  "features_sha256": "13eb2f6b8d8f648f45b00c28e0b8b46c3afdbd6a2e36543792b04025092a6884",
+  "channel_features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
+  "source_archive_sha256": "80e4a4983847023158ed61a5a489025d72f4edcdac89edf4ee1323699e1b7da3",
+  "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+  "channel_reconstruction_check": {
+    "what": "angular_features.jsonl per-path rays re-synthesised into the OFDM frequency response and compared against the independently built channel_features.jsonl subband gains (+10*log10(1024) OFDM scaling)",
+    "rms_error_db": 6.3e-05,
+    "max_abs_error_db": 0.002273,
+    "receivers": 4096
+  },
+  "data_provenance": {
+    "channel": "real \u2014 Wireless InSite ray tracing: per-path amplitude, phase and delay at 4096 real receiver positions",
+    "operating_snr": "real \u2014 each receiver's own measured wideband path gain under a declared link budget; no single assumed Es/N0",
+    "transmitted_symbols": "synthetic \u2014 a known 16-QAM sequence we choose",
+    "adversarial_perturbation": "SYNTHETIC BY NECESSITY \u2014 PGD (Madry et al., ICLR 2018) is a white-box gradient attack computed from this receiver's own weights. No dataset can supply it: an 'adversarial RF dataset' would be adversarial against another model. The canonical over-the-air adversarial-attack papers (arXiv 2002.02400, arXiv 2202.11197) release no data.",
+    "attack_citation": "Madry, Makelov, Schmidt, Tsipras & Vladu, Towards Deep Learning Models Resistant to Adversarial Attacks, ICLR 2018",
+    "fallback_citation": "LMMSE equalisation + ML demapping (the certified classical baseline the Shield routes to)"
+  },
   "regime": {
     "M": 16,
-    "snr_dB": 22.0,
-    "pgd_epsilon_Linf": 0.12,
-    "block_symbols": 100,
-    "crc_window_blocks": 20
+    "pgd_epsilon_Linf_agc_units": 0.12,
+    "pgd_steps": 30,
+    "perturbation_mask": "attacker controls [Re Y, Im Y]; the CSI H is not perturbable",
+    "block_symbols": 20,
+    "crc_window_blocks": 20,
+    "train_symbols": 80000,
+    "test_symbols": 40000,
+    "seed": 0
   },
-  "clean_ser": {
-    "neural": 0.0,
-    "classical": 0.0
+  "link_budget": {
+    "eirp_dBm": 33.0,
+    "tx_per_subcarrier_dBm": 2.897,
+    "noise_dBm_per_subcarrier": -117.103,
+    "noise_figure_dB": 7.0,
+    "subcarrier_hz": 97656.25,
+    "note": "declared constants; the PATH GAIN they are applied to is measured"
   },
-  "pgd_ser": {
-    "neural": 0.01465,
-    "classical": 0.000675,
-    "neural_vs_classical_x": 21.703703703703702
+  "measured_link_population": {
+    "receivers_total": 4096,
+    "measured_link_gain_db": {
+      "min": -174.13,
+      "median": -105.161,
+      "max": -69.902,
+      "span": 104.227
+    },
+    "measured_link_snr_db": {
+      "p5": -16.834,
+      "median": 14.839,
+      "p95": 41.402
+    }
   },
-  "pgd_tbler": {
-    "neural": 0.7625,
-    "classical": 0.065
-  },
-  "shield": {
-    "effective_tbler": 0.065,
-    "fallback_rate": 1.0,
-    "attack_reduction_x": 11.73076923076923
+  "cohorts": [
+    {
+      "cohort": "low_11_20dB",
+      "measured_sinr_window_db": [
+        11.0,
+        20.0
+      ],
+      "receivers": 553,
+      "receiver_fraction_of_grid": 0.135,
+      "measured_sinr_db": {
+        "min": 11.021,
+        "median": 16.702,
+        "max": 19.998
+      },
+      "agc_reference_snr_db": 16.702,
+      "pgd_epsilon_over_noise_std": 1.1609,
+      "spatial_split": {
+        "split": "real x-coordinate median of the cohort's receiver positions",
+        "x_cut_m": -10.5511,
+        "train_receivers": 276,
+        "test_receivers": 277,
+        "disjoint": true
+      },
+      "clean_ser": {
+        "neural": 0.093525,
+        "classical_lmmse": 0.097175
+      },
+      "pgd_ser": {
+        "neural": 0.4068,
+        "classical_lmmse": 0.396675,
+        "neural_vs_classical_x": 1.0255
+      },
+      "pgd_bler": {
+        "neural": 1.0,
+        "classical_lmmse": 1.0,
+        "block_symbols": 20
+      },
+      "shield": {
+        "tolerance_1.0dB": {
+          "tolerance_dB": 1.0,
+          "admits_up_to_x_baseline": 1.2589,
+          "fallback_rate": 0.0,
+          "effective_ser": 0.4068,
+          "effective_bler": 1.0,
+          "effective_vs_certified_baseline_x": 1.0255,
+          "unshielded_neural_vs_baseline_x": 1.0255
+        },
+        "tolerance_0.5dB": {
+          "tolerance_dB": 0.5,
+          "admits_up_to_x_baseline": 1.122,
+          "fallback_rate": 0.0,
+          "effective_ser": 0.4068,
+          "effective_bler": 1.0,
+          "effective_vs_certified_baseline_x": 1.0255,
+          "unshielded_neural_vs_baseline_x": 1.0255
+        },
+        "tolerance_0.2dB": {
+          "tolerance_dB": 0.2,
+          "admits_up_to_x_baseline": 1.0471,
+          "fallback_rate": 0.0,
+          "effective_ser": 0.4068,
+          "effective_bler": 1.0,
+          "effective_vs_certified_baseline_x": 1.0255,
+          "unshielded_neural_vs_baseline_x": 1.0255
+        }
+      },
+      "deep_fade_split": {
+        "what": "symbols split at the cohort's median measured |H| \u2014 the mechanism behind the collapsed neural-vs-classical ratio",
+        "median_abs_h_agc": 0.8772,
+        "deep_fade_half": {
+          "pgd_ser_neural": 0.725,
+          "pgd_ser_classical_lmmse": 0.71445
+        },
+        "strong_half": {
+          "pgd_ser_neural": 0.0886,
+          "pgd_ser_classical_lmmse": 0.0789
+        }
+      }
+    },
+    {
+      "cohort": "mid_20_30dB",
+      "measured_sinr_window_db": [
+        20.0,
+        30.0
+      ],
+      "receivers": 612,
+      "receiver_fraction_of_grid": 0.1494,
+      "measured_sinr_db": {
+        "min": 20.004,
+        "median": 24.541,
+        "max": 29.983
+      },
+      "agc_reference_snr_db": 24.541,
+      "pgd_epsilon_over_noise_std": 2.8626,
+      "spatial_split": {
+        "split": "real x-coordinate median of the cohort's receiver positions",
+        "x_cut_m": -64.0511,
+        "train_receivers": 306,
+        "test_receivers": 306,
+        "disjoint": true
+      },
+      "clean_ser": {
+        "neural": 0.012,
+        "classical_lmmse": 0.012325
+      },
+      "pgd_ser": {
+        "neural": 0.2003,
+        "classical_lmmse": 0.1785,
+        "neural_vs_classical_x": 1.1221
+      },
+      "pgd_bler": {
+        "neural": 0.989,
+        "classical_lmmse": 0.9825,
+        "block_symbols": 20
+      },
+      "shield": {
+        "tolerance_1.0dB": {
+          "tolerance_dB": 1.0,
+          "admits_up_to_x_baseline": 1.2589,
+          "fallback_rate": 0.0,
+          "effective_ser": 0.2003,
+          "effective_bler": 0.989,
+          "effective_vs_certified_baseline_x": 1.1221,
+          "unshielded_neural_vs_baseline_x": 1.1221
+        },
+        "tolerance_0.5dB": {
+          "tolerance_dB": 0.5,
+          "admits_up_to_x_baseline": 1.122,
+          "fallback_rate": 0.0,
+          "effective_ser": 0.2003,
+          "effective_bler": 0.989,
+          "effective_vs_certified_baseline_x": 1.1221,
+          "unshielded_neural_vs_baseline_x": 1.1221
+        },
+        "tolerance_0.2dB": {
+          "tolerance_dB": 0.2,
+          "admits_up_to_x_baseline": 1.0471,
+          "fallback_rate": 0.166,
+          "effective_ser": 0.1959,
+          "effective_bler": 0.9805,
+          "effective_vs_certified_baseline_x": 1.0975,
+          "unshielded_neural_vs_baseline_x": 1.1221
+        }
+      },
+      "deep_fade_split": {
+        "what": "symbols split at the cohort's median measured |H| \u2014 the mechanism behind the collapsed neural-vs-classical ratio",
+        "median_abs_h_agc": 0.972,
+        "deep_fade_half": {
+          "pgd_ser_neural": 0.4003,
+          "pgd_ser_classical_lmmse": 0.35695
+        },
+        "strong_half": {
+          "pgd_ser_neural": 0.0003,
+          "pgd_ser_classical_lmmse": 5e-05
+        }
+      }
+    },
+    {
+      "cohort": "high_30_45dB",
+      "measured_sinr_window_db": [
+        30.0,
+        45.0
+      ],
+      "receivers": 972,
+      "receiver_fraction_of_grid": 0.2373,
+      "measured_sinr_db": {
+        "min": 30.013,
+        "median": 36.319,
+        "max": 44.924
+      },
+      "agc_reference_snr_db": 36.319,
+      "pgd_epsilon_over_noise_std": 11.1085,
+      "spatial_split": {
+        "split": "real x-coordinate median of the cohort's receiver positions",
+        "x_cut_m": 125.449,
+        "train_receivers": 480,
+        "test_receivers": 492,
+        "disjoint": true
+      },
+      "clean_ser": {
+        "neural": 0.000275,
+        "classical_lmmse": 0.000175
+      },
+      "pgd_ser": {
+        "neural": 0.128225,
+        "classical_lmmse": 0.096825,
+        "neural_vs_classical_x": 1.3243
+      },
+      "pgd_bler": {
+        "neural": 0.9355,
+        "classical_lmmse": 0.872,
+        "block_symbols": 20
+      },
+      "shield": {
+        "tolerance_1.0dB": {
+          "tolerance_dB": 1.0,
+          "admits_up_to_x_baseline": 1.2589,
+          "fallback_rate": 0.0445,
+          "effective_ser": 0.126875,
+          "effective_bler": 0.9275,
+          "effective_vs_certified_baseline_x": 1.3104,
+          "unshielded_neural_vs_baseline_x": 1.3243
+        },
+        "tolerance_0.5dB": {
+          "tolerance_dB": 0.5,
+          "admits_up_to_x_baseline": 1.122,
+          "fallback_rate": 0.173,
+          "effective_ser": 0.1226,
+          "effective_bler": 0.905,
+          "effective_vs_certified_baseline_x": 1.2662,
+          "unshielded_neural_vs_baseline_x": 1.3243
+        },
+        "tolerance_0.2dB": {
+          "tolerance_dB": 0.2,
+          "admits_up_to_x_baseline": 1.0471,
+          "fallback_rate": 0.7135,
+          "effective_ser": 0.105075,
+          "effective_bler": 0.87,
+          "effective_vs_certified_baseline_x": 1.0852,
+          "unshielded_neural_vs_baseline_x": 1.3243
+        }
+      },
+      "deep_fade_split": {
+        "what": "symbols split at the cohort's median measured |H| \u2014 the mechanism behind the collapsed neural-vs-classical ratio",
+        "median_abs_h_agc": 1.049,
+        "deep_fade_half": {
+          "pgd_ser_neural": 0.25645,
+          "pgd_ser_classical_lmmse": 0.19365
+        },
+        "strong_half": {
+          "pgd_ser_neural": 0.0,
+          "pgd_ser_classical_lmmse": 0.0
+        }
+      }
+    }
+  ],
+  "summary": {
+    "pgd_neural_vs_classical_x_min": 1.0255,
+    "pgd_neural_vs_classical_x_max": 1.3243,
+    "shield_tolerance_sweep": {
+      "tolerance_1.0dB": {
+        "low_11_20dB": 1.0255,
+        "mid_20_30dB": 1.1221,
+        "high_30_45dB": 1.3104
+      },
+      "tolerance_0.5dB": {
+        "low_11_20dB": 1.0255,
+        "mid_20_30dB": 1.1221,
+        "high_30_45dB": 1.2662
+      },
+      "tolerance_0.2dB": {
+        "low_11_20dB": 1.0255,
+        "mid_20_30dB": 1.0975,
+        "high_30_45dB": 1.0852
+      }
+    },
+    "shipped_tolerance_clamps_to_baseline": false,
+    "tightest_tolerance_clamps_to_baseline": false,
+    "superseded_synthetic_claim": "the previous synthetic-AWGN version of this benchmark reported ~20x; on measured channels it is 1.03-1.32x"
   },
   "interpretation": [
-    "Real white-box PGD on a real numpy neural receiver (gradient check in tests/test_neural_rx_pgd.py).",
-    "Clean: both receivers error-free. Under PGD the neural receiver is ~22x more error-prone than the max-margin classical ML demapper.",
-    "The Shield is attack-agnostic: it watches the independently measured (CRC/HARQ) block-error rate, detects the neural receiver leaving its envelope, and falls back to the certified classical demapper \u2014 cutting attack TBLER ~12x to the classical level.",
-    "Honest scope: classical ML demap is near-optimal for AWGN; this shows the Shield guarantees no-worse-than-the-certified-baseline under an attack it was not hand-coded against, not that any receiver is immune."
-  ]
+    "The channel is measured: the per-path ray reconstruction reproduces the independently built subband gains to 6.3e-05 dB RMS.",
+    "The operating point is measured: the campus link budget spans 104.227 dB of path gain, so the attack is evaluated over three measured-SINR cohorts rather than at one assumed Es/N0.",
+    "CORRECTION ON REAL DATA: under PGD the neural receiver is only 1.03-1.32x worse than the certified LMMSE baseline, not the ~20x the synthetic AWGN version reported. The deep-fade split shows why: where the measured |H| is small the equaliser amplifies the same bounded perturbation, so the certified receiver loses its margin advantage too.",
+    "SECOND FINDING, ALSO AGAINST US: the shipped envelope tolerance of 1.0 dB ADMITS a neural receiver up to 1.259x worse than the certified baseline by construction. Because the real-channel attack now sits at 1.03-1.32x, that gate mostly does not fire, and the residual degradation is passed through by design. The tolerance sweep in each cohort shows the mechanism is sound \u2014 tightening the tolerance raises the fallback rate and pulls the effective error rate back to the certified baseline \u2014 so this is a CALIBRATION finding, not a broken invariant. The synthetic AWGN attack was so violent that this calibration gap was invisible.",
+    "What the Shield does still guarantee is the shape of the guarantee: it grades the neural receiver on an independently measured (CRC/HARQ) block-error rate the model cannot forge, and routes to a certified fallback when the measurement leaves the declared envelope.",
+    "The PERTURBATION remains synthetic by necessity (a white-box gradient attack on our own weights). What the real data buys is the channel it crosses and the SNR distribution it is graded over."
+  ],
+  "runtime": {
+    "numpy_version": "2.4.6",
+    "python_version": "3.11.15",
+    "python_implementation": "CPython",
+    "rng_stream_guarantee": "numpy.random.Generator provides no cross-version bit-stream compatibility guarantee; a numpy change can act as a reseed"
+  }
 }

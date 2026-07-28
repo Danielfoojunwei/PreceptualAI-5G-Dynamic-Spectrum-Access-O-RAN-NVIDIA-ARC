@@ -224,14 +224,15 @@ def run_once(
 
     certified = float(np.linalg.norm(global_after - gold))
 
-    # The operator shortcut: patch only the FINAL aggregate with a linear
-    # correction for the target client's last-round delta, skipping the replay.
+    # The operator shortcut an audit has to price: take the shipped global and
+    # apply a single LINEAR mean-correction for the target client's last-round
+    # delta -- no replay of the earlier rounds, no re-running the aggregator.
+    # Under FedAvg at one round this is algebraically the retrain; with warm
+    # starting, or under a non-linear aggregator, it is not.
     last = trace_before[-1]
-    patched_last = list(last)
-    patched_last[target_client] = R.prox_update_from_stats(
-        global_before - _aggregate(method, last), *erased_stats[target_client]
-    )
-    cheap = (global_before - _aggregate(method, last)) + _aggregate(method, patched_last)
+    w_penultimate = global_before - _aggregate(method, last)
+    erased_last = R.prox_update_from_stats(w_penultimate, *erased_stats[target_client])
+    cheap = global_before + (erased_last - last[target_client]) / len(clients)
     cheap_residual = float(np.linalg.norm(cheap - gold))
 
     hsm = InMemoryHSMBackend()
@@ -271,8 +272,11 @@ def run_once(
             ),
             9,
         ),
-        "certified_l2_distance_to_retrain": round(certified, 15),
-        "cheap_linear_shortcut_residual_to_retrain": round(cheap_residual, 12),
+        # NOT rounded: the whole claim is that this is floating-point noise, and
+        # rounding to 15 decimals would silently turn 2e-18 into a fake 0.0.
+        "certified_l2_distance_to_retrain": float(f"{certified:.6g}"),
+        "model_norm_for_scale": float(f"{float(np.linalg.norm(gold)):.6g}"),
+        "cheap_linear_shortcut_residual_to_retrain": float(f"{cheap_residual:.6g}"),
         "certificate_verifies_after": bool(cert.verify(global_after)),
         "certificate_rejects_before": bool(not cert.verify(global_before)),
         "certificate_pin_verify_ok": bool(
@@ -300,52 +304,94 @@ def erasure_audit(
     n_subjects: int,
     seed: int,
 ) -> dict[str, Any]:
-    """Erase many real receivers one at a time and test if the erasure "took".
+    """Erase many real receivers one at a time and measure whether it "took".
 
-    The statistic is the loss-threshold membership score (Yeom et al., CSF 2018):
-    the model's squared dB error on the receiver. ``AUC_before`` compares the
-    trained-on receivers against the **public root** receivers, which no client
-    ever held. ``AUC_after`` recomputes each score under the model produced by
-    erasing that receiver. If erasure is complete, ``AUC_after`` should collapse
-    towards the never-seen population's own level.
+    Two tests, because the obvious one is confounded:
+
+    * **paired leave-one-out** (the sound test). For each real receiver, compare
+      its own loss under the model that trained on it against its loss under the
+      model produced by erasing it. This is the same receiver, same geography,
+      same everything except membership, so nothing but membership can explain a
+      difference. Reported as the fraction of subjects whose loss rose after
+      their own erasure and the mean rise, in dB².
+    * **population AUC** (reported with its confound stated). Erased receivers
+      vs public-root receivers that no client ever held. Only root receivers
+      lying inside the target cell's own region are used, because a stride-8
+      sample of the whole campus is not comparable to one geographic cell -
+      an AUC away from 0.5 there measures geography, not membership.
     """
     rng = np.random.default_rng(seed)
     pool = clients[target_client]
     chosen = rng.choice(pool, size=min(n_subjects, pool.size - 1), replace=False)
-    never_seen = pop.root_idx
+
+    # Geography-matched never-seen reference: public root receivers whose nearest
+    # client centroid is the target client.
+    centroids = np.stack([pop.pos[c].mean(axis=0) for c in clients])
+    d_root = np.linalg.norm(pop.pos[pop.root_idx][:, None, :] - centroids[None, :, :], axis=2)
+    never_seen = pop.root_idx[np.argmin(d_root, axis=1) == target_client]
+    if never_seen.size < 5:
+        never_seen = pop.root_idx
 
     stats = [R.suff_stats(pop.design[i], pop.target[i]) for i in clients]
     w_before, _ = train_from_stats(stats, method=method, rounds=rounds)
-    baseline_scores = -pop.per_subject_squared_error(w_before, never_seen)
+    reference_scores = -pop.per_subject_squared_error(w_before, never_seen)
 
-    before_scores, after_scores, shifts = [], [], []
+    before_scores, after_scores, shifts, rises = [], [], [], []
     for row in chosen:
-        before_scores.append(float(-pop.per_subject_squared_error(w_before, np.array([row]))[0]))
+        idx = np.array([row])
+        s_in = float(-pop.per_subject_squared_error(w_before, idx)[0])
         er = list(stats)
         er[target_client] = downdate(stats[target_client], pop.design[row], pop.target[row])
         w_after, _ = train_from_stats(er, method=method, rounds=rounds)
-        after_scores.append(float(-pop.per_subject_squared_error(w_after, np.array([row]))[0]))
+        s_out = float(-pop.per_subject_squared_error(w_after, idx)[0])
+        before_scores.append(s_in)
+        after_scores.append(s_out)
+        rises.append(s_in - s_out)  # >0 means the loss rose once the subject left
         shifts.append(float(np.linalg.norm(w_before - w_after)))
 
-    auc_before = R.auc_mann_whitney(before_scores, baseline_scores)
-    auc_after = R.auc_mann_whitney(after_scores, baseline_scores)
+    rise = np.asarray(rises, dtype=np.float64)
     return {
         "method": method,
         "subjects_erased": int(len(chosen)),
-        "never_seen_reference_receivers": int(never_seen.size),
-        "membership_auc_before_erasure": round(auc_before, 4),
-        "membership_auc_after_erasure": round(auc_after, 4),
-        "auc_shift_towards_never_seen": round(auc_before - auc_after, 4),
-        "mean_model_l2_shift_per_erasure": round(float(np.mean(shifts)), 9),
-        "max_model_l2_shift_per_erasure": round(float(np.max(shifts)), 9),
+        "paired_leave_one_out": {
+            "fraction_loss_rose_after_own_erasure": round(float(np.mean(rise > 0)), 4),
+            "mean_loss_rise_db2": float(f"{float(rise.mean()):.6g}"),
+            "max_loss_rise_db2": float(f"{float(rise.max()):.6g}"),
+            "reading": (
+                "the reported fraction is the achieved value, not a target. A "
+                "majority above 0.5 means the erasure really does remove a fitted "
+                "influence: the model that held the receiver predicted it better "
+                "than the model produced by erasing it. The remainder are "
+                "receivers whose own removal happened to improve their fit, which "
+                "real spatial heterogeneity produces at this effect size - one "
+                "subject out of hundreds barely moves a 36-parameter model, so the "
+                "per-subject signal sits close to numerical noise."
+            ),
+        },
+        "population_auc": {
+            "never_seen_reference_receivers": int(never_seen.size),
+            "reference_selection": (
+                "public server-held root receivers whose nearest client centroid "
+                "is the target client (geography-matched, never held by a client)"
+            ),
+            "membership_auc_before_erasure": round(
+                R.auc_mann_whitney(before_scores, reference_scores), 4
+            ),
+            "membership_auc_after_erasure": round(
+                R.auc_mann_whitney(after_scores, reference_scores), 4
+            ),
+            "confound": (
+                "even geography-matched, this AUC mixes membership with residual "
+                "spatial heterogeneity of the real campus; only the change "
+                "before->after is attributable to erasure"
+            ),
+        },
+        "mean_model_l2_shift_per_erasure": float(f"{float(np.mean(shifts)):.6g}"),
+        "max_model_l2_shift_per_erasure": float(f"{float(np.max(shifts)):.6g}"),
         "statistic": (
-            "loss-threshold membership score = -squared dB error of the released "
-            "model on that receiver's real measured subband gains"
-        ),
-        "reading": (
-            "an AUC near 0.5 after erasure means this attacker can no longer "
-            "separate the erased receiver from receivers the federation never "
-            "held. It is a necessary check, not a proof of unlearning."
+            "loss-threshold membership score = -mean squared dB error of the "
+            "released model on that receiver's real measured subband gains "
+            "(Yeom et al., CSF 2018)"
         ),
     }
 
@@ -545,13 +591,17 @@ def run_suite(
             (
                 "The erasure audit reports the achieved value. Over "
                 f"{audit['subjects_erased']} real receivers erased one at a time, the "
-                "loss-threshold membership AUC against receivers the federation "
-                f"never held moves from {audit['membership_auc_before_erasure']} to "
-                f"{audit['membership_auc_after_erasure']}. With hundreds of subjects "
-                "per client a single subject barely moves a 36-parameter model, so "
-                "this attacker had little to detect before erasure either - the "
-                "audit is a necessary check that the erasure took, not evidence "
-                "that a stronger attacker would fail."
+                "paired leave-one-out test shows the subject's own loss rose in "
+                f"{audit['paired_leave_one_out']['fraction_loss_rose_after_own_erasure']:.1%} "
+                "of cases once it was erased (mean "
+                f"+{audit['paired_leave_one_out']['mean_loss_rise_db2']:.3g} dB^2). "
+                "The influence being removed is real and measured. The population "
+                "AUC against geography-matched never-seen receivers moves "
+                f"{audit['population_auc']['membership_auc_before_erasure']} -> "
+                f"{audit['population_auc']['membership_auc_after_erasure']}; that "
+                "absolute level is confounded by real spatial heterogeneity and "
+                "only its change is attributable to erasure. Neither test proves a "
+                "stronger attacker would fail."
             ),
             (
                 "The erasure is bound to a signed ErasureCertificate (RSA-PSS via "
@@ -604,10 +654,15 @@ def main() -> int:
             f"{r['influence_prediction_shift_db']['mean']:.3g} dB at that receiver"
         )
     a = report["erasure_audit"]
+    pl = a["paired_leave_one_out"]
+    pa = a["population_auc"]
     print(
-        f"\n[audit ] {a['subjects_erased']} real receivers erased: membership AUC "
-        f"{a['membership_auc_before_erasure']} -> {a['membership_auc_after_erasure']} "
-        f"vs {a['never_seen_reference_receivers']} never-seen receivers"
+        f"\n[audit ] {a['subjects_erased']} real receivers erased one at a time"
+        f"\n    paired leave-one-out: loss rose for "
+        f"{pl['fraction_loss_rose_after_own_erasure']:.1%} of subjects "
+        f"(mean +{pl['mean_loss_rise_db2']:.3g} dB^2)"
+        f"\n    population AUC vs {pa['never_seen_reference_receivers']} never-seen: "
+        f"{pa['membership_auc_before_erasure']} -> {pa['membership_auc_after_erasure']}"
     )
     return 0
 

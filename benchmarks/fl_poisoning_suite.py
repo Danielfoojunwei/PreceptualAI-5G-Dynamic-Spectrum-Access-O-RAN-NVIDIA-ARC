@@ -497,7 +497,7 @@ def main() -> int:
     ap.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     ap.add_argument("--sites", type=int, default=N_SITES)
     ap.add_argument("--rounds", type=int, default=ROUNDS)
-    ap.add_argument("--seeds", type=int, default=4, help="geographic partition seeds")
+    ap.add_argument("--seeds", type=int, default=6, help="geographic partition seeds")
     ap.add_argument(
         "--out",
         type=Path,

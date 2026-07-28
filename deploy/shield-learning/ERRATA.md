@@ -115,11 +115,30 @@ verified intact and every injected tamper was caught at its exact index, and
 `load_transitions()` refused to build training data from a tampered chain. Those
 held under every perturbation the post-mortem could construct.
 
-## Follow-up (not yet done)
+## Follow-up
 
-P1 mask the action space with the Shield's own `is_feasible()` (fixes correction 7
-and removes the tie); P2 delete or fix regime C (correction 2); P3 re-gate every
-benchmark on realised regret against the zero-data constant policy, which scores
-0.347412 — identical to the optimum, i.e. the shipped task needs no learning at
-all; P4 fix the DP constants (correction 8); P5 add FLTrust and re-gate the
-federated CI on separation rather than a 0.36σ margin (corrections 9–11).
+**P4 and P5 are DONE** (see `deploy/federated-coverage/FEDERATED_COVERAGE_PROOF.md`).
+Correction 8 above said DP's 350.5 dB was a defect rather than a trade-off: at the
+identical certified epsilon = 4.1447 it is now **14.34 dB**, below the 20.11 dB
+baseline, achieved by calibrating the clip on public server-root receivers and
+cutting 40 rounds to 12. The adjacency convention was deliberately NOT relaxed —
+halving sigma at the same numeric epsilon would be a weaker guarantee, not a fix.
+Correction 9 said most of Krum's tax was not a poison tax; measured on the current
+tree its poison tax is **exactly 0.00 dB** (poisoned = clean = 14.4572), so all of
+it is non-IID aggregation cost. FLTrust replaces it at **11.97 dB** poisoned
+against clean FedAvg's 11.92, holding **13.46 dB at 7 of 10 malicious clients**.
+Correction 11's fragile gates are retired: 17 gates now hold 24/24 seeds and each
+is proven to fail under an injected regression.
+
+Two figures quoted in this errata did not survive re-measurement and are corrected
+here: the clip-never-binds observation (0/400 clipped) holds only on the *clean*
+trajectory — on the actual DP trajectory 243/400 updates clip, because the noise
+inflates the iterate — and the one-shot release reaching clean-FedAvg parity at
+K=200 required an oracle clip read off the private data. Under a legitimate public
+bound it is 12.84 dB at K=200 and 12.21 dB at K=400.
+
+**Still outstanding: P1, P2, P3.** Mask the action space with the Shield's own
+`is_feasible()` (which also fixes `_arm_illegal` disagreeing with the Shield on
+28/84 arms); delete or fix regime C in `credit_assignment_loop.py`; and re-gate the
+shield-learning benchmarks on realised regret against the zero-data constant-33 dBm
+policy, which scores 0.347412 — identical to the optimum.

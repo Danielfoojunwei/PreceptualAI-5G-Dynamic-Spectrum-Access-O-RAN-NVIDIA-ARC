@@ -20,16 +20,26 @@ still run and the physics is unchanged, but every stochastic field can move —
 and it would surface as a red reproduction check, which reads like an
 unreproducible-science alarm rather than the dependency bump it actually is.
 
-That matters here because a 12-seed sweep showed the reproduction gates have
-very little headroom:
+That mattered acutely when the reproduction gates had almost no headroom. A
+12-seed sweep measured the two load-bearing federated gates at:
 
-| gate | margin | seed-induced spread | outcome |
+| retired gate | margin | seed-induced spread | outcome |
 | --- | --- | --- | --- |
-| `krum_rmse < baseline` (`verify_federated_coverage.py`) | 0.6501 dB | sd **1.8687 dB** | fails at 1 of 12 seeds |
-| `robust_target_receiver == 9` (exact compare) | — | 4 distinct values | reproduces at **8 of 12** seeds |
+| `krum_rmse < baseline` | 0.6501 dB | sd **1.8687 dB** | held 9 of 12 seeds |
+| `robust_target_receiver == 9` (exact) | — | 4 distinct values | held 5 of 12 seeds |
 
-Those gates are unchanged for now (see `deploy/shield-learning/ERRATA.md`, P5),
-so the pin below is what keeps them from flaking.
+**Both gates are now retired.** They were replaced by seventeen gates built on
+FLTrust and on DP at pinned epsilon, each holding **24/24** seeds with orders of
+magnitude of headroom rather than sub-decibel margins — and each proven to
+*fail* under a deliberately injected regression, which the `realdata` workflow
+now exercises on every run (`--inject-regression`, plus `--seed-sweep --seeds 12`).
+See `deploy/federated-coverage/FEDERATED_COVERAGE_PROOF.md`.
+
+This weakens, but does not remove, the argument for pinning numpy. A reseed can
+no longer flip a gate that passes by 0.36 sigma, because no such gate remains.
+The pin still matters for a different reason: the committed result JSONs are
+compared against CI reproductions field by field, so a changed RNG bit stream
+would still show up as a diff in numbers that are supposed to be deterministic.
 
 ## What we do
 
