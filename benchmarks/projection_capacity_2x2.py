@@ -137,7 +137,18 @@ def run_learner(env: Env, degree: int | None, seed: int) -> dict[str, float]:
 def _cell(env: Env, degree: int | None) -> dict[str, Any]:
     runs = [run_learner(env, degree, s) for s in range(SEEDS)]
     loss = np.array([r["loss_frac"] for r in runs])
+    # The question the shipped benchmarks could not answer: is learning worth
+    # anything at all? Compare against a policy that uses NO data and never
+    # explores — propose the cap every step. On a boundary-optimal task that
+    # policy is optimal by construction, so learning can only pay exploration
+    # cost and the gain is <= 0. Only an interior optimum makes the question
+    # meaningful.
+    constant = env.reward(CAP_DBM)
+    realised = float(np.mean([r["realised"] for r in runs]))
     return {
+        "constant_cap_policy_reward": round(constant, 6),
+        "learner_realised_reward": round(realised, 6),
+        "learning_gain_over_constant_cap_policy": round(realised - constant, 6),
         "mean_loss_fraction": round(float(loss.mean()), 6),
         "max_loss_fraction": round(float(loss.max()), 6),
         "std_loss_fraction": round(float(loss.std()), 6),
@@ -195,7 +206,28 @@ def run(features: Path, manifest: Path) -> dict[str, Any]:
 
     sweep = result["interior_optimal_sweep"]
     smooth_losses = [c["smooth_poly2"]["mean_loss_fraction"] for c in sweep]
+    boundary_gain = result["boundary_optimal"]["tabular"][
+        "learning_gain_over_constant_cap_policy"
+    ]
+    interior_gains = [
+        c["tabular"]["learning_gain_over_constant_cap_policy"] for c in sweep
+    ]
+    result["learning_pays"] = {
+        "boundary_optimal_gain": boundary_gain,
+        "interior_optimal_gain_min": min(interior_gains) if interior_gains else None,
+        "interior_optimal_gain_max": max(interior_gains) if interior_gains else None,
+        "note": (
+            "On the shipped boundary-optimal task the zero-data constant-cap policy "
+            "is optimal by construction, so learning gain is <= 0 and no learner can "
+            "win. Learning demonstrably pays only where the feasible optimum is "
+            "interior. This is a property of the TASK, not of the learner or the Shield."
+        ),
+    }
     result["findings"] = {
+        "learning_beats_zero_data_policy_when_optimum_interior": bool(
+            interior_gains and min(interior_gains) > 0.0
+        ),
+        "learning_cannot_pay_when_optimum_at_cap": boundary_gain <= 1e-9,
         "tabular_loss_is_zero_everywhere": all(
             c["tabular"]["mean_loss_fraction"] == 0.0 for c in sweep
         )
@@ -235,6 +267,17 @@ def main() -> int:
         raise SystemExit("tabular learner lost utility; the 2x2 premise does not hold")
     if not f["no_illegal_action_executed"]:
         raise SystemExit("an executed action exceeded the cap — safety guarantee broken")
+    if not f["learning_beats_zero_data_policy_when_optimum_interior"]:
+        raise SystemExit(
+            "learning did not beat the zero-data constant-cap policy on ANY "
+            "interior-optimal task — the core 'the RIC learns a better policy' "
+            "capability is unsupported"
+        )
+    if not f["learning_cannot_pay_when_optimum_at_cap"]:
+        raise SystemExit(
+            "learning appears to beat the constant-cap policy on a boundary-optimal "
+            "task, which is impossible by construction — the harness is wrong"
+        )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")

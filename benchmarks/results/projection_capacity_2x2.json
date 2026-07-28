@@ -3,12 +3,18 @@
   "boundary_optimal": {
     "optimal_feasible_reward": 0.347656,
     "smooth_poly2": {
+      "constant_cap_policy_reward": 0.347656,
+      "learner_realised_reward": 0.347656,
+      "learning_gain_over_constant_cap_policy": 0.0,
       "max_executed_eirp_dbm": 33.0,
       "max_loss_fraction": 0.0,
       "mean_loss_fraction": 0.0,
       "std_loss_fraction": 0.0
     },
     "tabular": {
+      "constant_cap_policy_reward": 0.347656,
+      "learner_realised_reward": 0.347656,
+      "learning_gain_over_constant_cap_policy": 0.0,
       "max_executed_eirp_dbm": 33.0,
       "max_loss_fraction": 0.0,
       "mean_loss_fraction": 0.0,
@@ -22,6 +28,8 @@
   "features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
   "findings": {
     "boundary_optimal_hides_the_defect": true,
+    "learning_beats_zero_data_policy_when_optimum_interior": true,
+    "learning_cannot_pay_when_optimum_at_cap": true,
     "no_illegal_action_executed": true,
     "smooth_loss_max_fraction": 0.518461,
     "smooth_loss_min_fraction": 0.105683,
@@ -33,18 +41,27 @@
       "harm_weight": 0.0003,
       "optimal_feasible_reward": 0.090976,
       "smooth_poly2": {
+        "constant_cap_policy_reward": 0.081362,
+        "learner_realised_reward": 0.081362,
+        "learning_gain_over_constant_cap_policy": 0.0,
         "max_executed_eirp_dbm": 33.0,
         "max_loss_fraction": 0.105683,
         "mean_loss_fraction": 0.105683,
         "std_loss_fraction": 0.0
       },
       "smooth_poly3": {
+        "constant_cap_policy_reward": 0.081362,
+        "learner_realised_reward": 0.084176,
+        "learning_gain_over_constant_cap_policy": 0.002814,
         "max_executed_eirp_dbm": 31.0,
         "max_loss_fraction": 0.074754,
         "mean_loss_fraction": 0.074754,
         "std_loss_fraction": 0.0
       },
       "tabular": {
+        "constant_cap_policy_reward": 0.081362,
+        "learner_realised_reward": 0.090976,
+        "learning_gain_over_constant_cap_policy": 0.009615,
         "max_executed_eirp_dbm": 28.0,
         "max_loss_fraction": 0.0,
         "mean_loss_fraction": 0.0,
@@ -57,18 +74,27 @@
       "harm_weight": 0.00036,
       "optimal_feasible_reward": 0.057106,
       "smooth_poly2": {
+        "constant_cap_policy_reward": 0.028103,
+        "learner_realised_reward": 0.033971,
+        "learning_gain_over_constant_cap_policy": 0.005868,
         "max_executed_eirp_dbm": 20.0,
         "max_loss_fraction": 0.405123,
         "mean_loss_fraction": 0.405123,
         "std_loss_fraction": 0.0
       },
       "smooth_poly3": {
+        "constant_cap_policy_reward": 0.028103,
+        "learner_realised_reward": 0.05675,
+        "learning_gain_over_constant_cap_policy": 0.028648,
         "max_executed_eirp_dbm": 24.0,
         "max_loss_fraction": 0.00623,
         "mean_loss_fraction": 0.00623,
         "std_loss_fraction": 0.0
       },
       "tabular": {
+        "constant_cap_policy_reward": 0.028103,
+        "learner_realised_reward": 0.057106,
+        "learning_gain_over_constant_cap_policy": 0.029003,
         "max_executed_eirp_dbm": 26.0,
         "max_loss_fraction": 0.0,
         "mean_loss_fraction": 0.0,
@@ -81,18 +107,27 @@
       "harm_weight": 0.00045,
       "optimal_feasible_reward": 0.017837,
       "smooth_poly2": {
+        "constant_cap_policy_reward": -0.051786,
+        "learner_realised_reward": 0.008589,
+        "learning_gain_over_constant_cap_policy": 0.060375,
         "max_executed_eirp_dbm": 20.0,
         "max_loss_fraction": 0.518461,
         "mean_loss_fraction": 0.518461,
         "std_loss_fraction": 0.0
       },
       "smooth_poly3": {
+        "constant_cap_policy_reward": -0.051786,
+        "learner_realised_reward": 0.008589,
+        "learning_gain_over_constant_cap_policy": 0.060375,
         "max_executed_eirp_dbm": 20.0,
         "max_loss_fraction": 0.518461,
         "mean_loss_fraction": 0.518461,
         "std_loss_fraction": 0.0
       },
       "tabular": {
+        "constant_cap_policy_reward": -0.051786,
+        "learner_realised_reward": 0.017837,
+        "learning_gain_over_constant_cap_policy": 0.069623,
         "max_executed_eirp_dbm": 24.0,
         "max_loss_fraction": 0.0,
         "mean_loss_fraction": 0.0,
@@ -101,6 +136,12 @@
       "true_argmax_dbm": 24.0
     }
   ],
+  "learning_pays": {
+    "boundary_optimal_gain": 0.0,
+    "interior_optimal_gain_max": 0.069623,
+    "interior_optimal_gain_min": 0.009615,
+    "note": "On the shipped boundary-optimal task the zero-data constant-cap policy is optimal by construction, so learning gain is <= 0 and no learner can win. Learning demonstrably pays only where the feasible optimum is interior. This is a property of the TASK, not of the learner or the Shield."
+  },
   "receivers": 4096,
   "runtime": {
     "numpy_version": "2.4.6",
