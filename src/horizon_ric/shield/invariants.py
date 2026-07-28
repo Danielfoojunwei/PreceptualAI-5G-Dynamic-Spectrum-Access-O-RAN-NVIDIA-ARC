@@ -270,6 +270,117 @@ class MaxEirpInvariant:
 
 
 @dataclass
+class ProtectedSliceFloorInvariant:
+    """Capacity an AI planner cannot reallocate away from a safety-critical slice.
+
+    AI-RAN Alliance WG3 states that when AI participates in network control
+    affecting safety-critical applications, "automated actions should be bounded
+    and reversible", with "fail-safe defaults" and, for applications where
+    failure could cause physical harm, "dedicated capacity that AI cannot
+    reallocate" [AI-on-RAN WG3 white paper, "Safety and Resilience for
+    AI-in-the-Loop Operations"].
+
+    Every other invariant in this module bounds a *regulatory* limit. This one
+    bounds a *service* commitment, and it is enforced by exactly the same
+    mechanism: an optimiser may propose any split it likes, and the projection
+    restores the floor before anything reaches the RAN. The planner is never
+    trusted to respect the floor, so the guarantee survives retraining, a model
+    swap, or an adversarial planner.
+
+    The action carries ``prb_allocation``: a mapping of slice id -> fraction of
+    the cell's PRBs. ``floor`` is the fraction reserved for ``slice_id``. Excess
+    is reclaimed from the other slices pro rata, so the allocation stays a valid
+    simplex rather than merely being clipped.
+    """
+
+    slice_id: str = "safety_critical"
+    floor: float = 0.20
+    id: str = "protected_slice_floor"
+
+    def _share(self, action: Action) -> float:
+        alloc = action.get("prb_allocation") or {}
+        try:
+            return float(alloc.get(self.slice_id, 0.0))
+        except (TypeError, AttributeError):
+            return 0.0
+
+    def evaluate(self, action: Action, context: Context) -> InvariantCheck:
+        if not action.get("prb_allocation"):
+            # Nothing to protect in this action; vacuously satisfied rather than
+            # silently failing closed on unrelated actions.
+            return InvariantCheck(
+                invariant_id=self.id,
+                satisfied=True,
+                margin=float("inf"),
+                unit="fraction",
+                detail="no prb_allocation in action; slice floor not applicable",
+            )
+        share = self._share(action)
+        margin = share - self.floor
+        return InvariantCheck(
+            invariant_id=self.id,
+            satisfied=margin >= 0.0,
+            margin=margin,
+            unit="fraction",
+            detail=(
+                f"slice {self.slice_id!r} allocated {share:.4f} of PRBs vs "
+                f"protected floor {self.floor:.4f}"
+            ),
+        )
+
+    def project(
+        self, action: Action, context: Context
+    ) -> tuple[Action, list[ConstraintViolation]]:
+        alloc = action.get("prb_allocation")
+        if not alloc:
+            return dict(action), []
+        alloc = {str(k): float(v) for k, v in alloc.items()}
+        share = alloc.get(self.slice_id, 0.0)
+        deficit = self.floor - share
+        if deficit <= 0:
+            return dict(action), []
+
+        others = {k: v for k, v in alloc.items() if k != self.slice_id}
+        pool = sum(others.values())
+        if pool < deficit:
+            # The floor is unreachable even by zeroing every other slice. Give
+            # the protected slice everything available and leave the invariant
+            # UNSATISFIED, so is_feasible() stays False and the guard chain
+            # refuses the emit. Failing closed through the existing refusal path
+            # beats inventing a second one that callers do not expect.
+            out = dict(action)
+            out["prb_allocation"] = {
+                **{k: 0.0 for k in others},
+                self.slice_id: share + pool,
+            }
+            return out, [
+                ConstraintViolation(
+                    self.id,
+                    "hard",
+                    -(deficit - pool),
+                    f"Protected slice {self.slice_id!r} floor {self.floor:.4f} is "
+                    f"UNREACHABLE: only {pool:.4f} of PRBs are reallocatable. "
+                    f"Allocation left short; emit must be refused.",
+                )
+            ]
+        scale = (pool - deficit) / pool if pool > 0 else 0.0
+        out = dict(action)
+        out["prb_allocation"] = {
+            **{k: v * scale for k, v in others.items()},
+            self.slice_id: self.floor,
+        }
+        return out, [
+            ConstraintViolation(
+                self.id,
+                "hard",
+                -deficit,
+                f"Restored protected slice {self.slice_id!r} to its {self.floor:.4f} "
+                f"PRB floor; {deficit:.4f} reclaimed pro rata from other slices.",
+            )
+        ]
+
+
+@dataclass
 class PfdCeilingInvariant:
     """ITU-R-style downlink power-flux-density (PFD) ceiling for NTN coexistence.
 
