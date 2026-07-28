@@ -72,6 +72,10 @@ sys.path.insert(0, str(_REPO / "src"))
 
 from horizon_ric.data.lineage import compute_dataset_sha256  # noqa: E402
 
+# Defaults are the local build location. CI builds the licence-gated features
+# into $RUNNER_TEMP instead — the in-repo generated/ path is gitignored and never
+# exists on a runner — so both are overridable. Module-level names are kept
+# because the helpers below close over them; main() rebinds them from argv.
 DEFAULT_FEATURES = _REPO / "datasets/deepmimo_asu_3p5/generated/channel_features.jsonl"
 DEFAULT_MANIFEST = _REPO / "datasets/deepmimo_asu_3p5/manifest.json"
 
@@ -198,10 +202,25 @@ def check(name: str, work: Path) -> tuple[bool, str]:
 
 
 def main() -> int:
+    # Declared before any read of these names: argparse reads DEFAULT_FEATURES as
+    # a default below, and a `global` statement must precede every use of the
+    # name inside the function.
+    global DEFAULT_FEATURES, DEFAULT_MANIFEST
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--only", nargs="*", choices=sorted(CASES), default=None)
     parser.add_argument("--quick", action="store_true", help=f"just {', '.join(QUICK)}")
+    parser.add_argument(
+        "--features",
+        type=Path,
+        default=DEFAULT_FEATURES,
+        help="real feature JSONL (CI passes the $RUNNER_TEMP build)",
+    )
+    parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     args = parser.parse_args()
+
+    DEFAULT_FEATURES = args.features.resolve()
+    DEFAULT_MANIFEST = args.manifest.resolve()
 
     names = list(args.only or (QUICK if args.quick else CASES))
     if not DEFAULT_FEATURES.is_file():

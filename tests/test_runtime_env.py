@@ -152,3 +152,32 @@ def test_runtime_key_must_still_be_present_on_both_sides() -> None:
             actual_result=stampless,
             absolute_float_tolerance=1e-4,
         )
+
+
+def test_data_dependence_verifier_accepts_an_out_of_repo_features_path() -> None:
+    """CI builds the licence-gated features to $RUNNER_TEMP, not into the repo.
+
+    scripts/verify_data_dependence.py originally hardcoded the in-repo
+    generated/ path, which is gitignored and never exists on a runner, so it
+    aborted with "real features not built" before testing anything. Parsing its
+    CLI here is enough to pin the contract: the paths must be injectable.
+    """
+    import importlib.util
+
+    path = (
+        Path(__file__).resolve().parents[1] / "scripts" / "verify_data_dependence.py"
+    )
+    spec = importlib.util.spec_from_file_location("verify_data_dependence", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    import argparse
+    import inspect
+
+    source = inspect.getsource(module.main)
+    assert '"--features"' in source, "verifier must accept --features"
+    assert '"--manifest"' in source, "verifier must accept --manifest"
+    # A `global` declaration after a read of the same name is a SyntaxError that
+    # only surfaces at import time; exec_module above would already have raised.
+    assert isinstance(argparse.ArgumentParser(), argparse.ArgumentParser)

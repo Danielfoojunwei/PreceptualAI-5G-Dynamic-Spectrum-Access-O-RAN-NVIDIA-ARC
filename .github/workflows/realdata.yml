@@ -122,7 +122,9 @@ jobs:
         # inconsistent. --quick keeps the job inside its timeout; the full
         # 13-benchmark sweep runs via workflow_dispatch and locally.
         run: |
-          python scripts/verify_data_dependence.py --quick
+          python scripts/verify_data_dependence.py --quick \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json"
       - name: Verify committed federated-coverage evidence
         run: |
           python scripts/verify_federated_coverage.py \
