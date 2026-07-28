@@ -16,12 +16,17 @@ import hashlib
 import importlib.metadata
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from horizon_ric.data.lineage import compute_dataset_sha256
+
+# Attempts for the upstream scenario download. The archive is CDN-hosted and
+# returns transient 5xx; backoff is 2s, 4s, 8s between attempts.
+_DOWNLOAD_ATTEMPTS = 4
 
 SCENARIO = "asu_campus_3p5"
 DEEPMIMO_VERSION = "4.0.0"
@@ -83,14 +88,42 @@ def _download_or_resolve(
         # DeepMIMO extracts under ./deepmimo_scenarios. Pin the working
         # directory so no untracked 100+ MB tree appears in the repository.
         os.chdir(cache_dir)
-        if not resolved.is_dir():
-            dm.download(SCENARIO, output_dir=str(cache_dir))
+        # dm.download() does NOT raise on an HTTP error: it prints
+        # "Download failed: <status>" and returns normally, so the only
+        # reliable success signal is the scenario directory appearing. The
+        # upstream archive is served from a CDN that does return transient 5xx
+        # (observed: 503 from f005.backblazeb2.com), and without a retry a
+        # single blip fails the whole realdata workflow — and with it every
+        # real-data reproduction claim at once. Retry with backoff.
+        for attempt in range(_DOWNLOAD_ATTEMPTS):
+            if resolved.is_dir():
+                break
+            if attempt:
+                time.sleep(2**attempt)
+                print(
+                    f"retrying DeepMIMO download for {SCENARIO} "
+                    f"(attempt {attempt + 1}/{_DOWNLOAD_ATTEMPTS})"
+                )
+            try:
+                dm.download(SCENARIO, output_dir=str(cache_dir))
+            except Exception as exc:  # noqa: BLE001 - upstream raises bare Exception
+                print(f"DeepMIMO download attempt {attempt + 1} raised: {exc!r}")
     finally:
         os.chdir(old_cwd)
 
     archives = sorted(cache_dir.rglob(f"{SCENARIO}*downloaded.zip"))
     if not resolved.is_dir():
-        raise FileNotFoundError(f"DeepMIMO did not create expected scenario: {resolved}")
+        # Do not blame a missing directory: after N attempts this is an upstream
+        # availability problem, and saying so is the difference between a
+        # 30-second re-run and a hunt for a nonexistent code regression.
+        raise FileNotFoundError(
+            f"DeepMIMO scenario {SCENARIO!r} was not downloaded after "
+            f"{_DOWNLOAD_ATTEMPTS} attempts (expected {resolved}). The upstream "
+            "scenario host failed to serve the archive — check the "
+            "'Download failed:' lines above for the HTTP status. This is an "
+            "upstream availability failure, not a reproduction regression; "
+            "re-run the job once the host recovers."
+        )
     if not archives:
         raise FileNotFoundError(f"DeepMIMO source archive not found below {cache_dir}")
     return resolved, archives[0]
