@@ -1,15 +1,76 @@
 {
+  "data_provenance": {
+    "attacks": {
+      "kind": "synthetic_by_necessity",
+      "why": "FGSM/BIM/MIM/transfer/boundary are functions of THIS receiver's weights, computed at attack time. No dataset can supply them: a released adversarial corpus would be adversarial against another model. A survey of published over-the-air adversarial work (arXiv 2002.02400, arXiv 2202.11197) found no released perturbation corpus, and RadioML/DeepSig contains no adversarial perturbation at all (and is CC BY-NC-SA 4.0, incompatible with this Apache-2.0 repository, on a host whose TLS certificate expired 2023-06-12).",
+      "not_claimed": "these are NOT captured or replayed real attacks"
+    },
+    "channels": {
+      "awgn": "synthetic (analytic AWGN reference)",
+      "fading_synthetic": "synthetic (random Rayleigh TDL taps) \u2014 retained as a control",
+      "real_raytraced": {
+        "dataset": "DeepMIMO ASU Campus 3.5 GHz (angular ray geometry)",
+        "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+        "scenario": "asu_campus_3p5",
+        "scenario_docs_url": "https://deepmimo.net/docs/tutorials/1_getting_started.html",
+        "deepmimo_version": "4.0.0",
+        "deepmimo_release_commit": "cbe3a3eae426d0d0a2bd1fdf95ce011c536a3dd9",
+        "source_archive_sha256": "80e4a4983847023158ed61a5a489025d72f4edcdac89edf4ee1323699e1b7da3",
+        "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+        "features_sha256": "13eb2f6b8d8f648f45b00c28e0b8b46c3afdbd6a2e36543792b04025092a6884",
+        "licensing": {
+          "deepmimo_tool": "Apache-2.0",
+          "scenario_archive": "No separate license file was present in the downloaded scenario archive; raw and row-level derived data are therefore not redistributed here."
+        },
+        "receivers": 4096,
+        "subcarriers": 64,
+        "bandwidth_hz": 100000000.0,
+        "carrier_hz": 3500000000.0,
+        "tx_position_m": [
+          166.0,
+          104.0,
+          22.0
+        ],
+        "paths_per_receiver_min": 1,
+        "paths_per_receiver_max": 10,
+        "transform": "H(f) = sum_p sqrt(10^(power_dbw/10)) * exp(j*(phase - 2*pi*f*delay)) over the real ray-traced paths, then normalised to unit mean power per receiver",
+        "measured_selectivity": {
+          "median_peak_to_null_dB": 19.657369775794493,
+          "normalised_magnitude_p01": 0.1425418948246627,
+          "normalised_magnitude_p50": 0.9560420325413389,
+          "normalised_magnitude_p99": 1.7867548997396312
+        },
+        "honest_scope": "Site-specific ray tracing over real 3D geometry and real receiver positions \u2014 NOT an over-the-air measurement. Absolute path loss is normalised away; the frequency selectivity is real.",
+        "available": true
+      }
+    }
+  },
   "setup": {
     "constellation": "16-QAM",
     "channels": {
       "awgn": {
         "snr_dB": 22.0,
-        "epsilon_Linf": 0.12
+        "epsilon_Linf": 0.12,
+        "data": "synthetic"
       },
       "fading": {
         "snr_dB": 30.0,
         "epsilon_Linf": 0.08,
         "channel": "Rayleigh TDL (4 taps)",
+        "data": "synthetic",
+        "perturb_mask": [
+          1,
+          1,
+          0,
+          0
+        ],
+        "note": "attacker perturbs received Y only, not the CSI H"
+      },
+      "real_raytraced": {
+        "snr_dB": 30.0,
+        "epsilon_Linf": 0.08,
+        "channel": "DeepMIMO ASU Campus 3.5 GHz \u2014 real site-specific Wireless InSite ray tracing, 4096 real receiver positions, 1-10 real paths each, 64 subcarriers over 100 MHz",
+        "data": "real ray-traced geometry (not over-the-air capture)",
         "perturb_mask": [
           1,
           1,
@@ -273,12 +334,19 @@
       "transfer": 28.5,
       "boundary": 84.5
     },
-    "fading": {
+    "fading_synthetic": {
       "fgsm": 1.14,
       "bim": 1.14,
       "mim": 1.14,
       "transfer": 1.11,
       "boundary": 1.59
+    },
+    "real_raytraced": {
+      "fgsm": 1.16,
+      "bim": 1.16,
+      "mim": 1.16,
+      "transfer": 1.13,
+      "boundary": 1.61
     }
   },
   "honest_findings": [
@@ -286,6 +354,126 @@
     "Black-box TRANSFER is real but WEAKER than white-box: the surrogate-crafted perturbation transfers to the target at a neural SER <= the best white-box attack (transfer_le_whitebox flag). The decision-based BOUNDARY attack, using only hard labels, is weaker still.",
     "Under realistic Rayleigh fading @30 dB the neural-over-classical gap COLLAPSES to ~1.14x: deep fades amplify the Y-domain perturbation (dXhat = conj(H)dY/(|H|^2+N0)) so BOTH receivers become vulnerable. The white-box advantage is an AWGN-toy artefact, reported honestly.",
     "The Shield is attack-agnostic: it watches the independently measured windowed SER and falls back to the certified classical receiver when the neural receiver leaves its 1 dB envelope. In AWGN it falls back almost always (large measured degradation) and cuts the attack to the classical level; under fading it falls back only on the minority of windows where the neural receiver is measurably worse, so its benefit is small but real. The guarantee effective_SER <= classical + tolerance holds for EVERY attack in BOTH regimes.",
-    "Honest scope: the classical demapper/LMMSE baseline is itself attacked under fading; the Shield does not make any receiver immune \u2014 it bounds the neural model's adversarial damage to no-worse-than-the-certified-baseline, against attacks it was not hand-coded against."
-  ]
+    "Honest scope: the classical demapper/LMMSE baseline is itself attacked under fading; the Shield does not make any receiver immune \u2014 it bounds the neural model's adversarial damage to no-worse-than-the-certified-baseline, against attacks it was not hand-coded against.",
+    "The ATTACKS in this suite are synthetic by necessity, not by laziness: they are gradient functions of this receiver's own weights, and no published corpus of over-the-air adversarial perturbations exists to replace them. What was made real is the CHANNEL. Claiming 'real adversarial data' here would be false.",
+    "On the REAL ray-traced channel (DeepMIMO ASU Campus 3.5 GHz, median 19.7 dB peak-to-null across 100 MHz from real 3D geometry) the MIM neural-over-classical gap is 1.16x, against 1.14x on the synthetic Rayleigh control. Both arms are reported so the difference between real and invented propagation is visible rather than asserted. The Shield's guarantee holds on the real channel too."
+  ],
+  "real_raytraced": {
+    "snr_dB": 30.0,
+    "epsilon_Linf": 0.08,
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "clean_ser": {
+      "neural": {
+        "mean": 0.004,
+        "std": 0.000490653381462658
+      },
+      "classical": {
+        "mean": 0.0035277777777777777,
+        "std": 0.0005944704044175747
+      }
+    },
+    "attacks": {
+      "fgsm": {
+        "neural_ser": {
+          "mean": 0.076,
+          "std": 0.0011804738533819853
+        },
+        "classical_ser": {
+          "mean": 0.06552777777777778,
+          "std": 0.0003868996743662238
+        },
+        "neural_over_classical_x": 1.1598134802882576,
+        "shield_effective_ser": {
+          "mean": 0.06936111111111111,
+          "std": 0.00019641855032958796
+        },
+        "fallback_rate": {
+          "mean": 0.3,
+          "std": 0.04714045207910316
+        }
+      },
+      "bim": {
+        "neural_ser": {
+          "mean": 0.07625,
+          "std": 0.0011785113019775737
+        },
+        "classical_ser": {
+          "mean": 0.06552777777777778,
+          "std": 0.00037474271008977676
+        },
+        "neural_over_classical_x": 1.1636286562102585,
+        "shield_effective_ser": {
+          "mean": 0.0695,
+          "std": 0.00023570226039551604
+        },
+        "fallback_rate": {
+          "mean": 0.3055555555555555,
+          "std": 0.043744488188954496
+        }
+      },
+      "mim": {
+        "neural_ser": {
+          "mean": 0.0761388888888889,
+          "std": 0.0011392275919116588
+        },
+        "classical_ser": {
+          "mean": 0.0656388888888889,
+          "std": 0.00044270492918080834
+        },
+        "neural_over_classical_x": 1.1599661447312737,
+        "shield_effective_ser": {
+          "mean": 0.0695,
+          "std": 0.0002453266907313272
+        },
+        "fallback_rate": {
+          "mean": 0.3,
+          "std": 0.04714045207910316
+        }
+      },
+      "transfer": {
+        "neural_ser": {
+          "mean": 0.07447222222222223,
+          "std": 0.0011986360561328558
+        },
+        "classical_ser": {
+          "mean": 0.06588888888888889,
+          "std": 0.00014163943093313002
+        },
+        "neural_over_classical_x": 1.1302698145025296,
+        "shield_effective_ser": {
+          "mean": 0.06991666666666667,
+          "std": 0.00013608276348795067
+        },
+        "fallback_rate": {
+          "mean": 0.21666666666666667,
+          "std": 0.05443310539518174
+        },
+        "transfer_le_whitebox": true,
+        "whitebox_best_neural_ser": 0.07625
+      },
+      "boundary": {
+        "neural_ser": {
+          "mean": 0.07894444444444444,
+          "std": 0.0010460094657645928
+        },
+        "classical_ser": {
+          "mean": 0.048916666666666664,
+          "std": 0.0009646530752325196
+        },
+        "neural_over_classical_x": 1.613855763770585,
+        "shield_effective_ser": {
+          "mean": 0.049499999999999995,
+          "std": 0.0009646530752325218
+        },
+        "fallback_rate": {
+          "mean": 0.9388888888888888,
+          "std": 0.007856742013183832
+        }
+      }
+    }
+  }
 }

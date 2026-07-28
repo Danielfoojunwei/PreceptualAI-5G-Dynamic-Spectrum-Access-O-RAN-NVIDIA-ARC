@@ -80,7 +80,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
@@ -311,8 +311,6 @@ class FederationOutcome:
     worst_cov_receiver_index: int
     worst_cov_row: int
     worst_cov_position: list[float]
-    epsilon: float | None = None
-    notes: dict[str, Any] = field(default_factory=dict)
 
 
 def _round_float(v: float) -> float:
@@ -403,24 +401,21 @@ def outcome(
     method: str,
     attack: str | None,
     n_malicious: int,
-    epsilon: float | None = None,
-    notes: dict[str, Any] | None = None,
 ) -> FederationOutcome:
     w_norm = float(np.linalg.norm(w))
     idx, row, position = _worst_cell(w, problem)
+    poisoned = bool(attack is not None and n_malicious > 0)
     return FederationOutcome(
         method=method,
-        poisoned=bool(attack is not None and n_malicious > 0),
-        attack=attack if (attack is not None and n_malicious > 0) else None,
-        n_malicious=n_malicious if attack is not None else 0,
+        poisoned=poisoned,
+        attack=attack if poisoned else None,
+        n_malicious=n_malicious if poisoned else 0,
         rmse_db=_round_float(problem.rmse_db(w)),
         w_norm=_round_float(w_norm),
         diverged=bool(w_norm > 1e2),
         worst_cov_receiver_index=idx,
         worst_cov_row=row,
         worst_cov_position=position,
-        epsilon=(round(epsilon, 4) if epsilon is not None else None),
-        notes=notes or {},
     )
 
 
