@@ -200,6 +200,12 @@
       "utility_forgone_vs_operational_cap": 0.633057
     }
   ],
+  "runtime": {
+    "numpy_version": "2.4.6",
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "rng_stream_guarantee": "numpy.random.Generator provides no cross-version bit-stream compatibility guarantee; a numpy change can act as a reseed"
+  },
   "scenario": "asu_campus_3p5",
   "scope_note": "Real site-specific ray tracing (DeepMIMO ASU 3.5 GHz), not OTA capture; one scenario; served fraction is one utility proxy among several a licensee may care about. The frontier states the Shield's real cost when the constraint binds: utility forgone at the operational 33 dBm cap is reported plainly, not netted against the free-constraint case. The EIRP cap is a regulatory licence condition, not a free parameter \u2014 Horizon's claim is that the cost of enforcing it is explicit, bounded and auditable, not that it is zero.",
   "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",

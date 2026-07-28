@@ -50,7 +50,16 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install pinned dependencies
-        run: python -m pip install '.[dev,realdata]'
+        # numpy is pinned explicitly because every closed-loop benchmark below
+        # draws from numpy.random.default_rng, whose bit stream carries no
+        # cross-version compatibility guarantee — an unpinned bump would reseed
+        # the loops and surface as a reproduction failure rather than as a
+        # dependency change. 2.2.6 is what this job already resolved to: the
+        # realdata extra pulls deepmimo==4.0.0, which caps numpy at <2.3.
+        # NOTE: deps/locks/horizon.txt pins numpy==2.4.6 for the runtime env and
+        # is deliberately NOT used here — that pin is unsatisfiable alongside
+        # deepmimo. See docs/REPRODUCIBILITY.md.
+        run: python -m pip install 'numpy==2.2.6' '.[dev,realdata]'
       - name: Download, hash and transform DeepMIMO scenario
         run: |
           python datasets/deepmimo_asu_3p5/build.py \

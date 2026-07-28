@@ -255,6 +255,12 @@
       "value_mae_infeasible": 0.0
     }
   },
+  "runtime": {
+    "numpy_version": "2.4.6",
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "rng_stream_guarantee": "numpy.random.Generator provides no cross-version bit-stream compatibility guarantee; a numpy change can act as a reseed"
+  },
   "safety_utility_gap": 0.25282,
   "scenario": "asu_campus_3p5",
   "scope_note": "Real DeepMIMO ray tracing supplies every reward; the Shield, guard chain and evidence chain are the shipped production code paths. This is site-specific ray tracing, not over-the-air capture, and one scenario. The learner is a tabular bandit over proposed EIRP at one in-band subband, not a deep RL agent. The unconstrained_oracle regime is a measuring stick only \u2014 it needs a no-Shield counterfactual no deployed rApp has, and is NOT deployable. Because the projection is exact, realised rewards of the shielded regimes are near-identical; the measured bias lives in the value function, the terminal argmax tie, and the sustained projection load.",

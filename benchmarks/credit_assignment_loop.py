@@ -90,6 +90,7 @@ from horizon_ric.learning.shield_env import (
     load_gain_matrix,
     subband_center_hz,
 )
+from horizon_ric.runtime_env import stamp
 
 # --- Learner geometry: a 1-D EIRP grid that deliberately SPANS the legal cap. --
 EIRP_MIN_DBM = 20.0
@@ -527,6 +528,7 @@ def main() -> int:
         rounds=args.rounds,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    stamp(result)
     args.out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(json.dumps(result, indent=2, sort_keys=True))
 

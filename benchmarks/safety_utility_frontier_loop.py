@@ -74,6 +74,7 @@ from horizon_ric.learning.shield_env import (
     load_gain_matrix,
     subband_center_hz,
 )
+from horizon_ric.runtime_env import stamp
 
 DEFAULT_CAPS_DBM = (20.0, 26.0, 33.0, 40.0, 46.0, 52.0)
 OPERATIONAL_CAP_DBM = 33.0  # the licence condition every other Horizon benchmark runs under.
@@ -514,6 +515,7 @@ def main() -> int:
         sample_record_path=args.out.with_name(args.out.stem + "_sample_record.json"),
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    stamp(result)
     args.out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if _invariants_hold(result) else 1

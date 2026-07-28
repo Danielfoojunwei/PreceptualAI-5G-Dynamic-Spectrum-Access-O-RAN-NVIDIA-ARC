@@ -86,6 +86,7 @@ from horizon_ric.learning.shield_env import (
     subband_center_hz,
     summarise,
 )
+from horizon_ric.runtime_env import stamp
 
 # --- Action space: proposed EIRP x proposed frequency. -------------------------
 EIRP_MIN_DBM = 20.0
@@ -448,6 +449,7 @@ def main() -> int:
 
     result = run(args.features, args.manifest, rounds=args.rounds)
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    stamp(result)
     args.out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(json.dumps(result, indent=2, sort_keys=True))
 

@@ -40,7 +40,7 @@ jobs:
         # observability/tracing.py, runtime/state_recovery.py).
         run: mypy src/horizon_ric --ignore-missing-imports || true
       - name: mypy gate (clean subset, enforced)
-        # GATED — no `|| true`: the 47 modules below type-check clean
+        # GATED — no `|| true`: the 48 modules below type-check clean
         # today and any regression in them fails CI. Everything listed in
         # the informational step's comment above is NOT gated yet; move a
         # file into this list once its errors are fixed.
@@ -50,6 +50,7 @@ jobs:
           mypy --ignore-missing-imports --follow-imports=silent \
             src/horizon_ric/__init__.py \
             src/horizon_ric/cli.py \
+            src/horizon_ric/runtime_env.py \
             src/horizon_ric/data/__init__.py \
             src/horizon_ric/data/lineage.py \
             src/horizon_ric/evidence/__init__.py \

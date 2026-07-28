@@ -31,7 +31,10 @@ classifiers = [
 # runs a neural network itself. Everything here installs on a stock Python 3.10+
 # with no CUDA / no accelerator.
 dependencies = [
-    "numpy>=1.24",
+    # Upper bound is real, not defensive: numpy.random.Generator carries no
+    # cross-version bit-stream guarantee, so a major bump reseeds every
+    # closed-loop benchmark. See docs/REPRODUCIBILITY.md.
+    "numpy>=1.24,<3",
     "pydantic>=2.0",
     "fastapi>=0.110",
     "uvicorn>=0.30",                     # rapp/lifecycle.py + scripts/run_horizon_rapp.py health/metrics servers

@@ -10,6 +10,7 @@ from typing import Any
 
 import numpy as np
 
+from horizon_ric.runtime_env import stamp
 from horizon_ric.shield import default_terrestrial_shield
 
 BAND_LO_HZ = 3.45e9
@@ -164,6 +165,7 @@ def main() -> int:
     args = parser.parse_args()
     result = run(args.features, args.manifest)
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    stamp(result)
     args.out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(json.dumps(result, indent=2, sort_keys=True))
     illegal = sum(

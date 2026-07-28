@@ -66,6 +66,7 @@ from horizon_ric.federated import robust
 from horizon_ric.federated.dp import DPConfig, RDPAccountant, dp_fedavg
 from horizon_ric.federated.poison_attacks import scaling_attack
 from horizon_ric.policy.emit_guards import run_guard_chain
+from horizon_ric.runtime_env import stamp
 from horizon_ric.shield import default_terrestrial_shield
 
 # --- Spectrum / EIRP geometry (shared with the DSA benchmark). -----------------
@@ -489,6 +490,7 @@ def main() -> int:
         n_sites=args.sites, n_malicious=args.malicious, rounds=args.rounds,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    stamp(result)
     args.out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(json.dumps(result, indent=2, sort_keys=True))
 

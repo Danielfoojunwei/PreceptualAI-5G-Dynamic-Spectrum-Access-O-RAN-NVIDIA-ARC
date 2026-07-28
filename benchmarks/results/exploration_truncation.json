@@ -103,6 +103,12 @@
   },
   "optimal_feasible_reward": 0.347412,
   "receivers": 4096,
+  "runtime": {
+    "numpy_version": "2.4.6",
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "rng_stream_guarantee": "numpy.random.Generator provides no cross-version bit-stream compatibility guarantee; a numpy change can act as a reseed"
+  },
   "scenario": "asu_campus_3p5",
   "scope_note": "Real DeepMIMO ray tracing (not over-the-air capture), one scenario. The learners are tabular bandits over a discretised action space, not deep RL, and graduation is shown for this learner and reward shape only (served fraction, monotone in EIRP, deterministic). Realised utility is nearly identical for both learners because the Shield rescues every illegal proposal onto the cap; what differs is who does the safety work. The counterfactual oracle is used for reporting only and is never trained on.",
   "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
