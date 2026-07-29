@@ -165,9 +165,16 @@ jobs:
           python scripts/verify_committed_benchmark.py \
             --benchmark projection_capacity_2x2 \
             --fresh "$RUNNER_TEMP/projection_capacity_2x2.json"
+      - name: Build the 5GAD captured-attack corpus
+        # Three of the integrity probes replay traffic captured while real
+        # attacks ran against a real free5GC core. Without this the suite
+        # SKIPS them and reports 8/8 instead of 11/11 -- which is how the
+        # first run of this gate failed, correctly. 24.1 MB over twelve
+        # captures pinned by the upstream Git-LFS SHA-256; no auth needed.
+        run: python datasets/5gad_inl/build.py
       - name: Reproduce the integrity / supply-chain attack battery
-        # 11 probes, 0 bypasses. Independent of the ray-traced dataset, so it
-        # needs no --features; three of its probes replay captured 5GAD traffic.
+        # 11 probes, 0 bypasses, 0 skipped. Independent of the ray-traced
+        # dataset, so it needs no --features.
         run: |
           python benchmarks/integrity_attack_suite.py \
             --out "$RUNNER_TEMP/integrity_attack_suite.json"
