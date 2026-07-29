@@ -34,6 +34,9 @@ on:
       - "scripts/verify_beam_management.py"
       - "scripts/verify_mobility_handover.py"
       - "scripts/verify_antijam.py"
+      - "scripts/verify_poisoning_shield.py"
+      - "benchmarks/poisoning_shield_benchmark.py"
+      - "benchmarks/results/poisoning_shield.json"
       - ".github/workflows/realdata.yml"
       - "pyproject.toml"
 
@@ -131,6 +134,21 @@ jobs:
             --committed-result benchmarks/results/federated_coverage.json \
             --actual-result "$RUNNER_TEMP/federated_coverage.json" \
             --actual-manifest "$RUNNER_TEMP/manifest.json"
+      - name: Reproduce the poisoning -> Shield benchmark on the rebuilt data
+        # The proposal's load-bearing number: 4658 of 8000 decisions drawn from
+        # measured campus geometry request an illegal action and 0 survive the
+        # Shield. Until this step existed that figure lived only in a committed
+        # JSON with no automated regeneration, i.e. an assertion rather than
+        # evidence. Counts are integers over a seeded decision stream, so the
+        # verifier compares them exactly -- one decision changing class fails.
+        run: |
+          python benchmarks/poisoning_shield_benchmark.py \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json" \
+            --out "$RUNNER_TEMP/poisoning_shield.json"
+          python scripts/verify_poisoning_shield.py \
+            --committed benchmarks/results/poisoning_shield.json \
+            --fresh "$RUNNER_TEMP/poisoning_shield.json"
       - name: Build real angular ray geometry
         # Reuses the already-downloaded, checksum-pinned scenario cache.
         run: |
