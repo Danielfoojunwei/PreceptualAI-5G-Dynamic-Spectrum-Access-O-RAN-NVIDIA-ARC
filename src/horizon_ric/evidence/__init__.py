@@ -16,7 +16,9 @@ from horizon_ric.evidence.schema import (
 from horizon_ric.evidence.store import (
     EvidenceStore,
     JsonlEvidenceStore,
+    PostgresEvidenceStore,
     SqliteEvidenceStore,
+    open_evidence_store,
 )
 
 __all__ = [
@@ -25,9 +27,11 @@ __all__ = [
     "EvidenceStore",
     "JsonlEvidenceStore",
     "ModelVersions",
+    "PostgresEvidenceStore",
     "PredictedOutcome",
     "RejectedAlternative",
     "RejectionReasonMachine",
     "SqliteEvidenceStore",
     "generate_human_explanation",
+    "open_evidence_store",
 ]

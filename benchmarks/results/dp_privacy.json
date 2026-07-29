@@ -1,7 +1,34 @@
 {
+  "benchmark": "DP-FedAvg on real DeepMIMO ray-traced receivers",
+  "provenance": {
+    "dataset": "DeepMIMO ASU Campus 3.5 GHz",
+    "scenario": "asu_campus_3p5",
+    "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+    "source_archive_sha256": "80e4a4983847023158ed61a5a489025d72f4edcdac89edf4ee1323699e1b7da3",
+    "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+    "features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
+    "deepmimo_version": "4.0.0",
+    "carrier_frequency_hz": 3500000000,
+    "receivers_total": 4096,
+    "public_root_receivers": 512,
+    "private_subject_receivers": 3584,
+    "subject_definition": "one real DeepMIMO receiver (receiver_index); its private record is its real position_m and its 6 real subband_gain_dbw values",
+    "public_standardisation": {
+      "center_dbw": -153.00267,
+      "scale_db": 27.764992,
+      "source": "midpoint and quarter-range of the manifest-published subband_gain_dbw_min / subband_gain_dbw_max, which are already committed public aggregates of this build"
+    },
+    "scope_note": "These are ray-traced DeepMIMO receivers, not mobile subscribers. A 'data subject' here is one simulated receiver grid point whose real measured subband gains and real position form its private record. Every epsilon, membership-inference AUC and erasure bound below is a property of the stated mechanism on that population under the stated adjacency convention. It is NOT a measurement of privacy risk to real subscribers, and no personal data was used. The DeepMIMO scenario archive carries no separate licence file, so no raw or row-level derived data is redistributed - only the manifest hashes and these aggregate results. The membership-inference AUCs are attack-specific empirical diagnostics on this cohort; an AUC near 0.5 shows this attack failed, it does not prove privacy."
+  },
   "setup": {
-    "m_members": 8,
-    "k_nonmembers": 8,
+    "task": "federated per-subband path-loss regression: whitened quadratic position design -> 6 real subband gains, FedProx local steps",
+    "model_dim": 36,
+    "geographic_cells": 128,
+    "cell_size_min": 10,
+    "cell_size_max": 43,
+    "m_members": 64,
+    "k_nonmembers": 64,
+    "rounds": 12,
     "noise_multipliers": [
       0.0,
       1.0,
@@ -9,131 +36,735 @@
       8.0
     ],
     "delta": 1e-05,
-    "eval_episodes": 20,
-    "clip_norm_C": {
-      "mean": 11.0569,
-      "std": 0.2335,
-      "rule": "median member-update L2 norm (data-dependent; a mild DP-leak, reported not hidden)"
-    },
+    "client_adjacency": "replace_one; L2 sensitivity = 2C",
+    "partition_seed": 1234,
     "seeds": [
       1,
       2,
-      3
+      3,
+      4,
+      5
     ],
-    "mia_score": "membership score = -||global - local||_2 (member is pulled closer => higher score)",
-    "auc_rule": "P(score_member > score_nonmember) over all member x nonmember pairs (Mann-Whitney)",
+    "confidence_unit": "member/non-member assignment seed over the same real cells",
+    "clip_calibration": {
+      "clip_norm_C": 0.232821,
+      "rule": "median update L2 norm over the PUBLIC server-held root pseudo-clients",
+      "public_root_receivers": 512,
+      "public_root_pseudo_clients": 64,
+      "public_norm_median": 0.232821,
+      "public_norm_p90": 0.487455,
+      "public_norm_max": 0.759531,
+      "leakage_note": "the root slice is public by construction (never held by a client), so C does not depend on the private cohort"
+    },
     "lineage": [
-      "Mironov, CSF 2017 (R\u00e9nyi differential privacy)",
-      "Abadi, Chu, Goodfellow, McMahan, Mironov, Talwar & Zhang, CCS 2016 (DP-SGD / moments accountant)",
-      "Liu, Jiang, Lam et al., IEEE BigData 2024 (efficient federated unlearning with adaptive DP)"
+      "Mironov, CSF 2017 (Renyi differential privacy)",
+      "Abadi, Chu, Goodfellow, McMahan, Mironov, Talwar & Zhang, CCS 2016 (DP-SGD)",
+      "Balle & Wang, ICML 2018 (analytic Gaussian mechanism - the exact epsilon)",
+      "Jagielski, Ullman & Oprea, NeurIPS 2020 (auditing differential privacy)",
+      "Yeom, Giacomelli, Fredrikson & Jha, CSF 2018 (loss-threshold membership inference)",
+      "Liu, Jiang, Lam et al., IEEE BigData 2024 (federated unlearning with adaptive DP)"
     ]
   },
+  "baseline_rmse_db": 25.1369,
   "results": [
     {
       "noise_multiplier": 0.0,
-      "label": "no DP (plain mean)",
+      "label": "no DP (plain FedAvg)",
       "epsilon": {
-        "mean": null,
-        "std": null,
-        "note": "infinite \u2014 no DP guarantee"
+        "note": "infinite - no DP guarantee"
       },
-      "mia_auc": {
-        "mean": 0.9688,
-        "std": 0.0255
+      "accounted_steps": 0,
+      "private_updates_clipped_fraction": {
+        "mean": 0.4586,
+        "std": 0.0295,
+        "min": 0.4323,
+        "max": 0.5039,
+        "n_seeds": 5
       },
-      "throughput_per_slot": {
-        "mean": 1.0848,
-        "std": 0.0098
+      "heldout_rmse_db": {
+        "mean": 15.5014,
+        "std": 0.7167,
+        "min": 14.624,
+        "max": 16.5093,
+        "n_seeds": 5
       },
-      "mean_member_distance": {
-        "mean": 7.298,
-        "std": 0.2136
+      "train_rmse_db": {
+        "mean": 14.0018,
+        "std": 0.1676,
+        "min": 13.785,
+        "max": 14.2356,
+        "n_seeds": 5
       },
-      "mean_nonmember_distance": {
-        "mean": 8.6735,
-        "std": 0.2442
+      "mia_client_level_auc": {
+        "mean": 0.5416,
+        "std": 0.0453,
+        "min": 0.4722,
+        "max": 0.595,
+        "n_seeds": 5
       },
-      "accounted_steps": 0
+      "mia_record_level_auc": {
+        "mean": 0.5313,
+        "std": 0.0395,
+        "min": 0.472,
+        "max": 0.5768,
+        "n_seeds": 5
+      }
     },
     {
       "noise_multiplier": 1.0,
       "label": "z=1",
       "epsilon": {
-        "mean": 5.3026,
-        "std": 0.0
+        "mean": 22.6753,
+        "std": 0.0,
+        "min": 22.6753,
+        "max": 22.6753,
+        "n_seeds": 5
       },
-      "mia_auc": {
-        "mean": 0.6875,
-        "std": 0.071
+      "accounted_steps": 12,
+      "private_updates_clipped_fraction": {
+        "mean": 0.5135,
+        "std": 0.0343,
+        "min": 0.4753,
+        "max": 0.5638,
+        "n_seeds": 5
       },
-      "throughput_per_slot": {
-        "mean": 0.4803,
-        "std": 0.0284
+      "heldout_rmse_db": {
+        "mean": 18.4681,
+        "std": 0.7473,
+        "min": 17.6027,
+        "max": 19.5127,
+        "n_seeds": 5
       },
-      "mean_member_distance": {
-        "mean": 29.5421,
-        "std": 0.9903
+      "train_rmse_db": {
+        "mean": 17.4974,
+        "std": 0.4472,
+        "min": 16.8299,
+        "max": 17.8845,
+        "n_seeds": 5
       },
-      "mean_nonmember_distance": {
-        "mean": 29.8448,
-        "std": 0.9605
+      "mia_client_level_auc": {
+        "mean": 0.5253,
+        "std": 0.0369,
+        "min": 0.4641,
+        "max": 0.5586,
+        "n_seeds": 5
       },
-      "accounted_steps": 1
+      "mia_record_level_auc": {
+        "mean": 0.5204,
+        "std": 0.0369,
+        "min": 0.4599,
+        "max": 0.553,
+        "n_seeds": 5
+      }
     },
     {
       "noise_multiplier": 4.0,
       "label": "z=4",
       "epsilon": {
-        "mean": 1.2675,
-        "std": 0.0
+        "mean": 4.5526,
+        "std": 0.0,
+        "min": 4.5526,
+        "max": 4.5526,
+        "n_seeds": 5
       },
-      "mia_auc": {
-        "mean": 0.6042,
-        "std": 0.083
+      "accounted_steps": 12,
+      "private_updates_clipped_fraction": {
+        "mean": 0.5302,
+        "std": 0.0375,
+        "min": 0.4857,
+        "max": 0.5872,
+        "n_seeds": 5
       },
-      "throughput_per_slot": {
-        "mean": 0.1319,
-        "std": 0.0086
+      "heldout_rmse_db": {
+        "mean": 19.0165,
+        "std": 0.9336,
+        "min": 18.0578,
+        "max": 20.1903,
+        "n_seeds": 5
       },
-      "mean_member_distance": {
-        "mean": 122.1101,
-        "std": 3.6673
+      "train_rmse_db": {
+        "mean": 18.1058,
+        "std": 0.9926,
+        "min": 17.1144,
+        "max": 19.1368,
+        "n_seeds": 5
       },
-      "mean_nonmember_distance": {
-        "mean": 122.171,
-        "std": 3.7394
+      "mia_client_level_auc": {
+        "mean": 0.5228,
+        "std": 0.0286,
+        "min": 0.4717,
+        "max": 0.5374,
+        "n_seeds": 5
       },
-      "accounted_steps": 1
+      "mia_record_level_auc": {
+        "mean": 0.5192,
+        "std": 0.0337,
+        "min": 0.4667,
+        "max": 0.5565,
+        "n_seeds": 5
+      }
     },
     {
       "noise_multiplier": 8.0,
       "label": "z=8",
       "epsilon": {
-        "mean": 0.6214,
-        "std": 0.0
+        "mean": 2.2675,
+        "std": 0.0,
+        "min": 2.2675,
+        "max": 2.2675,
+        "n_seeds": 5
       },
-      "mia_auc": {
-        "mean": 0.4688,
-        "std": 0.1786
+      "accounted_steps": 12,
+      "private_updates_clipped_fraction": {
+        "mean": 0.5922,
+        "std": 0.0745,
+        "min": 0.5339,
+        "max": 0.7188,
+        "n_seeds": 5
       },
-      "throughput_per_slot": {
-        "mean": 0.0465,
-        "std": 0.0067
+      "heldout_rmse_db": {
+        "mean": 21.1039,
+        "std": 1.1932,
+        "min": 19.6696,
+        "max": 22.3888,
+        "n_seeds": 5
       },
-      "mean_member_distance": {
-        "mean": 228.7023,
-        "std": 9.7622
+      "train_rmse_db": {
+        "mean": 20.2494,
+        "std": 1.7384,
+        "min": 18.2856,
+        "max": 22.2191,
+        "n_seeds": 5
       },
-      "mean_nonmember_distance": {
-        "mean": 228.6904,
-        "std": 9.5663
+      "mia_client_level_auc": {
+        "mean": 0.5238,
+        "std": 0.0292,
+        "min": 0.4795,
+        "max": 0.5532,
+        "n_seeds": 5
       },
-      "accounted_steps": 1
+      "mia_record_level_auc": {
+        "mean": 0.5203,
+        "std": 0.0357,
+        "min": 0.4785,
+        "max": 0.5666,
+        "n_seeds": 5
+      }
+    }
+  ],
+  "epsilon_verification": {
+    "delta": 1e-05,
+    "trials_per_dataset": 20000,
+    "adjacent_pair": "one real member cell's receivers replaced by a real non-member cell's receivers (replace-one client adjacency)",
+    "per_z": [
+      {
+        "noise_multiplier": 1.0,
+        "rounds_audited": 1,
+        "assumed_sensitivity_2C": 0.465642,
+        "realised_sensitivity_on_real_pair": 0.370287,
+        "sigma": 0.465642,
+        "epsilon_audit_empirical_lower_95": 2.09,
+        "epsilon_realised_pair_exact": 3.3638,
+        "epsilon_worst_case_analytic_exact": 4.3772,
+        "epsilon_rdp_one_round": 5.3026,
+        "ordering_holds": true,
+        "rdp_slack_over_exact": 0.9254,
+        "audit": {
+          "epsilon_empirical_lower_95": 2.09,
+          "trials_per_dataset": 20000,
+          "attained_at": {
+            "threshold": 0.035398,
+            "tpr_point": 0.0146,
+            "fpr_point": 0.00105,
+            "tpr_lower_95": 0.012984,
+            "fpr_upper_95": 0.001605
+          },
+          "method": "threshold sweep over the optimal likelihood-ratio statistic with one-sided Clopper-Pearson 95% bounds (Jagielski et al., NeurIPS 2020)"
+        },
+        "what_this_proves": "the empirical lower bound is what an optimal distinguisher actually achieved against the real dp_fedavg code path on a real replace-one pair; the exact Gaussian values bracket it from above. A flipped inequality would mean the mechanism or the accountant is wrong."
+      },
+      {
+        "noise_multiplier": 4.0,
+        "rounds_audited": 1,
+        "assumed_sensitivity_2C": 0.465642,
+        "realised_sensitivity_on_real_pair": 0.370287,
+        "sigma": 1.862568,
+        "epsilon_audit_empirical_lower_95": 0.4214,
+        "epsilon_realised_pair_exact": 0.7208,
+        "epsilon_worst_case_analytic_exact": 0.9263,
+        "epsilon_rdp_one_round": 1.2675,
+        "ordering_holds": true,
+        "rdp_slack_over_exact": 0.3412,
+        "audit": {
+          "epsilon_empirical_lower_95": 0.4214,
+          "trials_per_dataset": 20000,
+          "attained_at": {
+            "threshold": 0.08685,
+            "tpr_point": 0.01065,
+            "fpr_point": 0.005,
+            "tpr_lower_95": 0.009274,
+            "fpr_upper_95": 0.006078
+          },
+          "method": "threshold sweep over the optimal likelihood-ratio statistic with one-sided Clopper-Pearson 95% bounds (Jagielski et al., NeurIPS 2020)"
+        },
+        "what_this_proves": "the empirical lower bound is what an optimal distinguisher actually achieved against the real dp_fedavg code path on a real replace-one pair; the exact Gaussian values bracket it from above. A flipped inequality would mean the mechanism or the accountant is wrong."
+      },
+      {
+        "noise_multiplier": 8.0,
+        "rounds_audited": 1,
+        "assumed_sensitivity_2C": 0.465642,
+        "realised_sensitivity_on_real_pair": 0.370287,
+        "sigma": 3.725136,
+        "epsilon_audit_empirical_lower_95": 0.1317,
+        "epsilon_realised_pair_exact": 0.3385,
+        "epsilon_worst_case_analytic_exact": 0.4344,
+        "epsilon_rdp_one_round": 0.6214,
+        "ordering_holds": true,
+        "rdp_slack_over_exact": 0.187,
+        "audit": {
+          "epsilon_empirical_lower_95": 0.1317,
+          "trials_per_dataset": 20000,
+          "attained_at": {
+            "threshold": -0.062162,
+            "tpr_point": 0.9236,
+            "fpr_point": 0.9045,
+            "tpr_lower_95": 0.919832,
+            "fpr_upper_95": 0.908539
+          },
+          "method": "threshold sweep over the optimal likelihood-ratio statistic with one-sided Clopper-Pearson 95% bounds (Jagielski et al., NeurIPS 2020)"
+        },
+        "what_this_proves": "the empirical lower bound is what an optimal distinguisher actually achieved against the real dp_fedavg code path on a real replace-one pair; the exact Gaussian values bracket it from above. A flipped inequality would mean the mechanism or the accountant is wrong."
+      }
+    ],
+    "all_orderings_hold": true
+  },
+  "per_seed": [
+    {
+      "seed": 1,
+      "baseline_rmse_db": 25.446,
+      "member_receivers": 1805,
+      "nonmember_receivers": 1779,
+      "per_z": {
+        "z=0_no_dp": {
+          "noise_multiplier": 0.0,
+          "epsilon": null,
+          "epsilon_label": "inf (no DP)",
+          "accounted_steps": 0,
+          "private_update_norm_median": 0.20961,
+          "private_updates_clipped_fraction": 0.4323,
+          "heldout_rmse_db": 16.5093,
+          "train_rmse_db": 13.9255,
+          "mia": {
+            "client_level_auc": 0.595,
+            "record_level_auc": 0.5768,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1805,
+            "nonmember_records": 1779,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=1": {
+          "noise_multiplier": 1.0,
+          "epsilon": 22.6753,
+          "epsilon_label": 22.6753,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.216601,
+          "private_updates_clipped_fraction": 0.4753,
+          "heldout_rmse_db": 19.5127,
+          "train_rmse_db": 17.7105,
+          "mia": {
+            "client_level_auc": 0.5586,
+            "record_level_auc": 0.553,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1805,
+            "nonmember_records": 1779,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=4": {
+          "noise_multiplier": 4.0,
+          "epsilon": 4.5526,
+          "epsilon_label": 4.5526,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.220825,
+          "private_updates_clipped_fraction": 0.4857,
+          "heldout_rmse_db": 20.1903,
+          "train_rmse_db": 19.103,
+          "mia": {
+            "client_level_auc": 0.5374,
+            "record_level_auc": 0.533,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1805,
+            "nonmember_records": 1779,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=8": {
+          "noise_multiplier": 8.0,
+          "epsilon": 2.2675,
+          "epsilon_label": 2.2675,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.25539,
+          "private_updates_clipped_fraction": 0.5339,
+          "heldout_rmse_db": 22.3888,
+          "train_rmse_db": 21.9477,
+          "mia": {
+            "client_level_auc": 0.5334,
+            "record_level_auc": 0.5225,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1805,
+            "nonmember_records": 1779,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        }
+      }
+    },
+    {
+      "seed": 2,
+      "baseline_rmse_db": 25.4641,
+      "member_receivers": 1805,
+      "nonmember_receivers": 1779,
+      "per_z": {
+        "z=0_no_dp": {
+          "noise_multiplier": 0.0,
+          "epsilon": null,
+          "epsilon_label": "inf (no DP)",
+          "accounted_steps": 0,
+          "private_update_norm_median": 0.19476,
+          "private_updates_clipped_fraction": 0.4336,
+          "heldout_rmse_db": 15.4664,
+          "train_rmse_db": 14.2356,
+          "mia": {
+            "client_level_auc": 0.5637,
+            "record_level_auc": 0.5395,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1805,
+            "nonmember_records": 1779,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=1": {
+          "noise_multiplier": 1.0,
+          "epsilon": 22.6753,
+          "epsilon_label": 22.6753,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.224435,
+          "private_updates_clipped_fraction": 0.4909,
+          "heldout_rmse_db": 18.6826,
+          "train_rmse_db": 17.8845,
+          "mia": {
+            "client_level_auc": 0.5488,
+            "record_level_auc": 0.5223,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1805,
+            "nonmember_records": 1779,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=4": {
+          "noise_multiplier": 4.0,
+          "epsilon": 4.5526,
+          "epsilon_label": 4.5526,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.239451,
+          "private_updates_clipped_fraction": 0.5143,
+          "heldout_rmse_db": 19.6639,
+          "train_rmse_db": 19.1368,
+          "mia": {
+            "client_level_auc": 0.5344,
+            "record_level_auc": 0.5099,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1805,
+            "nonmember_records": 1779,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=8": {
+          "noise_multiplier": 8.0,
+          "epsilon": 2.2675,
+          "epsilon_label": 2.2675,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.268467,
+          "private_updates_clipped_fraction": 0.5599,
+          "heldout_rmse_db": 22.1186,
+          "train_rmse_db": 22.2191,
+          "mia": {
+            "client_level_auc": 0.5107,
+            "record_level_auc": 0.4927,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1805,
+            "nonmember_records": 1779,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        }
+      }
+    },
+    {
+      "seed": 3,
+      "baseline_rmse_db": 25.6123,
+      "member_receivers": 1763,
+      "nonmember_receivers": 1821,
+      "per_z": {
+        "z=0_no_dp": {
+          "noise_multiplier": 0.0,
+          "epsilon": null,
+          "epsilon_label": "inf (no DP)",
+          "accounted_steps": 0,
+          "private_update_norm_median": 0.212143,
+          "private_updates_clipped_fraction": 0.4544,
+          "heldout_rmse_db": 15.8162,
+          "train_rmse_db": 13.785,
+          "mia": {
+            "client_level_auc": 0.5417,
+            "record_level_auc": 0.551,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1763,
+            "nonmember_records": 1821,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=1": {
+          "noise_multiplier": 1.0,
+          "epsilon": 22.6753,
+          "epsilon_label": 22.6753,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.243117,
+          "private_updates_clipped_fraction": 0.5104,
+          "heldout_rmse_db": 18.6389,
+          "train_rmse_db": 16.8299,
+          "mia": {
+            "client_level_auc": 0.5308,
+            "record_level_auc": 0.5472,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1763,
+            "nonmember_records": 1821,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=4": {
+          "noise_multiplier": 4.0,
+          "epsilon": 4.5526,
+          "epsilon_label": 4.5526,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.246247,
+          "private_updates_clipped_fraction": 0.5234,
+          "heldout_rmse_db": 19.0318,
+          "train_rmse_db": 17.161,
+          "mia": {
+            "client_level_auc": 0.5364,
+            "record_level_auc": 0.5565,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1763,
+            "nonmember_records": 1821,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=8": {
+          "noise_multiplier": 8.0,
+          "epsilon": 2.2675,
+          "epsilon_label": 2.2675,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.265298,
+          "private_updates_clipped_fraction": 0.5508,
+          "heldout_rmse_db": 21.2109,
+          "train_rmse_db": 19.3098,
+          "mia": {
+            "client_level_auc": 0.542,
+            "record_level_auc": 0.5666,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1763,
+            "nonmember_records": 1821,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        }
+      }
+    },
+    {
+      "seed": 4,
+      "baseline_rmse_db": 24.0492,
+      "member_receivers": 1846,
+      "nonmember_receivers": 1738,
+      "per_z": {
+        "z=0_no_dp": {
+          "noise_multiplier": 0.0,
+          "epsilon": null,
+          "epsilon_label": "inf (no DP)",
+          "accounted_steps": 0,
+          "private_update_norm_median": 0.23467,
+          "private_updates_clipped_fraction": 0.5039,
+          "heldout_rmse_db": 14.624,
+          "train_rmse_db": 14.0712,
+          "mia": {
+            "client_level_auc": 0.4722,
+            "record_level_auc": 0.472,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1846,
+            "nonmember_records": 1738,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=1": {
+          "noise_multiplier": 1.0,
+          "epsilon": 22.6753,
+          "epsilon_label": 22.6753,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.272266,
+          "private_updates_clipped_fraction": 0.5638,
+          "heldout_rmse_db": 17.6027,
+          "train_rmse_db": 17.8111,
+          "mia": {
+            "client_level_auc": 0.4641,
+            "record_level_auc": 0.4599,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1846,
+            "nonmember_records": 1738,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=4": {
+          "noise_multiplier": 4.0,
+          "epsilon": 4.5526,
+          "epsilon_label": 4.5526,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.274629,
+          "private_updates_clipped_fraction": 0.5872,
+          "heldout_rmse_db": 18.1389,
+          "train_rmse_db": 18.0138,
+          "mia": {
+            "client_level_auc": 0.4717,
+            "record_level_auc": 0.4667,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1846,
+            "nonmember_records": 1738,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=8": {
+          "noise_multiplier": 8.0,
+          "epsilon": 2.2675,
+          "epsilon_label": 2.2675,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.297507,
+          "private_updates_clipped_fraction": 0.7188,
+          "heldout_rmse_db": 20.1315,
+          "train_rmse_db": 19.485,
+          "mia": {
+            "client_level_auc": 0.4795,
+            "record_level_auc": 0.4785,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1846,
+            "nonmember_records": 1738,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        }
+      }
+    },
+    {
+      "seed": 5,
+      "baseline_rmse_db": 25.113,
+      "member_receivers": 1816,
+      "nonmember_receivers": 1768,
+      "per_z": {
+        "z=0_no_dp": {
+          "noise_multiplier": 0.0,
+          "epsilon": null,
+          "epsilon_label": "inf (no DP)",
+          "accounted_steps": 0,
+          "private_update_norm_median": 0.214437,
+          "private_updates_clipped_fraction": 0.4688,
+          "heldout_rmse_db": 15.0909,
+          "train_rmse_db": 13.9919,
+          "mia": {
+            "client_level_auc": 0.5352,
+            "record_level_auc": 0.5172,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1816,
+            "nonmember_records": 1768,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=1": {
+          "noise_multiplier": 1.0,
+          "epsilon": 22.6753,
+          "epsilon_label": 22.6753,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.250812,
+          "private_updates_clipped_fraction": 0.5273,
+          "heldout_rmse_db": 17.9035,
+          "train_rmse_db": 17.2512,
+          "mia": {
+            "client_level_auc": 0.5244,
+            "record_level_auc": 0.5194,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1816,
+            "nonmember_records": 1768,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=4": {
+          "noise_multiplier": 4.0,
+          "epsilon": 4.5526,
+          "epsilon_label": 4.5526,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.259694,
+          "private_updates_clipped_fraction": 0.5404,
+          "heldout_rmse_db": 18.0578,
+          "train_rmse_db": 17.1144,
+          "mia": {
+            "client_level_auc": 0.5339,
+            "record_level_auc": 0.53,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1816,
+            "nonmember_records": 1768,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        },
+        "z=8": {
+          "noise_multiplier": 8.0,
+          "epsilon": 2.2675,
+          "epsilon_label": 2.2675,
+          "accounted_steps": 12,
+          "private_update_norm_median": 0.279812,
+          "private_updates_clipped_fraction": 0.5977,
+          "heldout_rmse_db": 19.6696,
+          "train_rmse_db": 18.2856,
+          "mia": {
+            "client_level_auc": 0.5532,
+            "record_level_auc": 0.5413,
+            "member_clients": 64,
+            "nonmember_clients": 64,
+            "member_records": 1816,
+            "nonmember_records": 1768,
+            "attack": "loss-threshold membership inference (Yeom et al., CSF 2018): score = -mean squared dB error of the released global model on the target's real measured subband gains"
+          }
+        }
+      }
     }
   ],
   "honest_finding": [
-    "WITHOUT DP (z=0) the membership-inference AUC sits well above 0.5: the global policy is measurably closer to its member clients than to fresh non-members, so membership leaks through update proximity. The mean member-distance is strictly below the mean non-member distance \u2014 the leakage is directional, not noise.",
-    "Adding DP-FedAvg noise drives the AUC toward 0.5 (less leakage) and the accountant's epsilon DOWN (more privacy) as z grows \u2014 z=1.0 < z=4.0 < z=8.0 in privacy. This is the privacy half of the trade-off, charged exactly once per aggregation round by the R\u00e9nyi-DP accountant.",
-    "The privacy is NOT free: throughput-per-slot falls sharply as z grows (the Gaussian noise, scaled by the clip C, swamps the aggregated signal in this single-round full-participation regime). We report the utility cost rather than hide it. At the strongest setting (z=8, epsilon~0.6) the AUC has fallen to ~0.5 \u2014 membership is no longer distinguishable \u2014 but the global policy's throughput has collapsed to near zero, so the privacy is bought at the price of an unusable policy. The honest takeaway is the SHAPE of the (epsilon, utility, leakage) curve: DP closes the membership leak, but on this single-round, no-subsampling DSA federation the useful operating point is a compromise, not a free lunch."
+    "The cohorts are real. Members and non-members are disjoint sets of real ray-traced ASU-campus receivers (1805 vs 1779), so the undefended client-level membership AUC of 0.5416 is a signal about real measurements, not an artefact of two random seeds. It is still only one attack: it bounds leakage from below, never from above.",
+    "The epsilon is verified, not asserted. For every z the audited empirical lower bound sits below the exact Gaussian epsilon at the realised sensitivity, which sits below the exact worst-case epsilon, which sits below the accountant's RDP number (ordering_holds = True). The gap between the audited and the certified value is the price of a worst-case guarantee, and it is reported rather than hidden.",
+    "The clip binds. C is calibrated only on the 512 public server-held receivers (C = 0.232821); it clips 51.3% of the real private updates. A clip far above the true update scale would inject noise calibrated to a sensitivity the data never attains - pure utility loss at identical epsilon.",
+    "Utility is measured in dB against real measurements. The do-nothing model scores 25.1369 dB RMSE on held-out real receivers; undefended FedAvg reaches 15.5014 dB and the DP runs degrade from there. That degradation is the real cost of the guarantee on this task, not a proxy score.",
+    "Scope. These are simulated ray-traced receivers. Nothing here is a measurement of privacy risk to real mobile subscribers."
   ]
 }

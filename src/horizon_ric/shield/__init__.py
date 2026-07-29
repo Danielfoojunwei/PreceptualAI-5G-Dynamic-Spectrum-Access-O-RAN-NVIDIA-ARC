@@ -20,6 +20,7 @@ from horizon_ric.shield.invariants import (
     LawfulInterceptInvariant,
     MaxEirpInvariant,
     NeuralRxEnvelopeInvariant,
+    NumericSanityInvariant,
     PfdCeilingInvariant,
     SpectralMaskInvariant,
 )
@@ -36,6 +37,7 @@ __all__ = [
     "SafetyCertificate",
     "ShieldDisposition",
     "Invariant",
+    "NumericSanityInvariant",
     "SpectralMaskInvariant",
     "MaxEirpInvariant",
     "PfdCeilingInvariant",

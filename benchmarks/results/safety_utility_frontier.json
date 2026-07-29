@@ -1,0 +1,344 @@
+{
+  "anchor_note": "utility_forgone_at_operational_cap is measured against full service (reward 1.0), which requires ~109 dBm EIRP (~85 MW) and is a physical idealisation, not a deployable alternative. Against a deployable anchor the cost is far smaller: see reference_anchors. The credit_assignment experiment's safety_utility_gap uses its 52 dBm grid top and is the same quantity under that anchor.",
+  "benchmark": "Safety-utility frontier of the Decision Safety Shield on real DeepMIMO",
+  "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+  "dataset": "DeepMIMO ASU Campus 3.5 GHz",
+  "env": {
+    "antenna_gain_dbi": 6.0,
+    "band_hi_hz": 3550000000.0,
+    "band_lo_hz": 3450000000.0,
+    "bandwidth_hz": 20000000.0,
+    "n_subbands": 6,
+    "noise_dbm": -93.9897,
+    "reward": "served fraction (receivers with EIRP + measured_gain - noise >= 0 dB)",
+    "sinr_threshold_db": 0.0
+  },
+  "feasibility": {
+    "note": "The Shield's in-band test is occupied-bandwidth-in-band (TS 38.104), not centre-frequency-in-band: the two edge subbands have legal centres but their 20 MHz allocation spills past a band edge, so they are infeasible. best_feasible_reward and reference_anchors rank over the feasible set only. Masking is defence in depth \u2014 ShieldedSpectrumEnv.step still disposes every action through the Shield unconditionally.",
+    "refused_subbands": {
+      "0": [
+        "spectral_mask_ts38104"
+      ],
+      "5": [
+        "spectral_mask_ts38104"
+      ]
+    },
+    "shield_feasible_subbands": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "source": "horizon_ric.learning.shield_env.ShieldedSpectrumEnv.is_feasible (delegates to horizon_ric.shield.Shield.is_feasible)"
+  },
+  "features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
+  "free_constraint_case": {
+    "argmax_subband_by_eirp": [
+      {
+        "argmax_all_subbands": 0,
+        "argmax_shield_feasible": 4,
+        "eirp_dbm": 20.0
+      },
+      {
+        "argmax_all_subbands": 1,
+        "argmax_shield_feasible": 1,
+        "eirp_dbm": 26.0
+      },
+      {
+        "argmax_all_subbands": 5,
+        "argmax_shield_feasible": 2,
+        "eirp_dbm": 32.0
+      },
+      {
+        "argmax_all_subbands": 3,
+        "argmax_shield_feasible": 3,
+        "eirp_dbm": 33.0
+      },
+      {
+        "argmax_all_subbands": 3,
+        "argmax_shield_feasible": 3,
+        "eirp_dbm": 40.0
+      },
+      {
+        "argmax_all_subbands": 3,
+        "argmax_shield_feasible": 3,
+        "eirp_dbm": 46.0
+      },
+      {
+        "argmax_all_subbands": 5,
+        "argmax_shield_feasible": 4,
+        "eirp_dbm": 52.0
+      }
+    ],
+    "best_subband": 2,
+    "best_subband_is_reproducible_identity": false,
+    "candidate_subband_source": "horizon_ric.learning.shield_env.ShieldedSpectrumEnv.is_feasible (delegates to horizon_ric.shield.Shield.is_feasible)",
+    "candidate_subbands": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "committed_cross_evidence": {
+      "decisions": 4096,
+      "illegal_emits_after_shield": 0,
+      "mean_regret_db": 0.0,
+      "path": "benchmarks/results/deepmimo_dsa.json",
+      "strategy": "best_subband"
+    },
+    "constant_cap_policy_reward": 0.347412,
+    "corrected": false,
+    "decision_value_at_operational_cap": 0.00293,
+    "decision_value_note": "The subband choice is worth decision_value_receivers of 4096 receivers at this case's own 32 dBm, and decision_value_receivers_at_operational_cap over all six subbands at the 33 dBm cap (the figure in ERRATA.md item 12). The argmax is power-dependent (argmax_subband_by_eirp), so best_subband is NOT a reproducible identity: assert on the achieved reward with a tolerance, never on the index.",
+    "decision_value_receivers": 15,
+    "decision_value_receivers_at_operational_cap": 12,
+    "decision_value_served_fraction": 0.003662,
+    "executed_frequency_hz": 3491666666.6666665,
+    "fixed_eirp_dbm": 32.0,
+    "guard_refused_rate": 0.0,
+    "max_executed_eirp_dbm": 32.0,
+    "per_subband_reward": [
+      0.328369,
+      0.327393,
+      0.331055,
+      0.328857,
+      0.329834,
+      0.331787
+    ],
+    "projection_rate": 0.0,
+    "realised_mean_reward": 0.331055,
+    "realised_regret": 0.016357,
+    "refused_subbands": {
+      "0": [
+        "spectral_mask_ts38104"
+      ],
+      "5": [
+        "spectral_mask_ts38104"
+      ]
+    },
+    "steps": 6,
+    "task": "pick the best Shield-feasible subband at a fixed legal EIRP of 32 dBm (tx 26 dBm + 6 dBi < 33 dBm cap): the task optimum is feasible",
+    "task_optimum_reward": 0.331055,
+    "utility_cost": 0.0
+  },
+  "frontier": [
+    {
+      "best_feasible_reward": 0.138428,
+      "best_feasible_subband": 4,
+      "constant_cap_policy_reward": 0.138428,
+      "counterfactual_mean_reward": 1.0,
+      "eirp_cap_dbm": 20.0,
+      "executed_eirp_dbm": 20.0,
+      "executed_frequency_hz": 3525000000.0,
+      "illegal_proposal_rate": 1.0,
+      "max_executed_eirp_dbm": 20.0,
+      "mean_proposed_eirp_dbm": 112.5082,
+      "projection_rate": 1.0,
+      "realised_mean_reward": 0.138428,
+      "realised_regret": 0.0,
+      "steps": 8,
+      "utility_forgone": 0.861572
+    },
+    {
+      "best_feasible_reward": 0.246338,
+      "best_feasible_subband": 1,
+      "constant_cap_policy_reward": 0.246338,
+      "counterfactual_mean_reward": 1.0,
+      "eirp_cap_dbm": 26.0,
+      "executed_eirp_dbm": 26.0,
+      "executed_frequency_hz": 3475000000.0,
+      "illegal_proposal_rate": 1.0,
+      "max_executed_eirp_dbm": 26.0,
+      "mean_proposed_eirp_dbm": 111.3841,
+      "projection_rate": 1.0,
+      "realised_mean_reward": 0.246338,
+      "realised_regret": 0.0,
+      "steps": 8,
+      "utility_forgone": 0.753662
+    },
+    {
+      "best_feasible_reward": 0.347412,
+      "best_feasible_subband": 3,
+      "constant_cap_policy_reward": 0.347412,
+      "counterfactual_mean_reward": 1.0,
+      "eirp_cap_dbm": 33.0,
+      "executed_eirp_dbm": 33.0,
+      "executed_frequency_hz": 3508333333.3333335,
+      "illegal_proposal_rate": 1.0,
+      "max_executed_eirp_dbm": 33.0,
+      "mean_proposed_eirp_dbm": 112.6724,
+      "projection_rate": 1.0,
+      "realised_mean_reward": 0.347412,
+      "realised_regret": 0.0,
+      "steps": 8,
+      "utility_forgone": 0.652588
+    },
+    {
+      "best_feasible_reward": 0.477783,
+      "best_feasible_subband": 3,
+      "constant_cap_policy_reward": 0.477783,
+      "counterfactual_mean_reward": 1.0,
+      "eirp_cap_dbm": 40.0,
+      "executed_eirp_dbm": 40.0,
+      "executed_frequency_hz": 3508333333.3333335,
+      "illegal_proposal_rate": 1.0,
+      "max_executed_eirp_dbm": 40.0,
+      "mean_proposed_eirp_dbm": 113.012,
+      "projection_rate": 1.0,
+      "realised_mean_reward": 0.477783,
+      "realised_regret": 0.0,
+      "steps": 8,
+      "utility_forgone": 0.522217
+    },
+    {
+      "best_feasible_reward": 0.546631,
+      "best_feasible_subband": 3,
+      "constant_cap_policy_reward": 0.546631,
+      "counterfactual_mean_reward": 1.0,
+      "eirp_cap_dbm": 46.0,
+      "executed_eirp_dbm": 46.0,
+      "executed_frequency_hz": 3508333333.3333335,
+      "illegal_proposal_rate": 1.0,
+      "max_executed_eirp_dbm": 46.0,
+      "mean_proposed_eirp_dbm": 112.903,
+      "projection_rate": 1.0,
+      "realised_mean_reward": 0.546631,
+      "realised_regret": 0.0,
+      "steps": 8,
+      "utility_forgone": 0.453369
+    },
+    {
+      "best_feasible_reward": 0.607422,
+      "best_feasible_subband": 4,
+      "constant_cap_policy_reward": 0.607422,
+      "counterfactual_mean_reward": 1.0,
+      "eirp_cap_dbm": 52.0,
+      "executed_eirp_dbm": 52.0,
+      "executed_frequency_hz": 3525000000.0,
+      "illegal_proposal_rate": 1.0,
+      "max_executed_eirp_dbm": 52.0,
+      "mean_proposed_eirp_dbm": 112.7961,
+      "projection_rate": 1.0,
+      "realised_mean_reward": 0.607422,
+      "realised_regret": 0.0,
+      "steps": 8,
+      "utility_forgone": 0.392578
+    }
+  ],
+  "marginal_price_per_db": [
+    {
+      "from_cap": 20.0,
+      "served_fraction_lost_per_db": 0.017985,
+      "to_cap": 26.0
+    },
+    {
+      "from_cap": 26.0,
+      "served_fraction_lost_per_db": 0.014439,
+      "to_cap": 33.0
+    },
+    {
+      "from_cap": 33.0,
+      "served_fraction_lost_per_db": 0.018624,
+      "to_cap": 40.0
+    },
+    {
+      "from_cap": 40.0,
+      "served_fraction_lost_per_db": 0.011475,
+      "to_cap": 46.0
+    },
+    {
+      "from_cap": 46.0,
+      "served_fraction_lost_per_db": 0.010132,
+      "to_cap": 52.0
+    }
+  ],
+  "operational_cap_dbm": 33.0,
+  "receivers": 4096,
+  "reference_anchors": [
+    {
+      "anchor_eirp_dbm": 46.0,
+      "anchor_watts": 39.8,
+      "best_reward_at_anchor": 0.546631,
+      "label": "high-power small cell (~40 W EIRP)",
+      "utility_forgone_vs_operational_cap": 0.199219
+    },
+    {
+      "anchor_eirp_dbm": 52.0,
+      "anchor_watts": 158.5,
+      "best_reward_at_anchor": 0.607422,
+      "label": "sweep top; the credit_assignment action-grid top (~158 W EIRP)",
+      "utility_forgone_vs_operational_cap": 0.26001
+    },
+    {
+      "anchor_eirp_dbm": 60.0,
+      "anchor_watts": 1000.0,
+      "best_reward_at_anchor": 0.6875,
+      "label": "small macro (~1 kW EIRP)",
+      "utility_forgone_vs_operational_cap": 0.340088
+    },
+    {
+      "anchor_eirp_dbm": 78.0,
+      "anchor_watts": 63095.7,
+      "best_reward_at_anchor": 0.980469,
+      "label": "upper end of a deployable macro (~63 kW EIRP)",
+      "utility_forgone_vs_operational_cap": 0.633057
+    }
+  ],
+  "runtime": {
+    "numpy_version": "2.4.6",
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "rng_stream_guarantee": "numpy.random.Generator provides no cross-version bit-stream compatibility guarantee; a numpy change can act as a reseed"
+  },
+  "scenario": "asu_campus_3p5",
+  "scope_note": "Real site-specific ray tracing (DeepMIMO ASU 3.5 GHz), not OTA capture; one scenario; served fraction is one utility proxy among several a licensee may care about. The frontier states the Shield's real cost when the constraint binds: utility forgone at the operational 33 dBm cap is reported plainly, not netted against the free-constraint case. The EIRP cap is a regulatory licence condition, not a free parameter \u2014 Horizon's claim is that the cost of enforcing it is explicit, bounded and auditable, not that it is zero.",
+  "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+  "task": "EIRP-capped spectrum reservation; served-fraction objective, monotone in EIRP",
+  "trust_chain": {
+    "evidence_chain_length": 54,
+    "replayed_transitions_intact": 54,
+    "tampered_chain_refused": true,
+    "verify_after_tamper_index": 1,
+    "verify_first_broken_index": -1
+  },
+  "unconstrained_optimum": {
+    "definition": "true argmax of the served-fraction objective with no cap: serve every measured receiver (reward 1.0), attained at the minimum full-service EIRP",
+    "demand_eirp_dbm": 109.3112,
+    "demand_eirp_dbm_shield_feasible": 109.7693,
+    "demand_subband": 0,
+    "demand_subband_shield_feasible": 1,
+    "eirp50_reference_note": "Measured on the operational cap's best feasible subband; like the credit loop's value_mae_infeasible this quantity is a pure function of the chosen reference EIRP, not a property of the Shield.",
+    "eirp50_reference_reward": 0.591797,
+    "full_service_eirp_dbm_per_subband": [
+      109.3112,
+      109.7693,
+      111.3596,
+      110.9383,
+      110.9105,
+      114.543
+    ],
+    "reward": 1.0
+  },
+  "utility_forgone_at_operational_cap": 0.652588,
+  "zero_data_baseline": {
+    "constant_cap_policy_reward_by_cap": {
+      "20": 0.138428,
+      "26": 0.246338,
+      "33": 0.347412,
+      "40": 0.477783,
+      "46": 0.546631,
+      "52": 0.607422
+    },
+    "max_realised_regret": 0.0,
+    "note": "max_realised_regret is 0.0: the closed loop realises precisely the zero-data constant-cap reward at every swept cap, because the Shield clamps the loop's ~110 dBm demand straight onto the cap. That is a statement about the Shield's projection being exact, NOT evidence that the optimiser contributed anything \u2014 it contributed nothing measurable.",
+    "policy": "constant: transmit at the EIRP cap on the best Shield-feasible subband, with no data, no learning and no adaptation",
+    "realised_regret_by_cap": {
+      "20": 0.0,
+      "26": 0.0,
+      "33": 0.0,
+      "40": 0.0,
+      "46": 0.0,
+      "52": 0.0
+    }
+  }
+}

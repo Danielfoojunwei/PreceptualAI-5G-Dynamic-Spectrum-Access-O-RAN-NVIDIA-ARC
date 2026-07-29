@@ -4,72 +4,148 @@
     {
       "attack_id": "1_model_swap_untrusted_signer",
       "attempted": true,
+      "data_provenance": "constructed_adversary_against_shipped_defense",
       "detail": "genuine_ok=True attacker_self_consistent=True pinned_reject=True",
       "detected_or_blocked": true,
       "mechanism": "verify_model: pinned trusted_public_key_der != embedded signer key",
-      "name": "model-swap / untrusted signer"
+      "name": "model-swap / untrusted signer",
+      "status": "run"
     },
     {
       "attack_id": "2_weight_byte_tamper",
       "attempted": true,
+      "data_provenance": "constructed_adversary_against_shipped_defense",
       "detail": "vault_IntegrityError=True verify_sha_fail=True",
       "detected_or_blocked": true,
       "mechanism": "ArtefactVault.retrieve IntegrityError + verify_model sha256 mismatch",
-      "name": "weight-byte tamper"
+      "name": "weight-byte tamper",
+      "status": "run"
     },
     {
       "attack_id": "3_manifest_tamper",
       "attempted": true,
+      "data_provenance": "constructed_adversary_against_shipped_defense",
       "detail": "clean_ok=True forged_rejected=True",
       "detected_or_blocked": true,
       "mechanism": "verify_model: RSA-PSS signature covers manifest_sha256 \u2014 tamper invalidates it",
-      "name": "training-manifest tamper"
+      "name": "training-manifest tamper",
+      "status": "run"
     },
     {
       "attack_id": "4_evidence_chain_tamper",
       "attempted": true,
+      "data_provenance": "constructed_adversary_against_shipped_defense",
       "detail": "first_broken_index=1 (expected 1)",
       "detected_or_blocked": true,
       "mechanism": "EvidenceStore.verify: sha256(prev || canonical_json(record)) chain break",
-      "name": "evidence-chain field tamper"
+      "name": "evidence-chain field tamper",
+      "status": "run"
     },
     {
       "attack_id": "5_evidence_reorder_replay",
       "attempted": true,
+      "data_provenance": "constructed_adversary_against_shipped_defense",
       "detail": "reorder_break_idx=1 replay_break_idx=4",
       "detected_or_blocked": true,
       "mechanism": "EvidenceStore.verify: per-tenant chain order/replay inconsistency",
-      "name": "evidence reorder / replay"
+      "name": "evidence reorder / replay",
+      "status": "run"
     },
     {
       "attack_id": "6_shield_self_report_spoof",
       "attempted": true,
+      "data_provenance": "constructed_adversary_against_shipped_defense",
       "detail": "spoof_fell_back=True unverified_fell_back=True spoof_detail='neural TBLER 0.5 [measured CRC/HARQ] vs baseline 0.001 (conf 1.00 \u2265 0.2)'",
       "detected_or_blocked": true,
       "mechanism": "NeuralRxEnvelopeInvariant: grades on independent measured_tbler, not self-report; fail-closed when unverified",
-      "name": "shield self-report spoofing"
+      "name": "shield self-report spoofing",
+      "status": "run"
     },
     {
       "attack_id": "7_illegal_emit_attempt",
       "attempted": true,
+      "data_provenance": "constructed_adversary_against_shipped_defense",
       "detail": "illegal_emits=0; block=ric_policy emit_blocked=False safe=True violated=[] safe_freq=3310000000.0 safe_tx=20.0 safe_order=None | block=ric_policy emit_blocked=False safe=True violated=[] safe_freq=3550000000.0 safe_tx=13.0 safe_order=None | block=learned_constellation emit_blocked=False safe=True violated=[] safe_freq=3550000000.0 safe_tx=20.0 safe_order=4",
       "detected_or_blocked": true,
       "mechanism": "Shield.dispose: project-to-safe-set / fail-closed (emit_blocked) \u2014 0 illegal emits",
-      "name": "illegal-emit attempt"
+      "name": "illegal-emit attempt",
+      "status": "run"
     },
     {
       "attack_id": "8_li_fail_closed_bypass",
       "attempted": true,
+      "data_provenance": "constructed_adversary_against_shipped_defense",
       "detail": "raw_blocks=True shield_emit_blocked=True populated_allows=True unaudited_optout_raised=True audited_optout_ok=True",
       "detected_or_blocked": true,
       "mechanism": "LIConstraint fail-closed gate (li_fail_closed) + ValueError on unaudited opt-out",
-      "name": "LI fail-closed bypass"
+      "name": "LI fail-closed bypass",
+      "status": "run"
+    },
+    {
+      "attack_id": "9_captured_forged_nf_injection",
+      "attempted": true,
+      "data_provenance": "real_captured_attack_traffic",
+      "detail": "captured_forged_registrations=398 real_free5gc_nrf_accepted_2xx=398/398 horizon_pinned_reject=398/398 attacker_signature_self_consistent=398/398 replayed_bytes_match_recorded_digest=398/398 vault_IntegrityError=8/8",
+      "detected_or_blocked": true,
+      "mechanism": "verify_model pinned trusted_public_key_der + ArtefactVault content addressing, applied to the verbatim captured forged NF-profile bodies",
+      "name": "captured forged NF-profile injection (5GAD FakeAMFInsert)",
+      "status": "run"
+    },
+    {
+      "attack_id": "10_captured_malformed_input_failclosed",
+      "attempted": true,
+      "data_provenance": "real_captured_attack_traffic",
+      "detail": "captured_malformed_requests=1594 armA_hostile_text_handled=1594/1594 armB_empty_required_fields_contained=795/795 unhandled_exceptions=0 illegal_emits=0 first_exception=none",
+      "detected_or_blocked": true,
+      "mechanism": "Shield.dispose is total over attacker-controlled text and over the captured attack's present-but-empty required fields: no unhandled exception, project-to-safe-set / fail-closed, 0 illegal emits",
+      "name": "captured malformed/fuzzed control-plane input (5GAD CrashNRF/randomDataDump/randomAMFInsert)",
+      "status": "run"
+    },
+    {
+      "attack_id": "11_evidence_chain_at_captured_volume",
+      "attempted": true,
+      "data_provenance": "real_captured_attack_traffic",
+      "detail": "chain_length=5112 (= captured control-plane events) clean_verify=-1 tamper_index=796 first_broken_index=796",
+      "detected_or_blocked": true,
+      "mechanism": "EvidenceStore.verify: sha256(prev || canonical_json(record)) chain break, at the real captured event count and ordering",
+      "name": "evidence chain at real captured volume and ordering (5GAD, all captures)",
+      "status": "run"
     }
   ],
   "bypassed": 0,
   "bypasses": [],
-  "detected_or_blocked": 8,
-  "generated_at": "2026-06-21T10:47:09.140566+00:00",
+  "detected_or_blocked": 11,
+  "generated_at": "2026-07-28T04:11:18.120903+00:00",
+  "real_data_probes": [
+    "10_captured_malformed_input_failclosed",
+    "11_evidence_chain_at_captured_volume",
+    "9_captured_forged_nf_injection"
+  ],
+  "real_data_provenance": {
+    "attribution": "C. Coldwell et al., 'Machine Learning 5G Attack Detection in Programmable Logic', 2022 IEEE Globecom Workshops, doi 10.1109/GCWkshps56602.2022.10008647; dataset doi 10.11578/dc.20220811.1; MIT, Copyright (c) 2022 Battelle Energy Alliance, LLC.",
+    "available": true,
+    "captured_control_plane_events": 5112,
+    "captured_nf_profile_writes": 1593,
+    "ci_reproducible": true,
+    "claim": "Probes 9-11 replay traffic captured over the wire while ten real attacks were executed against a real free5GC 5G standalone core. Probe 9 feeds the captured forged NF-profile request bodies through Horizon's artefact gate BYTE FOR BYTE. Probes 10 and 11 use the real attacker-supplied strings and the real event sequence to drive Horizon's own objects, because 5GAD contains no Horizon artefacts.",
+    "data_kind": "over-the-wire packet capture of attacks actually executed against a real free5GC 5G standalone core (UERANSIM RAN) on a physical test bench; not simulated, not synthesised",
+    "dataset": "5GAD-2022 (Idaho National Laboratory)",
+    "events_sha256": "d167e8ecb711d445934ed234b05805a5ee816b765a0417e067e374680d67da57",
+    "features_sha256": "5f75d84aac8a7a94cf900a4694ad6281484adf7e8ecb0ee6633c72d6bdfac8fe",
+    "licence": "MIT (Copyright (c) 2022 Battelle Energy Alliance, LLC)",
+    "not_claimed": [
+      "that Horizon defends free5GC or any 5G core network function",
+      "that probes 1-8 use captured data \u2014 they are cryptographic and fail-closed gates, which are properties of the code, not of a dataset"
+    ],
+    "paper_doi": "10.1109/GCWkshps56602.2022.10008647",
+    "repo_commit": "d6c3643dafb0683ecac2557e1a5ca29c3b5d7ecb",
+    "repo_doi": "10.11578/dc.20220811.1",
+    "repo_url": "https://github.com/IdahoLabResearch/5GAD",
+    "source_archive_sha256": "f568a8a0a291f5814c2a6fd6dc9c568c8cda2d96f88706776efd7c301cf7428e"
+  },
+  "skipped": 0,
+  "skipped_ids": [],
   "suite": "integrity_attack_suite",
-  "total_attacks": 8
+  "total_attacks": 11,
+  "total_probes": 11
 }

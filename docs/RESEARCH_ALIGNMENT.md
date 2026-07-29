@@ -1,5 +1,11 @@
 # Research alignment — NTU / SCRIPTS / DTC and Singapore's FCP
 
+> **Evidence notice (25 July 2026):** this is a research-alignment and proposal
+> narrative, not an independent validation report. The authoritative claim
+> status is [`CLAIMS_EVIDENCE.json`](CLAIMS_EVIDENCE.json). In particular,
+> deployed-vendor interoperability, field completion, certification, global
+> novelty and independent validation are not established.
+>
 > This document establishes the research lineage Horizon-RIC builds on, the
 > team behind the capability base, and the honest division of labour between
 > that team's published federated-RL spectrum work and the security / safety /
@@ -117,7 +123,7 @@ federated decisions deployable on **regulated / licensed / satellite** spectrum:
 | **Robust aggregation** | Bounds a poisoning client's pull on the *shared DSA policy* during federated training (Krum / median / trimmed-mean). | `src/horizon_ric/federated/robust.py` |
 | **Shamir secure aggregation** | Hides individual client updates — the successor to the team's privacy-preserving power-control line. | `src/horizon_ric/federated/secure.py` |
 | **Certified federated unlearning** | *Removes* an attributed poisoning client's contribution from the shared DSA policy post-hoc — the **repair** layer for the backdoor robust aggregation only *bounds* — and binds the removal to a signed, audit-chainable `UnlearningCertificate` (Starfish-style distance-to-retrain bound + backdoor-probe). Bridges the team's own machine-unlearning-for-DSA work (pub. 6) and Lam's certified-client-removal line. | `src/horizon_ric/federated/unlearning.py` |
-| **DP-FedAvg + Rényi-DP accountant** | *Bounds* membership/inversion leakage with clipping + Gaussian noise and a real (ε, δ) accountant; a committed MIA benchmark shows AUC 0.97→~0.5 as ε falls. Extends the team's adaptive-DP-for-unlearning line. | `src/horizon_ric/federated/dp.py` |
+| **DP-FedAvg + Rényi-DP accountant** | Reports a one-round bound with public clipping, conservative replace-one sensitivity and a Rényi accountant. The 64-member/64-non-member, 10-seed MIA result is an attack-specific diagnostic, not privacy proof. | `src/horizon_ric/federated/dp.py` |
 | **Verifiable two-server secure aggregation** | Upgrades secure-agg from honest-but-curious to *malicious-server-detecting*: 2-of-2 additive sharing (server learns nothing) + Feldman commitments (tamper/drop detection 1.0). Realises the Starfish two-non-colluding-server model. | `src/horizon_ric/federated/verifiable_secagg.py` |
 | **Subject-level certified erasure (GDPR Art. 17)** | Erases *one data subject* (not a whole client) by exact recompute, verified against an independent retrain (distance 0) and bound to a signed `ErasureCertificate`. Bridges Lam's primal-dual sample/label-unlearning (right-to-be-forgotten) work. | `src/horizon_ric/federated/erasure.py` |
 | **Decision Safety Shield** | A *model-independent* projection of any agent's chosen channel / power onto the TS 38.104 spectral mask + EIRP ceiling + an LEO/NTN power-flux-density (PFD) ceiling. | `src/horizon_ric/shield/` |
@@ -143,7 +149,7 @@ To make the division of labour concrete, the project ships a demonstrator that
 takes a federated DSA agent in the spirit of the publications above and runs it
 through the Horizon-RIC trust layer.
 
-**Built / in build (the bridge, owned by a parallel work-stream):**
+**Built as repository software demonstrators:**
 
 - A federated DSA agent — `src/horizon_ric/spectrum/`.
 - A benchmark — `benchmarks/secure_dsa_benchmark.py`, with committed results at
@@ -162,11 +168,10 @@ through the Horizon-RIC trust layer.
 - The hash-chained, RFC-3161-anchored evidence store
   (`src/horizon_ric/evidence/`).
 
-> Status note: the `spectrum/`, `secure_dsa_benchmark.py`, and
-> `datasets/spectrum_dsa/` artefacts are under active construction by a parallel
-> work-stream. Where this document references them, treat them as the
-> **demonstrator-in-build**; the underlying trust mechanisms they depend on are
-> already working code with tests.
+> Status note: the `spectrum/`, `secure_dsa_benchmark.py` and
+> `datasets/spectrum_dsa/` artifacts now exist, and an external DeepMIMO
+> ray-tracing evaluation is reproducible from a pinned public source. Treat them
+> as **repository demonstrators**, not completed OTA/operator demonstrations.
 
 ---
 
@@ -203,12 +208,14 @@ spine of this proposal.
 | Decision Safety Shield + `SafetyCertificate` | **Built**, tested |
 | Hash-chained + RFC-3161-anchored evidence | **Built**, tested (real public TSAs) |
 | Model-provenance threading | **Built**, tested |
-| LEO PFD invariant | **In build** (demonstrator) |
-| Federated DSA agent `src/horizon_ric/spectrum/` | **In build** (parallel work-stream) |
-| `benchmarks/secure_dsa_benchmark.py` + results | **In build** (parallel work-stream) |
-| `datasets/spectrum_dsa/` + `DATASHEET.md` | **In build** (parallel work-stream) |
-| Malicious-server FL (verifiable secret sharing) | **Roadmap** (M3–4) |
-| Differential-privacy accountant | **Roadmap** (M3–4) |
+| LEO PFD invariant | **Repository demonstrator**, tested; no field validation |
+| Federated DSA agent `src/horizon_ric/spectrum/` | **Repository demonstrator**, tested |
+| `benchmarks/secure_dsa_benchmark.py` + results | **Built**, committed simulation result |
+| `datasets/spectrum_dsa/` + `DATASHEET.md` | **Built**, deterministic simulation data |
+| External DeepMIMO transform + benchmark | **Built**, pinned and hash-checked; ray tracing, not OTA |
+| Malicious-server FL (verifiable two-server aggregation) | **Built**, exact mode assumes non-collusion |
+| Client-side local DP for colluding-server view | **Built**, one-release bound; material utility cost |
+| Differential-privacy accountant | **Built for stated mechanisms**; lifecycle composition open |
 
 See [`docs/EVALUATION_CRITERIA.md`](EVALUATION_CRITERIA.md) for the criterion-by-
 criterion self-assessment, including where the demonstrator's in-build status is

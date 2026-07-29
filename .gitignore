@@ -53,6 +53,12 @@ data/tle/
 data/deepmimo/*/
 !data/deepmimo/manifest.json
 !data/deepmimo/.gitkeep
+deepmimo_scenarios/
+datasets/deepmimo_asu_3p5/generated/
+
+# scripts/fetch_dependencies.sh default output (plain-clone alternative to
+# the third_party/ submodules)
+/oran-deps-src/
 
 # Local logs
 logs/
@@ -71,3 +77,8 @@ Thumbs.db
 # Runtime state (per-deploy)
 var/evidence/
 var/state/
+data/e2e/
+dump.rdb
+
+# Ephemeral benchmark evidence chains (tampered in-proof, regenerated each run)
+benchmarks/results/*_audit.jsonl

@@ -1,0 +1,555 @@
+{
+  "benchmark": "shield_decision_path_under_real_captured_control_plane_load",
+  "data_provenance": {
+    "attribution": "C. Coldwell et al., 'Machine Learning 5G Attack Detection in Programmable Logic', 2022 IEEE Globecom Workshops, doi 10.1109/GCWkshps56602.2022.10008647; dataset doi 10.11578/dc.20220811.1; MIT, Copyright (c) 2022 Battelle Energy Alliance, LLC.",
+    "ci_reproducible": true,
+    "data_kind": "over-the-wire packet capture of attacks actually executed against a real free5GC 5G standalone core (UERANSIM RAN) on a physical test bench; not simulated, not synthesised",
+    "dataset": "5GAD-2022 (Idaho National Laboratory)",
+    "derived_not_measured": [
+      "the radio parameters of the Shield proposal each event maps to (5GAD is a core-network capture and contains no radio actions); see _proposal_from_event"
+    ],
+    "events_sha256": "d167e8ecb711d445934ed234b05805a5ee816b765a0417e067e374680d67da57",
+    "features_sha256": "5f75d84aac8a7a94cf900a4694ad6281484adf7e8ecb0ee6633c72d6bdfac8fe",
+    "licence": "MIT (Copyright (c) 2022 Battelle Energy Alliance, LLC)",
+    "paper_doi": "10.1109/GCWkshps56602.2022.10008647",
+    "real": [
+      "event existence, ordering and nanosecond timestamps",
+      "SBI method and resource path; PFCP message type",
+      "offered arrival rate and burstiness",
+      "read/write kind of each captured event"
+    ],
+    "repo_commit": "d6c3643dafb0683ecac2557e1a5ca29c3b5d7ecb",
+    "repo_doi": "10.11578/dc.20220811.1",
+    "repo_url": "https://github.com/IdahoLabResearch/5GAD",
+    "source_archive_sha256": "f568a8a0a291f5814c2a6fd6dc9c568c8cda2d96f88706776efd7c301cf7428e"
+  },
+  "environment": {
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "implementation": "CPython",
+    "logical_cpu_count": 4,
+    "max_rss_kib": 94512,
+    "platform": "Linux-6.18.5-x86_64-with-glibc2.39",
+    "python": "3.11.15"
+  },
+  "generated_at_utc": "2026-07-28T03:05:47.149738+00:00",
+  "parameters": {
+    "band_hi_hz": 3500000000.0,
+    "band_lo_hz": 3400000000.0,
+    "guard_band_hz": 1000000.0,
+    "invariant_ids": [
+      "numeric_domain_sanity",
+      "spectral_mask_ts38104",
+      "max_eirp",
+      "neural_rx_envelope",
+      "constellation_legality"
+    ],
+    "iterations": 51120,
+    "max_eirp_dBm": 33.0,
+    "replay_repeats": 10,
+    "traffic_mix": "one Shield disposition per control-plane event captured on a real free5GC core under ten real attacks (5GAD-2022), replayed 10x"
+  },
+  "real_capture_replay": {
+    "aggregate": {
+      "measured_arrival_profile": {
+        "events": 5112,
+        "interarrival_ms": {
+          "max": 9966.286726,
+          "min": 0.0,
+          "p50": 35.59885,
+          "p95": 1216.38726
+        },
+        "mean_events_per_second": 2.85307103778849,
+        "occupied_1s_bins": 955,
+        "peak_events_per_second_1s_bins": 35,
+        "span_seconds": 1791.753493794
+      },
+      "measured_shield_service": {
+        "blocked_decisions": 0,
+        "decisions": 51120,
+        "decisions_per_second": 36193.37506026857,
+        "elapsed_seconds": 1.412413181,
+        "latency_microseconds": {
+          "maximum": 330.391,
+          "mean": 27.10440117370892,
+          "p50": 22.462,
+          "p95": 46.909,
+          "p99": 65.775
+        },
+        "projected_decisions": 13540
+      },
+      "worst_case_headroom_x": 6103.872886975392
+    },
+    "per_capture": [
+      {
+        "attack_class": "reconnaissance",
+        "capture": "AMFLookingForUDM",
+        "capture_role": "attack_only",
+        "captured_reads": 398,
+        "captured_writes": 0,
+        "measured_arrival_profile": {
+          "events": 398,
+          "interarrival_ms": {
+            "max": 332.115887,
+            "min": 280.131996,
+            "p50": 285.102654,
+            "p95": 306.003845
+          },
+          "mean_events_per_second": 3.4680473790176567,
+          "occupied_1s_bins": 115,
+          "peak_events_per_second_1s_bins": 4,
+          "span_seconds": 114.761984628
+        },
+        "measured_shield_service": {
+          "blocked_decisions": 0,
+          "decisions": 3980,
+          "decisions_per_second": 39329.22135454186,
+          "elapsed_seconds": 0.10119702,
+          "latency_microseconds": {
+            "maximum": 102.011,
+            "mean": 24.924033668341707,
+            "p50": 20.811,
+            "p95": 40.708,
+            "p99": 65.993
+          },
+          "projected_decisions": 0
+        },
+        "message_mix": {
+          "GET nnrf-disc": 398
+        },
+        "service_to_peak_offered_headroom_x": 9832.305338635466
+      },
+      {
+        "attack_class": "denial_of_service",
+        "capture": "CrashNRF",
+        "capture_role": "attack_only",
+        "captured_reads": 398,
+        "captured_writes": 0,
+        "measured_arrival_profile": {
+          "events": 398,
+          "interarrival_ms": {
+            "max": 281.631231,
+            "min": 258.044285,
+            "p50": 269.749063,
+            "p95": 280.967947
+          },
+          "mean_events_per_second": 3.6958466129019687,
+          "occupied_1s_bins": 108,
+          "peak_events_per_second_1s_bins": 4,
+          "span_seconds": 107.688451845
+        },
+        "measured_shield_service": {
+          "blocked_decisions": 0,
+          "decisions": 3980,
+          "decisions_per_second": 44759.807402372455,
+          "elapsed_seconds": 0.08891906,
+          "latency_microseconds": {
+            "maximum": 92.431,
+            "mean": 21.924943718592964,
+            "p50": 20.136,
+            "p95": 31.17,
+            "p99": 45.857
+          },
+          "projected_decisions": 0
+        },
+        "message_mix": {
+          "GET nnrf-disc": 398
+        },
+        "service_to_peak_offered_headroom_x": 11189.951850593114
+      },
+      {
+        "attack_class": "network_reconfiguration",
+        "capture": "FakeAMFDelete",
+        "capture_role": "attack_full",
+        "captured_reads": 11,
+        "captured_writes": 798,
+        "measured_arrival_profile": {
+          "events": 809,
+          "interarrival_ms": {
+            "max": 1297.008563,
+            "min": 7.407239,
+            "p50": 288.041467,
+            "p95": 1284.83779
+          },
+          "mean_events_per_second": 1.5742237295216948,
+          "occupied_1s_bins": 409,
+          "peak_events_per_second_1s_bins": 5,
+          "span_seconds": 513.90408163
+        },
+        "measured_shield_service": {
+          "blocked_decisions": 0,
+          "decisions": 8090,
+          "decisions_per_second": 30519.364434876963,
+          "elapsed_seconds": 0.265077604,
+          "latency_microseconds": {
+            "maximum": 318.858,
+            "mean": 32.17914140914709,
+            "p50": 31.177,
+            "p95": 54.75,
+            "p99": 75.235
+          },
+          "projected_decisions": 4100
+        },
+        "message_mix": {
+          "DELETE nnrf-nfm": 399,
+          "GET ": 11,
+          "PUT nnrf-nfm": 399
+        },
+        "service_to_peak_offered_headroom_x": 6103.872886975392
+      },
+      {
+        "attack_class": "network_reconfiguration",
+        "capture": "FakeAMFInsert",
+        "capture_role": "attack_only",
+        "captured_reads": 0,
+        "captured_writes": 397,
+        "measured_arrival_profile": {
+          "events": 397,
+          "interarrival_ms": {
+            "max": 560.970494,
+            "min": 262.036272,
+            "p50": 276.592212,
+            "p95": 290.629523
+          },
+          "mean_events_per_second": 3.634292789335145,
+          "occupied_1s_bins": 110,
+          "peak_events_per_second_1s_bins": 4,
+          "span_seconds": 109.237208726
+        },
+        "measured_shield_service": {
+          "blocked_decisions": 0,
+          "decisions": 3970,
+          "decisions_per_second": 43790.34633762858,
+          "elapsed_seconds": 0.090659251,
+          "latency_microseconds": {
+            "maximum": 122.487,
+            "mean": 22.422911083123424,
+            "p50": 20.195,
+            "p95": 31.283,
+            "p99": 52.414
+          },
+          "projected_decisions": 0
+        },
+        "message_mix": {
+          "PUT nnrf-nfm": 397
+        },
+        "service_to_peak_offered_headroom_x": 10947.586584407145
+      },
+      {
+        "attack_class": "network_reconfiguration",
+        "capture": "FakeAMFInsert_full",
+        "capture_role": "attack_full",
+        "captured_reads": 0,
+        "captured_writes": 398,
+        "measured_arrival_profile": {
+          "events": 398,
+          "interarrival_ms": {
+            "max": 292.543119,
+            "min": 262.036272,
+            "p50": 276.592212,
+            "p95": 290.585398
+          },
+          "mean_events_per_second": 3.6434471792327146,
+          "occupied_1s_bins": 110,
+          "peak_events_per_second_1s_bins": 4,
+          "span_seconds": 109.237208726
+        },
+        "measured_shield_service": {
+          "blocked_decisions": 0,
+          "decisions": 3980,
+          "decisions_per_second": 41673.93080975694,
+          "elapsed_seconds": 0.09550335,
+          "latency_microseconds": {
+            "maximum": 113.812,
+            "mean": 23.514170351758793,
+            "p50": 20.487,
+            "p95": 38.084,
+            "p99": 55.864
+          },
+          "projected_decisions": 0
+        },
+        "message_mix": {
+          "PUT nnrf-nfm": 398
+        },
+        "service_to_peak_offered_headroom_x": 10418.482702439234
+      },
+      {
+        "attack_class": "reconnaissance",
+        "capture": "GetAllNFs",
+        "capture_role": "attack_only",
+        "captured_reads": 398,
+        "captured_writes": 0,
+        "measured_arrival_profile": {
+          "events": 398,
+          "interarrival_ms": {
+            "max": 336.76812,
+            "min": 280.484296,
+            "p50": 287.955911,
+            "p95": 303.394102
+          },
+          "mean_events_per_second": 3.4495532830851556,
+          "occupied_1s_bins": 116,
+          "peak_events_per_second_1s_bins": 4,
+          "span_seconds": 115.377258253
+        },
+        "measured_shield_service": {
+          "blocked_decisions": 0,
+          "decisions": 3980,
+          "decisions_per_second": 42023.19112097697,
+          "elapsed_seconds": 0.094709609,
+          "latency_microseconds": {
+            "maximum": 115.007,
+            "mean": 23.327935175879396,
+            "p50": 20.601,
+            "p95": 32.56,
+            "p99": 58.48
+          },
+          "projected_decisions": 0
+        },
+        "message_mix": {
+          "GET nnrf-disc": 398
+        },
+        "service_to_peak_offered_headroom_x": 10505.797780244242
+      },
+      {
+        "attack_class": "reconnaissance",
+        "capture": "GetUserData",
+        "capture_role": "attack_only",
+        "captured_reads": 398,
+        "captured_writes": 0,
+        "measured_arrival_profile": {
+          "events": 398,
+          "interarrival_ms": {
+            "max": 327.339544,
+            "min": 281.605515,
+            "p50": 285.108748,
+            "p95": 305.606396
+          },
+          "mean_events_per_second": 3.4723654037967577,
+          "occupied_1s_bins": 115,
+          "peak_events_per_second_1s_bins": 4,
+          "span_seconds": 114.619273526
+        },
+        "measured_shield_service": {
+          "blocked_decisions": 0,
+          "decisions": 3980,
+          "decisions_per_second": 44646.960164041455,
+          "elapsed_seconds": 0.089143807,
+          "latency_microseconds": {
+            "maximum": 99.837,
+            "mean": 21.97627336683417,
+            "p50": 20.146,
+            "p95": 31.092,
+            "p99": 50.783
+          },
+          "projected_decisions": 0
+        },
+        "message_mix": {
+          "GET nudm-sdm": 398
+        },
+        "service_to_peak_offered_headroom_x": 11161.740041010364
+      },
+      {
+        "attack_class": "denial_of_service",
+        "capture": "automatedDropWithTimer",
+        "capture_role": "attack_only",
+        "captured_reads": 360,
+        "captured_writes": 0,
+        "measured_arrival_profile": {
+          "events": 360,
+          "interarrival_ms": {
+            "max": 9981.897855,
+            "min": 30.311053,
+            "p50": 96.074281,
+            "p95": 9970.237559
+          },
+          "mean_events_per_second": 0.20092154257559952,
+          "occupied_1s_bins": 185,
+          "peak_events_per_second_1s_bins": 2,
+          "span_seconds": 1791.744157372
+        },
+        "measured_shield_service": {
+          "blocked_decisions": 0,
+          "decisions": 3600,
+          "decisions_per_second": 30434.950699311048,
+          "elapsed_seconds": 0.118285061,
+          "latency_microseconds": {
+            "maximum": 128.524,
+            "mean": 32.31580527777778,
+            "p50": 31.543,
+            "p95": 54.542,
+            "p99": 83.688
+          },
+          "projected_decisions": 1940
+        },
+        "message_mix": {
+          "PFCP n4-pfcp": 360
+        },
+        "service_to_peak_offered_headroom_x": 15217.475349655524
+      },
+      {
+        "attack_class": "denial_of_service",
+        "capture": "automatedRedirectWithTimer",
+        "capture_role": "attack_only",
+        "captured_reads": 360,
+        "captured_writes": 0,
+        "measured_arrival_profile": {
+          "events": 360,
+          "interarrival_ms": {
+            "max": 9980.171499,
+            "min": 32.623474,
+            "p50": 93.950732,
+            "p95": 9965.318811
+          },
+          "mean_events_per_second": 0.20092049561890774,
+          "occupied_1s_bins": 187,
+          "peak_events_per_second_1s_bins": 2,
+          "span_seconds": 1791.753493794
+        },
+        "measured_shield_service": {
+          "blocked_decisions": 0,
+          "decisions": 3600,
+          "decisions_per_second": 33001.72436759964,
+          "elapsed_seconds": 0.109085209,
+          "latency_microseconds": {
+            "maximum": 120.239,
+            "mean": 29.835600555555555,
+            "p50": 30.763,
+            "p95": 50.748,
+            "p99": 68.601
+          },
+          "projected_decisions": 1750
+        },
+        "message_mix": {
+          "PFCP n4-pfcp": 360
+        },
+        "service_to_peak_offered_headroom_x": 16500.86218379982
+      },
+      {
+        "attack_class": "network_reconfiguration",
+        "capture": "randomAMFInsert",
+        "capture_role": "attack_only",
+        "captured_reads": 0,
+        "captured_writes": 799,
+        "measured_arrival_profile": {
+          "events": 799,
+          "interarrival_ms": {
+            "max": 1313.888064,
+            "min": 1009.202999,
+            "p50": 1274.484309,
+            "p95": 1305.254713
+          },
+          "mean_events_per_second": 0.8666319109119063,
+          "occupied_1s_bins": 799,
+          "peak_events_per_second_1s_bins": 1,
+          "span_seconds": 921.960050097
+        },
+        "measured_shield_service": {
+          "blocked_decisions": 0,
+          "decisions": 7990,
+          "decisions_per_second": 29913.801900979808,
+          "elapsed_seconds": 0.267100786,
+          "latency_microseconds": {
+            "maximum": 135.533,
+            "mean": 32.94549486858573,
+            "p50": 31.55,
+            "p95": 52.276,
+            "p99": 78.495
+          },
+          "projected_decisions": 5750
+        },
+        "message_mix": {
+          "DELETE nnrf-nfm": 400,
+          "PUT nnrf-nfm": 399
+        },
+        "service_to_peak_offered_headroom_x": 29913.801900979808
+      },
+      {
+        "attack_class": "reconnaissance",
+        "capture": "randomDataDump",
+        "capture_role": "attack_only",
+        "captured_reads": 397,
+        "captured_writes": 0,
+        "measured_arrival_profile": {
+          "events": 397,
+          "interarrival_ms": {
+            "max": 551.684705,
+            "min": 262.230601,
+            "p50": 279.370995,
+            "p95": 291.12013
+          },
+          "mean_events_per_second": 3.600915375600095,
+          "occupied_1s_bins": 111,
+          "peak_events_per_second_1s_bins": 4,
+          "span_seconds": 110.249744465
+        },
+        "measured_shield_service": {
+          "blocked_decisions": 0,
+          "decisions": 3970,
+          "decisions_per_second": 38994.27766341966,
+          "elapsed_seconds": 0.10180981,
+          "latency_microseconds": {
+            "maximum": 109.392,
+            "mean": 25.127527204030226,
+            "p50": 20.879,
+            "p95": 41.355,
+            "p99": 67.515
+          },
+          "projected_decisions": 0
+        },
+        "message_mix": {
+          "GET nnrf-disc": 397
+        },
+        "service_to_peak_offered_headroom_x": 9748.569415854916
+      }
+    ]
+  },
+  "results": {
+    "blocked_decisions": 0,
+    "decisions": 51120,
+    "decisions_per_second": 36193.37506026857,
+    "elapsed_seconds": 1.412413181,
+    "latency_microseconds": {
+      "maximum": 330.391,
+      "mean": 27.10440117370892,
+      "p50": 22.462,
+      "p95": 46.909,
+      "p99": 65.775
+    },
+    "max_rss_kib": 94512,
+    "projected_decisions": 13540,
+    "source": "real_capture_replay.aggregate"
+  },
+  "schema_version": "2.0",
+  "scope": {
+    "does_not_prove": [
+      "carrier-scale latency, throughput, availability or scalability",
+      "performance with SMO/RIC/radio/network I/O",
+      "multi-node concurrency, failover or 24-hour stability",
+      "performance on an operator production hardware target",
+      "anything about the radio parameters of the replayed actions \u2014 those are derived from each captured event's bytes, not measured",
+      "detection or mitigation of the captured attacks themselves; the Shield is an action-legality projector, not an intrusion detector, and this benchmark measures load, not detection"
+    ],
+    "honest_limits": [
+      "The replay runs at maximum speed rather than sleeping out the real inter-arrival gaps: the longest capture spans 1791 s, and replaying it in real time would measure the clock, not the Shield. Real timing is reported separately as the measured arrival profile and compared against the measured service rate.",
+      "5GAD's benign captures contain almost no service-based-interface traffic \u2014 free5GC's steady state after registration is GTP-U user plane \u2014 so there is no meaningful benign SBI control-plane baseline to compare the attack rates against. The 65 KB Normal-1UE reference yields zero decodable SBI requests and is reported as such rather than padded out."
+    ],
+    "proves": "Measured local runtime of the in-process Shield and certificate construction when driven once per control-plane event actually captured on a real free5GC core under ten real attacks, and the ratio of that service rate to the peak arrival rate those attacks actually offered."
+  },
+  "synthetic_control": {
+    "blocked_decisions": 0,
+    "data_provenance": "synthetic",
+    "decisions_per_second": 30123.374824197424,
+    "elapsed_seconds": 1.659840582,
+    "iterations": 50000,
+    "latency_microseconds": {
+      "maximum": 343.802,
+      "mean": 32.69414476,
+      "p50": 32.16,
+      "p95": 51.942,
+      "p99": 68.811
+    },
+    "projected_decisions": 33334,
+    "traffic_mix": "deterministic alternating terrestrial policy proposals (invented)",
+    "warmup_iterations": 1000
+  }
+}

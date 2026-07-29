@@ -176,8 +176,36 @@ restore_database() {
     rm -f "$dst"
     sqlite3 "$dst" < "$in"
   else
-    pg_restore --no-owner --clean --if-exists \
-      --dbname="$HORIZON_DR_DB_URL" "$in"
+    # TimescaleDB targets need the documented pre/post-restore dance
+    # (SELECT timescaledb_pre_restore(); pg_restore; timescaledb_post_restore()).
+    # Plain `pg_restore --clean` DROPs the timescaledb extension via the
+    # dependency cascade, fails to recreate the catalog mid-restore, and
+    # leaves the target with ZERO restored rows (verified live 2026-07-27
+    # against timescale/timescaledb:2.16.1-pg16 — see deploy/EVIDENCE_BACKENDS.md).
+    local tsdb_capable
+    tsdb_capable="$(psql "$HORIZON_DR_DB_URL" -tAc \
+      "SELECT count(*) FROM pg_available_extensions WHERE name='timescaledb'")"
+    if [[ "$tsdb_capable" == "1" ]]; then
+      # Restore into a FRESH/prepared database (Timescale's own requirement;
+      # deploy/DR_PLAN.md provisions a fresh StatefulSet volume on restore).
+      psql "$HORIZON_DR_DB_URL" -v ON_ERROR_STOP=1 -q \
+        -c "CREATE EXTENSION IF NOT EXISTS timescaledb" \
+        -c "SELECT timescaledb_pre_restore();"
+      # The dump carries its own `CREATE EXTENSION timescaledb` TOC entry
+      # which collides with the pre-created extension; skip exactly that
+      # entry rather than ignoring every pg_restore error.
+      local toc
+      toc="$(mktemp -t horizon-toc.XXXXXX)"
+      pg_restore -l "$in" | grep -v -E 'EXTENSION( -)? timescaledb' > "$toc"
+      pg_restore --no-owner --exit-on-error --use-list "$toc" \
+        --dbname="$HORIZON_DR_DB_URL" "$in"
+      rm -f "$toc"
+      psql "$HORIZON_DR_DB_URL" -v ON_ERROR_STOP=1 -q \
+        -c "SELECT timescaledb_post_restore();"
+    else
+      pg_restore --no-owner --clean --if-exists \
+        --dbname="$HORIZON_DR_DB_URL" "$in"
+    fi
   fi
   log "restored db from $in"
 }

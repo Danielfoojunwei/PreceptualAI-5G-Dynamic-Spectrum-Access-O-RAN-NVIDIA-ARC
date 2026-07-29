@@ -1,6 +1,6 @@
 # Runbook — Security Incident Response
 
-> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
 
 Activates when a Horizon-RIC tenant chain breaks, an IDS hit lands on the rApp

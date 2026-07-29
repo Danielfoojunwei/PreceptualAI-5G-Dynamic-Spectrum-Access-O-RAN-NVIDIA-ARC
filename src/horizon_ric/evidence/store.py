@@ -1,15 +1,20 @@
 """Evidence store — tamper-evident persistence for DecisionRecord.
 
-Two backends ship out of the box:
+Three backends ship out of the box:
 
-  * `JsonlEvidenceStore`   appends one canonical-JSON record per line to a
-                           file, plus a SHA-256 chain so any tamper of an
-                           older line breaks the chain at every later line.
-  * `SqliteEvidenceStore`  same logic backed by SQLite (sqlalchemy core),
-                           suitable for queries and the rApp REST API.
+  * `JsonlEvidenceStore`    appends one canonical-JSON record per line to a
+                            file, plus a SHA-256 chain so any tamper of an
+                            older line breaks the chain at every later line.
+  * `SqliteEvidenceStore`   same logic backed by SQLite (sqlalchemy core),
+                            suitable for queries and the rApp REST API.
+  * `PostgresEvidenceStore` same logic backed by PostgreSQL/TimescaleDB
+                            (psycopg3) — the production backend deployed by
+                            the Helm chart's `timescaledb` StatefulSet.
 
-Both implement the same `EvidenceStore` ABC so callers (the A1 adapter,
-the rApp REST query handler) don't depend on the backend.
+All implement the same `EvidenceStore` ABC so callers (the A1 adapter,
+the rApp REST query handler) don't depend on the backend. Use
+`open_evidence_store(target)` to dispatch on a DSN/path at runtime
+(the `HORIZON_EVIDENCE_DSN` contract).
 
 Tamper-evidence:
     sha256_curr = sha256(prev_sha256 || canonical_json(record))
@@ -321,8 +326,267 @@ class SqliteEvidenceStore(EvidenceStore):
             yield
 
 
+class PostgresEvidenceStore(EvidenceStore):
+    """PostgreSQL/TimescaleDB-backed evidence store (psycopg3).
+
+    Same hash-chain semantics as the JSONL/SQLite backends:
+
+        sha256_curr = sha256(prev_sha256 || canonical_json(record))
+
+    computed *per tenant*, with the all-zero hash seeding each tenant's
+    chain. Rows live in `evidence_records`:
+
+        id          BIGINT GENERATED ALWAYS AS IDENTITY  -- append order
+        tenant_id   TEXT NOT NULL
+        ts          TIMESTAMPTZ NOT NULL                 -- record.timestamp
+        decision_id TEXT NOT NULL
+        record      JSONB NOT NULL                       -- canonical payload
+        hash        TEXT NOT NULL                        -- sha256 hex chain
+
+    There is deliberately no PRIMARY KEY / unique index: TimescaleDB
+    rejects `create_hypertable` on tables whose unique indexes do not
+    include the partitioning column (`ts`), and the chain itself is the
+    integrity mechanism. Append order is the `id` identity column.
+
+    Concurrency: the read-prev-then-insert critical section is serialised
+    with a *transaction-scoped advisory lock* keyed on the tenant
+    (`pg_advisory_xact_lock`), so concurrent appends from any number of
+    connections/processes cannot fork a tenant's chain (the same failure
+    mode as tests/test_known_bugs::CRIT-01/02, but cross-process). The
+    single shared connection per store instance is additionally guarded
+    by a `threading.Lock` because psycopg connections are not safe for
+    concurrent use from multiple threads.
+
+    TimescaleDB: on first connect we best-effort
+    `SELECT create_hypertable('evidence_records','ts', if_not_exists=>TRUE,
+    migrate_data=>TRUE)`; plain PostgreSQL (no timescaledb extension)
+    keeps working — the call simply rolls back.
+
+    The connection is opened lazily on first use, so constructing the
+    store (e.g. via `open_evidence_store`) is cheap and does not require
+    the database to be up yet.
+    """
+
+    # Advisory-lock class ("HRIC" in ASCII) namespacing our per-tenant
+    # advisory locks away from other users of pg_advisory_xact_lock.
+    _ADVISORY_CLASS = 0x48524943
+
+    def __init__(self, dsn: str, *, connect_timeout: int = 10):
+        self._dsn = dsn
+        self._connect_timeout = connect_timeout
+        self._lock = threading.Lock()
+        self._conn = None  # opened lazily; psycopg.Connection
+        self._schema_ready = False
+
+    # -- connection / schema management ---------------------------------
+
+    @staticmethod
+    def _psycopg():
+        try:
+            import psycopg
+        except ImportError as exc:  # pragma: no cover - env-dependent
+            raise RuntimeError(
+                "PostgresEvidenceStore requires the 'psycopg[binary]' package "
+                "(pip install 'psycopg[binary]')"
+            ) from exc
+        return psycopg
+
+    def _connection(self):
+        """Return the live shared connection. Caller must hold self._lock."""
+        psycopg = self._psycopg()
+        if self._conn is None or self._conn.closed:
+            self._conn = psycopg.connect(
+                self._dsn,
+                autocommit=False,
+                connect_timeout=self._connect_timeout,
+            )
+        if not self._schema_ready:
+            self._ensure_schema(self._conn)
+            self._schema_ready = True
+        return self._conn
+
+    def _ensure_schema(self, conn) -> None:
+        with conn.cursor() as cur:
+            # Serialise DDL across concurrent first-connectors. Plain
+            # `CREATE TABLE IF NOT EXISTS` is NOT race-free in Postgres:
+            # two sessions can both pass the existence check and collide
+            # on the backing identity sequence (duplicate key in
+            # pg_class). Key (class, 0) is reserved for schema DDL.
+            cur.execute(
+                "SELECT pg_advisory_xact_lock(%s, 0)", (self._ADVISORY_CLASS,)
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS evidence_records (
+                    id          BIGINT GENERATED ALWAYS AS IDENTITY,
+                    tenant_id   TEXT NOT NULL,
+                    ts          TIMESTAMPTZ NOT NULL,
+                    decision_id TEXT NOT NULL,
+                    record      JSONB NOT NULL,
+                    hash        TEXT NOT NULL
+                )
+                """
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS evidence_records_tenant_seq_idx "
+                "ON evidence_records (tenant_id, id)"
+            )
+        conn.commit()
+        # Best-effort TimescaleDB hypertable conversion. Rolls back cleanly
+        # on plain PostgreSQL (function does not exist) — both must work.
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT pg_advisory_xact_lock(%s, 0)",
+                    (self._ADVISORY_CLASS,),
+                )
+                cur.execute(
+                    "SELECT create_hypertable('evidence_records', 'ts', "
+                    "if_not_exists => TRUE, migrate_data => TRUE)"
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
+    def close(self) -> None:
+        """Close the underlying connection (idempotent)."""
+        with self._lock:
+            if self._conn is not None and not self._conn.closed:
+                self._conn.close()
+            self._conn = None
+
+    def __enter__(self) -> "PostgresEvidenceStore":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+    # -- EvidenceStore contract -----------------------------------------
+
+    def append(self, record: DecisionRecord) -> str:
+        if record.tenant_id is None:
+            record = record.model_copy(update={"tenant_id": _resolve_tenant()})
+        tenant_id = record.tenant_id or _UNSCOPED_TENANT
+        payload = _canonical_json(record)
+        with self._lock:
+            conn = self._connection()
+            try:
+                with conn.cursor() as cur:
+                    # Serialise the read-prev-then-insert critical section
+                    # across ALL connections (threads AND processes): a
+                    # transaction-scoped advisory lock keyed on the tenant.
+                    # Released automatically at commit/rollback, so a crash
+                    # mid-append cannot wedge the chain.
+                    cur.execute(
+                        "SELECT pg_advisory_xact_lock(%s, hashtext(%s))",
+                        (self._ADVISORY_CLASS, tenant_id),
+                    )
+                    cur.execute(
+                        "SELECT hash FROM evidence_records "
+                        "WHERE tenant_id = %s ORDER BY id DESC LIMIT 1",
+                        (tenant_id,),
+                    )
+                    row = cur.fetchone()
+                    prev = row[0] if row else _ZERO_HASH_HEX
+                    chain_hash = _chain(prev, payload)
+                    cur.execute(
+                        "INSERT INTO evidence_records "
+                        "(tenant_id, ts, decision_id, record, hash) "
+                        "VALUES (%s, %s, %s, %s::jsonb, %s)",
+                        (
+                            tenant_id,
+                            record.timestamp,
+                            record.decision_id,
+                            payload,
+                            chain_hash,
+                        ),
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return chain_hash
+
+    def _fetch_rows(self, active_tenant: str | None) -> list:
+        with self._lock:
+            conn = self._connection()
+            try:
+                with conn.cursor() as cur:
+                    if active_tenant is not None:
+                        cur.execute(
+                            "SELECT record, hash FROM evidence_records "
+                            "WHERE tenant_id = %s ORDER BY id ASC",
+                            (active_tenant,),
+                        )
+                    else:
+                        cur.execute(
+                            "SELECT record, hash FROM evidence_records "
+                            "ORDER BY id ASC"
+                        )
+                    rows = cur.fetchall()
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return rows
+
+    def __iter__(self) -> Iterator[tuple[DecisionRecord, str]]:
+        # Tenant isolation matches the JSONL/SQLite stores: inside a
+        # TenantScope only that tenant's records are visible.
+        rows = self._fetch_rows(current_tenant())
+        for record_obj, chain_hash in rows:
+            yield DecisionRecord.model_validate(record_obj), chain_hash
+
+    def __len__(self) -> int:
+        active_tenant = current_tenant()
+        with self._lock:
+            conn = self._connection()
+            try:
+                with conn.cursor() as cur:
+                    if active_tenant is not None:
+                        cur.execute(
+                            "SELECT count(*) FROM evidence_records "
+                            "WHERE tenant_id = %s",
+                            (active_tenant,),
+                        )
+                    else:
+                        cur.execute("SELECT count(*) FROM evidence_records")
+                    n = cur.fetchone()[0]
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return int(n)
+
+
+def open_evidence_store(target: str | Path) -> EvidenceStore:
+    """Open the right evidence backend for `target`.
+
+    This is the `HORIZON_EVIDENCE_DSN` contract used by the rApp daemon:
+
+      * str starting with ``postgres://`` or ``postgresql://``
+        -> `PostgresEvidenceStore` (DSN passed through to psycopg/libpq)
+      * str starting with ``sqlite://``
+        -> `SqliteEvidenceStore` (sqlalchemy URL passed through)
+      * path whose suffix is ``.db`` / ``.sqlite`` (or ``.sqlite3``)
+        -> `SqliteEvidenceStore`
+      * anything else -> `JsonlEvidenceStore` at that path
+    """
+    if isinstance(target, str):
+        if target.startswith(("postgres://", "postgresql://")):
+            return PostgresEvidenceStore(target)
+        if target.startswith("sqlite://"):
+            return SqliteEvidenceStore(target)
+    path = Path(target)
+    if path.suffix.lower() in (".db", ".sqlite", ".sqlite3"):
+        return SqliteEvidenceStore(f"sqlite:///{path}")
+    return JsonlEvidenceStore(path)
+
+
 __all__ = [
     "EvidenceStore",
     "JsonlEvidenceStore",
+    "PostgresEvidenceStore",
     "SqliteEvidenceStore",
+    "open_evidence_store",
 ]

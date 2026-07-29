@@ -1,6 +1,6 @@
 # Counterfactual Envelope — Operator User Guide
 
-> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
+> *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
 
 **Version:** 0.2.0
@@ -73,7 +73,7 @@ A `primary_cause` of `constraint_violation_hard` is a **hard rejection** — the
 
 ## 5. Worked example
 
-Below is a synthetic but representative DecisionRecord drawn from the schema in `evidence/schema.py`. (The frontend's actual rendering is screenshot-able when the rApp is running — see §6.)
+Below is a synthetic but representative DecisionRecord drawn from the schema in `evidence/schema.py`. (A live record with the same shape can be retrieved from the operator REST API while the rApp is running — see §6.)
 
 ```json
 {

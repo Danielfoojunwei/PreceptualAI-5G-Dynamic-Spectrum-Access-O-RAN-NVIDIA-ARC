@@ -1,214 +1,74 @@
+# Horizon-RIC operator dashboard API — OpenAPI artifact.
+#
+# PROVENANCE: generated from `horizon_ric.rapp.dashboard_api:build_dashboard_api`,
+# the surface actually served by `HorizonRAppLifecycle._serve_api()` on port 8083.
+# (Earlier revisions of this file were generated from the seeded SDK/demo module
+# `horizon_ric.rapp.api_v1` — see docs/API_SURFACES.md for the module map.)
+#
+# Regenerate with:
+#   python - <<'EOF'
+#   import os, yaml
+#   os.environ.setdefault("HORIZON_API_JWT_SECRET", "spec-generation-only")
+#   os.environ.setdefault("HORIZON_EVIDENCE_PATH", "/tmp/spec-audit.jsonl")
+#   from horizon_ric.rapp.dashboard_api import build_dashboard_api
+#   print(yaml.safe_dump(build_dashboard_api(lifecycle=None).openapi(), sort_keys=False))
+#   EOF
 openapi: 3.1.0
 info:
-  title: Horizon-RIC Operator API
-  description: "Horizon-RIC rApp operator API. O-RAN.WG2 R1/A1/O1 conformant, TM Forum\
-    \ ODA Production component. JWT bearer auth (HS256/RS256) per O-RAN.WG11 \xA7\
-    6."
+  title: Horizon-RIC Operator Dashboard API
+  description: Operator-facing REST surface for the Horizon-RIC dashboard. Every endpoint
+    (except /api/v1/auth/token) requires a JWT bearer token (HS256) with a `role`
+    claim. Read endpoints accept any authenticated role; POST /api/v1/audit/verify
+    requires role `admin` or `operator` (403 otherwise). See README at frontend/ for
+    usage.
   version: 0.2.0
 paths:
-  /v1/state:
-    get:
-      summary: Get State
-      operationId: get_state_v1_state_get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RAppStateInfo'
-      security:
-      - HTTPBearer: []
-  /v1/policies:
-    get:
-      summary: List Policies
-      operationId: list_policies_v1_policies_get
-      security:
-      - HTTPBearer: []
-      parameters:
-      - name: limit
-        in: query
-        required: false
-        schema:
-          type: integer
-          maximum: 1000
-          minimum: 1
-          default: 50
-          title: Limit
-      - name: since
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-            format: date-time
-          - type: 'null'
-          title: Since
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PolicyEnvelope'
-                title: Response List Policies V1 Policies Get
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/token:
     post:
-      summary: Submit Policy
-      operationId: submit_policy_v1_policies_post
-      security:
-      - HTTPBearer: []
+      tags:
+      - auth
+      summary: Auth Token
+      operationId: auth_token_api_v1_auth_token_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PolicyAction'
+              $ref: '#/components/schemas/TokenRequest'
+        required: true
       responses:
-        '201':
+        '200':
           description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DecisionRecord'
+                $ref: '#/components/schemas/TokenResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /v1/policies/{decision_id}:
-    get:
-      summary: Get Policy
-      operationId: get_policy_v1_policies__decision_id__get
-      security:
-      - HTTPBearer: []
-      parameters:
-      - name: decision_id
-        in: path
-        required: true
-        schema:
-          type: string
-          title: Decision Id
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DecisionRecord'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-  /v1/audit/verify:
-    get:
-      summary: Verify Audit
-      operationId: verify_audit_v1_audit_verify_get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuditVerifyResult'
-      security:
-      - HTTPBearer: []
-  /v1/sla/timeline:
-    get:
-      summary: Sla Timeline
-      operationId: sla_timeline_v1_sla_timeline_get
-      security:
-      - HTTPBearer: []
-      parameters:
-      - name: from
-        in: query
-        required: true
-        schema:
-          type: string
-          format: date-time
-          title: From
-      - name: to
-        in: query
-        required: true
-        schema:
-          type: string
-          format: date-time
-          title: To
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/SLATimelineSample'
-                title: Response Sla Timeline V1 Sla Timeline Get
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-  /v1/breakers:
-    get:
-      summary: Breakers
-      operationId: breakers_v1_breakers_get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                additionalProperties:
-                  $ref: '#/components/schemas/BreakerState'
-                type: object
-                title: Response Breakers V1 Breakers Get
-      security:
-      - HTTPBearer: []
-  /v1/connectors:
-    get:
-      summary: Connectors
-      operationId: connectors_v1_connectors_get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: '#/components/schemas/ConnectorInfo'
-                type: array
-                title: Response Connectors V1 Connectors Get
-      security:
-      - HTTPBearer: []
   /api/v1/state:
     get:
-      summary: Get State
-      operationId: get_state_api_v1_state_get
+      tags:
+      - lifecycle
+      summary: State Endpoint
+      operationId: state_endpoint_api_v1_state_get
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RAppStateInfo'
+                $ref: '#/components/schemas/StateResponse'
       security:
       - HTTPBearer: []
   /api/v1/policies:
     get:
-      summary: List Policies
-      operationId: list_policies_api_v1_policies_get
+      tags:
+      - policies
+      summary: Policies
+      operationId: policies_api_v1_policies_get
       security:
       - HTTPBearer: []
       parameters:
@@ -217,53 +77,17 @@ paths:
         required: false
         schema:
           type: integer
-          maximum: 1000
+          maximum: 500
           minimum: 1
           default: 50
           title: Limit
-      - name: since
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-            format: date-time
-          - type: 'null'
-          title: Since
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PolicyEnvelope'
-                title: Response List Policies Api V1 Policies Get
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-    post:
-      summary: Submit Policy
-      operationId: submit_policy_api_v1_policies_post
-      security:
-      - HTTPBearer: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PolicyAction'
-      responses:
-        '201':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DecisionRecord'
+                $ref: '#/components/schemas/PolicyListResponse'
         '422':
           description: Validation Error
           content:
@@ -272,8 +96,10 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/policies/{decision_id}:
     get:
-      summary: Get Policy
-      operationId: get_policy_api_v1_policies__decision_id__get
+      tags:
+      - policies
+      summary: Policy Detail
+      operationId: policy_detail_api_v1_policies__decision_id__get
       security:
       - HTTPBearer: []
       parameters:
@@ -289,7 +115,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DecisionRecord'
+                $ref: '#/components/schemas/PolicyDetailResponse'
         '422':
           description: Validation Error
           content:
@@ -297,20 +123,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/audit/verify:
-    get:
-      summary: Verify Audit
-      operationId: verify_audit_api_v1_audit_verify_get
+    post:
+      tags:
+      - audit
+      summary: Audit Verify
+      operationId: audit_verify_api_v1_audit_verify_post
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuditVerifyResult'
+                $ref: '#/components/schemas/AuditVerifyResponse'
       security:
       - HTTPBearer: []
   /api/v1/sla/timeline:
     get:
+      tags:
+      - sla
       summary: Sla Timeline
       operationId: sla_timeline_api_v1_sla_timeline_get
       security:
@@ -318,17 +148,21 @@ paths:
       parameters:
       - name: from
         in: query
-        required: true
+        required: false
         schema:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
           title: From
       - name: to
         in: query
-        required: true
+        required: false
         schema:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
           title: To
       responses:
         '200':
@@ -336,34 +170,32 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/SLATimelineSample'
-                title: Response Sla Timeline Api V1 Sla Timeline Get
+                $ref: '#/components/schemas/SlaTimelineResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /api/v1/breakers:
+  /api/v1/circuit-breakers:
     get:
-      summary: Breakers
-      operationId: breakers_api_v1_breakers_get
+      tags:
+      - lifecycle
+      summary: Circuit Breakers
+      operationId: circuit_breakers_api_v1_circuit_breakers_get
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
               schema:
-                additionalProperties:
-                  $ref: '#/components/schemas/BreakerState'
-                type: object
-                title: Response Breakers Api V1 Breakers Get
+                $ref: '#/components/schemas/CircuitBreakerListResponse'
       security:
       - HTTPBearer: []
   /api/v1/connectors:
     get:
+      tags:
+      - lifecycle
       summary: Connectors
       operationId: connectors_api_v1_connectors_get
       responses:
@@ -372,32 +204,46 @@ paths:
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/ConnectorInfo'
-                type: array
-                title: Response Connectors Api V1 Connectors Get
+                $ref: '#/components/schemas/ConnectorListResponse'
       security:
       - HTTPBearer: []
 components:
   schemas:
-    AuditVerifyResult:
+    AuditVerifyResponse:
       properties:
-        ok:
+        intact:
           type: boolean
-          title: Ok
-        records_checked:
+          title: Intact
+        broken_at_index:
           type: integer
-          title: Records Checked
-        first_bad_index:
+          title: Broken At Index
+        chain_length:
           type: integer
-          title: First Bad Index
+          title: Chain Length
+        head_hash:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Head Hash
       type: object
       required:
-      - ok
-      - records_checked
-      - first_bad_index
-      title: AuditVerifyResult
-    BreakerState:
+      - intact
+      - broken_at_index
+      - chain_length
+      - head_hash
+      title: AuditVerifyResponse
+    CircuitBreakerListResponse:
+      properties:
+        breakers:
+          items:
+            $ref: '#/components/schemas/CircuitBreakerState'
+          type: array
+          title: Breakers
+      type: object
+      required:
+      - breakers
+      title: CircuitBreakerListResponse
+    CircuitBreakerState:
       properties:
         name:
           type: string
@@ -405,44 +251,32 @@ components:
         state:
           type: string
           title: State
-        failure_count:
+        fail_counter:
           type: integer
-          title: Failure Count
-        opened_at:
-          anyOf:
-          - type: string
-            format: date-time
-          - type: 'null'
-          title: Opened At
+          title: Fail Counter
       type: object
       required:
       - name
       - state
-      - failure_count
-      title: BreakerState
-    ConnectorInfo:
+      - fail_counter
+      title: CircuitBreakerState
+    ConnectorListResponse:
       properties:
-        name:
-          type: string
-          title: Name
-        kind:
-          type: string
-          title: Kind
-        connected:
-          type: boolean
-          title: Connected
-        last_heartbeat_at:
-          anyOf:
-          - type: string
-            format: date-time
-          - type: 'null'
-          title: Last Heartbeat At
+        sources:
+          items:
+            type: string
+          type: array
+          title: Sources
+        sinks:
+          items:
+            type: string
+          type: array
+          title: Sinks
       type: object
       required:
-      - name
-      - kind
-      - connected
-      title: ConnectorInfo
+      - sources
+      - sinks
+      title: ConnectorListResponse
     ConstraintCorrection:
       properties:
         constraint_id:
@@ -515,6 +349,11 @@ components:
           title: Constraint Corrections
         model_versions:
           $ref: '#/components/schemas/ModelVersions'
+        random_seed:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Random Seed
         actual_outcome_30s:
           anyOf:
           - $ref: '#/components/schemas/PredictedOutcome'
@@ -603,25 +442,34 @@ components:
 
 
         Required by 3GPP TS 28.105 (AI/ML Management) for provenance.'
-    PolicyAction:
+    PolicyDetailResponse:
       properties:
-        action_type:
+        record:
+          $ref: '#/components/schemas/DecisionRecord'
+        chain_hash:
           type: string
-          title: Action Type
-        params:
-          additionalProperties: true
-          type: object
-          title: Params
-        note:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Note
+          title: Chain Hash
       type: object
       required:
-      - action_type
-      title: PolicyAction
-    PolicyEnvelope:
+      - record
+      - chain_hash
+      title: PolicyDetailResponse
+    PolicyListResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/PolicySummary'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - total
+      title: PolicyListResponse
+    PolicySummary:
       properties:
         decision_id:
           type: string
@@ -630,23 +478,36 @@ components:
           type: string
           format: date-time
           title: Timestamp
-        rapp_instance_id:
-          type: string
-          title: Rapp Instance Id
-        chosen_action_summary:
-          type: string
-          title: Chosen Action Summary
+        chosen_action:
+          additionalProperties: true
+          type: object
+          title: Chosen Action
         sla_risk_30s:
           type: number
           title: Sla Risk 30S
+        sla_risk_1min:
+          type: number
+          title: Sla Risk 1Min
+        sla_risk_5min:
+          type: number
+          title: Sla Risk 5Min
+        rejected_count:
+          type: integer
+          title: Rejected Count
+        chain_hash:
+          type: string
+          title: Chain Hash
       type: object
       required:
       - decision_id
       - timestamp
-      - rapp_instance_id
-      - chosen_action_summary
+      - chosen_action
       - sla_risk_30s
-      title: PolicyEnvelope
+      - sla_risk_1min
+      - sla_risk_5min
+      - rejected_count
+      - chain_hash
+      title: PolicySummary
     PredictedOutcome:
       properties:
         sla_risk_30s:
@@ -691,35 +552,10 @@ components:
       - sla_risk_1min
       - sla_risk_5min
       title: PredictedOutcome
-      description: "Per-decision predicted KPI envelope.\n\nNames align to 3GPP TS\
-        \ 28.554 \xA76 KPI definitions where possible."
-    RAppStateInfo:
-      properties:
-        state:
-          type: string
-          title: State
-        rapp_id:
-          type: string
-          title: Rapp Id
-        version:
-          type: string
-          title: Version
-        uptime_seconds:
-          type: number
-          title: Uptime Seconds
-        last_decision_at:
-          anyOf:
-          - type: string
-            format: date-time
-          - type: 'null'
-          title: Last Decision At
-      type: object
-      required:
-      - state
-      - rapp_id
-      - version
-      - uptime_seconds
-      title: RAppStateInfo
+      description: 'Per-decision predicted KPI envelope.
+
+
+        Names align to 3GPP TS 28.554 §6 KPI definitions where possible.'
     RejectedAlternative:
       properties:
         rank:
@@ -737,6 +573,11 @@ components:
         rejection_reason_human:
           type: string
           title: Rejection Reason Human
+        random_seed:
+          type: integer
+          title: Random Seed
+          description: 'RNG seed pinned by the planner when this alternative was produced.
+            Required for reproducibility (Devil A/C #9, #26).'
       type: object
       required:
       - rank
@@ -744,9 +585,19 @@ components:
       - predicted_outcome
       - rejection_reason_machine
       - rejection_reason_human
+      - random_seed
       title: RejectedAlternative
-      description: One rejected alternative action with its predicted outcome and
+      description: 'One rejected alternative action with its predicted outcome and
         rejection reason.
+
+
+        `random_seed` pins the planner''s RNG state at the moment this
+
+        alternative was generated. Closes Devil-A/C Finding 9/26: a regulator
+
+        replaying ``(state, action_space, planner_config, random_seed)`` MUST
+
+        obtain the identical alternative, so the counterfactual is auditable.'
     RejectionReasonMachine:
       properties:
         primary_cause:
@@ -786,41 +637,149 @@ components:
       - threshold
       - horizon
       title: RejectionReasonMachine
-      description: "Structured rejection reason \u2014 machine-readable for audit\
-        \ dashboards."
-    SLATimelineSample:
+      description: Structured rejection reason — machine-readable for audit dashboards.
+    SlaSample:
       properties:
         timestamp:
           type: string
           format: date-time
           title: Timestamp
-        sla_risk_30s:
+        horizon:
+          type: string
+          title: Horizon
+        sla_risk:
           type: number
           maximum: 1.0
           minimum: 0.0
-          title: Sla Risk 30S
-        sla_risk_1min:
-          type: number
-          maximum: 1.0
-          minimum: 0.0
-          title: Sla Risk 1Min
-        sla_risk_5min:
-          type: number
-          maximum: 1.0
-          minimum: 0.0
-          title: Sla Risk 5Min
-        decisions_per_minute:
-          type: number
-          minimum: 0.0
-          title: Decisions Per Minute
+          title: Sla Risk
+        decision_id:
+          type: string
+          title: Decision Id
       type: object
       required:
       - timestamp
-      - sla_risk_30s
-      - sla_risk_1min
-      - sla_risk_5min
-      - decisions_per_minute
-      title: SLATimelineSample
+      - horizon
+      - sla_risk
+      - decision_id
+      title: SlaSample
+    SlaTimelineResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/SlaSample'
+          type: array
+          title: Items
+        horizons:
+          items:
+            type: string
+          type: array
+          title: Horizons
+        from_ts:
+          type: string
+          format: date-time
+          title: From Ts
+        to_ts:
+          type: string
+          format: date-time
+          title: To Ts
+      type: object
+      required:
+      - items
+      - horizons
+      - from_ts
+      - to_ts
+      title: SlaTimelineResponse
+    StateResponse:
+      properties:
+        rapp_state:
+          type: string
+          title: Rapp State
+        degraded_state:
+          type: string
+          title: Degraded State
+        watchdog_last_tick:
+          type: number
+          title: Watchdog Last Tick
+        watchdog_interval_s:
+          type: number
+          title: Watchdog Interval S
+        a1_policies_emitted:
+          type: integer
+          title: A1 Policies Emitted
+        last_decision_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Decision Id
+        evidence_chain_head:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Evidence Chain Head
+        rapp_id:
+          type: string
+          title: Rapp Id
+        rapp_version:
+          type: string
+          title: Rapp Version
+        timestamp:
+          type: number
+          title: Timestamp
+        uptime_seconds:
+          type: number
+          title: Uptime Seconds
+      type: object
+      required:
+      - rapp_state
+      - degraded_state
+      - watchdog_last_tick
+      - watchdog_interval_s
+      - a1_policies_emitted
+      - last_decision_id
+      - evidence_chain_head
+      - rapp_id
+      - rapp_version
+      - timestamp
+      - uptime_seconds
+      title: StateResponse
+    TokenRequest:
+      properties:
+        username:
+          type: string
+          maxLength: 64
+          minLength: 1
+          title: Username
+        password:
+          type: string
+          maxLength: 256
+          minLength: 1
+          title: Password
+      type: object
+      required:
+      - username
+      - password
+      title: TokenRequest
+    TokenResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        token_type:
+          type: string
+          title: Token Type
+          default: bearer
+        expires_in:
+          type: integer
+          title: Expires In
+          default: 3600
+        role:
+          type: string
+          title: Role
+      type: object
+      required:
+      - access_token
+      - role
+      title: TokenResponse
     ValidationError:
       properties:
         loc:
@@ -851,16 +810,3 @@ components:
     HTTPBearer:
       type: http
       scheme: bearer
-    BearerJWT:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: "Operator JWT (HS256 dev, RS256 prod). Audience: 'horizon-ric'.\
-        \ Conforms to O-RAN.WG11 \xA76 token requirements."
-security:
-- BearerJWT: []
-servers:
-- url: http://localhost:8083
-  description: Local
-- url: https://horizon-ric.example.com
-  description: Production

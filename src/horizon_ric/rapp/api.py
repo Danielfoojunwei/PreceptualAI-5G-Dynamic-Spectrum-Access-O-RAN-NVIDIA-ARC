@@ -1,5 +1,14 @@
 """Minimal FastAPI scaffolding for the rApp REST surface.
 
+STATUS (2026-07): this module is a security scaffold, NOT the API the
+rApp serves. `HorizonRAppLifecycle._serve_api()` mounts
+`horizon_ric.rapp.dashboard_api` (HS256 + per-endpoint role checks) on
+port 8083; this module's RS256 `JWTManager` + Casbin `build_app` wraps
+mostly-empty demo handlers and is exercised only by the security
+middleware tests. It also re-exports `build_api` from the seeded
+SDK/demo module `horizon_ric.rapp.api_v1`. See docs/API_SURFACES.md for
+the full module map before adding endpoints here.
+
 This file exists to host the `JWTAuthMiddleware` while the parallel
 frontend agent builds out the real route handlers. The routes here are
 intentionally tiny — they're the smallest set the security tests need

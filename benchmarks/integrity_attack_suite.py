@@ -31,17 +31,53 @@ Attack matrix
    block every emit; constructing ``fail_closed=False`` without an audit record
    must raise.
 
+Probes 1-8 are self-contained: they attack the shipped defenses with adversary
+behaviour we construct, which is the correct methodology for a cryptographic or
+fail-closed gate (there is nothing external to measure — a signature check is a
+property of the code, not of a dataset).
+
+Probes 9-11 are driven by REAL CAPTURED ATTACK TRAFFIC
+-------------------------------------------------------
+Source: 5GAD-2022 (Idaho National Laboratory), MIT licensed, see
+``datasets/5gad_inl/``. These are over-the-wire packet captures of ten attacks
+actually executed against a real free5GC 5G standalone core on a physical test
+bench — real attacker tooling, real target, real responses.
+
+9.  Captured forged-NF-profile injection — the 398 forged AMF registration
+    request bodies that the FakeAMFInsert attack actually put on the wire, byte
+    for byte, and the responses the real NRF actually returned (398/398
+    ``HTTP/1.1 200 OK`` — the real core accepted every one). Those exact bytes
+    are then presented to Horizon's artefact-admission gate.
+10. Captured malformed / fuzzed control-plane input — the real request lines
+    from CrashNRF (empty required discovery parameters, which is what took the
+    real NRF down), randomDataDump and randomAMFInsert (attacker-generated
+    random field values). The Shield must fail closed, not panic.
+11. Evidence chain at real captured volume and ordering — one DecisionRecord per
+    real captured control-plane event, in real captured order.
+
+Honest scoping for 9-11: 5GAD is a *core-network* capture. It contains no
+Horizon RIC artefacts, records or radio actions, so probes 10 and 11 take the
+real attacker-supplied strings / the real event sequence and drive Horizon's own
+objects with them; the mapping is stated per probe. Probe 9 is the strongest of
+the three because it feeds the captured bytes through unchanged. None of these
+is a claim that Horizon defends free5GC.
+
 Run::
 
-    .venv/bin/python benchmarks/integrity_attack_suite.py
+    python datasets/5gad_inl/build.py      # once, ~24 MB, no login
+    python benchmarks/integrity_attack_suite.py
 
 Writes ``benchmarks/results/integrity_attack_suite.json`` summarising defense
 coverage. If ANY probe slips through a defense it is reported loudly (the run
-exits non-zero and the ``bypasses`` array is non-empty).
+exits non-zero and the ``bypasses`` array is non-empty). If the 5GAD features
+have not been built, probes 9-11 are reported as ``skipped`` — never as passing.
 """
 
 from __future__ import annotations
 
+import argparse
+import base64
+import hashlib
 import json
 import tempfile
 from datetime import datetime, timezone
@@ -69,7 +105,40 @@ from horizon_ric.shield import (
     default_terrestrial_shield,
 )
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent
 _RESULTS_PATH = Path(__file__).resolve().parent / "results" / "integrity_attack_suite.json"
+_DATASET_DIR = _REPO_ROOT / "datasets" / "5gad_inl"
+
+
+# ---------------------------------------------------------------------------
+# Real captured-attack corpus (5GAD-2022, MIT). Absent => probes 9-11 skip.
+# ---------------------------------------------------------------------------
+class RealCorpusMissing(RuntimeError):
+    """The 5GAD-derived features have not been built."""
+
+
+def _load_real_corpus() -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
+    manifest_path = _DATASET_DIR / "manifest.json"
+    events_path = _DATASET_DIR / "generated" / "control_plane_events.jsonl"
+    profiles_path = _DATASET_DIR / "generated" / "nf_profile_writes.jsonl"
+    missing = [p for p in (manifest_path, events_path, profiles_path) if not p.is_file()]
+    if missing:
+        raise RealCorpusMissing(
+            "5GAD captured-attack features not built ("
+            + ", ".join(str(p) for p in missing)
+            + "). Build with: python datasets/5gad_inl/build.py"
+        )
+
+    def _rows(path: Path) -> list[dict[str, Any]]:
+        return [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line
+        ]
+
+    return json.loads(manifest_path.read_text(encoding="utf-8")), _rows(events_path), _rows(
+        profiles_path
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -444,8 +513,306 @@ def probe_8_li_fail_closed_bypass() -> tuple[bool, str, str]:
 
 
 # ---------------------------------------------------------------------------
+# Probes driven by REAL captured attack traffic (5GAD-2022, MIT)
+# ---------------------------------------------------------------------------
+def probe_9_captured_forged_nf_injection() -> tuple[bool, str, str]:
+    """Replay the REAL forged AMF NF-profile registrations through the artefact gate.
+
+    The FakeAMFInsert attack in 5GAD PUTs a forged AMF NF profile
+    (``nfInstanceId=b01dface-bead-cafe-bade-cabledfabled``) to the NRF's
+    ``/nnrf-nfm/v1/nf-instances/{id}`` endpoint. The full capture records what
+    the real free5GC NRF did about it: it answered ``HTTP/1.1 200 OK`` with a
+    ``Location`` header for the forged instance, 398 times out of 398. The core
+    admitted every forged registration, because nothing in its NF-management
+    path pins a signer.
+
+    This probe takes those captured request bodies BYTE FOR BYTE and presents
+    them to Horizon's artefact-admission gate as an untrusted registrant would:
+    signed with the attacker's own HSM key, internally self-consistent, and
+    pinned-verified against the operator's trusted public key. Every one must be
+    rejected. It additionally stores each captured body in an ``ArtefactVault``
+    and flips a byte to confirm the content-addressed retrieval catches it.
+
+    Scope: this is NOT a claim that Horizon protects free5GC's NRF. It is a
+    measured comparison on identical bytes — what a real production-grade 5G
+    core accepted, versus what Horizon's own gate does with the same input.
+    """
+    _manifest, _events, profiles = _load_real_corpus()
+    forged = [
+        row
+        for row in profiles
+        if row["capture"] == "FakeAMFInsert_full" and row["method"] == "PUT"
+    ]
+    if not forged:
+        raise RuntimeError("no captured FakeAMFInsert NF-profile writes in the corpus")
+
+    real_core_accepted = sum(1 for r in forged if 200 <= r["observed_response_status"] < 300)
+
+    # One trusted operator signer, pinned. The attacker has their own HSM.
+    trusted_hsm = InMemoryHSMBackend()
+    attacker_hsm = InMemoryHSMBackend()
+    reference = sign_model(
+        b"operator-reference-artefact",
+        trainer_id="operator",
+        training_manifest={"role": "reference"},
+        hsm=trusted_hsm,
+        key_label="operator-signer",
+    )
+    trusted_der = bytes.fromhex(reference.public_key_der_hex)
+
+    pinned_rejected = 0
+    self_consistent = 0
+    digest_matched = 0
+    vault_detected = 0
+    with tempfile.TemporaryDirectory() as td:
+        for index, row in enumerate(forged):
+            body = base64.b64decode(row["body_b64"])
+            # The derived row's recorded digest must match the bytes we replay,
+            # otherwise the corpus and the probe have drifted apart.
+            if hashlib.sha256(body).hexdigest() == row["body_sha256"]:
+                digest_matched += 1
+
+            attacker_prov = sign_model(
+                body,
+                trainer_id="amf",  # the forged profile claims to be an AMF
+                training_manifest={
+                    "nf_instance_id": row.get("nfInstanceId", ""),
+                    "nf_type": row.get("nfType", ""),
+                    "path": row["path"],
+                },
+                hsm=attacker_hsm,
+                key_label="rogue-nf-signer",
+            )
+            if verify_model(body, attacker_prov):
+                self_consistent += 1
+            if not verify_model(body, attacker_prov, trusted_public_key_der=trusted_der):
+                pinned_rejected += 1
+
+            # Byte-tamper the stored artefact for a sample of the corpus (a full
+            # sweep would be 398 vault round-trips for no extra information).
+            # Each trial gets its OWN vault: the captured forged registrations
+            # are byte-identical repeats, and a content-addressed store
+            # deduplicates them, so a shared vault would silently re-flip the
+            # same byte back and halve the detections.
+            if index % 50 == 0:
+                trial_vault = ArtefactVault(Path(td) / f"trial-{index}")
+                sha = trial_vault.store(body, label=f"captured-{index}")
+                bin_path, _ = trial_vault._paths_for(sha)
+                raw = bytearray(bin_path.read_bytes())
+                raw[0] ^= 0xFF
+                bin_path.write_bytes(bytes(raw))
+                try:
+                    trial_vault.retrieve(sha)
+                except IntegrityError:
+                    vault_detected += 1
+
+    total = len(forged)
+    tamper_trials = len(range(0, total, 50))
+    detected = (
+        total > 0
+        and digest_matched == total
+        and self_consistent == total
+        and pinned_rejected == total
+        and vault_detected == tamper_trials
+    )
+    return (
+        detected,
+        "verify_model pinned trusted_public_key_der + ArtefactVault content addressing, "
+        "applied to the verbatim captured forged NF-profile bodies",
+        f"captured_forged_registrations={total} "
+        f"real_free5gc_nrf_accepted_2xx={real_core_accepted}/{total} "
+        f"horizon_pinned_reject={pinned_rejected}/{total} "
+        f"attacker_signature_self_consistent={self_consistent}/{total} "
+        f"replayed_bytes_match_recorded_digest={digest_matched}/{total} "
+        f"vault_IntegrityError={vault_detected}/{tamper_trials}",
+    )
+
+
+def probe_10_captured_malformed_input_failclosed() -> tuple[bool, str, str]:
+    """Drive the Shield with the REAL malformed / fuzzed attacker strings.
+
+    Real inputs, verbatim from the captures:
+
+    * ``CrashNRF`` — 398 x ``GET /nnrf-disc/v1/nf-instances?requester-nf-type=
+      &target-nf-type=``. Both required discovery parameters are EMPTY. This is
+      the request that takes the real free5GC NRF down.
+    * ``randomDataDump`` — 397 discovery requests whose ``requester-nf-type``
+      carries attacker-generated random junk.
+    * ``randomAMFInsert`` — 799 NF-management writes against 399 random
+      instance UUIDs.
+
+    Mapping (stated because it is not measured): 5GAD contains no Horizon
+    actions, so each captured request drives two arms.
+
+    Arm A — hostile text. The captured request line is placed into the
+    STRING-typed fields of an otherwise legal Shield action (block name, target
+    jurisdiction, affected-UE list). The attacker-controlled text is real; where
+    it lands is our construction.
+
+    Arm B — the real attack's SEMANTICS. CrashNRF works by sending a request
+    whose REQUIRED parameters are present-but-empty, which the real NRF then
+    dereferences and dies on. Arm B reproduces that shape against Horizon: the
+    action's required fields are present-but-empty in exactly the way the
+    captured request left ``requester-nf-type`` and ``target-nf-type`` empty.
+    The Shield must fail closed on this, not emit and not raise.
+
+    Pass condition: zero unhandled exceptions across both arms for every
+    captured request; zero illegal emits (an emit neither blocked nor certified
+    safe, or one leaving a hard invariant violated); and every Arm-B action
+    either blocked or projected — never emitted unchanged, because an action
+    with empty required fields must never reach the air.
+    """
+    _manifest, events, _profiles = _load_real_corpus()
+    hostile = [
+        row
+        for row in events
+        if row["capture"] in {"CrashNRF", "randomDataDump", "randomAMFInsert"}
+    ]
+    if not hostile:
+        raise RuntimeError("no captured malformed/fuzzed requests in the corpus")
+
+    shield = default_terrestrial_shield(
+        band_lo_hz=3.30e9, band_hi_hz=3.80e9, max_eirp_dBm=33.0, max_papr_dB=8.5
+    )
+
+    crashes: list[str] = []
+    illegal_emits = 0
+    arm_a_handled = 0
+    arm_b_contained = 0
+    arm_b_total = 0
+
+    def _dispose(action: dict[str, Any], decision_id: str):
+        nonlocal illegal_emits
+        try:
+            disposition = shield.dispose(
+                action, {"measured_tbler": 1e-4}, decision_id=decision_id
+            )
+        except Exception as exc:  # noqa: BLE001 - any escape is a finding
+            crashes.append(f"{decision_id}: {type(exc).__name__}: {exc}")
+            return None
+        certificate = disposition.certificate
+        if not certificate.emit_blocked and not certificate.safe:
+            illegal_emits += 1
+        if not certificate.emit_blocked and certificate.violated_ids:
+            illegal_emits += 1
+        return certificate
+
+    for index, row in enumerate(hostile):
+        # Arm A — attacker-controlled strings, verbatim from the wire, in an
+        # otherwise legal action.
+        certificate = _dispose(
+            {
+                "block": row["path"],
+                "target_jurisdiction": row["method"],
+                "affected_ue_ids": [row["path"]],
+                "frequency_hz": 3.55e9,
+                "bandwidth_hz": 20e6,
+                "tx_power_dBm": 20.0,
+                "antenna_gain_dBi": 5.0,
+            },
+            f"captured-text-{index}",
+        )
+        if certificate is not None:
+            arm_a_handled += 1
+
+        # Arm B — the captured attack's own shape: required parameters present
+        # but empty. Only the requests that actually carried empty required
+        # parameters on the wire drive this arm.
+        if "requester-nf-type=&" in row["path"] or row["path"].endswith("target-nf-type="):
+            arm_b_total += 1
+            certificate = _dispose(
+                {
+                    "block": row["path"],
+                    "frequency_hz": None,
+                    "bandwidth_hz": None,
+                    "tx_power_dBm": None,
+                    "antenna_gain_dBi": None,
+                },
+                f"captured-empty-{index}",
+            )
+            if certificate is not None and (
+                certificate.emit_blocked or certificate.projected
+            ):
+                arm_b_contained += 1
+
+    detected = (
+        not crashes
+        and illegal_emits == 0
+        and arm_a_handled == len(hostile)
+        and arm_b_total > 0
+        and arm_b_contained == arm_b_total
+    )
+    sample = crashes[0] if crashes else "none"
+    return (
+        detected,
+        "Shield.dispose is total over attacker-controlled text and over the captured "
+        "attack's present-but-empty required fields: no unhandled exception, "
+        "project-to-safe-set / fail-closed, 0 illegal emits",
+        f"captured_malformed_requests={len(hostile)} "
+        f"armA_hostile_text_handled={arm_a_handled}/{len(hostile)} "
+        f"armB_empty_required_fields_contained={arm_b_contained}/{arm_b_total} "
+        f"unhandled_exceptions={len(crashes)} illegal_emits={illegal_emits} "
+        f"first_exception={sample}",
+    )
+
+
+def probe_11_evidence_chain_at_captured_volume() -> tuple[bool, str, str]:
+    """Hash-chain integrity at the real captured event count and ordering.
+
+    One ``DecisionRecord`` per control-plane event actually captured on the real
+    core, appended in the real captured order. The chain must verify clean; a
+    single field mutated at the index of the first captured NF-profile write
+    must then be detected at exactly that index.
+
+    Real: the number of events (and therefore the chain length), and their
+    order. Not real: the records themselves — 5GAD contains no Horizon decision
+    records, so Horizon records carry the captured events' identifiers.
+    """
+    _manifest, events, _profiles = _load_real_corpus()
+    ordered = sorted(events, key=lambda r: (r["capture"], r["t_offset_ns"], r["path"]))
+    # Tamper at the first captured NF-profile write, i.e. the first point in the
+    # real event stream at which an attacker actually mutated core state.
+    tamper_index = next(
+        (i for i, r in enumerate(ordered) if r["method"] == "PUT" and r["body_sha256"]),
+        1,
+    )
+
+    with tempfile.TemporaryDirectory() as td:
+        path = Path(td) / "captured.jsonl"
+        store = JsonlEvidenceStore(path)
+        for index, row in enumerate(ordered):
+            store.append(_record(f"{row['capture']}-{index}", tx=25.0))
+        clean_index = store.verify()
+
+        lines = path.read_text().splitlines()
+        obj = json.loads(lines[tamper_index])
+        obj["record"]["chosen_action"]["tx_dBm"] = 99.9
+        lines[tamper_index] = json.dumps(obj, sort_keys=True)
+        path.write_text("\n".join(lines) + "\n")
+        broken_index = store.verify()
+
+    detected = clean_index == -1 and broken_index == tamper_index
+    return (
+        detected,
+        "EvidenceStore.verify: sha256(prev || canonical_json(record)) chain break, "
+        "at the real captured event count and ordering",
+        f"chain_length={len(ordered)} (= captured control-plane events) "
+        f"clean_verify={clean_index} tamper_index={tamper_index} "
+        f"first_broken_index={broken_index}",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Battery driver
 # ---------------------------------------------------------------------------
+_REAL_DATA_PROBES = frozenset(
+    {
+        "9_captured_forged_nf_injection",
+        "10_captured_malformed_input_failclosed",
+        "11_evidence_chain_at_captured_volume",
+    }
+)
+
 _PROBES: list[tuple[str, str, Callable[[], tuple[bool, str, str]]]] = [
     ("1_model_swap_untrusted_signer", "model-swap / untrusted signer", probe_1_model_swap_untrusted_signer),
     ("2_weight_byte_tamper", "weight-byte tamper", probe_2_weight_byte_tamper),
@@ -455,58 +822,167 @@ _PROBES: list[tuple[str, str, Callable[[], tuple[bool, str, str]]]] = [
     ("6_shield_self_report_spoof", "shield self-report spoofing", probe_6_shield_self_report_spoof),
     ("7_illegal_emit_attempt", "illegal-emit attempt", probe_7_illegal_emit_attempt),
     ("8_li_fail_closed_bypass", "LI fail-closed bypass", probe_8_li_fail_closed_bypass),
+    (
+        "9_captured_forged_nf_injection",
+        "captured forged NF-profile injection (5GAD FakeAMFInsert)",
+        probe_9_captured_forged_nf_injection,
+    ),
+    (
+        "10_captured_malformed_input_failclosed",
+        "captured malformed/fuzzed control-plane input (5GAD CrashNRF/randomDataDump/randomAMFInsert)",
+        probe_10_captured_malformed_input_failclosed,
+    ),
+    (
+        "11_evidence_chain_at_captured_volume",
+        "evidence chain at real captured volume and ordering (5GAD, all captures)",
+        probe_11_evidence_chain_at_captured_volume,
+    ),
 ]
+
+
+def _real_data_provenance() -> dict[str, Any]:
+    """Provenance block for the captured-attack corpus, or an honest absence."""
+    try:
+        manifest, events, profiles = _load_real_corpus()
+    except RealCorpusMissing as exc:
+        return {
+            "available": False,
+            "reason": str(exc),
+            "consequence": "probes 9-11 are reported as skipped, not as passing",
+        }
+    return {
+        "available": True,
+        "dataset": manifest["dataset"],
+        "data_kind": manifest["data_kind"],
+        "repo_url": manifest["repo_url"],
+        "repo_commit": manifest["repo_commit"],
+        "repo_doi": manifest["repo_doi"],
+        "paper_doi": manifest["paper_doi"],
+        "licence": manifest["licensing"]["source_repository"],
+        "attribution": manifest["licensing"]["attribution_required"],
+        "source_archive_sha256": manifest["source_archive_sha256"],
+        "events_sha256": manifest["events_sha256"],
+        "features_sha256": manifest["features_sha256"],
+        "ci_reproducible": manifest["ci_reproducible"],
+        "captured_control_plane_events": len(events),
+        "captured_nf_profile_writes": len(profiles),
+        "claim": (
+            "Probes 9-11 replay traffic captured over the wire while ten real "
+            "attacks were executed against a real free5GC 5G standalone core. "
+            "Probe 9 feeds the captured forged NF-profile request bodies through "
+            "Horizon's artefact gate BYTE FOR BYTE. Probes 10 and 11 use the real "
+            "attacker-supplied strings and the real event sequence to drive "
+            "Horizon's own objects, because 5GAD contains no Horizon artefacts."
+        ),
+        "not_claimed": [
+            "that Horizon defends free5GC or any 5G core network function",
+            "that probes 1-8 use captured data — they are cryptographic and "
+            "fail-closed gates, which are properties of the code, not of a dataset",
+        ],
+    }
 
 
 def run_battery() -> dict[str, Any]:
     attacks: list[dict[str, Any]] = []
     bypasses: list[str] = []
+    skipped: list[str] = []
     for attack_id, name, fn in _PROBES:
-        attempted = True
+        status = "run"
         try:
             detected, mechanism, detail = fn()
+        except RealCorpusMissing as exc:
+            # The captured-attack corpus is not built. Report the probe as
+            # skipped and say so loudly; never let a missing dataset read as a
+            # passing defense.
+            status = "skipped_dataset_absent"
+            detected, mechanism, detail = False, "skipped: real corpus absent", str(exc)
         except Exception as exc:  # a probe that errors out is NOT a passing defense
             detected, mechanism, detail = False, f"probe raised {type(exc).__name__}", str(exc)
         attacks.append(
             {
                 "attack_id": attack_id,
                 "name": name,
-                "attempted": attempted,
+                "attempted": status == "run",
+                "status": status,
+                "data_provenance": (
+                    "real_captured_attack_traffic"
+                    if attack_id in _REAL_DATA_PROBES
+                    else "constructed_adversary_against_shipped_defense"
+                ),
                 "detected_or_blocked": bool(detected),
                 "mechanism": mechanism,
                 "detail": detail,
             }
         )
-        if not detected:
+        if status == "skipped_dataset_absent":
+            skipped.append(attack_id)
+        elif not detected:
             bypasses.append(attack_id)
 
-    total = len(attacks)
-    blocked = sum(1 for a in attacks if a["detected_or_blocked"])
+    run_attacks = [a for a in attacks if a["status"] == "run"]
+    blocked = sum(1 for a in run_attacks if a["detected_or_blocked"])
     summary = {
         "suite": "integrity_attack_suite",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "total_attacks": total,
+        "total_probes": len(attacks),
+        "total_attacks": len(run_attacks),
         "detected_or_blocked": blocked,
         "bypassed": len(bypasses),
-        "all_defended": len(bypasses) == 0,
+        "skipped": len(skipped),
+        "skipped_ids": skipped,
+        "all_defended": len(bypasses) == 0 and not skipped,
         "bypasses": bypasses,
+        "real_data_probes": sorted(_REAL_DATA_PROBES),
+        "real_data_provenance": _real_data_provenance(),
         "attacks": attacks,
     }
     return summary
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "--out",
+        type=Path,
+        default=_RESULTS_PATH,
+        help=(
+            "where to write the result JSON. Defaults to the committed path; "
+            "CI points it elsewhere so a verification run can compare against "
+            "the committed file instead of overwriting it."
+        ),
+    )
+    out = ap.parse_args().out
+
     summary = run_battery()
-    _RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _RESULTS_PATH.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
 
     print(f"\nIntegrity attack battery — {summary['detected_or_blocked']}/"
-          f"{summary['total_attacks']} probes detected/blocked")
-    print(f"{'attack':<34} {'blocked':<9} mechanism")
-    print("-" * 100)
+          f"{summary['total_attacks']} probes detected/blocked "
+          f"({summary['skipped']} skipped)")
+    provenance = summary["real_data_provenance"]
+    if provenance["available"]:
+        print(f"  real captured-attack corpus: {provenance['dataset']} "
+              f"({provenance['licence']})")
+        print(f"  {provenance['captured_control_plane_events']} captured control-plane "
+              f"events, {provenance['captured_nf_profile_writes']} captured NF-profile writes")
+    else:
+        print(f"  real captured-attack corpus UNAVAILABLE: {provenance['reason']}")
+    print()
+    print(f"{'attack':<40} {'source':<10} {'blocked':<9} mechanism")
+    print("-" * 118)
     for a in summary["attacks"]:
-        flag = "YES" if a["detected_or_blocked"] else ">>> NO <<<"
-        print(f"{a['attack_id']:<34} {flag:<9} {a['mechanism']}")
+        if a["status"] != "run":
+            flag = "SKIPPED"
+        else:
+            flag = "YES" if a["detected_or_blocked"] else ">>> NO <<<"
+        source = "REAL" if a["attack_id"] in _REAL_DATA_PROBES else "probe"
+        print(f"{a['attack_id']:<40} {source:<10} {flag:<9} {a['mechanism']}")
+
+    if summary["skipped_ids"]:
+        print("\n!!! REAL-DATA PROBES SKIPPED — these are NOT passing results !!!")
+        for s in summary["skipped_ids"]:
+            print(f"  - {s}: build the corpus with 'python datasets/5gad_inl/build.py'")
 
     if summary["bypasses"]:
         print("\n!!! DEFENSE BYPASS DETECTED !!!")
@@ -514,7 +990,7 @@ def main() -> int:
             print(f"  - {b} slipped through its defense — INVESTIGATE")
         return 1
     print("\nAll probes detected/blocked across the board.")
-    print(f"Results written to {_RESULTS_PATH}")
+    print(f"Results written to {out}")
     return 0
 
 

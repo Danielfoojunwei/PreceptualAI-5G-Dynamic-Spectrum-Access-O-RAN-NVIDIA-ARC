@@ -1,0 +1,26 @@
+{
+  "accepted": 12,
+  "audit_chain_length": 12,
+  "audit_verify_first_broken_index": -1,
+  "blocked": 0,
+  "dry_run": 0,
+  "emit_failed": 0,
+  "enforced": 12,
+  "errors": 0,
+  "events": 12,
+  "malformed": 0,
+  "policy_ids": [
+    "5f4565b4-e203-4a44-bd47-d0ed97748a7a",
+    "1704b1a4-413c-422b-bd83-d5d58faa0934",
+    "bf2e4a12-c13c-4f85-8b6a-42244507f7ec",
+    "7204f140-af32-4466-8cb0-afb4d30453c5",
+    "d7a87662-ad77-4c33-b9dd-c96d464056e7",
+    "264dd5c3-608c-40ec-ade7-ed5885e4d51a",
+    "d465745f-5cad-48e8-bd23-f31681374f30",
+    "90f7dfc8-ebbd-472c-a15b-4e6e8a1a147b",
+    "573f0fc5-0076-402a-9f13-5f4f41f2fb09",
+    "97499709-0d35-44cd-acf9-414552b79f31",
+    "fcd31453-8a5f-4d64-9531-e75b09913e79",
+    "2b4c13ec-5b43-48d4-84fa-51aea838a121"
+  ]
+}

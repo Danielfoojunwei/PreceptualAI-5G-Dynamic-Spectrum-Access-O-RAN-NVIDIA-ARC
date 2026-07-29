@@ -1,0 +1,32 @@
+diff --git a/pkg/rmr/rmr.go b/pkg/rmr/rmr.go
+index c112b20..e2f5fb0 100644
+--- a/pkg/rmr/rmr.go
++++ b/pkg/rmr/rmr.go
+@@ -136,7 +136,26 @@ func (rmr *RmrSender) Consume(msg *xapp.RMRParams) (err error) {
+ 			a1.Logger.Error("Unmarshal error : %+v", err)
+ 			return err
+ 		}
+-		policyTypeId := int(result["policy_type_id"].(float64))
++		// The A1_POLICY_REQ built by Message.PolicyMessage serialises
++		// policy_type_id as a JSON string (map[string]string), so an xApp
++		// that echoes the request fields (e.g. o-ran-sc/ric-app-hw-python
++		// A1PolicyHandler.buildPolicyResp) returns a string here. Accept
++		// both encodings instead of panicking on the string case.
++		policyTypeId := 0
++		switch v := result["policy_type_id"].(type) {
++		case float64:
++			policyTypeId = int(v)
++		case string:
++			parsed, perr := strconv.Atoi(v)
++			if perr != nil {
++				a1.Logger.Error("invalid policy_type_id in A1_POLICY_RESP: %+v", perr)
++				return perr
++			}
++			policyTypeId = parsed
++		default:
++			a1.Logger.Error("unexpected policy_type_id type in A1_POLICY_RESP: %T", v)
++			return err
++		}
+ 		policyInstanceId := result["policy_instance_id"].(string)
+ 		policyHandlerId := result["handler_id"].(string)
+ 		policyStatus := result["status"].(string)

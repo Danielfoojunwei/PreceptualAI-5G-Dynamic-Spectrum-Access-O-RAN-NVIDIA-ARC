@@ -1,18 +1,21 @@
-"""Kafka connector — relies on optional `confluent-kafka` (or `aiokafka`).
+"""Kafka connector — relies on optional `aiokafka` (install extra: `kafka`).
 
-The implementation defers the import so the module can be loaded even if
-the underlying client isn't installed; the registry then skips
-registration. Once `aiokafka` is on the path, both source and sink work.
+The implementation defers the aiokafka import to ``connect()`` time so the
+module can be loaded (and configs validated) even if the underlying client
+isn't installed. Connecting without ``aiokafka`` on the path raises a loud
+:class:`KafkaDependencyError` telling the operator exactly what to install —
+never a silent no-op.
 """
 
 from __future__ import annotations
 
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
-from pydantic import Field
+from pydantic import Field, ValidationError
 
 from horizon_ric.io.connector import (
     ConnectorConfig,
+    ConnectorConfigError,
     ConnectorIOError,
     ConnectorState,
     Sink,
@@ -25,13 +28,22 @@ from horizon_ric.io.schemas import (
     TelemetryEvent,
 )
 
-try:  # pragma: no cover — optional
-    from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-except ImportError as exc:  # pragma: no cover
-    raise ImportError(
-        "Kafka connector requires `aiokafka`. Install with `pip install aiokafka`. "
-        "The connector registry skips Kafka registration when the dependency is absent."
-    ) from exc
+
+class KafkaDependencyError(ConnectorIOError):
+    """Raised when `aiokafka` is required but not installed."""
+
+
+def _import_aiokafka() -> Any:
+    """Import and return the ``aiokafka`` module, or fail loudly."""
+    try:
+        import aiokafka
+    except ImportError as exc:
+        raise KafkaDependencyError(
+            "Kafka connector requires the optional `aiokafka` dependency. "
+            "Install it with `pip install 'horizon-ric[kafka]'` "
+            "(or `pip install aiokafka`)."
+        ) from exc
+    return aiokafka
 
 
 class _KafkaConfig(ConnectorConfig):
@@ -49,7 +61,29 @@ class KafkaSource(Source):
     Config = _KafkaConfig
     cfg: _KafkaConfig
 
+    @classmethod
+    def from_dict(cls, cfg: dict[str, Any]) -> "KafkaSource":
+        """Build a KafkaSource from the daemon's YAML ``source:`` block.
+
+        Maps the runner-facing keys (``bootstrap_servers``, ``topic``,
+        ``group_id``, optional SASL/TLS knobs) onto :class:`_KafkaConfig`.
+        The routing key ``type`` is dropped; ``name`` defaults to
+        ``daemon-kafka-source``. Invalid or missing keys raise a loud
+        :class:`~horizon_ric.io.connector.ConnectorConfigError` naming the
+        offending fields — never a silent fallback.
+        """
+        data = {k: v for k, v in dict(cfg).items() if k != "type"}
+        data.setdefault("name", "daemon-kafka-source")
+        try:
+            config = _KafkaConfig(**data)
+        except ValidationError as exc:
+            raise ConnectorConfigError(
+                f"invalid Kafka source config: {exc}"
+            ) from exc
+        return cls(config)
+
     async def connect(self) -> None:  # pragma: no cover — IO
+        aiokafka = _import_aiokafka()
         if not self.cfg.group_id:
             raise ConnectorIOError("KafkaSource requires group_id")
         kwargs = {
@@ -65,7 +99,7 @@ class KafkaSource(Source):
                 sasl_plain_username=self.cfg.sasl_plain_username,
                 sasl_plain_password=self.cfg.sasl_plain_password,
             )
-        self._consumer = AIOKafkaConsumer(self.cfg.topic, **kwargs)
+        self._consumer = aiokafka.AIOKafkaConsumer(self.cfg.topic, **kwargs)
         await self._consumer.start()
         self._state = ConnectorState.STARTED
 
@@ -75,6 +109,10 @@ class KafkaSource(Source):
         self._state = ConnectorState.STOPPED
 
     async def stream(self) -> AsyncIterator[TelemetryEvent]:  # pragma: no cover
+        if self._state != ConnectorState.STARTED:
+            raise ConnectorIOError(
+                "KafkaSource not connected — call `await connect()` first"
+            )
         async for msg in self._consumer:
             try:
                 yield TelemetryEvent.model_validate_json(msg.value)
@@ -89,6 +127,7 @@ class KafkaSink(Sink):
     cfg: _KafkaConfig
 
     async def connect(self) -> None:  # pragma: no cover
+        aiokafka = _import_aiokafka()
         kwargs = {"bootstrap_servers": self.cfg.bootstrap_servers}
         if self.cfg.security_protocol != "PLAINTEXT":
             kwargs.update(
@@ -97,7 +136,7 @@ class KafkaSink(Sink):
                 sasl_plain_username=self.cfg.sasl_plain_username,
                 sasl_plain_password=self.cfg.sasl_plain_password,
             )
-        self._producer = AIOKafkaProducer(**kwargs)
+        self._producer = aiokafka.AIOKafkaProducer(**kwargs)
         await self._producer.start()
         self._state = ConnectorState.STARTED
 
@@ -116,4 +155,4 @@ class KafkaSink(Sink):
         )
 
 
-__all__ = ["KafkaSink", "KafkaSource"]
+__all__ = ["KafkaDependencyError", "KafkaSink", "KafkaSource"]

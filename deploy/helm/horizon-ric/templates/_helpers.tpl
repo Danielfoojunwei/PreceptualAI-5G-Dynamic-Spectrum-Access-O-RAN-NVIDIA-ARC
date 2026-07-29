@@ -50,11 +50,16 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{/*
-Secret name (existing or generated).
+Secret name (existing or generated). secret.create=false with no
+existingSecret would render a secretRef to a Secret that never exists —
+every pod would sit in CreateContainerConfigError — so fail the render
+instead of shipping a dangling reference.
 */}}
 {{- define "horizon-ric.secretName" -}}
 {{- if .Values.secret.existingSecret -}}
 {{- .Values.secret.existingSecret -}}
+{{- else if not .Values.secret.create -}}
+{{- fail "secret.create=false requires secret.existingSecret to be set (the Deployment envFrom references this Secret)" -}}
 {{- else -}}
 {{- include "horizon-ric.fullname" . -}}-credentials
 {{- end -}}

@@ -39,8 +39,11 @@ class TestSha256:
     def test_different_content_different_sha(self, tmp_path):
         a = _make_dataset(tmp_path / "a", {"x.bin": b"hello"})
         b = _make_dataset(tmp_path / "b", {"x.bin": b"different"})
-        # Note: manifest captures (path, size); same path but different
-        # *size* changes the SHA; same size with different bytes does not.
+        assert compute_dataset_sha256(a) != compute_dataset_sha256(b)
+
+    def test_same_size_substitution_changes_sha(self, tmp_path):
+        a = _make_dataset(tmp_path / "a", {"x.bin": b"abcde"})
+        b = _make_dataset(tmp_path / "b", {"x.bin": b"edcba"})
         assert compute_dataset_sha256(a) != compute_dataset_sha256(b)
 
 

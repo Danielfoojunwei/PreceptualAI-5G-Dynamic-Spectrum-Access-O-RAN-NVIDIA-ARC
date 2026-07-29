@@ -8,11 +8,18 @@ spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+  {{- if .Values.persistence.enabled }}
+  # The state PVC is ReadWriteOnce — a RollingUpdate surge pod would deadlock
+  # waiting for the volume attach. Recreate stops the old pod first.
+  strategy:
+    type: Recreate
+  {{- else }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 0
       maxSurge: 1
+  {{- end }}
   selector:
     matchLabels:
       {{- include "horizon-ric.selectorLabels" . | nindent 6 }}
@@ -25,9 +32,18 @@ spec:
         {{- end }}
       annotations:
         prometheus.io/scrape: "true"
+        # Pipeline mode serves /metrics on the metrics port; the bare
+        # lifecycle daemon serves it on the health port (see values.yaml).
+        {{- if .Values.pipeline.enabled }}
         prometheus.io/port: {{ .Values.metricsPort | quote }}
+        {{- else }}
+        prometheus.io/port: {{ .Values.healthPort | quote }}
+        {{- end }}
         prometheus.io/path: "/metrics"
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if .Values.pipeline.enabled }}
+        checksum/config-source: {{ include (print $.Template.BasePath "/configmap-source.yaml") . | sha256sum }}
+        {{- end }}
         {{- if .Values.secret.create }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- end }}
@@ -47,6 +63,11 @@ spec:
         - name: horizon-rapp
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.pipeline.enabled }}
+          # Full-pipeline mode: telemetry source → planner → Shield → A1 emit.
+          # Without args the entrypoint runs the bare lifecycle daemon.
+          args: ["--source-config", "/etc/horizon/source.yaml"]
+          {{- end }}
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           ports:
@@ -56,6 +77,11 @@ spec:
             - name: metrics
               containerPort: {{ .Values.metricsPort }}
               protocol: TCP
+            {{- if .Values.dashboard.enabled }}
+            - name: dashboard
+              containerPort: {{ .Values.dashboard.port }}
+              protocol: TCP
+            {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "horizon-ric.configMapName" . }}
@@ -68,10 +94,26 @@ spec:
               valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
             - name: HORIZON_VERSION
               value: {{ .Chart.AppVersion | quote }}
+            {{- if and .Values.timescaledb.enabled .Values.evidence.useTimescaleDb }}
+            # Postgres-backed evidence store. POSTGRES_PASSWORD must precede
+            # HORIZON_EVIDENCE_DSN so the $(POSTGRES_PASSWORD) dependent-env
+            # reference expands — the password never appears in a ConfigMap.
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "horizon-ric.fullname" . }}-timescaledb
+                  key: POSTGRES_PASSWORD
+            - name: HORIZON_EVIDENCE_DSN
+              value: "postgresql://{{ .Values.timescaledb.user }}:$(POSTGRES_PASSWORD)@{{ include "horizon-ric.fullname" . }}-timescaledb.{{ .Release.Namespace }}.svc:5432/{{ .Values.timescaledb.database }}"
+            {{- end }}
+          # Probe port follows the run mode: pipeline serves /healthz + /readyz
+          # on the metrics port (8082); the bare lifecycle daemon serves them
+          # on the health port (8081). See the port story in values.yaml.
+          {{- $probePort := ternary "metrics" "health" .Values.pipeline.enabled }}
           livenessProbe:
             httpGet:
               path: /healthz
-              port: health
+              port: {{ $probePort }}
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
@@ -79,7 +121,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /readyz
-              port: health
+              port: {{ $probePort }}
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
@@ -91,6 +133,11 @@ spec:
               mountPath: {{ .Values.config.stateDir | quote }}
             - name: tmp
               mountPath: /tmp
+            {{- if .Values.pipeline.enabled }}
+            - name: source-config
+              mountPath: /etc/horizon
+              readOnly: true
+            {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -109,6 +156,11 @@ spec:
         - name: tmp
           emptyDir:
             sizeLimit: 256Mi
+        {{- if .Values.pipeline.enabled }}
+        - name: source-config
+          configMap:
+            name: {{ include "horizon-ric.fullname" . }}-source
+        {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

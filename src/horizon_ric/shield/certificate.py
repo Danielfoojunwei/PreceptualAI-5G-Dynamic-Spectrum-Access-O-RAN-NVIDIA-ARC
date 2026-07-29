@@ -72,7 +72,7 @@ class InvariantCheck:
 
 @dataclass(frozen=True)
 class SafetyCertificate:
-    """The signed-by-construction record of one shielded decision."""
+    """The certificate-by-construction record of one shielded decision."""
 
     decision_id: str
     issued_at: str  # ISO-8601 UTC
@@ -90,6 +90,10 @@ class SafetyCertificate:
     emit_blocked: bool  # Shield could not make the action safe → refuse emit
     rng_seed: Optional[int] = None
     model_provenance: Optional[dict[str, Any]] = None
+    # Optional Ed25519 signature over the certificate's canonical JSON
+    # (see horizon_ric.shield.signing). None when signing is not configured.
+    signature: Optional[str] = None
+    signing_key_fingerprint: Optional[str] = None
 
     @property
     def min_margin_dB(self) -> Optional[float]:
@@ -116,6 +120,8 @@ class SafetyCertificate:
             "min_margin_dB": self.min_margin_dB,
             "rng_seed": self.rng_seed,
             "model_provenance": self.model_provenance,
+            "signature": self.signature,
+            "signing_key_fingerprint": self.signing_key_fingerprint,
         }
 
 

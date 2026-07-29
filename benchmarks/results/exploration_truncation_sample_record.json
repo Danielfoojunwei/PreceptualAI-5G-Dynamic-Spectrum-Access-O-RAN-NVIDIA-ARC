@@ -1,0 +1,49 @@
+{
+  "hash": "c8d65423297eb28b488bb94d213ca3e2d83ddc38a8fde774afdde35d4c122c2a",
+  "record": {
+    "actual_outcome_1min": null,
+    "actual_outcome_30s": null,
+    "actual_outcome_5min": null,
+    "chosen_action": {
+      "guard_refused": true,
+      "label": "reward_only",
+      "policy_type": "horizon.spectrum.reservation",
+      "projected": true,
+      "requested_frequency_hz": 3591666666.6666665,
+      "requested_tx_power_dBm": 30.0,
+      "reward": 0.345947265625,
+      "safe_frequency_hz": 3540000000.0,
+      "safe_tx_power_dBm": 27.0
+    },
+    "constraint_corrections": [],
+    "decision_id": "reward_only-r000-s00",
+    "model_versions": {
+      "constraint_layer": "terrestrial-shield",
+      "dyna": "none",
+      "encoder": "none",
+      "policy": "reward_only",
+      "rapp": "0.2.0",
+      "risk_heads": "shield-feedback"
+    },
+    "operator_override": false,
+    "operator_override_reason": null,
+    "predicted_outcome_chosen": {
+      "constraint_violations": [],
+      "energy_kwh": 0.0,
+      "gateway_loads": {},
+      "ntn_capacity_used": 0.0,
+      "sla_risk_1min": 0.1,
+      "sla_risk_30s": 0.1,
+      "sla_risk_5min": 0.1
+    },
+    "random_seed": null,
+    "rapp_instance_id": "exploration-truncation",
+    "rejected_alternatives": [],
+    "sla_breach_context": null,
+    "state_blob_uri": null,
+    "state_hash": "freq-3591666667",
+    "tenant_id": "_unscoped_",
+    "timestamp": "2026-07-28T07:29:36.515081Z"
+  },
+  "tenant_id": "_unscoped_"
+}

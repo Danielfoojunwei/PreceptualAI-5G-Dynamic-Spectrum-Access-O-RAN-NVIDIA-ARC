@@ -1,0 +1,27 @@
+{
+  "external_system": {
+    "commit": "be2943f57211f62095dc5434099e331df237aafb",
+    "interface": "OSC_2.1.0",
+    "name": "O-RAN-SC sim-a1-interface",
+    "repository": "https://github.com/o-ran-sc/sim-a1-interface"
+  },
+  "generated_at_utc": "2026-07-27T05:38:54.541737+00:00",
+  "operations": {
+    "healthcheck": 200,
+    "policy_create": 202,
+    "policy_delete": 202,
+    "policy_list_after_create_contains_id": true,
+    "policy_list_after_delete_contains_id": false,
+    "policy_status_has_enforce_status": true,
+    "registered_policy_type_ids": [
+      20001,
+      20002,
+      20003,
+      20004
+    ]
+  },
+  "result": "pass",
+  "schema_version": "1.0",
+  "scope": "Open-source OSC simulator REST interoperability only; no live radio, operator traffic, OSC platform deployment, commercial vendor stack, conformance certification, or carrier-scale load is exercised.",
+  "system_under_test": "Horizon-RIC A1Adapter osc_a1 dialect"
+}

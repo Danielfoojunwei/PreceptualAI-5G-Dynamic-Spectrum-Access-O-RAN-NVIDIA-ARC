@@ -1,0 +1,33 @@
+{
+  "candidate_receivers": 131931,
+  "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+  "dataset": "DeepMIMO ASU Campus 3.5 GHz",
+  "deepmimo_release_commit": "cbe3a3eae426d0d0a2bd1fdf95ce011c536a3dd9",
+  "deepmimo_release_url": "https://github.com/DeepMIMO/DeepMIMO/releases/tag/v4.0.0",
+  "deepmimo_version": "4.0.0",
+  "features_committed": false,
+  "features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
+  "features_sha256_scope": "Exact JSONL bytes for this build. Cross-host CI requires the same source hashes, transform, structure and safety outcomes, and compares floating outputs with 0.0001 dB absolute tolerance.",
+  "licensing": {
+    "deepmimo_tool": "Apache-2.0",
+    "scenario_archive": "No separate license file was present in the downloaded scenario archive; raw and row-level derived data are therefore not redistributed here."
+  },
+  "receivers_with_paths": 85157,
+  "sampled_receivers": 4096,
+  "scenario": "asu_campus_3p5",
+  "scenario_docs_url": "https://deepmimo.net/docs/tutorials/1_getting_started.html",
+  "source_archive_sha256": "80e4a4983847023158ed61a5a489025d72f4edcdac89edf4ee1323699e1b7da3",
+  "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+  "subband_gain_dbw_max": -97.472687,
+  "subband_gain_dbw_min": -208.532654,
+  "transform": {
+    "antenna": "SISO isotropic",
+    "bandwidth_hz": 100000000,
+    "carrier_frequency_hz": 3500000000,
+    "ofdm_selected_subcarriers": 60,
+    "ofdm_total_subcarriers": 1024,
+    "paths_per_receiver": 10,
+    "receiver_sampling": "evenly spaced over receivers with >=1 finite path",
+    "subbands": 6
+  }
+}

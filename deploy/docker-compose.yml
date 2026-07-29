@@ -1,6 +1,9 @@
 # Horizon-RIC local stack — rApp + edge agent + Prometheus + Grafana.
 # Bring up: docker compose up -d
-# Smoke check (60s): curl -fsS http://localhost:8081/healthz
+# The rApp runs in full-pipeline mode (--source-config), which serves
+# /healthz, /readyz AND /metrics all on the metrics port 8082 — nothing
+# listens on 8081 in this mode (8081 is the bare lifecycle daemon's port).
+# Smoke check (60s): curl -fsS http://localhost:8082/healthz
 #                    curl -fsS http://localhost:8082/metrics
 #                    open http://localhost:3000  (admin/admin)
 
@@ -29,12 +32,13 @@ services:
       SPACE_TRACK_PASSWORD: ${SPACE_TRACK_PASSWORD:-}
     command: ["--source-config", "/opt/horizon/scripts/local-dev.yaml"]
     ports:
-      - "8081:8081"   # /healthz, /readyz
-      - "8082:8082"   # /metrics
+      - "8081:8081"   # lifecycle-mode health port (unused while --source-config is set)
+      - "8082:8082"   # pipeline mode: /healthz, /readyz AND /metrics
     volumes:
       - evidence-store:/var/lib/horizon
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8081/healthz"]
+      # Pipeline mode serves health on the metrics port (8082), not 8081.
+      test: ["CMD", "curl", "-fsS", "http://localhost:8082/healthz"]
       interval: 10s
       timeout: 3s
       retries: 5

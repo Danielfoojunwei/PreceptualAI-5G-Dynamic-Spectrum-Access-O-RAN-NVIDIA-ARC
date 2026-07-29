@@ -9,6 +9,7 @@ References:
 from __future__ import annotations
 
 import asyncio
+import os
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
@@ -17,6 +18,37 @@ import httpx
 import structlog
 
 logger = structlog.get_logger(__name__)
+
+
+class EvidencePersistError(Exception):
+    """The A1 policy is LIVE on the Near-RT RIC but its DecisionRecord
+    could not be persisted to the evidence store (e.g. disk full).
+
+    Raised *after* the PUT succeeded and the emit counters incremented, so
+    callers can distinguish "policy live but unaudited" from an emit
+    failure and take a best-effort audit/alerting path instead of treating
+    the decision as rejected.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        policy_type: str,
+        policy_id: str,
+        http_status: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.policy_type = policy_type
+        self.policy_id = policy_id
+        self.http_status = http_status
+
+
+def _env_truthy(name: str) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return False
+    return raw.strip().lower() not in {"", "0", "false", "no"}
 
 
 # Standard A1 policy types (from O-RAN A1AP and 3GPP TS 23.503 alignment).
@@ -63,7 +95,7 @@ class A1AdapterConfig:
         default_factory=lambda: dict(DEFAULT_POLICY_TYPES)
     )
     # ------------------------------------------------------------------
-    # OSC NONRTRIC dialect switch.
+    # A1 dialect switch.
     #
     # The OSC `nonrtric-plt-a1policymanagementservice` reference exposes
     # a *different* URL surface from the historical near-RT-RIC A1AP
@@ -77,9 +109,16 @@ class A1AdapterConfig:
     #     in the body (NOT nested under `/policytypes/{id}/policies`).
     #   - Policy delete / status are addressed only by `policy_id`.
     #
-    # When `dialect == "osc"` we honour the real OSC paths; the default
+    # When `dialect == "osc"` we honour the OSC NONRTRIC Policy Management
+    # Service northbound paths; the default
     # "legacy" mode retains the historical paths for back-compat with
     # the existing rapp-lifecycle unit tests.
+    #
+    # ``osc_a1`` addresses the OSC A1 2.1.0 Near-RT RIC interface directly.
+    # It is deliberately separate from ``osc``: the latter is the Non-RT
+    # RIC Policy Management Service API, while this dialect is the nested
+    # ``/a1-p/policytypes/{id}/policies/{id}`` interface implemented by the
+    # official o-ran-sc/sim-a1-interface project.
     #
     # EIAP dialect (Ericsson Intelligent Automation Platform / EIAP rApp SDK):
     #   - Base path: /A1-PolicyManagement/v2/
@@ -118,6 +157,12 @@ class A1Adapter:
 
     def __init__(self, config: A1AdapterConfig | None = None):
         self.cfg = config or A1AdapterConfig()
+        supported_dialects = {"legacy", "osc", "osc_a1", "eiap", "mantaray"}
+        if self.cfg.dialect not in supported_dialects:
+            choices = ", ".join(sorted(supported_dialects))
+            raise ValueError(
+                f"unsupported A1 dialect {self.cfg.dialect!r}; choose one of: {choices}"
+            )
         if self.cfg.auth is not None:
             from horizon_ric.rapp.auth import build_secure_async_client
 
@@ -183,6 +228,8 @@ class A1Adapter:
     # -- URL builders that honour the OSC vs legacy dialect ---------------
 
     def _policy_type_url(self, policy_type_id: int) -> str:
+        if self.cfg.dialect == "osc_a1":
+            return f"/a1-p/policytypes/{policy_type_id}"
         if self.cfg.dialect == "osc":
             # OSC PMS uses string policytype_id under /a1-policy/v2.
             return f"/a1-policy/v2/policy-types/{policy_type_id}"
@@ -195,6 +242,8 @@ class A1Adapter:
     def _policy_instance_url(
         self, policy_type_id: int, policy_id: str
     ) -> str:
+        if self.cfg.dialect == "osc_a1":
+            return f"/a1-p/policytypes/{policy_type_id}/policies/{policy_id}"
         if self.cfg.dialect == "osc":
             # OSC: flat, addressed only by policy_id.
             return f"/a1-policy/v2/policies/{policy_id}"
@@ -205,6 +254,8 @@ class A1Adapter:
         return f"/A1-P/v2/policytypes/{policy_type_id}/policies/{policy_id}"
 
     def _policy_create_url(self, policy_type_id: int) -> str:
+        if self.cfg.dialect == "osc_a1":
+            return f"/a1-p/policytypes/{policy_type_id}/policies"
         # OSC PMS uses a single flat PUT to /a1-policy/v2/policies; the
         # legacy near-RT-RIC mirror addresses the resource directly.
         if self.cfg.dialect == "osc":
@@ -217,6 +268,11 @@ class A1Adapter:
         return f"/A1-P/v2/policytypes/{policy_type_id}/policies"
 
     def _policy_status_url(self, policy_type_id: int, policy_id: str) -> str:
+        if self.cfg.dialect == "osc_a1":
+            return (
+                f"/a1-p/policytypes/{policy_type_id}"
+                f"/policies/{policy_id}/status"
+            )
         if self.cfg.dialect == "osc":
             return f"/a1-policy/v2/policies/{policy_id}/status"
         if self.cfg.dialect == "eiap":
@@ -229,6 +285,8 @@ class A1Adapter:
         )
 
     def _policy_list_url(self, policy_type_id: int) -> str:
+        if self.cfg.dialect == "osc_a1":
+            return f"/a1-p/policytypes/{policy_type_id}/policies"
         if self.cfg.dialect == "osc":
             return f"/a1-policy/v2/policies?policytype_id={policy_type_id}"
         if self.cfg.dialect == "eiap":
@@ -246,25 +304,49 @@ class A1Adapter:
         policy_payload: dict[str, Any],
         policy_id: str | None = None,
         decision_record: "DecisionRecord | None" = None,  # noqa: F821
+        safety_certificate: "SafetyCertificate | None" = None,  # noqa: F821
     ) -> tuple[str, int]:
         """Emit an A1 policy instance to the Near-RT RIC.
 
         If `decision_record` is provided AND an evidence store is attached
         (`A1Adapter.attach_evidence_store()`), the record is appended to the
         store after the PUT succeeds — so audit trails only contain policies
-        that the Near-RT RIC actually accepted.
+        that the Near-RT RIC actually accepted. If that append fails the
+        policy is already live: an ``a1.evidence.persist_failed`` event is
+        logged and :class:`EvidencePersistError` is raised so callers can
+        distinguish "policy live but unaudited" from an emit failure.
+
+        When the environment variable ``HORIZON_A1_REQUIRE_CERT`` is truthy,
+        the emit is refused (ValueError) unless ``safety_certificate`` is a
+        certificate with ``safe=True`` and ``emit_blocked=False``. Default
+        off for back-compat with callers that run their own guard chain.
 
         Args:
             policy_type: registered type name (e.g., "horizon.qos.priority").
             policy_payload: instance-specific data conforming to the policy schema.
             policy_id: optional UUID; one is generated if not provided.
             decision_record: optional DecisionRecord to persist on success.
+            safety_certificate: optional Shield certificate for this decision.
 
         Returns:
             (policy_id, http_status_code)
         """
         if policy_type not in self.cfg.policy_types:
             raise ValueError(f"unregistered policy_type: {policy_type}")
+        if _env_truthy("HORIZON_A1_REQUIRE_CERT"):
+            if safety_certificate is None:
+                raise ValueError(
+                    "HORIZON_A1_REQUIRE_CERT is set but no safety_certificate "
+                    f"accompanies the {policy_type} emit — refusing to emit "
+                    "an uncertified policy"
+                )
+            if not safety_certificate.safe or safety_certificate.emit_blocked:
+                raise ValueError(
+                    "HORIZON_A1_REQUIRE_CERT is set and the safety certificate "
+                    f"for the {policy_type} emit is not clean "
+                    f"(safe={safety_certificate.safe}, "
+                    f"emit_blocked={safety_certificate.emit_blocked}) — refusing"
+                )
         type_spec = self.cfg.policy_types[policy_type]
         policy_id = policy_id or str(uuid.uuid4())
         async def _do_put():
@@ -337,8 +419,30 @@ class A1Adapter:
             except Exception:  # pragma: no cover
                 pass
             # Persist evidence if both a record and a store are attached.
+            # The policy is ALREADY live on the RIC at this point (and the
+            # emit counters have incremented) — a store failure here must
+            # not masquerade as an emit failure. Log a distinct event and
+            # raise EvidencePersistError so callers can audit "policy live
+            # but unaudited" explicitly.
             if decision_record is not None and self._evidence_store is not None:
-                self._evidence_store.append(decision_record)
+                try:
+                    self._evidence_store.append(decision_record)
+                except Exception as persist_exc:
+                    logger.error(
+                        "a1.evidence.persist_failed",
+                        policy_type=policy_type,
+                        policy_id=policy_id,
+                        error=str(persist_exc),
+                        error_type=type(persist_exc).__name__,
+                    )
+                    raise EvidencePersistError(
+                        f"policy {policy_id} ({policy_type}) is live on the "
+                        f"Near-RT RIC but its DecisionRecord failed to persist: "
+                        f"{persist_exc}",
+                        policy_type=policy_type,
+                        policy_id=policy_id,
+                        http_status=resp.status_code,
+                    ) from persist_exc
                 try:
                     from horizon_ric.rapp.health import (
                         COUNTERFACTUAL_ENVELOPE_BYTES,

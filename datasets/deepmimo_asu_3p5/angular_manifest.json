@@ -1,0 +1,36 @@
+{
+  "aod_az_deg_max": 179.959,
+  "aod_az_deg_min": -179.998,
+  "bs_array": {
+    "carrier_hz": 3500000000.0,
+    "elements": 8,
+    "geometry": "uniform linear array (ULA)",
+    "spacing_wavelengths": 0.5
+  },
+  "candidate_receivers": 131931,
+  "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+  "dataset": "DeepMIMO ASU Campus 3.5 GHz (angular ray geometry)",
+  "deepmimo_release_commit": "cbe3a3eae426d0d0a2bd1fdf95ce011c536a3dd9",
+  "deepmimo_release_url": "https://github.com/DeepMIMO/DeepMIMO/releases/tag/v4.0.0",
+  "deepmimo_version": "4.0.0",
+  "features_committed": false,
+  "features_sha256": "13eb2f6b8d8f648f45b00c28e0b8b46c3afdbd6a2e36543792b04025092a6884",
+  "features_sha256_scope": "Exact JSONL bytes for this build. features_sha256 is host-dependent (gains/angles rounded to 4 decimals); cross-host reproduction is verified on source_tree_sha256 plus tolerance-bounded outputs.",
+  "licensing": {
+    "deepmimo_tool": "Apache-2.0",
+    "scenario_archive": "No separate license file was present in the downloaded scenario archive; raw and row-level derived data are therefore not redistributed here."
+  },
+  "paths_per_receiver": 10,
+  "receiver_sampling": "evenly spaced over receivers with >=1 finite path",
+  "receivers_with_paths": 85157,
+  "sampled_receivers": 4096,
+  "scenario": "asu_campus_3p5",
+  "scenario_docs_url": "https://deepmimo.net/docs/tutorials/1_getting_started.html",
+  "source_archive_sha256": "80e4a4983847023158ed61a5a489025d72f4edcdac89edf4ee1323699e1b7da3",
+  "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+  "tx_position_m": [
+    166.0,
+    104.0,
+    22.0
+  ]
+}

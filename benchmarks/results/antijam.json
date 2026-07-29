@@ -1,0 +1,81 @@
+{
+  "benchmark": "Anti-jam MVDR null-steering on real DeepMIMO angular channels",
+  "bs_array": {
+    "carrier_hz": 3500000000.0,
+    "elements": 8,
+    "geometry": "uniform linear array (ULA)",
+    "spacing_wavelengths": 0.5
+  },
+  "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+  "dataset": "DeepMIMO ASU Campus 3.5 GHz (angular ray geometry)",
+  "features_sha256": "13eb2f6b8d8f648f45b00c28e0b8b46c3afdbd6a2e36543792b04025092a6884",
+  "jammer": {
+    "azimuth_deg": -142.0,
+    "azimuth_rule": "rounded median strongest-path AoD of this build",
+    "jammer_to_signal_db": 30.0,
+    "note": "modeled interferer; single-BS scenario",
+    "power_dbw": -48.282
+  },
+  "mean_null_depth_db": 67.8965,
+  "mean_serving_signal_dbw": -78.282,
+  "mean_sinr_antijam_db": 15.7558,
+  "mean_sinr_gain_db": 59.8322,
+  "mean_sinr_jammed_db": -44.0764,
+  "median_sinr_antijam_db": 14.8196,
+  "median_sinr_gain_db": 60.1578,
+  "median_sinr_jammed_db": -40.6949,
+  "min_null_depth_db": 51.9036,
+  "noise_floor_dbw": -131.0,
+  "receivers": 4096,
+  "restored_fraction_antijam": 0.6799,
+  "restored_fraction_jammed": 0.0098,
+  "scenario": "asu_campus_3p5",
+  "scope_note": "The desired downlink channel is real: each receiver's h_d is the sum of its own ray-traced paths (real AoD, power, phase; Wireless InSite) over the real 8-element half-wavelength ULA. The jammer is a MODELED point interferer at a fixed documented azimuth \u2014 this single-BS scenario has no second real transmitter \u2014 and its covariance is analytic (perfectly known), so null depths are idealized upper bounds. Site-specific ray tracing, not OTA capture; one scenario.",
+  "serving_beam_histogram": [
+    970,
+    1020,
+    750,
+    934,
+    104,
+    78,
+    75,
+    165
+  ],
+  "sinr_threshold_db": 0.0,
+  "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+  "task": "O-RAN interference-mitigation (anti-jam) rApp",
+  "trust_chain": {
+    "evidence_chain_length": 2,
+    "gate_records": [
+      {
+        "corrected": false,
+        "emitted_clean": true,
+        "guard_refused": [],
+        "jammer_azimuth_deg": -142.0,
+        "label": "antijam-nullsteer",
+        "projected": false,
+        "requested_eirp_dbm": 32.0,
+        "safe": true,
+        "safe_eirp_dbm": 32.0
+      },
+      {
+        "corrected": true,
+        "emitted_clean": false,
+        "guard_refused": [
+          "corrections_not_audited"
+        ],
+        "jammer_azimuth_deg": -142.0,
+        "label": "over-eirp-nullsteer",
+        "projected": true,
+        "requested_eirp_dbm": 46.0,
+        "safe": true,
+        "safe_eirp_dbm": 33.0
+      }
+    ],
+    "overpower_nullsteer_corrected": true,
+    "overpower_nullsteer_reached_ran": false,
+    "overpower_nullsteer_safe_eirp_dbm": 33.0,
+    "verify_after_tamper_index": 1,
+    "verify_first_broken_index": -1
+  }
+}

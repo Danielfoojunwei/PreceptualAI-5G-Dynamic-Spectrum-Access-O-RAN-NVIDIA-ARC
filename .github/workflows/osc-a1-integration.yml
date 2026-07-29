@@ -1,0 +1,80 @@
+name: OSC A1 live integration
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/horizon_ric/rapp/a1_adapter.py"
+      - "scripts/osc_a1_live_smoke.py"
+      - "tests/test_a1_osc_a1_dialect.py"
+      - ".github/workflows/osc-a1-integration.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  osc-a1-simulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Pin the exact official source revision used to build the simulator.
+      OSC_A1_SIM_COMMIT: be2943f57211f62095dc5434099e331df237aafb
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Horizon-RIC
+        run: python -m pip install '.[dev]'
+      - name: Fetch pinned official O-RAN-SC simulator
+        run: |
+          git clone https://github.com/o-ran-sc/sim-a1-interface.git \
+            "$RUNNER_TEMP/sim-a1-interface"
+          git -C "$RUNNER_TEMP/sim-a1-interface" checkout \
+            --detach "$OSC_A1_SIM_COMMIT"
+          test "$(git -C "$RUNNER_TEMP/sim-a1-interface" rev-parse HEAD)" = \
+            "$OSC_A1_SIM_COMMIT"
+      - name: Relax obsolete Alpine package revision pin
+        run: |
+          dockerfile="$RUNNER_TEMP/sim-a1-interface/near-rt-ric-simulator/Dockerfile"
+          test "$(sha256sum "$dockerfile" | cut -d' ' -f1)" = \
+            "c855a673aa249bfba3801b5efd52c852c379f5308e3852c458210ec3a7796c05"
+          sed -i 's/python3=3.10.15-r0/python3/' "$dockerfile"
+          ! grep -q 'python3=3.10.15-r0' "$dockerfile"
+          # Application source and its Flask/Connexion pins are unchanged.
+          # Only an unavailable Alpine 3.17 package *revision* is relaxed.
+      - name: Build and start OSC 2.1.0 simulator
+        run: |
+          docker build --pull \
+            --tag horizon-osc-a1-sim:"$OSC_A1_SIM_COMMIT" \
+            "$RUNNER_TEMP/sim-a1-interface/near-rt-ric-simulator"
+          docker run --detach --name horizon-osc-a1-sim \
+            --publish 8085:8085 \
+            --env A1_VERSION=OSC_2.1.0 \
+            --env ALLOW_HTTP=true \
+            --env DUPLICATE_CHECK=0 \
+            horizon-osc-a1-sim:"$OSC_A1_SIM_COMMIT"
+      - name: Wait for live A1 healthcheck
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8085/a1-p/healthcheck; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+      - name: Exercise live policy lifecycle
+        run: |
+          python scripts/osc_a1_live_smoke.py \
+            --out "$RUNNER_TEMP/osc-a1-live-result.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: osc-a1-live-result
+          path: ${{ runner.temp }}/osc-a1-live-result.json
+      - name: Simulator logs
+        if: always()
+        run: docker logs horizon-osc-a1-sim || true
+      - name: Stop simulator
+        if: always()
+        run: docker rm --force horizon-osc-a1-sim || true

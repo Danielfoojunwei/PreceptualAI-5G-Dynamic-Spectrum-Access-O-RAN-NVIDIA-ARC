@@ -39,6 +39,15 @@ SKIP_DIRS = {
     "build",
     "checkpoints",
     "site-packages",
+    # Vendored upstream sources (git submodules) and the fetch-script
+    # output dir. These carry other projects' published demo certificates
+    # (e.g. sim-a1-interface's near-rt-ric-simulator TLS test certs) — not
+    # this repo's secrets, and not objects in this repo's history since
+    # submodule contents live in their own repos. The default CI checkout
+    # does not populate them; this keeps a submodule-recursive local
+    # checkout green too.
+    "third_party",
+    "oran-deps-src",
 }
 
 # Files that are allowed even though they have a key-like extension.

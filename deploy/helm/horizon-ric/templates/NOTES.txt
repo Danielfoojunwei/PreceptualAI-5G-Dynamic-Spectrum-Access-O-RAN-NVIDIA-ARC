@@ -1,14 +1,30 @@
 {{ .Chart.Name }} v{{ .Chart.AppVersion }} installed in namespace {{ .Release.Namespace }}.
 
 Service: {{ include "horizon-ric.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
-  health   : {{ .Values.service.healthPort }}/healthz, {{ .Values.service.healthPort }}/readyz
-  metrics  : {{ .Values.service.metricsPort }}/metrics
+{{- if .Values.pipeline.enabled }}
+  Pipeline mode: /healthz, /readyz AND /metrics are all served on the
+  metrics port ({{ .Values.service.metricsPort }}); the health port answers nothing in this mode.
+{{- else }}
+  Lifecycle mode: /healthz, /readyz AND /metrics are all served on the
+  health port ({{ .Values.service.healthPort }}); the metrics port answers nothing in this mode.
+{{- end }}
+{{- if .Values.dashboard.enabled }}
+  Dashboard API: port {{ .Values.service.dashboardPort }} (requires secret.data.apiJwtSecret).
+{{- end }}
 
 Quick check:
 
+{{- if .Values.pipeline.enabled }}
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "horizon-ric.fullname" . }} 8082:{{ .Values.service.metricsPort }}
+  curl -fsS http://localhost:8082/healthz
+  curl -fsS http://localhost:8082/readyz
+  curl -fsS http://localhost:8082/metrics
+{{- else }}
   kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "horizon-ric.fullname" . }} 8081:{{ .Values.service.healthPort }}
   curl -fsS http://localhost:8081/healthz
   curl -fsS http://localhost:8081/readyz
+  curl -fsS http://localhost:8081/metrics
+{{- end }}
 
 Logs (JSON, structlog):
 

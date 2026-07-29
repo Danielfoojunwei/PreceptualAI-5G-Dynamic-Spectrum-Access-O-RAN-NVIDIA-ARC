@@ -28,13 +28,18 @@ All numpy. The math is the real attack math; nothing here is faked.
 from __future__ import annotations
 
 import math
-from typing import Sequence
+from typing import Sequence, TypeAlias
 
 import numpy as np
+import numpy.typing as npt
 
 from horizon_ric.federated import robust
 
-Vector = np.ndarray
+# A proper type alias (not a bare variable) so mypy accepts `Vector` in
+# annotations and resolves element types through `list[Vector]` returns —
+# otherwise `Vector = np.ndarray` reads as a runtime value and downstream
+# `.reshape(...)` calls fail with "Vector? has no attribute".
+Vector: TypeAlias = npt.NDArray[np.float64]
 
 
 def _phi_inv(p: float) -> float:

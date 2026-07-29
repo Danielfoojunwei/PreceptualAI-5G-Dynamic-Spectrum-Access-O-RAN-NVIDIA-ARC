@@ -1,0 +1,58 @@
+{
+  "_note": "Nokia MantaRay SDN-R rApp catalogue registration payload — SKELETON. Not validated against a live MantaRay SMO; see README.md in this directory for the honest scope. The a1Endpoint contract below IS pinned over a real local HTTP socket by tests/test_multi_vendor_integration.py::TestRealSocketVendorContracts.",
+  "rappId": "horizon-ric-rapp",
+  "name": "Horizon-RIC",
+  "version": "0.2.0",
+  "vendor": "Preceptual AI",
+  "license": "Apache-2.0",
+  "description": "AI-for-RAN trust & audit rApp: projects every ML policy decision onto independently-measured radio invariants and binds it to a hash-chained, RFC-3161-anchored evidence record before A1 emission.",
+  "container": {
+    "image": "horizonric/rapp:0.2.0",
+    "pullPolicy": "IfNotPresent"
+  },
+  "a1Endpoint": {
+    "dialect": "mantaray",
+    "basePath": "/sdn-r/api/v1",
+    "policyTypeRegistration": {
+      "method": "PUT",
+      "path": "/sdn-r/api/v1/policy-types/{policyTypeId}"
+    },
+    "policyCreate": {
+      "method": "PUT",
+      "path": "/sdn-r/api/v1/policies",
+      "bodyKeys": ["policyId", "policyTypeId", "ricId", "rappId", "policyData"]
+    },
+    "policyStatus": {
+      "method": "GET",
+      "path": "/sdn-r/api/v1/policies/{policyId}/status"
+    },
+    "policyDelete": {
+      "method": "DELETE",
+      "path": "/sdn-r/api/v1/policies/{policyId}"
+    }
+  },
+  "auth": {
+    "scheme": "keycloak-jwt",
+    "grantType": "client_credentials",
+    "env": {
+      "tokenUrl": "HORIZON_A1_OAUTH_TOKEN_URL",
+      "clientId": "HORIZON_A1_OAUTH_CLIENT_ID",
+      "clientSecret": "HORIZON_A1_OAUTH_CLIENT_SECRET",
+      "staticTokenFallback": "A1_CLIENT_TOKEN"
+    }
+  },
+  "environment": [
+    {"name": "HORIZON_A1_DIALECT", "value": "mantaray"},
+    {"name": "HORIZON_NEAR_RT_RIC_URL", "description": "Base URL of the MantaRay SDN-R northbound endpoint."},
+    {"name": "HORIZON_A1_MANTARAY_RIC_ID", "description": "Near-RT RIC identifier in the MantaRay topology; emitted as `ricId` in every policy body. The registered rappId is emitted as `rappId`."}
+  ],
+  "ports": {
+    "health": 8081,
+    "metrics": 8082
+  },
+  "probes": {
+    "liveness": {"path": "/healthz", "port": 8081},
+    "readiness": {"path": "/readyz", "port": 8081},
+    "metrics": {"path": "/metrics", "port": 8082}
+  }
+}

@@ -1,34 +1,73 @@
 #!/usr/bin/env python3
-"""Federated-learning model-poisoning attack battery vs ALL robust aggregators.
+"""FL model-poisoning battery on **REAL** federated clients (DeepMIMO ASU 3.5 GHz).
 
-This is the EXHAUSTIVE, HONEST efficacy matrix: every attack in the battery is
-run against every shipped aggregator (fedavg, krum, median, trimmed_mean) over a
-Byzantine-fraction sweep up to each aggregator's stated breakdown point. We
-report the L2 distance of the aggregate from the honest mean and the direction
-(cosine) error, multi-seed mean +/- std, plus a "which attack beats which
-aggregator" matrix.
+What changed (2026-07-28)
+-------------------------
+This suite used to invent its entire federation. ``honest_population()`` drew the
+"honest client gradients" from ``rng.normal(0, 1)`` with a random mean and a
+random anisotropic scale — 12 clients x 80 coordinates of pure noise — and the
+only thing measured was the L2/cosine displacement of an aggregate of noise.
+Nothing in it touched a radio, a position, or a measurement.
 
-The POINT is to show clearly and honestly:
+It now runs on the **real ray-traced channel data already in the tree**
+(``datasets/deepmimo_asu_3p5/generated/channel_features.jsonl``: 4096 real
+receiver positions on the ASU campus and their measured per-subband channel
+gains from Wireless InSite). The federation is real in every respect an
+attacker-free federation can be:
 
-* Plain FedAvg is *unbounded* — scaling / sign-flip drive its error arbitrarily
-  high (breakdown point 0%).
-* The robust aggregators BOUND the naive Gaussian attack, but they are NOT a
-  silver bullet: the optimized Min-Max / Min-Sum (Shejwalkar & Houmansadr,
-  NDSS'21) and Fang (USENIX-Sec'20) attacks DEFEAT Krum / median / trimmed-mean
-  near their breakdown points (Krum is forced to *select* a malicious update;
-  the leaked bias on median/trimmed-mean grows sharply).
+* **Real clients.** The 4096 receivers are partitioned by their REAL 2D
+  positions into ``N_SITES`` geographic cohorts (Lloyd/k-means++ style seeding),
+  exactly the non-IID split ``benchmarks/federated_coverage_loop.py`` uses. Each
+  client is a campus region holding its own slice of the measured propagation
+  field — genuinely non-IID, because ray tracing is site-specific.
+* **Real learning task.** Each client fits the O-RAN CCO coverage map: predict
+  all six MEASURED subband gains (dBW) from the receiver's real position, over
+  whitened quadratic position features. 6 features x 6 subbands = 36 real
+  parameters.
+* **Real benign updates.** A client's uploaded vector is its FedProx proximal
+  ridge step computed on its own measured receivers. These are the "honest
+  gradients" now — measured-physics updates, not Gaussian draws.
+* **Real success metric.** Attack damage is reported as the coverage model's
+  RMSE **in dB on the real measured gains** after a full multi-round federation,
+  not only as an abstract L2 displacement. A number a radio engineer can read.
 
-Attacks (all REAL, numpy-only):
+WHAT IS STILL SYNTHETIC, AND WHY IT HAS TO BE
+---------------------------------------------
+**The malicious updates are algorithmic, not captured.** No public corpus of
+real malicious federated-learning client updates exists; every published
+poisoning result (PoisonedFL, Fang, Shejwalkar & Houmansadr, ALIE, ...)
+*synthesises* the malicious updates, because capturing them would require a real
+adversary to attack a real production federation and the operator to publish the
+raw gradient tensors. Nobody has done that. So the honest construction — and the
+one implemented here — is:
+
+    REAL clients + REAL data + REAL benign updates
+        + a PUBLISHED, CITED attack algorithm applied to those real updates.
+
+Every attack below is cited to its paper and is computed *from* the real benign
+updates it is attacking (that is exactly the full-knowledge threat model those
+papers assume). This is NOT a corpus of captured attacks and the result JSON
+says so in ``data_provenance``.
+
+Attacks (all real attack math, numpy-only):
   - sign_flip   : Bernstein et al. ICLR'19 / Blanchard et al. NeurIPS'17
   - scaling     : Bagdasaryan et al. AISTATS'20 (model replacement)
   - gaussian    : Blanchard et al. NeurIPS'17 (random Byzantine baseline)
   - min_max     : Shejwalkar & Houmansadr NDSS'21 (Min-Max)
   - min_sum     : Shejwalkar & Houmansadr NDSS'21 (Min-Sum)
-  - alie        : Baruch et al. NeurIPS'19 (A Little Is Enough)   [imported]
-  - fang_krum   : Fang et al. USENIX-Sec'20 (Krum-targeted)       [imported]
-  - fang_median : Fang et al. USENIX-Sec'20 (median-targeted)     [imported]
+  - alie        : Baruch et al. NeurIPS'19 (A Little Is Enough)
+  - fang_krum   : Fang et al. USENIX-Sec'20 (Krum-targeted)
+  - fang_median : Fang et al. USENIX-Sec'20 (median-targeted)
 
-Pure numpy — no torch. Run:  python benchmarks/fl_poisoning_suite.py
+Defences: fedavg (none), krum, coordinate median, trimmed mean, and FLTrust
+(Cao et al., NDSS'21) whose server root set is a deterministic stride sample of
+receivers never given to any client.
+
+The real feature file is licence-gated (not redistributed in-repo); build it
+with ``datasets/deepmimo_asu_3p5/build.py`` or point ``--features`` at a cached
+copy. Pure numpy — no torch.
+
+Run:  python benchmarks/fl_poisoning_suite.py
 """
 
 from __future__ import annotations
@@ -36,267 +75,545 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
 from horizon_ric.federated import poison_attacks as pa
 from horizon_ric.federated import robust
+from horizon_ric.runtime_env import stamp
 
-AGGREGATORS = ("fedavg", "krum", "median", "trimmed_mean")
-ATTACKS = ("sign_flip", "scaling", "gaussian", "min_max", "min_sum", "alie", "fang_krum", "fang_median")
+AGGREGATORS = ("fedavg", "krum", "median", "trimmed_mean", "fltrust")
+ATTACKS = (
+    "sign_flip",
+    "scaling",
+    "gaussian",
+    "min_max",
+    "min_sum",
+    "alie",
+    "fang_krum",
+    "fang_median",
+)
+
+ATTACK_CITATIONS = {
+    "sign_flip": "Bernstein et al., signSGD with Majority Vote, ICLR 2019; "
+    "Blanchard et al., NeurIPS 2017 (inverted-gradient Byzantine)",
+    "scaling": "Bagdasaryan et al., How To Backdoor Federated Learning, AISTATS 2020 "
+    "(model replacement / boosting)",
+    "gaussian": "Blanchard et al., Machine Learning with Adversaries, NeurIPS 2017 "
+    "(random Byzantine baseline)",
+    "min_max": "Shejwalkar & Houmansadr, Manipulating the Byzantine, NDSS 2021 (Min-Max)",
+    "min_sum": "Shejwalkar & Houmansadr, Manipulating the Byzantine, NDSS 2021 (Min-Sum)",
+    "alie": "Baruch, Baruch & Goldberg, A Little Is Enough, NeurIPS 2019",
+    "fang_krum": "Fang, Cao, Jia & Gong, Local Model Poisoning Attacks to "
+    "Byzantine-Robust Federated Learning, USENIX Security 2020 (Krum-targeted)",
+    "fang_median": "Fang, Cao, Jia & Gong, USENIX Security 2020 (median-targeted)",
+}
+DEFENCE_CITATIONS = {
+    "krum": "Blanchard et al., NeurIPS 2017",
+    "median": "Yin et al., ICML 2018 (coordinate-wise median)",
+    "trimmed_mean": "Yin et al., ICML 2018 (coordinate-wise trimmed mean)",
+    "fltrust": "Cao, Fang, Liu & Gong, FLTrust, NDSS 2021",
+}
+
+# --- Real federation geometry (mirrors benchmarks/federated_coverage_loop.py) ---
+N_SITES = 16          # geographic client cohorts carved out of the real positions
+ROUNDS = 12           # federated rounds per configuration
+PROX_LAMBDA = 2.0     # FedProx proximal strength (keeps local solves stable)
+PROX_ETA = 0.6        # local step size on the proximal solution
+ROOT_STRIDE = 8       # every 8th receiver is server-held (FLTrust root set)
+N_SUBBANDS = 6
+
+_REPO = Path(__file__).resolve().parents[1]
+DEFAULT_FEATURES = _REPO / "datasets" / "deepmimo_asu_3p5" / "generated" / "channel_features.jsonl"
+DEFAULT_MANIFEST = _REPO / "datasets" / "deepmimo_asu_3p5" / "manifest.json"
 
 
 # ---------------------------------------------------------------------------
-# Honest-client gradient distribution and metrics
+# Real data -> real federated learning problem
 # ---------------------------------------------------------------------------
-def honest_population(rng: np.random.Generator, n_honest: int, dim: int) -> list[np.ndarray]:
-    """Honest gradient vectors ~ N(mu, Sigma) with a non-trivial mean + anisotropy.
+def _load_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        raise SystemExit(
+            f"missing real feature file {path}\n"
+            "This benchmark runs on real DeepMIMO ray-traced channels. Build them "
+            "with: python datasets/deepmimo_asu_3p5/build.py  (licence-gated, not "
+            "redistributed in-repo), or pass --features <cached copy>."
+        )
+    rows = [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    if not rows:
+        raise ValueError(f"no feature rows in {path}")
+    return rows
 
-    A non-zero mean makes the *direction* of the aggregate meaningful (so the
-    cosine error is informative), and a per-coordinate variance gives the
-    optimized attacks a realistic benign envelope to hide inside.
+
+def _whiten_design(pos: np.ndarray) -> np.ndarray:
+    """Whitened quadratic position design ``[whitened(x,y,x²,y²,xy), 1]``.
+
+    Centering + SVD whitening gives the *global* feature covariance identity, so
+    the local proximal solves are well conditioned even on geographically
+    concentrated, non-IID clients. Fixed, deterministic, data-published
+    preprocessing (identical to ``federated_coverage_loop.py``).
     """
-    mu = rng.normal(0.0, 1.0, size=dim)            # the "true" gradient direction
-    scale = rng.uniform(0.5, 1.5, size=dim)        # anisotropic per-coordinate std
-    return [mu + scale * rng.normal(0.0, 1.0, size=dim) for _ in range(n_honest)]
+    x, y = pos[:, 0], pos[:, 1]
+    feats = np.column_stack([x, y, x * x, y * y, x * y])
+    feats = feats - feats.mean(axis=0)
+    u, _s, _vt = np.linalg.svd(feats, full_matrices=False)
+    whitened = u * np.sqrt(len(feats))
+    return np.column_stack([whitened, np.ones(len(feats))])
 
 
-def _make_malicious(attack: str, benign: list[np.ndarray], n_byz: int, seed: int) -> list[np.ndarray]:
-    """Instantiate one attack's malicious updates."""
+def _partition_geographic(pos: np.ndarray, n_sites: int, *, seed: int) -> list[np.ndarray]:
+    """Partition receivers into ``n_sites`` clients by their REAL 2D positions."""
+    rng = np.random.default_rng(seed)
+    centers = [pos[int(rng.integers(len(pos)))]]
+    for _ in range(1, n_sites):
+        d = np.min([np.linalg.norm(pos - c, axis=1) for c in centers], axis=0)
+        centers.append(pos[int(np.argmax(d))])
+    centers = np.asarray(centers)
+    assign = np.zeros(len(pos), dtype=np.int64)
+    for _ in range(50):
+        assign = np.argmin(
+            np.stack([np.linalg.norm(pos - c, axis=1) for c in centers], axis=1), axis=1
+        )
+        new = np.asarray(
+            [
+                pos[assign == k].mean(axis=0) if np.any(assign == k) else centers[k]
+                for k in range(n_sites)
+            ]
+        )
+        if np.allclose(new, centers):
+            centers = new
+            break
+        centers = new
+    return [np.flatnonzero(assign == k) for k in range(n_sites)]
+
+
+class CoverageFederation:
+    """The real multi-output coverage-map problem, split into real clients.
+
+    Target ``B`` is the measured per-subband gain matrix (n_receivers, 6) in dBW,
+    standardised per subband; design ``A`` is the whitened quadratic position
+    basis. The model ``W`` is (6 features, 6 subbands) = 36 real parameters, and
+    a client's uploaded update is its FedProx proximal step on its own measured
+    receivers, flattened.
+    """
+
+    def __init__(self, rows: list[dict[str, Any]], *, n_sites: int, seed: int) -> None:
+        gains = np.asarray([r["subband_gain_dbw"] for r in rows], dtype=np.float64)
+        pos = np.asarray([r["position_m"][:2] for r in rows], dtype=np.float64)
+        if gains.shape[1] != N_SUBBANDS:
+            raise ValueError(f"expected {N_SUBBANDS} measured subbands, got {gains.shape}")
+        if not (np.all(np.isfinite(gains)) and np.all(np.isfinite(pos))):
+            raise ValueError("feature rows carry non-finite gains or positions")
+
+        self.gains = gains
+        self.pos = pos
+        self.design = _whiten_design(pos)
+        self.mean = gains.mean(axis=0)
+        self.std = gains.std(axis=0)
+        self.target = (gains - self.mean) / self.std
+
+        root = np.arange(0, len(rows), ROOT_STRIDE)
+        mask = np.ones(len(rows), dtype=bool)
+        mask[root] = False
+        self.root_idx = root
+        self.private_idx = np.flatnonzero(mask)
+
+        sub = _partition_geographic(pos[self.private_idx], n_sites, seed=seed)
+        self.sites = [self.private_idx[s] for s in sub]
+        if min(len(s) for s in self.sites) < 6:
+            raise ValueError("a geographic client holds fewer receivers than parameters")
+
+        self.n_params = self.design.shape[1] * N_SUBBANDS
+
+    # -- metrics -------------------------------------------------------------
+    @property
+    def baseline_rmse_db(self) -> float:
+        """Predict-the-per-subband-mean everywhere: the do-nothing coverage model."""
+        return float(np.sqrt(np.mean((self.gains - self.mean) ** 2)))
+
+    def rmse_db(self, w: np.ndarray) -> float:
+        pred = (self.design @ w.reshape(-1, N_SUBBANDS)) * self.std + self.mean
+        return float(np.sqrt(np.mean((pred - self.gains) ** 2)))
+
+    # -- federated primitives ------------------------------------------------
+    def _prox(self, w: np.ndarray, idx: np.ndarray) -> np.ndarray:
+        """FedProx proximal ridge update on receiver subset ``idx`` (flattened)."""
+        a = self.design[idx]
+        b = self.target[idx]
+        wm = w.reshape(-1, N_SUBBANDS)
+        n = a.shape[0]
+        hess = a.T @ a / n + PROX_LAMBDA * np.eye(a.shape[1])
+        grad = a.T @ (a @ wm - b) / n
+        return (-PROX_ETA * np.linalg.solve(hess, grad)).ravel()
+
+    def client_updates(self, w: np.ndarray) -> list[np.ndarray]:
+        """Every honest client's REAL update from its own measured receivers."""
+        return [self._prox(w, idx) for idx in self.sites]
+
+    def root_update(self, w: np.ndarray) -> np.ndarray:
+        """The server's FLTrust reference update on its held-out root receivers."""
+        return self._prox(w, self.root_idx)
+
+    def optimum_rmse_db(self) -> float:
+        """Centralised least-squares fit — the best this model class can do."""
+        w, *_ = np.linalg.lstsq(self.design, self.target, rcond=None)
+        return self.rmse_db(w.ravel())
+
+
+# ---------------------------------------------------------------------------
+# Attacks + aggregation
+# ---------------------------------------------------------------------------
+def make_malicious(attack: str, benign: list[np.ndarray], n_byz: int, seed: int) -> list[np.ndarray]:
+    """Apply a PUBLISHED attack algorithm to the REAL benign client updates.
+
+    Full-knowledge threat model (the one all the cited papers assume): the
+    adversary controls ``n_byz`` clients and observes the honest clients'
+    updates for the round. The malicious vectors are *computed from* the real
+    updates — they are algorithmic, not captured traffic.
+    """
+    if n_byz <= 0:
+        return []
     if attack == "gaussian":
         return list(pa.gaussian_attack(benign, n_byz, seed=seed))
     fn = pa.ATTACK_BATTERY[attack][0]
     return list(fn(benign, n_byz))
 
 
-def _aggregate_distances(
-    benign: list[np.ndarray], malicious: list[np.ndarray], n_byz: int, honest_mean: np.ndarray
-) -> dict[str, dict]:
-    """Per-aggregator L2 distance + cosine direction error from the honest mean."""
-    updates = list(benign) + list(malicious)
-    n_total = len(updates)
+def aggregate(
+    method: str, updates: list[np.ndarray], n_byz: int, root_update: np.ndarray
+) -> tuple[np.ndarray | None, bool | None]:
+    """Aggregate with one defence. Returns (aggregate, krum_selected_byzantine).
 
-    def metrics(agg: np.ndarray, byz_selected: bool | None = None) -> dict:
-        l2 = float(np.linalg.norm(agg - honest_mean))
-        na, nh = np.linalg.norm(agg), np.linalg.norm(honest_mean)
-        cos = float(np.dot(agg, honest_mean) / (na * nh)) if na > 0 and nh > 0 else 0.0
-        out = {"l2": l2, "cos_err": float(1.0 - cos)}
-        if byz_selected is not None:
-            out["krum_selected_byzantine"] = byz_selected
-        return out
-
-    res: dict[str, dict] = {"fedavg": metrics(robust.fedavg(updates))}
-
-    if n_total > 2 * n_byz + 2:
-        kr = robust.krum(updates, f=n_byz)
-        res["krum"] = metrics(kr.aggregate, byz_selected=bool(kr.selected_index >= len(benign)))
-    else:
-        res["krum"] = None  # breakdown precondition not met — do not run
-
-    res["median"] = metrics(robust.coordinate_median(updates))
-
-    if n_total > 2 * n_byz:
-        res["trimmed_mean"] = metrics(robust.trimmed_mean(updates, beta=n_byz))
-    else:
-        res["trimmed_mean"] = None
-    return res
-
-
-# ---------------------------------------------------------------------------
-# Sweep + aggregation across seeds
-# ---------------------------------------------------------------------------
-def _byzantine_grid(n_honest: int, dim: int) -> list[int]:
-    """Byzantine counts to sweep, capped at Krum's breakdown ceiling.
-
-    Krum needs ``n_honest + f > 2f + 2``  i.e. ``f < n_honest - 2``. We sweep
-    ``f`` from 1 up to that ceiling so the final point sits just below breakdown.
+    ``None`` means the aggregator's structural precondition is not met at this
+    Byzantine count, and we refuse to run it rather than report a meaningless
+    number.
     """
-    f_max = n_honest - 3  # strictly below f = n_honest - 2 (the breakdown edge)
-    return [f for f in range(1, max(f_max, 1) + 1)]
+    n = len(updates)
+    if method == "fedavg":
+        return robust.fedavg(updates), None
+    if method == "median":
+        return robust.coordinate_median(updates), None
+    if method == "krum":
+        if n <= 2 * n_byz + 2:
+            return None, None
+        kr = robust.krum(updates, f=n_byz)
+        return kr.aggregate, bool(kr.selected_index >= n - n_byz)
+    if method == "trimmed_mean":
+        if n <= 2 * n_byz:
+            return None, None
+        return robust.trimmed_mean(updates, beta=n_byz), None
+    if method == "fltrust":
+        return robust.fltrust(updates, root_update).aggregate, None
+    raise ValueError(f"unknown aggregator {method!r}")
 
 
-def _mean_std(values: list[float]) -> dict[str, float]:
-    arr = np.asarray(values, dtype=np.float64)
-    return {"mean": float(arr.mean()), "std": float(arr.std())}
+def federate(
+    fed: CoverageFederation,
+    *,
+    method: str,
+    attack: str | None,
+    n_byz: int,
+    rounds: int,
+    seed: int,
+) -> dict[str, Any]:
+    """Run a full federation on the real data, poisoning ``n_byz`` clients.
+
+    The compromised clients are the LAST ``n_byz`` sites, so the honest cohort is
+    the first ``K - n_byz`` real geographic clients; their real updates are the
+    input the attack algorithm optimises against.
+    """
+    k = len(fed.sites)
+    w = np.zeros(fed.n_params, dtype=np.float64)
+    first_round: dict[str, float] = {}
+    byz_selected = 0
+    rounds_run = 0
+    for r in range(rounds):
+        honest = fed.client_updates(w)
+        if attack is None or n_byz == 0:
+            updates = honest
+            honest_mean = np.mean(honest, axis=0)
+        else:
+            honest = honest[: k - n_byz]
+            malicious = make_malicious(attack, honest, n_byz, seed=seed * 1000 + r)
+            updates = honest + malicious
+            honest_mean = np.mean(honest, axis=0)
+        agg, sel = aggregate(method, updates, n_byz, fed.root_update(w))
+        if agg is None:
+            return {"skipped": f"{method} precondition not met at f={n_byz}"}
+        if sel:
+            byz_selected += 1
+        if r == 0:
+            hn = float(np.linalg.norm(honest_mean))
+            an = float(np.linalg.norm(agg))
+            cos = float(agg @ honest_mean / (an * hn)) if an > 0 and hn > 0 else 0.0
+            first_round = {
+                "l2_from_honest_mean": round(float(np.linalg.norm(agg - honest_mean)), 6),
+                "cos_err": round(1.0 - cos, 6),
+                "honest_mean_norm": round(hn, 6),
+            }
+        w = w + agg
+        rounds_run += 1
+        if not np.all(np.isfinite(w)) or float(np.linalg.norm(w)) > 1e12:
+            break
+    diverged = not np.all(np.isfinite(w)) or float(np.linalg.norm(w)) > 1e12
+    rmse = float("inf") if diverged else fed.rmse_db(w)
+    out: dict[str, Any] = {
+        "round_1": first_round,
+        "rounds_run": rounds_run,
+        "diverged": diverged,
+        "final_rmse_db": None if diverged else round(rmse, 4),
+        "w_norm": None if diverged else round(float(np.linalg.norm(w)), 4),
+    }
+    if method == "krum":
+        out["krum_byzantine_selection_rate"] = round(byz_selected / max(rounds_run, 1), 4)
+    return out
 
 
-def run_sweep(n_honest: int = 12, dim: int = 80, seeds: int = 8) -> dict:
-    """Full attack x aggregator x byzantine-fraction sweep, multi-seed."""
-    byz_grid = _byzantine_grid(n_honest, dim)
+# ---------------------------------------------------------------------------
+# Sweep
+# ---------------------------------------------------------------------------
+def _mean_std(v: list[float]) -> dict[str, float]:
+    a = np.asarray(v, dtype=np.float64)
+    return {"mean": round(float(a.mean()), 4), "std": round(float(a.std()), 4)}
 
-    # results[attack][f][aggregator] = {l2:{mean,std}, cos_err:{mean,std}, ...}
-    results: dict = {}
-    # No-attack baseline per aggregator (aggregator variance with zero Byzantine).
-    baseline_acc: dict[str, list[float]] = {a: [] for a in AGGREGATORS}
 
-    for seed in range(seeds):
-        rng = np.random.default_rng(seed)
-        benign = honest_population(rng, n_honest, dim)
-        honest_mean = np.mean(benign, axis=0)
+def run_sweep(
+    rows: list[dict[str, Any]],
+    *,
+    n_sites: int,
+    rounds: int,
+    seeds: int,
+    byz_grid: list[int],
+) -> dict[str, Any]:
+    feds = [CoverageFederation(rows, n_sites=n_sites, seed=1234 + s) for s in range(seeds)]
+    fed0 = feds[0]
 
-        # Baseline (no Byzantine clients).
-        baseline_acc["fedavg"].append(float(np.linalg.norm(robust.fedavg(benign) - honest_mean)))
-        baseline_acc["median"].append(
-            float(np.linalg.norm(robust.coordinate_median(benign) - honest_mean))
-        )
-        if len(benign) > 2:
-            baseline_acc["krum"].append(
-                float(np.linalg.norm(robust.krum(benign, f=1).aggregate - honest_mean))
-            )
-            baseline_acc["trimmed_mean"].append(
-                float(np.linalg.norm(robust.trimmed_mean(benign, beta=1) - honest_mean))
-            )
+    clean: dict[str, dict] = {}
+    for method in AGGREGATORS:
+        per = [
+            federate(f, method=method, attack=None, n_byz=0, rounds=rounds, seed=s)
+            for s, f in enumerate(feds)
+        ]
+        vals = [p["final_rmse_db"] for p in per if p.get("final_rmse_db") is not None]
+        clean[method] = _mean_std(vals) if vals else {"skipped": True}
 
-        for attack in ATTACKS:
-            results.setdefault(attack, {})
-            for f in byz_grid:
-                malicious = _make_malicious(attack, benign, f, seed)
-                dists = _aggregate_distances(benign, malicious, f, honest_mean)
-                bucket = results[attack].setdefault(str(f), {})
-                for agg, m in dists.items():
-                    if m is None:
-                        bucket.setdefault(agg, {"skipped": "breakdown precondition not met"})
-                        continue
-                    slot = bucket.setdefault(agg, {"_l2": [], "_cos": [], "_byzsel": []})
-                    if "_l2" not in slot:  # was a 'skipped' placeholder
-                        slot = bucket[agg] = {"_l2": [], "_cos": [], "_byzsel": []}
-                    slot["_l2"].append(m["l2"])
-                    slot["_cos"].append(m["cos_err"])
-                    if "krum_selected_byzantine" in m:
-                        slot["_byzsel"].append(1.0 if m["krum_selected_byzantine"] else 0.0)
-
-    # Reduce accumulators to mean/std.
-    for attack in results:
-        for f in results[attack]:
-            for agg, slot in results[attack][f].items():
-                if "_l2" not in slot:
+    results: dict[str, dict] = {}
+    for attack in ATTACKS:
+        results[attack] = {}
+        for f_byz in byz_grid:
+            bucket: dict[str, Any] = {}
+            for method in AGGREGATORS:
+                rmses, l2s, coss, sels = [], [], [], []
+                skipped = None
+                for s, fed in enumerate(feds):
+                    r = federate(
+                        fed, method=method, attack=attack, n_byz=f_byz,
+                        rounds=rounds, seed=s,
+                    )
+                    if "skipped" in r:
+                        skipped = r["skipped"]
+                        break
+                    if r["final_rmse_db"] is not None:
+                        rmses.append(r["final_rmse_db"])
+                    l2s.append(r["round_1"]["l2_from_honest_mean"])
+                    coss.append(r["round_1"]["cos_err"])
+                    if "krum_byzantine_selection_rate" in r:
+                        sels.append(r["krum_byzantine_selection_rate"])
+                if skipped:
+                    bucket[method] = {"skipped": skipped}
                     continue
-                reduced = {
-                    "l2": _mean_std(slot["_l2"]),
-                    "cos_err": _mean_std(slot["_cos"]),
+                entry: dict[str, Any] = {
+                    "final_rmse_db": _mean_std(rmses) if rmses else None,
+                    "diverged_seeds": len(feds) - len(rmses),
+                    "round1_l2_from_honest_mean": _mean_std(l2s),
+                    "round1_cos_err": _mean_std(coss),
                 }
-                if slot["_byzsel"]:
-                    reduced["krum_byzantine_selection_rate"] = float(np.mean(slot["_byzsel"]))
-                results[attack][f][agg] = reduced
-
-    baseline = {a: _mean_std(v) for a, v in baseline_acc.items() if v}
-
+                if sels:
+                    entry["krum_byzantine_selection_rate"] = _mean_std(sels)
+                bucket[method] = entry
+            results[attack][f"f={f_byz}"] = bucket
     return {
-        "config": {
-            "n_honest": n_honest,
-            "dim": dim,
-            "seeds": seeds,
-            "byzantine_counts_swept": byz_grid,
-            "byzantine_fractions_swept": [round(f / (n_honest + f), 3) for f in byz_grid],
-        },
-        "no_attack_baseline_l2": baseline,
-        "breakdown_points": pa.BREAKDOWN_POINTS,
-        "alie_z_at_max_f": round(pa.alie_z(n_honest + byz_grid[-1], byz_grid[-1]), 4),
+        "clean_federation_rmse_db": clean,
         "results": results,
+        "problem": {
+            "clients": n_sites,
+            "client_receivers_min": int(min(len(s) for s in fed0.sites)),
+            "client_receivers_max": int(max(len(s) for s in fed0.sites)),
+            "server_root_receivers": int(fed0.root_idx.size),
+            "client_held_receivers": int(fed0.private_idx.size),
+            "model_parameters": int(fed0.n_params),
+            "predict_the_mean_baseline_rmse_db": round(fed0.baseline_rmse_db, 4),
+            "centralised_least_squares_rmse_db": round(fed0.optimum_rmse_db(), 4),
+            "measured_gain_span_db": round(
+                float(fed0.gains.max() - fed0.gains.min()), 4
+            ),
+        },
     }
 
 
-# ---------------------------------------------------------------------------
-# "Which attack beats which aggregator" matrix
-# ---------------------------------------------------------------------------
-def build_efficacy_matrix(report: dict, beat_multiple: float = 1.5) -> dict:
-    """Decide, per (attack, aggregator), whether the attack DEFEATS the defense.
+def build_efficacy_matrix(sweep: dict, byz_grid: list[int], degrade_db: float = 1.0) -> dict:
+    """Per (attack, defence): did the attack materially damage the REAL model?
 
-    An aggregator is "DEFEATED" at the worst (largest-f) swept point if either:
-      * its L2 bias exceeds ``beat_multiple`` x the gaussian-attack L2 bias on the
-        same aggregator (the optimized attack does materially more damage than the
-        naive baseline), OR
-      * (Krum only) the attack forces Krum to select a malicious update with
-        selection-rate > 0.5.
-    FedAvg is flagged UNBOUNDED whenever its L2 grows far beyond the benign scale.
+    "DEFEATED" means, at the largest swept Byzantine count, the coverage RMSE on
+    the measured gains degraded by more than ``degrade_db`` dB versus the same
+    aggregator's clean-federation RMSE, or the federation diverged, or (Krum)
+    the attack forced Krum to select a malicious update in >50% of rounds.
     """
-    cfg = report["config"]
-    f_worst = str(cfg["byzantine_counts_swept"][-1])
-    res = report["results"]
-
-    # Reference: gaussian L2 at worst-f per aggregator (the naive baseline bias).
-    gauss = res["gaussian"][f_worst]
-
+    worst = f"f={byz_grid[-1]}"
+    clean = sweep["clean_federation_rmse_db"]
     matrix: dict[str, dict[str, str]] = {}
     for attack in ATTACKS:
         row: dict[str, str] = {}
-        bucket = res[attack][f_worst]
-        for agg in AGGREGATORS:
-            slot = bucket.get(agg)
-            if not slot or "l2" not in slot:
-                row[agg] = "N/A (breakdown precondition not met)"
+        for method in AGGREGATORS:
+            slot = sweep["results"][attack][worst].get(method, {})
+            if "skipped" in slot:
+                row[method] = "N/A (precondition not met)"
                 continue
-            l2 = slot["l2"]["mean"]
-            if agg == "fedavg":
-                row[agg] = f"UNBOUNDED L2={l2:.2f}" if l2 > 10.0 else f"bounded L2={l2:.2f}"
+            base = clean[method].get("mean")
+            rm = slot.get("final_rmse_db")
+            if rm is None:
+                row[method] = "DIVERGED (unbounded)"
                 continue
-            base = gauss.get(agg, {}).get("l2", {}).get("mean", 0.0)
-            byz_rate = slot.get("krum_byzantine_selection_rate")
-            defeated = (base > 0 and l2 > beat_multiple * base) or (
-                byz_rate is not None and byz_rate > 0.5
+            delta = rm["mean"] - base
+            sel = slot.get("krum_byzantine_selection_rate", {}).get("mean")
+            beaten = delta > degrade_db or (sel is not None and sel > 0.5)
+            tag = "DEFEATED" if beaten else "bounded"
+            extra = f", krum_byz_sel={sel:.0%}" if sel is not None else ""
+            row[method] = (
+                f"{tag} rmse {base:.2f}->{rm['mean']:.2f} dB (+{delta:.2f} dB{extra})"
             )
-            tag = "DEFEATED" if defeated else "bounded"
-            extra = f", krum_byz_sel={byz_rate:.0%}" if byz_rate is not None else ""
-            row[agg] = f"{tag} L2={l2:.2f} (vs gaussian {base:.2f}{extra})"
         matrix[attack] = row
     return matrix
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--n-honest", type=int, default=12)
-    ap.add_argument("--dim", type=int, default=80)
-    ap.add_argument("--seeds", type=int, default=8)
+    ap.add_argument("--features", type=Path, default=DEFAULT_FEATURES)
+    ap.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
+    ap.add_argument("--sites", type=int, default=N_SITES)
+    ap.add_argument("--rounds", type=int, default=ROUNDS)
+    ap.add_argument("--seeds", type=int, default=6, help="geographic partition seeds")
     ap.add_argument(
         "--out",
-        type=str,
-        default=str(Path(__file__).resolve().parent / "results" / "fl_poisoning_suite.json"),
+        type=Path,
+        default=Path(__file__).resolve().parent / "results" / "fl_poisoning_suite.json",
     )
     args = ap.parse_args()
 
-    report = run_sweep(n_honest=args.n_honest, dim=args.dim, seeds=args.seeds)
-    report["efficacy_matrix_at_breakdown"] = build_efficacy_matrix(report)
-    report["honest_findings"] = [
-        "FedAvg breakdown point is 0%: scaling (boost ~n/f) and sign-flip drive "
-        "its L2 error arbitrarily high (unbounded).",
-        "All robust aggregators BOUND the naive Gaussian attack: its leaked L2 "
-        "bias stays near the no-attack baseline for median/trimmed-mean and never "
-        "flips Krum's selection.",
-        "Min-Max and Min-Sum (NDSS'21) DEFEAT Krum near its breakdown point: they "
-        "force Krum to SELECT a malicious update (selection rate -> 100%) and "
-        "produce materially larger L2 bias than the Gaussian baseline.",
-        "Fang (USENIX-Sec'20) leaks larger directed bias through median/trimmed-"
-        "mean than the naive attack; tuned against Krum it can pull Krum's pick.",
-        "Conclusion: our shipped robust aggregators are NOT a silver bullet. They "
-        "bound damage below the breakdown fraction; near it, optimized attacks "
-        "defeat them. Defense-in-depth (the Shield + monitoring) remains required.",
-    ]
+    rows = _load_rows(args.features)
+    manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
 
-    text = json.dumps(report, indent=2)
-    out_path = Path(args.out)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(text)
+    # Byzantine counts: 1 client, Krum's structural ceiling (f < (K-2)/2), and
+    # one point beyond it where Krum is undefined and median/trimmed-mean are at
+    # their breakdown edge.
+    k = args.sites
+    krum_max = (k - 3) // 2
+    byz_grid = sorted({1, max(k // 8, 1), max(krum_max, 1), min(k // 2, k - 2)})
 
-    # Console summary.
-    print(f"FL poisoning suite -> {out_path}")
-    print(
-        f"config: n_honest={report['config']['n_honest']} dim={report['config']['dim']} "
-        f"seeds={report['config']['seeds']} "
-        f"byz_fractions={report['config']['byzantine_fractions_swept']}"
+    sweep = run_sweep(
+        rows, n_sites=args.sites, rounds=args.rounds, seeds=args.seeds, byz_grid=byz_grid
     )
-    print("\nWHICH ATTACK BEATS WHICH AGGREGATOR (at the largest swept Byzantine fraction):")
-    matrix = report["efficacy_matrix_at_breakdown"]
-    header = f"{'attack':12s} | " + " | ".join(f"{a:>10s}" for a in AGGREGATORS)
+    matrix = build_efficacy_matrix(sweep, byz_grid)
+
+    report: dict[str, Any] = {
+        "benchmark": "Federated model-poisoning battery on real DeepMIMO federated clients",
+        "dataset": "DeepMIMO ASU Campus 3.5 GHz",
+        "scenario": manifest.get("scenario"),
+        "data_kind": manifest.get("data_kind"),
+        "features_sha256": manifest.get("features_sha256"),
+        "source_archive_sha256": manifest.get("source_archive_sha256"),
+        "source_tree_sha256": manifest.get("source_tree_sha256"),
+        "receivers": len(rows),
+        "data_provenance": {
+            "clients": "real — 4096 measured receiver positions partitioned into "
+            f"{args.sites} geographic cohorts by their real 2D coordinates",
+            "client_data": "real — Wireless InSite ray-traced per-subband channel "
+            "gains (dBW) at those positions",
+            "benign_updates": "real — FedProx proximal ridge steps computed on each "
+            "client's own measured receivers",
+            "malicious_updates": "ALGORITHMIC, CITED, NOT CAPTURED — published attack "
+            "algorithms applied to the real benign updates under the full-knowledge "
+            "threat model those papers assume",
+            "why": "No public corpus of captured malicious federated-learning client "
+            "updates exists; every published poisoning result synthesises them. "
+            "Claiming 'real attack data' here would be false.",
+            "attack_citations": ATTACK_CITATIONS,
+            "defence_citations": DEFENCE_CITATIONS,
+        },
+        "config": {
+            "clients": args.sites,
+            "rounds": args.rounds,
+            "partition_seeds": args.seeds,
+            "byzantine_counts_swept": byz_grid,
+            "byzantine_fractions_swept": [round(f / args.sites, 3) for f in byz_grid],
+            "prox_lambda": PROX_LAMBDA,
+            "prox_eta": PROX_ETA,
+            "root_stride": ROOT_STRIDE,
+            "krum_structural_ceiling_f": krum_max,
+        },
+        "breakdown_points": pa.BREAKDOWN_POINTS,
+        "sweep": sweep,
+        "efficacy_matrix_at_worst_f": matrix,
+    }
+
+    clean = sweep["clean_federation_rmse_db"]
+    prob = sweep["problem"]
+    report["honest_findings"] = [
+        "The federation is real: {} geographic client cohorts carved out of {} "
+        "measured ASU-campus receivers, each fitting the measured per-subband "
+        "coverage field. Clean FedAvg reaches {:.2f} dB RMSE against a "
+        "{:.2f} dB predict-the-mean baseline and a {:.2f} dB centralised "
+        "least-squares optimum, so the task has real, large, learnable signal — "
+        "which is what makes the poisoning result legible.".format(
+            args.sites, len(rows), clean["fedavg"]["mean"],
+            prob["predict_the_mean_baseline_rmse_db"],
+            prob["centralised_least_squares_rmse_db"],
+        ),
+        "The malicious updates are NOT captured attacks. They are published "
+        "algorithms (ALIE NeurIPS'19, Fang USENIX-Sec'20, Min-Max/Min-Sum "
+        "NDSS'21, model replacement AISTATS'20) applied to the real benign "
+        "updates. No corpus of real malicious FL updates exists to use instead.",
+        "Damage is now reported in dB of coverage-map error on the measured "
+        "gains, not only as L2 displacement of an aggregate of noise.",
+    ]
+    stamp(report)
+
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(report, indent=2))
+
+    print(f"FL poisoning suite (REAL DeepMIMO federation) -> {args.out}")
+    print(
+        f"clients={args.sites} rounds={args.rounds} seeds={args.seeds} "
+        f"byz={byz_grid} params={prob['model_parameters']}"
+    )
+    print(
+        "clean RMSE dB: "
+        + ", ".join(
+            f"{m}={clean[m]['mean']:.2f}" for m in AGGREGATORS if "mean" in clean[m]
+        )
+        + f"  | baseline {prob['predict_the_mean_baseline_rmse_db']:.2f}"
+    )
+    print(f"\nATTACK x DEFENCE at f={byz_grid[-1]} of {args.sites} clients "
+          f"(real coverage RMSE, dB):")
+    header = f"{'attack':12s} | " + " | ".join(f"{a:>13s}" for a in AGGREGATORS)
     print(header)
     print("-" * len(header))
     for attack in ATTACKS:
         cells = []
-        for agg in AGGREGATORS:
-            v = matrix[attack][agg]
-            tag = v.split(" ")[0]
-            cells.append(f"{tag:>10s}")
+        for method in AGGREGATORS:
+            slot = sweep["results"][attack][f"f={byz_grid[-1]}"].get(method, {})
+            if "skipped" in slot:
+                cells.append(f"{'N/A':>13s}")
+            elif slot.get("final_rmse_db") is None:
+                cells.append(f"{'DIVERGED':>13s}")
+            else:
+                cells.append(f"{slot['final_rmse_db']['mean']:>13.2f}")
         print(f"{attack:12s} | " + " | ".join(cells))
-    print("\n(see JSON for full L2 mean+/-std, cosine error, and Krum selection rates)")
     return 0
 
 

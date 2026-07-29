@@ -1,0 +1,182 @@
+{
+  "schema_version": "1.0",
+  "status_definitions": {
+    "verified_repository": "Supported by executable repository tests or a committed benchmark under the stated conditions.",
+    "verified_external_dataset": "Supported by a pinned, hash-checked public dataset and a reproducible transform/benchmark.",
+    "ci_external_simulator": "A live external simulator gate exists; the claim is supported only when that GitHub Actions job passes for the reviewed commit.",
+    "repository_demonstrator": "Working software demonstrator exists, but field or operator validation does not.",
+    "not_established": "The repository and this report do not supply the evidence required for this claim."
+  },
+  "claims": [
+    {
+      "id": "programmed_rf_invariants",
+      "claim": "The Shield fails closed or returns an action satisfying every programmed invariant for the exercised domains.",
+      "status": "verified_repository",
+      "evidence": [
+        "src/horizon_ric/shield/invariants.py",
+        "src/horizon_ric/shield/shield.py",
+        "tests/test_shield_properties.py",
+        "benchmarks/results/poisoning_shield.json"
+      ],
+      "conditions": "The guarantee is only as complete as the invariant chain, its calibration and the independent context supplied to it.",
+      "excludes": "Every possible unsafe RF behaviour."
+    },
+    {
+      "id": "deepmimo_dsa",
+      "claim": "A deterministic DSA subband benchmark runs on site-specific DeepMIMO ASU Campus 3.5 GHz ray-tracing data with byte-level source lineage.",
+      "status": "verified_external_dataset",
+      "evidence": [
+        "datasets/deepmimo_asu_3p5/DATASHEET.md",
+        "datasets/deepmimo_asu_3p5/manifest.json",
+        "datasets/deepmimo_asu_3p5/build.py",
+        "benchmarks/results/deepmimo_dsa.json",
+        "scripts/verify_deepmimo_reproduction.py",
+        ".github/workflows/realdata.yml"
+      ],
+      "conditions": "DeepMIMO 4.0.0, exact source and tree hashes, 4,096 sampled receivers, stated OFDM transform, exact counts/safety outcomes and 0.0001 dB cross-host tolerance for floating outputs.",
+      "excludes": "Over-the-air capture, operator traffic, vendor interoperability and RF conformance."
+    },
+    {
+      "id": "dp_one_round",
+      "claim": "The Gaussian mechanism reports a one-round client-level (epsilon, delta) bound with public clipping and replace-one sensitivity 2C.",
+      "status": "verified_repository",
+      "evidence": [
+        "src/horizon_ric/federated/dp.py",
+        "tests/test_dp.py",
+        "benchmarks/results/dp_privacy.json"
+      ],
+      "conditions": "One full-participation round, public C=12, delta=1e-5, stated noise multiplier and accountant assumptions.",
+      "excludes": "Unaccounted lifecycle steps, data preparation, implementation outside this mechanism, or a general empirical proof of privacy."
+    },
+    {
+      "id": "mia_diagnostic",
+      "claim": "The membership-inference result is an attack-specific diagnostic over 64 members and 64 non-members per seed, 10 independent seeds, with seed-level bootstrap intervals.",
+      "status": "verified_repository",
+      "evidence": [
+        "benchmarks/dp_privacy_suite.py",
+        "benchmarks/results/dp_privacy.json"
+      ],
+      "conditions": "The z=8 mean AUC is 0.5207 and its 95% interval is [0.4696, 0.5647].",
+      "excludes": "Proof that membership privacy holds against other attacks."
+    },
+    {
+      "id": "colluding_servers_local_dp",
+      "claim": "In opt-in local-DP mode, two colluding aggregation servers reconstruct a clipped Gaussian-noised release rather than the raw client update.",
+      "status": "verified_repository",
+      "evidence": [
+        "src/horizon_ric/federated/verifiable_secagg.py",
+        "tests/test_verifiable_secagg.py",
+        "benchmarks/results/verifiable_secagg.json"
+      ],
+      "conditions": "Public C=12, noise multiplier 4, replace-one sensitivity 24, one release, epsilon=1.2675 at delta=1e-5.",
+      "excludes": "Collusion resistance in exact secret-sharing mode, unknown attacks, compromised client randomness or unaccounted composition."
+    },
+    {
+      "id": "osc_open_source_simulator",
+      "claim": "Horizon-RIC can register, create, list, query and delete a policy against the official O-RAN-SC OSC 2.1.0 A1 simulator.",
+      "status": "ci_external_simulator",
+      "evidence": [
+        "src/horizon_ric/rapp/a1_adapter.py",
+        "scripts/osc_a1_live_smoke.py",
+        ".github/workflows/osc-a1-integration.yml",
+        "tests/test_a1_osc_a1_dialect.py"
+      ],
+      "conditions": "Only for commits whose OSC A1 live integration job passes against pinned simulator commit be2943f57211f62095dc5434099e331df237aafb.",
+      "excludes": "A complete OSC platform, real Near-RT RIC, operator deployment or commercial vendor interoperability."
+    },
+    {
+      "id": "local_load_baseline",
+      "claim": "The in-process Shield and certificate path has a measured single-process baseline for 50,000 deterministic decisions.",
+      "status": "verified_repository",
+      "evidence": [
+        "benchmarks/control_plane_load_suite.py",
+        "benchmarks/results/control_plane_load.json"
+      ],
+      "conditions": "CPython 3.12.13 on the recorded host; no network, database, SMO, RIC or radio I/O.",
+      "excludes": "Carrier-scale latency, throughput, availability, scalability, failover and 24-hour stability."
+    },
+    {
+      "id": "dsa_leo_software",
+      "claim": "The repository contains executable DSA and LEO/PFD software demonstrators.",
+      "status": "repository_demonstrator",
+      "evidence": [
+        "src/horizon_ric/spectrum/dsa_env.py",
+        "benchmarks/deepmimo_dsa_benchmark.py",
+        "src/horizon_ric/shield/invariants.py",
+        "tests/test_pfd_invariant.py"
+      ],
+      "conditions": "Simulation and property/benchmark evidence only.",
+      "excludes": "Field completion, over-the-air validation or operator acceptance."
+    },
+    {
+      "id": "live_operator_network",
+      "claim": "Operation on a live O-RAN network, real radios or operator traffic.",
+      "status": "not_established",
+      "evidence": [],
+      "conditions": "Requires an operator/testbed deployment and signed run evidence.",
+      "excludes": ""
+    },
+    {
+      "id": "commercial_vendor_interop",
+      "claim": "Interoperability with actual Ericsson or Nokia RIC/SMO deployments.",
+      "status": "not_established",
+      "evidence": [
+        "tests/test_multi_vendor_integration.py"
+      ],
+      "conditions": "Current tests use httpx.MockTransport and therefore verify adapter contracts only.",
+      "excludes": ""
+    },
+    {
+      "id": "complete_rf_safety",
+      "claim": "Coverage of every possible unsafe RF behaviour.",
+      "status": "not_established",
+      "evidence": [
+        "src/horizon_ric/shield/invariants.py"
+      ],
+      "conditions": "Requires a complete, independently reviewed hazard analysis and calibrated invariant set.",
+      "excludes": ""
+    },
+    {
+      "id": "formal_compliance",
+      "claim": "Formal compliance or certification under O-RAN, 3GPP, ITU-R, GDPR, NIS2 or telecom regulation.",
+      "status": "not_established",
+      "evidence": [],
+      "conditions": "Code mappings and controls are not certification; competent bodies and jurisdiction-specific legal review are required.",
+      "excludes": ""
+    },
+    {
+      "id": "unknown_attack_security",
+      "claim": "Security against unknown attacks or arbitrary compromised components.",
+      "status": "not_established",
+      "evidence": [],
+      "conditions": "Only named threat models and programmed controls are tested.",
+      "excludes": ""
+    },
+    {
+      "id": "carrier_scale",
+      "claim": "Carrier-scale latency, throughput, availability or scalability.",
+      "status": "not_established",
+      "evidence": [
+        "benchmarks/results/control_plane_load.json"
+      ],
+      "conditions": "Requires representative hardware, traffic, topology, endurance, failover and capacity tests.",
+      "excludes": ""
+    },
+    {
+      "id": "global_novelty",
+      "claim": "The evidence-binding approach is globally novel.",
+      "status": "not_established",
+      "evidence": [],
+      "conditions": "Requires a systematic prior-art search and peer review; this report makes no novelty claim.",
+      "excludes": ""
+    },
+    {
+      "id": "independent_validation",
+      "claim": "Independent validation by an identifiable external institution.",
+      "status": "not_established",
+      "evidence": [],
+      "conditions": "Requires reviewer identity, credentials, signed raw outputs and/or an external laboratory report.",
+      "excludes": ""
+    }
+  ]
+}

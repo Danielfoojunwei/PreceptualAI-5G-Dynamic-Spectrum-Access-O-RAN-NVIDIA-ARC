@@ -1,8 +1,11 @@
 # Default values for horizon-ric.
 # https://github.com/preceptualai/horizon-ric
 
+# CI (.github/workflows/build.yml) publishes ghcr.io/<owner>/horizon-ric
+# tagged with the release version (v-prefix stripped) — the default here must
+# match what CI actually pushes, not a Docker Hub repo that never existed.
 image:
-  repository: horizonric/rapp
+  repository: ghcr.io/preceptualai/horizon-ric
   tag: "0.2.0"
   pullPolicy: IfNotPresent
   pullSecrets: []
@@ -11,9 +14,21 @@ image:
 nameOverride: ""
 fullnameOverride: ""
 
-replicaCount: 2
+# Default 1: the state/evidence PVC is ReadWriteOnce, so a second replica
+# would wedge on the volume attach on any multi-node cluster. Raise only
+# with persistence.enabled=false or an RWX storage class (see persistence).
+replicaCount: 1
 
-# Probes — wired to the FastAPI endpoints in horizon_ric.rapp.health.
+# Port story — the two run modes bind differently:
+#   * pipeline.enabled=true (default): scripts/run_horizon_rapp.py serves
+#     /healthz, /readyz AND /metrics on ONE port — metricsPort (8082).
+#     Nothing listens on healthPort in this mode.
+#   * pipeline.enabled=false (bare lifecycle daemon): horizon_ric.rapp.health
+#     serves /healthz, /readyz AND /metrics on healthPort (8081).
+#     Nothing listens on metricsPort in this mode.
+# Probes, the prometheus.io/port annotation and the ServiceMonitor endpoint
+# all follow the active mode automatically (templates/deployment.yaml,
+# templates/servicemonitor.yaml).
 healthPort: 8081
 metricsPort: 8082
 
@@ -45,9 +60,15 @@ resources:
     cpu: 1000m
     memory: 2Gi
 
-# Autoscaling.
+# Autoscaling — DISABLED by default. The default state/evidence PVC is
+# ReadWriteOnce: every surge/scale-out pod tries to mount the same RWO
+# volume and deadlocks in ContainerCreating on multi-node clusters, and
+# concurrent writers would corrupt the JSONL evidence chain anyway.
+# Enable ONLY with an RWX storage class (persistence.accessModes:
+# ["ReadWriteMany"]) or per-replica state (persistence.enabled=false /
+# a StatefulSet-style deployment) — until then, keep replicaCount at 1.
 autoscaling:
-  enabled: true
+  enabled: false
   minReplicas: 1
   maxReplicas: 3
   targetCPUUtilizationPercentage: 80
@@ -58,11 +79,15 @@ pdb:
   enabled: true
   minAvailable: 1
 
-# Service.
+# Service. Both ports are always exposed; which one actually answers depends
+# on the run mode (see the port story above): pipeline mode answers on the
+# metrics port only, lifecycle mode on the health port only. The dashboard
+# port is appended when dashboard.enabled.
 service:
   type: ClusterIP
   healthPort: 8081
   metricsPort: 8082
+  dashboardPort: 8083
   annotations: {}
 
 # Prometheus operator ServiceMonitor.
@@ -85,23 +110,144 @@ config:
   rappId: "horizon-ric-rapp"
   smoUrl: "http://nonrtric.smo.svc.cluster.local:8080"
   nearRtRicUrl: "http://nearrtric.ricplt.svc.cluster.local:10000"
+  # RESERVED: no runtime code path reads HORIZON_LOG_LEVEL today (structlog
+  # configures its own level), so the ConfigMap does not render it — the key
+  # is kept for when a consumer lands.
   logLevel: "INFO"
   stateDir: "/var/lib/horizon"
+  # A1 dialect: legacy | osc | osc_a1 | eiap | mantaray. "osc" targets the
+  # OSC NONRTRIC Policy Management Service — the reference SMO path.
+  a1Dialect: "osc"
+  # Near-RT RIC id as registered in the SMO. Rendered only when non-empty;
+  # the adapter falls back to its per-dialect default otherwise.
+  a1RicId: ""
+  # Service id for A1 policy ownership. Rendered only when non-empty.
+  a1ServiceId: ""
+  # Per-request A1 timeout, seconds.
+  a1TimeoutS: 10
+  # A1 southbound auth — OAuth2 client-credentials and/or mTLS. All optional;
+  # each is rendered into the ConfigMap only when non-empty. The OAuth client
+  # secret is a secret: set secret.data.a1OauthClientSecret (or ship
+  # HORIZON_A1_OAUTH_CLIENT_SECRET in existingSecret) — never put it here.
+  auth:
+    oauthTokenUrl: ""     # HORIZON_A1_OAUTH_TOKEN_URL
+    oauthClientId: ""     # HORIZON_A1_OAUTH_CLIENT_ID
+    oauthScope: ""        # HORIZON_A1_OAUTH_SCOPE
+    clientCertPath: ""    # HORIZON_A1_CLIENT_CERT_PATH (mount via extraVolumes)
+    clientKeyPath: ""     # HORIZON_A1_CLIENT_KEY_PATH
+    caBundlePath: ""      # HORIZON_A1_CA_BUNDLE_PATH
+    # verifyTls / productionMode render whenever non-empty — including the
+    # value "false" (the templates use an explicit empty-check, not `with`,
+    # so falsy strings still reach the pod). Empty string = leave unset and
+    # let the adapter default apply.
+    verifyTls: ""         # HORIZON_A1_VERIFY_TLS — "true"/"false"; empty = adapter default
+    productionMode: ""    # HORIZON_PRODUCTION_MODE — "true" hard-fails insecure A1 config
+
+# Full-pipeline mode — the container runs `horizon-rapp --source-config
+# /etc/horizon/source.yaml` (telemetry source → planner → Shield → A1 emit).
+# When disabled, the container falls back to the bare lifecycle daemon
+# (register with the SMO and idle).
+pipeline:
+  enabled: true
+  # Rendered verbatim (toYaml) into the <fullname>-source ConfigMap as
+  # `source.yaml` and mounted read-only at /etc/horizon. The schema is
+  # consumed by scripts/run_horizon_rapp.py — see its module docstring.
+  #
+  # The default source is `synthetic` (count: 0 = unbounded) so a stock
+  # install comes up healthy with zero external wiring — a `file` source
+  # pointing at a path that does not exist is a HARD ERROR at startup in
+  # daemon mode. Operators MUST switch to a file/kafka source fed with real
+  # telemetry for production; examples below.
+  sourceConfig:
+    source:
+      type: synthetic
+      count: 0
+      interval_seconds: 10
+    # --- production examples — replace the synthetic block above ---------
+    # source:
+    #   type: file
+    #   path: /var/lib/horizon/replay.jsonl   # must exist (extraVolumes or
+    #                                         # an init container that stages it)
+    # source:
+    #   type: kafka
+    #   bootstrap_servers: kafka.smo.svc.cluster.local:9092
+    #   topic: horizon-telemetry
+    # ---------------------------------------------------------------------
+    sink:
+      audit_path: /var/lib/horizon/audit.jsonl
+    health:
+      port: 8081
+    metrics:
+      port: 8082
+    state:
+      checkpoint_path: /var/lib/horizon/state.json
+      interval_seconds: 30
+  # Decision Safety Shield invariants — spectrum mask + EIRP ceiling.
+  shield:
+    bandLoHz: 3.40e9
+    bandHiHz: 3.50e9
+    maxEirpDbm: 33.0
+  # Per-decision latency budget, milliseconds.
+  decisionBudgetMs: 1000
+  # A1 policy status polling after emit.
+  statusPoll:
+    attempts: 3
+    intervalS: 1.0
+
+# Operator dashboard REST API (horizon_ric.rapp.dashboard_api, port 8083).
+# Disabled by default. Enabling it:
+#   * adds a `dashboard` containerPort + Service port + NetworkPolicy ingress
+#   * requires secret.data.apiJwtSecret (or HORIZON_API_JWT_SECRET in
+#     existingSecret) — the dashboard API refuses to start without a signing
+#     secret, so enabling the flag without one leaves the port dark.
+dashboard:
+  enabled: false
+  port: 8083
+
+# Evidence store backend selection.
+evidence:
+  # false (default): DecisionRecords append to the JSONL evidence chain under
+  # config.stateDir on the state PVC — zero external dependencies.
+  # true (requires timescaledb.enabled): renders HORIZON_EVIDENCE_DSN pointing
+  # at the chart's TimescaleDB service; the password is injected via a
+  # secretKeyRef env ($(POSTGRES_PASSWORD) dependent-env expansion), never
+  # plaintext in a ConfigMap.
+  useTimescaleDb: false
 
 # Secrets — referenced by name. Set existingSecret to skip creation.
+# NOTE: secret.create=false REQUIRES existingSecret to be set — the chart
+# fails the render otherwise (a dangling secretRef would leave every pod
+# stuck in CreateContainerConfigError).
 secret:
   create: true
   existingSecret: ""
   data:
     # Base64-encoded values are NOT used here; we put plaintext under a key
     # that the chart wraps with `b64enc` in templates/secret.yaml.
+    #
+    # RESERVED / UNUSED: the rApp runtime has no consumer for the
+    # SPACE_TRACK_* keys today — they are kept for the planned Space-Track
+    # TLE ingestion connector and are ignored by every current code path.
     spaceTrackIdentity: ""
     spaceTrackPassword: ""
     a1ClientToken: ""
+    # OAuth2 client secret for the A1 southbound (HORIZON_A1_OAUTH_CLIENT_SECRET).
+    # Only rendered into the Secret when non-empty — pairs with config.auth.
+    a1OauthClientSecret: ""
+    # JWT signing secret for the operator dashboard API
+    # (HORIZON_API_JWT_SECRET). Only rendered when non-empty — required when
+    # dashboard.enabled.
+    apiJwtSecret: ""
 
 # Persistent volume for the evidence store. When false, falls back to an
 # emptyDir (suitable only for ephemeral demos — DecisionRecords are lost
 # on pod reschedule).
+#
+# RWO constraint: with the default ReadWriteOnce access mode only ONE pod
+# can mount the volume, so while persistence is enabled the Deployment uses
+# a Recreate update strategy (no surge pod — a RollingUpdate surge replica
+# would deadlock waiting for the volume). Switch to a ReadWriteMany storage
+# class before raising replicaCount or enabling autoscaling.
 persistence:
   enabled: true
   size: 10Gi

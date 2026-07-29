@@ -1,0 +1,88 @@
+# Ericsson EIAP rApp onboarding descriptor — Horizon-RIC (skeleton).
+#
+# HONEST SCOPE — read deploy/onboarding/eiap/README.md before using this.
+# This descriptor captures the onboarding-relevant facts about the rApp
+# (identity, image, A1 dialect, required environment, ports) in a neutral
+# YAML shape. It has NOT been validated against a live EIAP tenant, and
+# the exact descriptor schema an EIAP App Manager expects (ASD/CSAR
+# packaging, catalogue signing) requires tenant access to confirm.
+# What IS validated today is the A1 wire contract this descriptor points
+# at — see tests/test_multi_vendor_integration.py (TestRealSocketVendorContracts).
+
+metadata:
+  rappId: horizon-ric-rapp
+  name: Horizon-RIC
+  # Keep in lock-step with pyproject.toml [project].version and the Helm
+  # image tag in deploy/helm/horizon-ric/values.yaml.
+  version: "0.2.0"
+  vendor: Preceptual AI
+  license: Apache-2.0
+  description: >-
+    AI-for-RAN trust & audit rApp: projects every ML policy decision onto
+    independently-measured radio invariants and binds it to a hash-chained,
+    RFC-3161-anchored evidence record before A1 emission.
+
+artifacts:
+  container:
+    # Matches deploy/helm/horizon-ric/values.yaml (image.repository:image.tag).
+    image: horizonric/rapp:0.2.0
+    pullPolicy: IfNotPresent
+
+interfaces:
+  a1:
+    dialect: eiap
+    basePath: /A1-PolicyManagement/v2
+    policyTypeRegistration:
+      method: PUT
+      path: /A1-PolicyManagement/v2/policy-types/{policyTypeId}
+    policyCreate:
+      method: PUT
+      path: /A1-PolicyManagement/v2/policies
+      # camelCase body — pinned over a real local HTTP socket by
+      # tests/test_multi_vendor_integration.py::TestRealSocketVendorContracts.
+      bodyKeys: [policyId, policyTypeId, ricId, policyData]
+    policyStatus:
+      method: GET
+      path: /A1-PolicyManagement/v2/policies/{policyId}/status
+    policyDelete:
+      method: DELETE
+      path: /A1-PolicyManagement/v2/policies/{policyId}
+
+environment:
+  required:
+    - name: HORIZON_A1_DIALECT
+      value: "eiap"
+    - name: HORIZON_NEAR_RT_RIC_URL
+      description: >-
+        Base URL of the EIAP A1 PolicyManagement endpoint for the tenant.
+    - name: HORIZON_A1_EIAP_RIC_ID
+      description: >-
+        Near-RT RIC identifier as registered in the EIAP topology; emitted
+        as the camelCase `ricId` field of every A1 policy body.
+  # OAuth2 client-credentials against the EIAP tenant's Keycloak.
+  # Consumed by horizon_ric.rapp.auth.AuthConfig (token_url / client_id /
+  # client_secret) via the rApp lifecycle env layer.
+  oauth2:
+    - name: HORIZON_A1_OAUTH_TOKEN_URL
+      description: >-
+        Keycloak token endpoint of the EIAP tenant realm, e.g.
+        https://<eiap-keycloak>/auth/realms/<realm>/protocol/openid-connect/token
+    - name: HORIZON_A1_OAUTH_CLIENT_ID
+      description: OAuth2 client id provisioned for this rApp in the EIAP Keycloak.
+    - name: HORIZON_A1_OAUTH_CLIENT_SECRET
+      description: OAuth2 client secret (mount from a Secret; never bake into the image).
+      secret: true
+
+ports:
+  # FastAPI endpoints from horizon_ric.rapp.health; mirrored in
+  # deploy/helm/horizon-ric/values.yaml (healthPort / metricsPort).
+  health: 8081
+  metrics: 8082
+
+probes:
+  liveness:
+    httpGet: {path: /healthz, port: 8081}
+  readiness:
+    httpGet: {path: /readyz, port: 8081}
+  metrics:
+    httpGet: {path: /metrics, port: 8082}

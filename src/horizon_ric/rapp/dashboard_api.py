@@ -8,20 +8,29 @@ connector management. Distinct from:
                    the production multi-tenant operator API
                    (RS256 + Casbin, owned by the security module).
 
-This module is the *dashboard* API consumed by the Next.js frontend in
-`frontend/`. It exposes a minimal, OpenAPI-typed surface at
-`/api/v1/*` and authenticates with HS256 JWTs (``python-jose``).
+This module is the *dashboard* API for operator dashboard clients. It
+exposes a minimal, OpenAPI-typed surface at `/api/v1/*` and
+authenticates with HS256 JWTs (``python-jose``). A bundled web UI
+consuming this surface is roadmap — this repository ships the API only.
 
-Endpoints:
+Endpoints (role required in brackets):
 
-  POST /api/v1/auth/token        — exchange username+password for a JWT
-  GET  /api/v1/state             — lifecycle state, degraded state, watchdog ts
-  GET  /api/v1/policies          — recent A1 emissions from the evidence store
-  GET  /api/v1/policies/{id}     — full DecisionRecord with counterfactuals
-  POST /api/v1/audit/verify      — runs ``EvidenceStore.verify()``
-  GET  /api/v1/sla/timeline      — per-horizon SLA risk samples over a window
-  GET  /api/v1/circuit-breakers  — state of horizon.r1, .a1, .o1 breakers
-  GET  /api/v1/connectors        — registered Source/Sink connectors
+  POST /api/v1/auth/token        — exchange username+password for a JWT [public]
+  GET  /api/v1/state             — lifecycle/degraded state, watchdog ts [any role]
+  GET  /api/v1/policies          — recent A1 emissions from evidence     [any role]
+  GET  /api/v1/policies/{id}     — full DecisionRecord + counterfactuals [any role]
+  POST /api/v1/audit/verify      — runs ``EvidenceStore.verify()``       [admin|operator]
+  GET  /api/v1/sla/timeline      — per-horizon SLA risk samples          [any role]
+  GET  /api/v1/circuit-breakers  — horizon.r1/.a1/.o1 breaker state      [any role]
+  GET  /api/v1/connectors        — registered Source/Sink connectors     [any role]
+
+Credential store (``HORIZON_API_USERS``): comma-separated entries of
+``username:secret:role``. ``secret`` SHOULD be a PBKDF2 hash in the form
+``pbkdf2_sha256$<iterations>$<salt_hex>$<hash_hex>`` (generate with
+``python -m horizon_ric.rapp.dashboard_api --hash-password``). Plaintext
+secrets are accepted only when ``HORIZON_PRODUCTION_MODE`` is explicitly
+falsy ("0"/"false"/"no") — the default is production, where plaintext
+entries are refused at login.
 
 Mounted into ``HorizonRAppLifecycle.run_forever()`` as a separate
 ``_serve_api()`` task on port 8083.
@@ -29,7 +38,10 @@ Mounted into ``HorizonRAppLifecycle.run_forever()`` as a separate
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
+import secrets
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -55,6 +67,33 @@ DEFAULT_JWT_ALGORITHM = "HS256"
 DEFAULT_JWT_ISSUER = "horizon-ric"
 DEFAULT_JWT_AUDIENCE = "horizon-dashboard"
 DEFAULT_TOKEN_TTL_S = 3600
+
+# Runner-aligned default: scripts/run_horizon_rapp.py writes the audit chain
+# to /var/lib/horizon/audit.jsonl, so the standalone dashboard API reads the
+# same file unless HORIZON_EVIDENCE_PATH overrides it.
+DEFAULT_EVIDENCE_PATH = "/var/lib/horizon/audit.jsonl"
+
+# Password-hash entry format for HORIZON_API_USERS.
+PBKDF2_SCHEME = "pbkdf2_sha256"
+DEFAULT_PBKDF2_ITERATIONS = 600_000
+
+# Role → endpoint matrix. Read-only endpoints accept any authenticated role;
+# the privileged full-chain verify walk is restricted. "operator" is kept on
+# the privileged list for backward compatibility with previously issued
+# operator tokens (pre-hardening the endpoint accepted every role).
+PRIVILEGED_ROLES: tuple[str, ...] = ("admin", "operator")
+
+
+def _production_mode() -> bool:
+    """``HORIZON_PRODUCTION_MODE`` flag; unset defaults to True (production).
+
+    Same truthiness rules as ``lifecycle._flag``: only an explicit
+    "0"/"false"/"no" (case-insensitive) disables production mode.
+    """
+    raw = os.environ.get("HORIZON_PRODUCTION_MODE")
+    if raw is None or not raw.strip():
+        return True
+    return raw.strip().lower() not in {"0", "false", "no"}
 
 
 def _jwt_secret() -> str:
@@ -118,6 +157,103 @@ def require_auth(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return _decode_token(creds.credentials)
+
+
+def require_role(*allowed: str):
+    """FastAPI dependency factory: valid bearer token AND an allowed role.
+
+    Reads the ``role`` claim minted by :func:`issue_token` (JWT shape is
+    unchanged — enforcement only). 401 without a valid token, 403 when the
+    token's role is not in ``allowed``.
+    """
+
+    def _dep(
+        claims: dict[str, Any] = Depends(require_auth),
+    ) -> dict[str, Any]:
+        role = str(claims.get("role") or "")
+        if role not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"role '{role or 'none'}' is not permitted; "
+                    f"requires one of: {', '.join(sorted(allowed))}"
+                ),
+            )
+        return claims
+
+    return _dep
+
+
+# ── Password hashing (stdlib PBKDF2-HMAC-SHA256) ────────────────────────────
+
+
+def hash_password(
+    password: str,
+    *,
+    iterations: int = DEFAULT_PBKDF2_ITERATIONS,
+    salt: bytes | None = None,
+) -> str:
+    """Return a ``pbkdf2_sha256$<iter>$<salt_hex>$<hash_hex>`` entry.
+
+    Suitable for the secret field of ``HORIZON_API_USERS``. Uses only the
+    standard library (``hashlib.pbkdf2_hmac``); ``$`` separators keep the
+    entry safe inside the colon-delimited ``user:secret:role`` format.
+    """
+    if iterations < 1:
+        raise ValueError("iterations must be >= 1")
+    if salt is None:
+        salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+    return f"{PBKDF2_SCHEME}${iterations}${salt.hex()}${digest.hex()}"
+
+
+def _verify_hashed(stored: str, password: str) -> bool:
+    """Constant-time verify of a candidate password against a PBKDF2 entry."""
+    try:
+        scheme, iter_s, salt_hex, hash_hex = stored.split("$")
+        if scheme != PBKDF2_SCHEME:
+            return False
+        iterations = int(iter_s)
+        salt = bytes.fromhex(salt_hex)
+        expected = bytes.fromhex(hash_hex)
+    except (ValueError, TypeError):
+        logger.error("dashboard_api.auth.malformed_hash_entry")
+        return False
+    candidate = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), salt, iterations
+    )
+    return hmac.compare_digest(candidate, expected)
+
+
+def _verify_secret(stored: str, password: str, *, username: str) -> bool:
+    """Check ``password`` against a stored secret (hashed or plaintext).
+
+    Hashed (``pbkdf2_sha256$...``) entries always work. Plaintext entries
+    are a dev-only convenience: they trigger a loud warning, and when
+    ``HORIZON_PRODUCTION_MODE`` is truthy (the default) they are refused
+    outright — production deployments must store PBKDF2 hashes.
+    """
+    if stored.startswith(PBKDF2_SCHEME + "$"):
+        return _verify_hashed(stored, password)
+    if _production_mode():
+        logger.error(
+            "dashboard_api.auth.plaintext_refused",
+            username=username,
+            reason=(
+                "HORIZON_API_USERS holds a plaintext secret but "
+                "HORIZON_PRODUCTION_MODE is enabled (the default). Generate "
+                "a hash with `python -m horizon_ric.rapp.dashboard_api "
+                "--hash-password` or explicitly set "
+                "HORIZON_PRODUCTION_MODE=false for dev."
+            ),
+        )
+        return False
+    logger.warning(
+        "dashboard_api.auth.plaintext_credentials",
+        username=username,
+        warning="plaintext credentials — dev only",
+    )
+    return hmac.compare_digest(stored.encode("utf-8"), password.encode("utf-8"))
 
 
 # ── Pydantic response models ────────────────────────────────────────────────
@@ -210,11 +346,20 @@ class TokenResponse(BaseModel):
 
 
 def _users_from_env() -> dict[str, tuple[str, str]]:
-    """Parse ``HORIZON_API_USERS`` (``user:pw:role,user2:pw:role``)."""
+    """Parse ``HORIZON_API_USERS`` into ``{user: (secret, role)}``.
+
+    Entry format: ``user:secret:role`` (or ``user:secret``, which defaults
+    the role to ``viewer``). ``secret`` is either a
+    ``pbkdf2_sha256$<iter>$<salt_hex>$<hash_hex>`` hash (recommended; the
+    ``$`` separators never collide with the ``:`` delimiters) or a
+    dev-only plaintext password — see :func:`_verify_secret`.
+    """
     raw = os.environ.get("HORIZON_API_USERS", "")
     out: dict[str, tuple[str, str]] = {}
     for entry in raw.split(","):
         parts = entry.strip().split(":")
+        if len(parts) == 2:
+            parts = [*parts, "viewer"]
         if len(parts) != 3:
             continue
         user, pw, role = parts
@@ -255,15 +400,14 @@ def build_dashboard_api(
     ``lifecycle`` is the live ``HorizonRAppLifecycle`` instance (may be None
     when the API is started in standalone read-only mode).
     ``evidence_store`` defaults to a JSONL store at
-    ``$HORIZON_EVIDENCE_PATH`` (or ``./var/evidence/horizon.jsonl``).
+    ``$HORIZON_EVIDENCE_PATH`` (or ``/var/lib/horizon/audit.jsonl``, the
+    same audit chain ``scripts/run_horizon_rapp.py`` writes).
     ``breakers`` is the dict ``{"horizon.r1": AsyncCircuitBreaker, ...}``.
     """
 
     if evidence_store is None:
         path = Path(
-            os.environ.get(
-                "HORIZON_EVIDENCE_PATH", "./var/evidence/horizon.jsonl"
-            )
+            os.environ.get("HORIZON_EVIDENCE_PATH", DEFAULT_EVIDENCE_PATH)
         )
         evidence_store = JsonlEvidenceStore(path)
 
@@ -272,8 +416,11 @@ def build_dashboard_api(
         version="0.2.0",
         description=(
             "Operator-facing REST surface for the Horizon-RIC dashboard. "
-            "Every endpoint requires a JWT bearer token (HS256). "
-            "See README at frontend/ for usage."
+            "Every endpoint (except /api/v1/auth/token) requires a JWT "
+            "bearer token (HS256) with a `role` claim. Read endpoints "
+            "accept any authenticated role; POST /api/v1/audit/verify "
+            "requires role `admin` or `operator` (403 otherwise). "
+            "Interactive OpenAPI docs are served at /docs."
         ),
     )
 
@@ -307,8 +454,8 @@ def build_dashboard_api(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="unknown user",
             )
-        pw, role = users[req.username]
-        if pw != req.password:
+        stored, role = users[req.username]
+        if not _verify_secret(stored, req.password, username=req.username):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="bad credentials",
@@ -420,7 +567,7 @@ def build_dashboard_api(
         tags=["audit"],
     )
     def audit_verify(
-        claims: dict[str, Any] = Depends(require_auth),
+        claims: dict[str, Any] = Depends(require_role(*PRIVILEGED_ROLES)),
     ) -> AuditVerifyResponse:
         store: EvidenceStore = app.state.evidence_store
         # Time the verify() walk for the `horizon_audit_verify_seconds`
@@ -564,12 +711,74 @@ def create_app() -> FastAPI:
     return build_dashboard_api(lifecycle=None)
 
 
+def _cli(argv: list[str] | None = None) -> int:
+    """``python -m horizon_ric.rapp.dashboard_api --hash-password``.
+
+    Prints a ``pbkdf2_sha256$...`` secret (or, with ``--user``, a complete
+    ``user:hash:role`` entry) for ``HORIZON_API_USERS``. With no password
+    argument the CLI prompts interactively so the secret never lands in
+    shell history or ``ps`` output.
+    """
+    import argparse
+    import getpass
+
+    parser = argparse.ArgumentParser(
+        prog="python -m horizon_ric.rapp.dashboard_api",
+        description="Generate HORIZON_API_USERS password-hash entries.",
+    )
+    parser.add_argument(
+        "--hash-password",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="PASSWORD",
+        help=(
+            "Emit a pbkdf2_sha256 hash for PASSWORD (omit the value to be "
+            "prompted interactively — preferred, keeps it out of ps/history)."
+        ),
+    )
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=DEFAULT_PBKDF2_ITERATIONS,
+        help=f"PBKDF2 iteration count (default {DEFAULT_PBKDF2_ITERATIONS}).",
+    )
+    parser.add_argument(
+        "--user",
+        default=None,
+        help="If given, print a full 'user:hash:role' entry instead of the bare hash.",
+    )
+    parser.add_argument(
+        "--role",
+        default="viewer",
+        help="Role for the --user entry (default: viewer).",
+    )
+    args = parser.parse_args(argv)
+
+    if args.hash_password is None:
+        parser.error("--hash-password is required")
+    password = args.hash_password or getpass.getpass("Password: ")
+    if not password:
+        parser.error("empty password")
+    entry = hash_password(password, iterations=args.iterations)
+    if args.user:
+        print(f"{args.user}:{entry}:{args.role}")
+    else:
+        print(entry)
+    return 0
+
+
 __all__ = [
     "build_dashboard_api",
     "build_api_app",
     "create_app",
     "issue_token",
+    "hash_password",
     "require_auth",
+    "require_role",
+    "DEFAULT_EVIDENCE_PATH",
+    "DEFAULT_PBKDF2_ITERATIONS",
+    "PRIVILEGED_ROLES",
     "DEFAULT_JWT_AUDIENCE",
     "DEFAULT_JWT_ISSUER",
     "DEFAULT_TOKEN_TTL_S",
@@ -586,3 +795,7 @@ __all__ = [
     "TokenRequest",
     "TokenResponse",
 ]
+
+
+if __name__ == "__main__":  # pragma: no cover — exercised via subprocess test
+    raise SystemExit(_cli())

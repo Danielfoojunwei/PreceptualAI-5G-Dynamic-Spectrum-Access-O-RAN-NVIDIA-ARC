@@ -1,0 +1,57 @@
+{
+  "benchmark": "DeepMIMO ray-traced DSA subband selection",
+  "best_vs_fixed_gain_db": 1.730053,
+  "best_vs_random_gain_db": 1.726286,
+  "data_kind": "site-specific Wireless InSite ray tracing; not over-the-air capture",
+  "dataset": "DeepMIMO ASU Campus 3.5 GHz",
+  "features_sha256": "ab4414a1dca5d1247f28908003003239033ab329ea04cf2f481a37132969e5af",
+  "receivers": 4096,
+  "runtime": {
+    "numpy_version": "2.4.6",
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "rng_stream_guarantee": "numpy.random.Generator provides no cross-version bit-stream compatibility guarantee; a numpy change can act as a reseed"
+  },
+  "scenario": "asu_campus_3p5",
+  "scope_note": "Published site-specific ray tracing; not OTA data, live O-RAN traffic, vendor interoperability, RF conformance, or carrier-scale evidence.",
+  "source_archive_sha256": "80e4a4983847023158ed61a5a489025d72f4edcdac89edf4ee1323699e1b7da3",
+  "source_tree_sha256": "42f9c6eb8f4b4c467fe04c63ae910ae26c75706b85c7decdbcb3a002cb5466b7",
+  "strategies": {
+    "best_subband": {
+      "decisions": 4096,
+      "illegal_emits_after_shield": 0,
+      "mean_regret_db": 0.0,
+      "mean_selected_gain_dbw": -136.520841,
+      "p95_regret_db": 0.0,
+      "shield_blocked": 0,
+      "shield_projected": 4096
+    },
+    "fixed_subband_0": {
+      "decisions": 4096,
+      "illegal_emits_after_shield": 0,
+      "mean_regret_db": 1.730053,
+      "mean_selected_gain_dbw": -138.250894,
+      "p95_regret_db": 5.7327,
+      "shield_blocked": 0,
+      "shield_projected": 4096
+    },
+    "random_subband": {
+      "decisions": 4096,
+      "illegal_emits_after_shield": 0,
+      "mean_regret_db": 1.726286,
+      "mean_selected_gain_dbw": -138.247127,
+      "p95_regret_db": 5.484528,
+      "shield_blocked": 0,
+      "shield_projected": 4096
+    },
+    "worst_subband": {
+      "decisions": 4096,
+      "illegal_emits_after_shield": 0,
+      "mean_regret_db": 3.702003,
+      "mean_selected_gain_dbw": -140.222845,
+      "p95_regret_db": 8.834999,
+      "shield_blocked": 0,
+      "shield_projected": 4096
+    }
+  }
+}

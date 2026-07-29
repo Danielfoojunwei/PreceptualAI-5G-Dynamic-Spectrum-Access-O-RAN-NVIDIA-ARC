@@ -22,6 +22,10 @@ spec:
           port: {{ .Values.healthPort }}
         - protocol: TCP
           port: {{ .Values.metricsPort }}
+        {{- if .Values.dashboard.enabled }}
+        - protocol: TCP
+          port: {{ .Values.dashboard.port }}
+        {{- end }}
   egress:
     # DNS — needed for any name resolution.
     - to:

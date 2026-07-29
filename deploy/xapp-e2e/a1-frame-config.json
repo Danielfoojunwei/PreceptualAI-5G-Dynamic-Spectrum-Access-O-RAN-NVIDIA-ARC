@@ -1,0 +1,6 @@
+{
+  "local": {"host": ":8080"},
+  "logger": {"level": 3},
+  "rmr": {"protPort": "tcp:4562", "maxSize": 65534, "numWorkers": 1},
+  "db": {"host": "127.0.0.1", "port": 6379, "namespaces": ["sdl", "rnib"]}
+}

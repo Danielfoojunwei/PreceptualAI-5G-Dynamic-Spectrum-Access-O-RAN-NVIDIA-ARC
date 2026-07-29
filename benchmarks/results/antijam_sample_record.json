@@ -1,0 +1,48 @@
+{
+  "hash": "4fcd2126208a7524285b3f7d8079b0de52ac65dda5e2b3d7bf7d8394b33a189c",
+  "record": {
+    "actual_outcome_1min": null,
+    "actual_outcome_30s": null,
+    "actual_outcome_5min": null,
+    "chosen_action": {
+      "beamformer": "mvdr-nullsteer",
+      "guard_refused": false,
+      "jammer_azimuth_deg": -142.0,
+      "label": "antijam-nullsteer",
+      "policy_type": "horizon.antijam.nullsteer",
+      "projected": false,
+      "requested_eirp_dbm": 32.0,
+      "safe_eirp_dbm": 32.0
+    },
+    "constraint_corrections": [],
+    "decision_id": "antijam-nullsteer",
+    "model_versions": {
+      "constraint_layer": "terrestrial-shield",
+      "dyna": "none",
+      "encoder": "none",
+      "policy": "antijam",
+      "rapp": "0.2.0",
+      "risk_heads": "mvdr-nullsteer"
+    },
+    "operator_override": false,
+    "operator_override_reason": null,
+    "predicted_outcome_chosen": {
+      "constraint_violations": [],
+      "energy_kwh": 0.0,
+      "gateway_loads": {},
+      "ntn_capacity_used": 0.0,
+      "sla_risk_1min": 0.1,
+      "sla_risk_30s": 0.1,
+      "sla_risk_5min": 0.1
+    },
+    "random_seed": null,
+    "rapp_instance_id": "antijam",
+    "rejected_alternatives": [],
+    "sla_breach_context": null,
+    "state_blob_uri": null,
+    "state_hash": "jam-az--142.0",
+    "tenant_id": "_unscoped_",
+    "timestamp": "2026-07-27T12:59:14.869359Z"
+  },
+  "tenant_id": "_unscoped_"
+}

@@ -27,10 +27,12 @@ Certified Client Removal*, arXiv:2404.09724), which splits the computation acros
   matches the product of commitments). Binding rests on discrete-log hardness in
   the order-``q`` subgroup.
 
-Honest assumptions, stated plainly: privacy holds only if the two servers do not
-collude; Feldman commitments are *binding* but not *hiding* (they reveal ``g^x``,
-which the client owns anyway — it does not help recover ``x`` without solving a
-discrete log). Pure Python ``pow``; exponentiation cost is per-coordinate.
+Honest assumptions, stated plainly: the exact mode's secrecy holds only if the
+two servers do not collude. For deployments that cannot rely on non-collusion,
+``split_private_contribution`` first applies client-side Gaussian local DP; even
+colluding servers then reconstruct only the DP release, not the raw update.
+Feldman commitments are *binding* but not *hiding*. Pure Python ``pow``;
+exponentiation cost is per-coordinate.
 """
 
 from __future__ import annotations
@@ -39,6 +41,8 @@ from dataclasses import dataclass
 from typing import Sequence
 
 import numpy as np
+
+from horizon_ric.federated.dp import DPConfig, RDPAccountant, l2_clip
 
 # RFC 3526 2048-bit MODP group (id 14): a safe prime p = 2q + 1, generator g = 2
 # of the order-q subgroup of quadratic residues. Discrete log here is hard.
@@ -82,12 +86,25 @@ def commit_vector(values: np.ndarray) -> list[int]:
 
 
 @dataclass(frozen=True)
+class LocalDPGuarantee:
+    """Privacy metadata for a client-side DP release."""
+
+    epsilon: float
+    delta: float
+    noise_multiplier: float
+    clip_norm: float
+    adjacency: str = "replace_one_client"
+    mechanism: str = "Gaussian local DP before secret sharing"
+
+
+@dataclass(frozen=True)
 class ClientContribution:
     """One client's verifiable submission: two additive shares + commitments."""
 
     share_a: np.ndarray  # field elements held by server A
     share_b: np.ndarray  # field elements held by server B
     commitments: list[int]  # g^x mod p per coordinate (public)
+    local_dp: LocalDPGuarantee | None = None
 
 
 def _rand_below(bound: int, rng: np.random.Generator) -> int:
@@ -107,6 +124,63 @@ def split_contribution(values: np.ndarray, *, rng: np.random.Generator) -> Clien
     a = np.array([_rand_below(Q, rng) for _ in flat], dtype=object)
     b = np.array([(int(e) - int(ai)) % Q for e, ai in zip(enc, a)], dtype=object)
     return ClientContribution(share_a=a, share_b=b, commitments=[pow(G, int(e), P) for e in enc])
+
+
+def split_private_contribution(
+    values: np.ndarray,
+    *,
+    dp_config: DPConfig,
+    delta: float,
+    rng: np.random.Generator,
+) -> ClientContribution:
+    """Apply client-side Gaussian DP, then split and commit the DP release.
+
+    The public clip bound must be independent of this private client update.
+    Under replace-one client adjacency the vector sensitivity is ``2C``;
+    therefore the local release adds isotropic Gaussian noise with standard
+    deviation ``noise_multiplier * 2C``. If both servers collude, the
+    reconstructed value still has the recorded one-step ``(epsilon, delta)``
+    local-DP guarantee.
+    """
+    if dp_config.noise_multiplier <= 0.0:
+        raise ValueError("local-DP noise_multiplier must be > 0")
+    if not 0.0 < delta < 1.0:
+        raise ValueError("delta must be in (0, 1)")
+
+    raw = np.asarray(values, dtype=np.float64).ravel()
+    clipped = l2_clip(raw, dp_config.clip_norm)
+    sensitivity = 2.0 * dp_config.clip_norm
+    release = clipped + rng.normal(
+        0.0,
+        dp_config.noise_multiplier * sensitivity,
+        size=clipped.shape,
+    )
+    accountant = RDPAccountant()
+    accountant.step(dp_config.noise_multiplier)
+    epsilon = accountant.get_epsilon(delta)
+    contribution = split_contribution(release, rng=rng)
+    return ClientContribution(
+        share_a=contribution.share_a,
+        share_b=contribution.share_b,
+        commitments=contribution.commitments,
+        local_dp=LocalDPGuarantee(
+            epsilon=float(epsilon),
+            delta=float(delta),
+            noise_multiplier=float(dp_config.noise_multiplier),
+            clip_norm=float(dp_config.clip_norm),
+        ),
+    )
+
+
+def reconstruct_contribution(contribution: ClientContribution) -> np.ndarray:
+    """Reconstruct one submission (the view obtained if both servers collude)."""
+    if contribution.share_a.shape != contribution.share_b.shape:
+        raise ValueError("share shapes do not match")
+    field = [
+        (int(a) + int(b)) % Q
+        for a, b in zip(contribution.share_a, contribution.share_b)
+    ]
+    return np.asarray([_decode(value) for value in field], dtype=np.float64)
 
 
 def _server_sum(shares: Sequence[np.ndarray]) -> np.ndarray:
@@ -174,8 +248,11 @@ __all__ = [
     "G",
     "QUANT_SCALE",
     "commit_vector",
+    "LocalDPGuarantee",
     "ClientContribution",
     "split_contribution",
+    "split_private_contribution",
+    "reconstruct_contribution",
     "AggregationResult",
     "aggregate",
     "verify_against_commitments",

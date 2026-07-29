@@ -1,0 +1,281 @@
+name: External dataset reproduction
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "datasets/deepmimo_asu_3p5/**"
+      - "benchmarks/deepmimo_dsa_benchmark.py"
+      - "benchmarks/results/deepmimo_dsa.json"
+      - "benchmarks/federated_coverage_loop.py"
+      - "benchmarks/results/federated_coverage.json"
+      - "benchmarks/beam_management_loop.py"
+      - "benchmarks/results/beam_management.json"
+      - "benchmarks/mobility_handover_loop.py"
+      - "benchmarks/results/mobility_handover.json"
+      - "benchmarks/antijam_loop.py"
+      - "benchmarks/results/antijam.json"
+      - "benchmarks/credit_assignment_loop.py"
+      - "benchmarks/results/credit_assignment.json"
+      - "benchmarks/exploration_truncation_loop.py"
+      - "benchmarks/results/exploration_truncation.json"
+      - "benchmarks/safety_utility_frontier_loop.py"
+      - "benchmarks/results/safety_utility_frontier.json"
+      - "src/horizon_ric/learning/**"
+      - "tests/test_shield_env.py"
+      - "scripts/verify_credit_assignment.py"
+      - "scripts/verify_exploration_truncation.py"
+      - "scripts/verify_safety_utility_frontier.py"
+      - "src/horizon_ric/data/lineage.py"
+      - "src/horizon_ric/federated/**"
+      - "scripts/verify_deepmimo_reproduction.py"
+      - "scripts/verify_federated_coverage.py"
+      - "scripts/verify_data_dependence.py"
+      - "scripts/verify_beam_management.py"
+      - "scripts/verify_mobility_handover.py"
+      - "scripts/verify_antijam.py"
+      - "scripts/verify_poisoning_shield.py"
+      - "scripts/verify_committed_benchmark.py"
+      - "benchmarks/projection_capacity_2x2.py"
+      - "benchmarks/integrity_attack_suite.py"
+      - "benchmarks/evasion_suite.py"
+      - "benchmarks/poisoning_shield_benchmark.py"
+      - "benchmarks/results/poisoning_shield.json"
+      - ".github/workflows/realdata.yml"
+      - "pyproject.toml"
+
+permissions:
+  contents: read
+
+jobs:
+  deepmimo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install pinned dependencies
+        # numpy is pinned explicitly because every closed-loop benchmark below
+        # draws from numpy.random.default_rng, whose bit stream carries no
+        # cross-version compatibility guarantee — an unpinned bump would reseed
+        # the loops and surface as a reproduction failure rather than as a
+        # dependency change. 2.2.6 is what this job already resolved to: the
+        # realdata extra pulls deepmimo==4.0.0, which caps numpy at <2.3.
+        # NOTE: deps/locks/horizon.txt pins numpy==2.4.6 for the runtime env and
+        # is deliberately NOT used here — that pin is unsatisfiable alongside
+        # deepmimo. See docs/REPRODUCIBILITY.md.
+        run: python -m pip install 'numpy==2.2.6' '.[dev,realdata]'
+      - name: Download, hash and transform DeepMIMO scenario
+        run: |
+          python datasets/deepmimo_asu_3p5/build.py \
+            --cache-dir "$RUNNER_TEMP/deepmimo" \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json"
+      - name: Reproduce aggregate benchmark
+        run: |
+          python benchmarks/deepmimo_dsa_benchmark.py \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json" \
+            --out "$RUNNER_TEMP/deepmimo_dsa.json"
+      - name: Verify committed evidence
+        run: |
+          python scripts/verify_deepmimo_reproduction.py \
+            --expected-manifest datasets/deepmimo_asu_3p5/manifest.json \
+            --actual-manifest "$RUNNER_TEMP/manifest.json" \
+            --expected-result benchmarks/results/deepmimo_dsa.json \
+            --actual-result "$RUNNER_TEMP/deepmimo_dsa.json" \
+            --absolute-float-tolerance 0.0001
+      - name: Reproduce federated coverage loop on real data
+        # Exits non-zero unless clean FL learns, the poison diverges plain
+        # FedAvg, FLTrust defends, the over-power fill is corrected and the
+        # evidence chain verifies then catches a tamper — all on real channels.
+        # Krum is no longer the defence claim: its poison tax is exactly 0.00 dB
+        # (poisoned == clean == 14.4572), i.e. all of its cost is non-IID
+        # aggregation tax, and its fill lands in the clean model's bottom
+        # coverage decile at only 7/12 seeds. FLTrust is 12/12.
+        run: |
+          python benchmarks/federated_coverage_loop.py \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json" \
+            --out "$RUNNER_TEMP/federated_coverage.json"
+      - name: Federated gates must survive seeds and bite on regressions
+        # The load-bearing evidence is no longer a single run: the gates are
+        # claimed to hold across seeds, and a gate that cannot fail is worse
+        # than no gate. Prove both here rather than trusting the committed JSON.
+        run: |
+          python benchmarks/federated_coverage_loop.py \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json" \
+            --seed-sweep --seeds 12
+          for mode in krum_off fltrust_uniform_trust dp_legacy_clip; do
+            if python benchmarks/federated_coverage_loop.py \
+                 --features "$RUNNER_TEMP/channel_features.jsonl" \
+                 --manifest "$RUNNER_TEMP/manifest.json" \
+                 --inject-regression "$mode" \
+                 --out "$RUNNER_TEMP/injected_$mode.json"; then
+              echo "::error::injected regression '$mode' did NOT fail the gates"
+              exit 1
+            fi
+            echo "injected regression '$mode' correctly rejected"
+          done
+      - name: Benchmarks claiming real data must actually depend on it
+        # Provenance is not proof. A benchmark can load the real features,
+        # ignore them, report a synthetic draw and still stamp features_sha256
+        # into its JSON. This perturbs the real measurements and requires each
+        # benchmark to either move its numbers or reject the input as physically
+        # inconsistent. --quick keeps the job inside its timeout; the full
+        # 13-benchmark sweep runs via workflow_dispatch and locally.
+        run: |
+          python scripts/verify_data_dependence.py --quick \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json"
+      - name: Verify committed federated-coverage evidence
+        run: |
+          python scripts/verify_federated_coverage.py \
+            --committed-result benchmarks/results/federated_coverage.json \
+            --actual-result "$RUNNER_TEMP/federated_coverage.json" \
+            --actual-manifest "$RUNNER_TEMP/manifest.json"
+      - name: Reproduce the poisoning -> Shield benchmark on the rebuilt data
+        # The proposal's load-bearing number: 4658 of 8000 decisions drawn from
+        # measured campus geometry request an illegal action and 0 survive the
+        # Shield. Until this step existed that figure lived only in a committed
+        # JSON with no automated regeneration, i.e. an assertion rather than
+        # evidence. Counts are integers over a seeded decision stream, so the
+        # verifier compares them exactly -- one decision changing class fails.
+        run: |
+          python benchmarks/poisoning_shield_benchmark.py \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json" \
+            --out "$RUNNER_TEMP/poisoning_shield.json"
+          python scripts/verify_poisoning_shield.py \
+            --committed benchmarks/results/poisoning_shield.json \
+            --fresh "$RUNNER_TEMP/poisoning_shield.json"
+      - name: Reproduce the projection-capacity 2x2 study
+        # Carries the "learning pays only where the optimum is interior"
+        # result and the two capability gates. It self-gates, but nothing ran
+        # it, so the published gains were an assertion about a file.
+        run: |
+          python benchmarks/projection_capacity_2x2.py \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json" \
+            --out "$RUNNER_TEMP/projection_capacity_2x2.json"
+          python scripts/verify_committed_benchmark.py \
+            --benchmark projection_capacity_2x2 \
+            --fresh "$RUNNER_TEMP/projection_capacity_2x2.json"
+      - name: Build the 5GAD captured-attack corpus
+        # Three of the integrity probes replay traffic captured while real
+        # attacks ran against a real free5GC core. Without this the suite
+        # SKIPS them and reports 8/8 instead of 11/11 -- which is how the
+        # first run of this gate failed, correctly. 24.1 MB over twelve
+        # captures pinned by the upstream Git-LFS SHA-256; no auth needed.
+        run: python datasets/5gad_inl/build.py
+      - name: Reproduce the integrity / supply-chain attack battery
+        # 11 probes, 0 bypasses, 0 skipped. Independent of the ray-traced
+        # dataset, so it needs no --features.
+        run: |
+          python benchmarks/integrity_attack_suite.py \
+            --out "$RUNNER_TEMP/integrity_attack_suite.json"
+          python scripts/verify_committed_benchmark.py \
+            --benchmark integrity_attack_suite \
+            --fresh "$RUNNER_TEMP/integrity_attack_suite.json"
+      - name: Reproduce the adversarial-evasion suite
+        # Checks the bound the Shield actually provides -- effective SER inside
+        # the certified 1 dB envelope of the classical baseline, for every
+        # attack in every regime -- not the stronger "never worse" reading.
+        run: |
+          python benchmarks/evasion_suite.py \
+            --out "$RUNNER_TEMP/evasion_suite.json"
+          python scripts/verify_committed_benchmark.py \
+            --benchmark evasion_suite \
+            --fresh "$RUNNER_TEMP/evasion_suite.json"
+      - name: Build real angular ray geometry
+        # Reuses the already-downloaded, checksum-pinned scenario cache.
+        run: |
+          python datasets/deepmimo_asu_3p5/build_angular.py \
+            --cache-dir "$RUNNER_TEMP/deepmimo" \
+            --features "$RUNNER_TEMP/angular_features.jsonl" \
+            --manifest "$RUNNER_TEMP/angular_manifest.json"
+      - name: Reproduce beam-management loop on real angular data
+        # Exits non-zero unless real coherent array gain and misalignment
+        # recovery hold, the codebook is genuinely swept, the over-EIRP beam is
+        # corrected, and the evidence chain verifies then catches a tamper.
+        run: |
+          python benchmarks/beam_management_loop.py \
+            --features "$RUNNER_TEMP/angular_features.jsonl" \
+            --manifest "$RUNNER_TEMP/angular_manifest.json" \
+            --out "$RUNNER_TEMP/beam_management.json"
+      - name: Verify committed beam-management evidence
+        run: |
+          python scripts/verify_beam_management.py \
+            --committed-result benchmarks/results/beam_management.json \
+            --actual-result "$RUNNER_TEMP/beam_management.json" \
+            --actual-manifest "$RUNNER_TEMP/angular_manifest.json"
+      - name: Reproduce mobility/handover loop on real angular data
+        # Exits non-zero unless Doppler is on, A3 hysteresis reduces ping-pong
+        # vs greedy at bounded outage, a real beam handover occurs, the
+        # over-EIRP handover is corrected, and the evidence chain holds + catches
+        # a tamper.
+        run: |
+          python benchmarks/mobility_handover_loop.py \
+            --features "$RUNNER_TEMP/angular_features.jsonl" \
+            --manifest "$RUNNER_TEMP/angular_manifest.json" \
+            --out "$RUNNER_TEMP/mobility_handover.json"
+      - name: Verify committed mobility/handover evidence
+        run: |
+          python scripts/verify_mobility_handover.py \
+            --committed-result benchmarks/results/mobility_handover.json \
+            --actual-result "$RUNNER_TEMP/mobility_handover.json" \
+            --actual-manifest "$RUNNER_TEMP/angular_manifest.json"
+      - name: Reproduce anti-jam loop on real angular data
+        # Exits non-zero unless the SMI nuller restores a positive SINR gain,
+        # more receivers become usable, the effective jammer suppression clears
+        # the bound, the over-EIRP null-steer is corrected, and the evidence
+        # chain holds + catches a tamper.
+        run: |
+          python benchmarks/antijam_loop.py \
+            --features "$RUNNER_TEMP/angular_features.jsonl" \
+            --manifest "$RUNNER_TEMP/angular_manifest.json" \
+            --out "$RUNNER_TEMP/antijam.json"
+      - name: Verify committed anti-jam evidence
+        run: |
+          python scripts/verify_antijam.py \
+            --committed-result benchmarks/results/antijam.json \
+            --actual-result "$RUNNER_TEMP/antijam.json" \
+            --actual-manifest "$RUNNER_TEMP/angular_manifest.json"
+      - name: Exercise the shielded closed-loop substrate on real channels
+        # tests/test_shield_env.py skips without the licence-gated features; here
+        # they exist, so this is the one place the substrate is tested for real.
+        run: |
+          mkdir -p datasets/deepmimo_asu_3p5/generated
+          ln -sf "$RUNNER_TEMP/channel_features.jsonl" \
+            datasets/deepmimo_asu_3p5/generated/channel_features.jsonl
+          pytest tests/test_shield_env.py -q
+      - name: Reproduce shield-learning experiments on real data
+        run: |
+          for exp in credit_assignment exploration_truncation safety_utility_frontier; do
+            python "benchmarks/${exp}_loop.py" \
+              --features "$RUNNER_TEMP/channel_features.jsonl" \
+              --manifest "$RUNNER_TEMP/manifest.json" \
+              --out "$RUNNER_TEMP/${exp}.json"
+            python "scripts/verify_${exp}.py" \
+              --committed-result "benchmarks/results/${exp}.json" \
+              --actual-result "$RUNNER_TEMP/${exp}.json" \
+              --actual-manifest "$RUNNER_TEMP/manifest.json"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deepmimo-reproduction-evidence
+          path: |
+            ${{ runner.temp }}/manifest.json
+            ${{ runner.temp }}/deepmimo_dsa.json
+            ${{ runner.temp }}/federated_coverage.json
+            ${{ runner.temp }}/credit_assignment.json
+            ${{ runner.temp }}/exploration_truncation.json
+            ${{ runner.temp }}/safety_utility_frontier.json
+            ${{ runner.temp }}/beam_management.json
+            ${{ runner.temp }}/mobility_handover.json
+            ${{ runner.temp }}/antijam.json

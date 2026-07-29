@@ -15,7 +15,9 @@ jobs:
           python-version: "3.12"
           cache: "pip"
       - run: pip install ruff
-      - run: ruff check src/ tests/
+      # Whole-tree lint: src, tests, scripts and deploy (osc_emulator etc.)
+      # are all gated — the full tree passes `ruff check` clean.
+      - run: ruff check src tests scripts deploy
 
   mypy:
     runs-on: ubuntu-latest
@@ -28,8 +30,73 @@ jobs:
       - run: |
           pip install -e ".[dev]"
           pip install mypy
-      - run: mypy src/horizon_ric --ignore-missing-imports || true
-        # mypy is informational on first pass; tighten in a follow-up.
+      - name: mypy (informational, full tree)
+        # Full-package run stays visible in the logs but does NOT gate:
+        # src/horizon_ric as a whole still has ~100 known errors in 35
+        # files (rapp/*_adapter.py, rapp/api_v1.py, provenance/signing.py,
+        # phy/*, security/{hsm,jwt,middleware}.py, federated/*, io/*,
+        # spectrum/*, evidence/rfc3161.py, evidence/store.py,
+        # shield/invariants.py, policy/counterfactual.py,
+        # observability/tracing.py, runtime/state_recovery.py).
+        run: mypy src/horizon_ric --ignore-missing-imports || true
+      - name: mypy gate (clean subset, enforced)
+        # GATED — no `|| true`: the 48 modules below type-check clean
+        # today and any regression in them fails CI. Everything listed in
+        # the informational step's comment above is NOT gated yet; move a
+        # file into this list once its errors are fixed.
+        # `--follow-imports=silent` scopes error reporting to exactly the
+        # listed files (imports are still analysed for type information).
+        run: |
+          mypy --ignore-missing-imports --follow-imports=silent \
+            src/horizon_ric/__init__.py \
+            src/horizon_ric/cli.py \
+            src/horizon_ric/runtime_env.py \
+            src/horizon_ric/data/__init__.py \
+            src/horizon_ric/data/lineage.py \
+            src/horizon_ric/evidence/__init__.py \
+            src/horizon_ric/evidence/ai_phy_lineage.py \
+            src/horizon_ric/evidence/explanation.py \
+            src/horizon_ric/evidence/schema.py \
+            src/horizon_ric/federated/__init__.py \
+            src/horizon_ric/federated/erasure.py \
+            src/horizon_ric/federated/secure.py \
+            src/horizon_ric/federated/unlearning.py \
+            src/horizon_ric/io/__init__.py \
+            src/horizon_ric/io/connectors/__init__.py \
+            src/horizon_ric/io/connectors/file_connector.py \
+            src/horizon_ric/io/connectors/http_connector.py \
+            src/horizon_ric/observability/__init__.py \
+            src/horizon_ric/observability/model_card.py \
+            src/horizon_ric/observability/x733_alarms.py \
+            src/horizon_ric/phy/__init__.py \
+            src/horizon_ric/phy/jamming.py \
+            src/horizon_ric/policy/__init__.py \
+            src/horizon_ric/policy/emit_guards.py \
+            src/horizon_ric/policy/li_constraint.py \
+            src/horizon_ric/provenance/__init__.py \
+            src/horizon_ric/rapp/__init__.py \
+            src/horizon_ric/rapp/api.py \
+            src/horizon_ric/rapp/sd_notify.py \
+            src/horizon_ric/runtime/__init__.py \
+            src/horizon_ric/runtime/artefact_vault.py \
+            src/horizon_ric/runtime/atomic_promotion.py \
+            src/horizon_ric/runtime/circuit_breaker.py \
+            src/horizon_ric/runtime/graceful_degradation.py \
+            src/horizon_ric/runtime/liveness.py \
+            src/horizon_ric/runtime/loop_state.py \
+            src/horizon_ric/runtime/shadow_executor.py \
+            src/horizon_ric/runtime/watchdog.py \
+            src/horizon_ric/security/__init__.py \
+            src/horizon_ric/security/nis2_reporter.py \
+            src/horizon_ric/security/rbac.py \
+            src/horizon_ric/security/tenant.py \
+            src/horizon_ric/shield/__init__.py \
+            src/horizon_ric/shield/certificate.py \
+            src/horizon_ric/shield/shield.py \
+            src/horizon_ric/shield/signing.py \
+            src/horizon_ric/spectrum/__init__.py \
+            src/horizon_ric/spectrum/attacks.py \
+            src/horizon_ric/spectrum/federated_q.py
 
   yang-strict:
     # Real strict YANG validation gate. Closes Row 9: any change to a
