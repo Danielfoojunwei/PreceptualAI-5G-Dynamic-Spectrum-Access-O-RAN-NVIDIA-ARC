@@ -35,6 +35,10 @@ on:
       - "scripts/verify_mobility_handover.py"
       - "scripts/verify_antijam.py"
       - "scripts/verify_poisoning_shield.py"
+      - "scripts/verify_committed_benchmark.py"
+      - "benchmarks/projection_capacity_2x2.py"
+      - "benchmarks/integrity_attack_suite.py"
+      - "benchmarks/evasion_suite.py"
       - "benchmarks/poisoning_shield_benchmark.py"
       - "benchmarks/results/poisoning_shield.json"
       - ".github/workflows/realdata.yml"
@@ -149,6 +153,37 @@ jobs:
           python scripts/verify_poisoning_shield.py \
             --committed benchmarks/results/poisoning_shield.json \
             --fresh "$RUNNER_TEMP/poisoning_shield.json"
+      - name: Reproduce the projection-capacity 2x2 study
+        # Carries the "learning pays only where the optimum is interior"
+        # result and the two capability gates. It self-gates, but nothing ran
+        # it, so the published gains were an assertion about a file.
+        run: |
+          python benchmarks/projection_capacity_2x2.py \
+            --features "$RUNNER_TEMP/channel_features.jsonl" \
+            --manifest "$RUNNER_TEMP/manifest.json" \
+            --out "$RUNNER_TEMP/projection_capacity_2x2.json"
+          python scripts/verify_committed_benchmark.py \
+            --benchmark projection_capacity_2x2 \
+            --fresh "$RUNNER_TEMP/projection_capacity_2x2.json"
+      - name: Reproduce the integrity / supply-chain attack battery
+        # 11 probes, 0 bypasses. Independent of the ray-traced dataset, so it
+        # needs no --features; three of its probes replay captured 5GAD traffic.
+        run: |
+          python benchmarks/integrity_attack_suite.py \
+            --out "$RUNNER_TEMP/integrity_attack_suite.json"
+          python scripts/verify_committed_benchmark.py \
+            --benchmark integrity_attack_suite \
+            --fresh "$RUNNER_TEMP/integrity_attack_suite.json"
+      - name: Reproduce the adversarial-evasion suite
+        # Checks the bound the Shield actually provides -- effective SER inside
+        # the certified 1 dB envelope of the classical baseline, for every
+        # attack in every regime -- not the stronger "never worse" reading.
+        run: |
+          python benchmarks/evasion_suite.py \
+            --out "$RUNNER_TEMP/evasion_suite.json"
+          python scripts/verify_committed_benchmark.py \
+            --benchmark evasion_suite \
+            --fresh "$RUNNER_TEMP/evasion_suite.json"
       - name: Build real angular ray geometry
         # Reuses the already-downloaded, checksum-pinned scenario cache.
         run: |

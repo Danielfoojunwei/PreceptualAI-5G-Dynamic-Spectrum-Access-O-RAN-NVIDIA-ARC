@@ -75,6 +75,7 @@ have not been built, probes 9-11 are reported as ``skipped`` — never as passin
 
 from __future__ import annotations
 
+import argparse
 import base64
 import hashlib
 import json
@@ -939,9 +940,22 @@ def run_battery() -> dict[str, Any]:
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "--out",
+        type=Path,
+        default=_RESULTS_PATH,
+        help=(
+            "where to write the result JSON. Defaults to the committed path; "
+            "CI points it elsewhere so a verification run can compare against "
+            "the committed file instead of overwriting it."
+        ),
+    )
+    out = ap.parse_args().out
+
     summary = run_battery()
-    _RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _RESULTS_PATH.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
 
     print(f"\nIntegrity attack battery — {summary['detected_or_blocked']}/"
           f"{summary['total_attacks']} probes detected/blocked "
@@ -976,7 +990,7 @@ def main() -> int:
             print(f"  - {b} slipped through its defense — INVESTIGATE")
         return 1
     print("\nAll probes detected/blocked across the board.")
-    print(f"Results written to {_RESULTS_PATH}")
+    print(f"Results written to {out}")
     return 0
 
 
