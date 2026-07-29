@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 372" font-family="Helvetica,Arial,sans-serif">
+<defs>
+  <linearGradient id="gPlan" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#e8eefc"/><stop offset="1" stop-color="#cfdcf7"/></linearGradient>
+  <linearGradient id="gShield" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#1f4f8f"/><stop offset="1" stop-color="#12365f"/></linearGradient>
+  <linearGradient id="gGuard" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#2e7d5b"/><stop offset="1" stop-color="#1d5a40"/></linearGradient>
+  <linearGradient id="gRan" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#f3ece2"/><stop offset="1" stop-color="#e4d8c6"/></linearGradient>
+  <linearGradient id="gEv" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#3d3550"/><stop offset="1" stop-color="#2a2439"/></linearGradient>
+  <filter id="sh" x="-20%" y="-20%" width="150%" height="160%">
+    <feDropShadow dx="0" dy="1.4" stdDeviation="1.7" flood-opacity="0.20"/></filter>
+  <marker id="arw" markerWidth="7" markerHeight="7" refX="6" refY="2.6" orient="auto">
+    <path d="M0,0 L6,2.6 L0,5.2 z" fill="#33404f"/></marker>
+  <marker id="arwR" markerWidth="7" markerHeight="7" refX="6" refY="2.6" orient="auto">
+    <path d="M0,0 L6,2.6 L0,5.2 z" fill="#b3261e"/></marker>
+  <marker id="arwG" markerWidth="7" markerHeight="7" refX="6" refY="2.6" orient="auto">
+    <path d="M0,0 L6,2.6 L0,5.2 z" fill="#1d5a40"/></marker>
+</defs>
+
+<!-- ================= plane bands ================= -->
+<rect x="8" y="34" width="964" height="92" rx="7" fill="#f7f9fd" stroke="#c9d4e4"/>
+<rect x="8" y="134" width="964" height="104" rx="7" fill="#fbfaf7" stroke="#ddd3c2"/>
+<rect x="8" y="246" width="964" height="80" rx="7" fill="#faf8fc" stroke="#d6cee2"/>
+<text x="20" y="49" font-size="9.5" fill="#54627a" font-weight="bold">NON-REAL-TIME PLANE — SMO / rApp</text>
+<text x="20" y="149" font-size="9.5" fill="#8a7550" font-weight="bold">NEAR-REAL-TIME PLANE — RIC / xApp / RAN</text>
+<text x="20" y="261" font-size="9.5" fill="#6b5f86" font-weight="bold">ASSURANCE PLANE — tamper-evident record</text>
+
+<!-- ================= non-RT: sources ================= -->
+<g filter="url(#sh)">
+  <rect x="26" y="60" width="104" height="52" rx="5" fill="url(#gPlan)" stroke="#9db4d8"/>
+</g>
+<text x="78" y="78" font-size="9.2" text-anchor="middle" fill="#22384f" font-weight="bold">Telemetry</text>
+<text x="78" y="90" font-size="7.4" text-anchor="middle" fill="#42576f">Kafka · JSONL · O1</text>
+<text x="78" y="101" font-size="7.4" text-anchor="middle" fill="#42576f">ray-traced PHY</text>
+
+<!-- planner (untrusted) -->
+<g filter="url(#sh)">
+  <rect x="158" y="60" width="126" height="52" rx="5" fill="url(#gPlan)" stroke="#9db4d8"/>
+</g>
+<text x="221" y="76" font-size="9.2" text-anchor="middle" fill="#22384f" font-weight="bold">AI Planner</text>
+<text x="221" y="88" font-size="7.4" text-anchor="middle" fill="#42576f">any model, any vendor</text>
+<rect x="176" y="93" width="90" height="13" rx="6.5" fill="#fdecea" stroke="#e6a9a3"/>
+<text x="221" y="102.5" font-size="7" text-anchor="middle" fill="#b3261e" font-weight="bold">UNTRUSTED</text>
+
+<!-- ============ THE SHIELD — the enforcement point ============ -->
+<g filter="url(#sh)">
+  <rect x="312" y="52" width="168" height="68" rx="6" fill="url(#gShield)"/>
+</g>
+<text x="396" y="70" font-size="10.4" text-anchor="middle" fill="#ffffff" font-weight="bold">DECISION SAFETY SHIELD</text>
+<text x="396" y="83" font-size="8" text-anchor="middle" fill="#bcd2ee">projection operator  a → P(a)</text>
+<line x1="326" y1="89" x2="466" y2="89" stroke="#4a70a6"/>
+<text x="396" y="100" font-size="7.2" text-anchor="middle" fill="#dce8f8">EIRP cap · occupied BW · spectral mask</text>
+<text x="396" y="110.5" font-size="7.2" text-anchor="middle" fill="#dce8f8">PFD · lawful intercept · protected-slice floor</text>
+
+<!-- guard chain -->
+<g filter="url(#sh)">
+  <rect x="508" y="60" width="118" height="52" rx="5" fill="url(#gGuard)"/>
+</g>
+<text x="567" y="79" font-size="9.2" text-anchor="middle" fill="#ffffff" font-weight="bold">Guard Chain</text>
+<text x="567" y="91" font-size="7.3" text-anchor="middle" fill="#cfe7db">refuses unaudited</text>
+<text x="567" y="101" font-size="7.3" text-anchor="middle" fill="#cfe7db">corrections — fail closed</text>
+
+<!-- A1 adapter -->
+<g filter="url(#sh)">
+  <rect x="654" y="60" width="106" height="52" rx="5" fill="url(#gPlan)" stroke="#9db4d8"/>
+</g>
+<text x="707" y="79" font-size="9.2" text-anchor="middle" fill="#22384f" font-weight="bold">A1 Adapter</text>
+<text x="707" y="91" font-size="7.4" text-anchor="middle" fill="#42576f">policy + certificate</text>
+<text x="707" y="101" font-size="7.4" text-anchor="middle" fill="#42576f">OAuth2 / mTLS</text>
+
+<!-- non-RT flow arrows -->
+<line x1="130" y1="86" x2="154" y2="86" stroke="#33404f" stroke-width="1.3" marker-end="url(#arw)"/>
+<line x1="284" y1="86" x2="308" y2="86" stroke="#33404f" stroke-width="1.3" marker-end="url(#arw)"/>
+<line x1="480" y1="86" x2="504" y2="86" stroke="#33404f" stroke-width="1.3" marker-end="url(#arw)"/>
+<line x1="626" y1="86" x2="650" y2="86" stroke="#33404f" stroke-width="1.3" marker-end="url(#arw)"/>
+<text x="296" y="80" font-size="6.6" fill="#b3261e" text-anchor="middle">proposed</text>
+<text x="492" y="80" font-size="6.6" fill="#1d5a40" text-anchor="middle">legal</text>
+
+<!-- refusal path -->
+<path d="M567 118 L567 131 L221 131 L221 118" fill="none" stroke="#b3261e"
+      stroke-width="1.15" stroke-dasharray="3.5,2.5" marker-end="url(#arwR)"/>
+<text x="394" y="129" font-size="6.8" fill="#b3261e" text-anchor="middle">refused — never emitted</text>
+
+<!-- ================= near-RT plane ================= -->
+<g filter="url(#sh)"><rect x="654" y="160" width="106" height="46" rx="5" fill="url(#gRan)" stroke="#c9b795"/></g>
+<text x="707" y="177" font-size="8.8" text-anchor="middle" fill="#4a3f28" font-weight="bold">Near-RT RIC</text>
+<text x="707" y="189" font-size="7" text-anchor="middle" fill="#6b5c3d">ric-plt/a1 · RMR 4.9.4</text>
+<text x="707" y="199" font-size="7" text-anchor="middle" fill="#6b5c3d">O-RAN SC A1 sim</text>
+
+<g filter="url(#sh)"><rect x="500" y="160" width="120" height="46" rx="5" fill="url(#gRan)" stroke="#c9b795"/></g>
+<text x="560" y="177" font-size="8.8" text-anchor="middle" fill="#4a3f28" font-weight="bold">xApp</text>
+<text x="560" y="189" font-size="7" text-anchor="middle" fill="#6b5c3d">ric-app/hw-python</text>
+<text x="560" y="199" font-size="7" text-anchor="middle" fill="#6b5c3d">ACK over RMR</text>
+
+<g filter="url(#sh)"><rect x="330" y="160" width="126" height="46" rx="5" fill="url(#gRan)" stroke="#c9b795"/></g>
+<text x="393" y="177" font-size="8.8" text-anchor="middle" fill="#4a3f28" font-weight="bold">CU / DU · E2</text>
+<text x="393" y="189" font-size="7" text-anchor="middle" fill="#6b5c3d">FlexRIC · E2SM-KPM</text>
+<text x="393" y="199" font-size="7" text-anchor="middle" fill="#6b5c3d">OCUDU stack</text>
+
+<g filter="url(#sh)"><rect x="180" y="160" width="112" height="46" rx="5" fill="url(#gRan)" stroke="#c9b795"/></g>
+<text x="236" y="180" font-size="8.8" text-anchor="middle" fill="#4a3f28" font-weight="bold">Radio</text>
+<text x="236" y="193" font-size="7" text-anchor="middle" fill="#6b5c3d">licensed emission</text>
+
+<line x1="707" y1="112" x2="707" y2="156" stroke="#33404f" stroke-width="1.3" marker-end="url(#arw)"/>
+<text x="714" y="138" font-size="6.8" fill="#33404f">A1 PUT</text>
+<line x1="650" y1="183" x2="624" y2="183" stroke="#33404f" stroke-width="1.3" marker-end="url(#arw)"/>
+<line x1="496" y1="183" x2="460" y2="183" stroke="#33404f" stroke-width="1.3" marker-end="url(#arw)"/>
+<line x1="326" y1="183" x2="296" y2="183" stroke="#33404f" stroke-width="1.3" marker-end="url(#arw)"/>
+<text x="560" y="219" font-size="6.9" fill="#1d5a40" text-anchor="middle">12/12 enforceStatus = ENFORCED</text>
+
+<!-- telemetry return path -->
+<path d="M236 156 L236 140 L78 140 L78 116" fill="none" stroke="#5a6b80"
+      stroke-width="1.05" stroke-dasharray="3,2.5" marker-end="url(#arw)"/>
+<text x="150" y="137" font-size="6.7" fill="#5a6b80" text-anchor="middle">measured KPI feedback</text>
+
+<!-- ================= assurance plane ================= -->
+<g filter="url(#sh)"><rect x="312" y="270" width="356" height="44" rx="5" fill="url(#gEv)"/></g>
+<text x="490" y="288" font-size="9.2" text-anchor="middle" fill="#ffffff" font-weight="bold">HASH-CHAINED EVIDENCE STORE</text>
+<text x="490" y="301" font-size="7.2" text-anchor="middle" fill="#cfc8dd">DecisionRecord + SafetyCertificate · Ed25519 · JSONL / TimescaleDB</text>
+<g stroke="#8f83ad" stroke-width="1">
+  <rect x="690" y="278" width="15" height="15" rx="2.5" fill="#4a4160"/>
+  <rect x="712" y="278" width="15" height="15" rx="2.5" fill="#4a4160"/>
+  <rect x="734" y="278" width="15" height="15" rx="2.5" fill="#4a4160"/>
+  <rect x="756" y="278" width="15" height="15" rx="2.5" fill="#7a2f2f"/>
+  <rect x="778" y="278" width="15" height="15" rx="2.5" fill="#4a4160"/>
+</g>
+<line x1="705" y1="285.5" x2="712" y2="285.5" stroke="#8f83ad"/>
+<line x1="727" y1="285.5" x2="734" y2="285.5" stroke="#8f83ad"/>
+<line x1="749" y1="285.5" x2="756" y2="285.5" stroke="#8f83ad"/>
+<line x1="771" y1="285.5" x2="778" y2="285.5" stroke="#8f83ad"/>
+<text x="763" y="306" font-size="6.6" fill="#e0a0a0" text-anchor="middle">tamper localised</text>
+<text x="763" y="313.5" font-size="6.6" fill="#e0a0a0" text-anchor="middle">to exact index</text>
+
+<path d="M340 120 L310 120 L310 266" fill="none" stroke="#6b5f86" stroke-width="1.05" stroke-dasharray="3,2.5" marker-end="url(#arw)"/>
+<path d="M508 96 L478 96 L478 266" fill="none" stroke="#6b5f86" stroke-width="1.05" stroke-dasharray="3,2.5" marker-end="url(#arw)"/>
+<text x="316" y="250" font-size="6.7" fill="#6b5f86">every certificate</text>
+<text x="484" y="250" font-size="6.7" fill="#6b5f86">every refusal</text>
+
+<!-- guarantee callout -->
+<rect x="26" y="270" width="262" height="44" rx="5" fill="#eef6f1" stroke="#a9cbb9"/>
+<text x="38" y="285" font-size="8.2" fill="#1d5a40" font-weight="bold">Invariant of the control path</text>
+<text x="38" y="297" font-size="7.3" fill="#2f5a47">No planner output reaches the radio unprojected.</text>
+<text x="38" y="308" font-size="7.3" fill="#2f5a47">Holds for any model — untrained, swapped, adversarial.</text>
+
+<text x="8" y="24" font-size="11" fill="#1a2430" font-weight="bold">System topology: an AI planner is never trusted with the radio</text>
+<text x="612" y="24" font-size="7.6" fill="#7a8798">tan = third-party open-source software exercised live on real sockets</text>
+</svg>

@@ -1,257 +1,200 @@
-# Anticipated evaluation criteria — Horizon-RIC
+# Self-assessment against the AI-RAN Alliance evaluation criteria
 
-> **Evidence notice (25 July 2026):** this file is a proposal self-assessment,
-> not an external evaluation. Scores do not prove the claims they grade. The
-> authoritative evidence boundary is
-> [`CLAIMS_EVIDENCE.json`](CLAIMS_EVIDENCE.json); live/operator/vendor
-> deployment, certification, carrier scale, global novelty and independent
-> validation are not established.
->
-> **These criteria are to be finalized and approved by the AI-RAN Alliance Board.
-> This is our *anticipated* mapping**, derived from the Call for Innovation's six
-> required proposal sections, its five expected outputs, and the Alliance's
-> mission (innovation; benchmarks / blueprints; openness / pre-competitive
-> contribution; AI-RAN relevance). We publish it so a reviewer can hold us to a
-> transparent, falsifiable standard and see our own honest self-scores — including
-> where we score a **Gap**.
+> **What this file is.** A self-assessment, not an external evaluation. A score
+> here does not prove the claim it grades. The authoritative statement of what is
+> reproducible is [`CLAIM_LEDGER.md`](CLAIM_LEDGER.md), which names, for every
+> quantitative claim, the CI job that re-executes it — and says plainly where
+> nothing does.
 
-Self-score key:
+> **Correction (29 July 2026).** Earlier revisions of this file presented a
+> seven-factor rubric with invented percentage weights, described as our
+> "anticipated" mapping. That was our own construction, not the Alliance's, and
+> weighting criteria we do not own was misleading. The Call for Innovations
+> publishes five evaluation criteria and six required content items; this file now
+> maps to those and to nothing else. The numbers in earlier revisions were also
+> stale — they predated the move onto ray-traced measurements and the
+> introduction of CI gates.
 
-- **Strong** — built, tested, evidence committed in-repo, defensible today.
-- **Adequate** — substantially built, but with a named limitation or in-build
-  demonstrator dependency.
-- **Gap** — known shortfall; the roadmap row that closes it is named.
+## What the Call asks for
 
----
+Six required content items:
 
-## How the criteria were derived
+1. Executive summary
+2. Problem statement and market relevance
+3. Innovative solution and technical approach
+4. Deployment feasibility
+5. Twelve-month timeline with milestones
+6. Expected deliverables and impact
 
-The Call requires six proposal sections (problem / relevance; solution &
-technical approach; deployment feasibility; timeline & milestones; deliverables &
-impact; alliance fit) and expects five output types (prototypes; algorithms /
-models; benchmarking-ready code; datasets; standardization contributions). The
-Alliance mission adds innovation, openness / pre-competitive value, and AI-RAN
-relevance. We collapse these into seven weighted criteria.
+Five evaluation criteria:
 
----
+1. Innovation and technical merit
+2. Relevance to AI-RAN challenges
+3. Commercial impact and feasibility
+4. Strength of execution plan
+5. Alignment with AI-RAN priorities
 
-## Criterion 1 — AI-for-RAN relevance & track fit (weight 20%)
+Expected output types: prototypes; algorithms or models; benchmarking-ready
+code; datasets; standardization contributions.
 
-**What it measures.** Is this an AI-for-RAN capability — not generic compliance
-plumbing? Does it make AI-RAN decisions better / safer / deployable?
-
-**Our evidence.** Horizon-RIC is positioned as an AI-for-RAN **enabler and
-benchmark**: it is the trust layer that makes a federated deep-RL
-dynamic-spectrum-access agent (the NTU/SCRIPTS line — see
-[`RESEARCH_ALIGNMENT.md`](RESEARCH_ALIGNMENT.md)) deployable on licensed / NTN
-spectrum. The Decision Safety Shield (`src/horizon_ric/shield/`), robust /
-secure aggregation (`src/horizon_ric/federated/`), and per-decision evidence
-(`src/horizon_ric/evidence/`) all act on the *AI agent's RAN decisions*. The
-in-build demonstrator (`src/horizon_ric/spectrum/`, `benchmarks/secure_dsa_benchmark.py`)
-makes this an end-to-end AI-RAN story, not a sidecar.
-
-**Self-score: Adequate.** The trust mechanisms are built and act on AI decisions;
-the federated-DSA demonstrator that closes the "is this really AI-RAN?" loop is
-in build by a parallel work-stream.
-
-**Gap & closure.** Until `src/horizon_ric/spectrum/` and `secure_dsa.json` land,
-the AI-RAN agent is referenced rather than shipped here. **M1–2 / M5–6** land the
-demonstrator and a live AI-PHY integration, moving this to Strong.
+Self-assessment key — **Strong**: built, CI-gated, defensible to a third party
+today. **Adequate**: built and published, with a named limitation. **Gap**: known
+shortfall, with the work package that closes it named.
 
 ---
 
-## Criterion 2 — Genuine innovation / novelty, honestly scoped (weight 18%)
+## 1. Innovation and technical merit
 
-**What it measures.** Is there a real, defensible contribution to the state of
-the art — and is the novelty claim honest about prior art?
+**Self-assessment: Strong on the mechanism, narrow by design.**
 
-**Our evidence.** The **only** claim of novelty is the **decision-level evidence /
-audit binding**: a per-decision `SafetyCertificate`
-(`src/horizon_ric/shield/certificate.py`) + SHA-256 hash chain + RFC-3161 anchor
-(`src/horizon_ric/evidence/`) + counterfactual replay + model-provenance threading
-(`src/horizon_ric/provenance/`). We do **not** claim novelty for the shield, the
-aggregators, or the crypto. Honest prior art:
+The contribution is enforcement realised as a projection on the action space
+*downstream* of the planner (`src/horizon_ric/shield/`): the planner emits a
+proposal, only the projected action reaches the southbound adapter, and an
+out-of-licence emission is unrepresentable rather than merely unlikely. The bound
+is worst-case rather than distributional, holds for an arbitrary planner
+including a hostile one, and is delivered as a per-decision `SafetyCertificate`
+naming violated invariants, corrections and residual margins.
 
-- **Safety shielding** is prior art: DeRAN (arXiv:2605.10648) does two-stage
-  O-RAN action shielding; Alshiekh et al. (AAAI-18) introduced shielded RL;
-  Kochdumper et al. (arXiv:2210.10691) do provably safe RL via set propagation.
-- **Robust aggregators** (Krum / median / trimmed-mean) are pre-2019 and are
-  **defeated** by Baruch et al. (NeurIPS-19, "A Little Is Enough") and Fang et
-  al. (USENIX Security-20). We use them as a baseline, not a frontier.
-- **The crypto** (SHA-256, RSA-PSS, Shamir, RFC-3161) is all standard.
+**Prior art we do not claim priority over.** Action projection for safe
+reinforcement learning is established: Alshiekh et al. (AAAI 2018) introduced
+shielded RL; Dalal et al. (arXiv:1801.08757) the safety layer; Kochdumper et al.
+(arXiv:2210.10691) provably safe RL via reachable-set propagation. Robust
+aggregators (Krum, coordinate median, trimmed mean) are pre-2019 and are
+defeated by Baruch et al. (NeurIPS 2019) and Fang et al. (USENIX Security 2020);
+we use them as baselines. The cryptography is off-the-shelf.
 
-**Self-score: Strong** — narrowly, on the audit / certificate binding only. We
-explicitly do **not** claim SOTA anywhere else.
+**What is new** is the realisation as a standards-facing enforcement plane:
+invariants in the operator's regulatory vocabulary rather than in a reward
+function, composed to a fixed point so satisfying one cannot silently violate
+another; a fail-closed guard chain; emission over O-RAN A1/R1 as an ordinary
+rApp; and evidence a third party can replay without trusting us.
 
-**Gap & closure.** The novelty is narrow by design. The risk is that "evidence
-binding" reads as engineering, not research; **M11–12** publishes the
-binding + benchmark so the contribution is externally citable. A Sigstore-style
-transparency-log integration (currently absent) would strengthen the provenance
-claim and is a roadmap item.
+**Technical merit is gated, not asserted.** Every headline number is
+re-executed by CI on a clean runner and compared field by field —
+`scripts/verify_poisoning_shield.py` compares the enforcement counts exactly,
+with an independence check on the adjudicating oracle. Each gate is required to
+fail under an injected regression; a gate that cannot fail is treated as no gate.
 
----
+**Gap.** Global novelty is not established — that needs a systematic prior-art
+and patent search plus peer review. Coverage is bounded by the enumerated
+invariant set, which is a living register rather than a completeness claim.
 
-## Criterion 3 — Benchmarking-ready code & reproducible results (weight 16%)
+## 2. Relevance to AI-RAN challenges
 
-**What it measures.** Can a third party run the benchmark and reproduce the
-numbers? Are results committed?
+**Self-assessment: Strong.**
 
-**Our evidence.** `benchmarks/poisoning_shield_benchmark.py` with committed,
-**deterministic** results at `benchmarks/results/poisoning_shield.json` (reproduce
-with `--decisions 10000 --poison-rate 0.3`). Traceable numbers from that file: on a
-10,000-decision stream at 30% poison rate, the unguarded path emits **1,983**
-out-of-spec policies plus **489** in-spec-but-harmful ones (graded by an
-*independent* emission-mask/ACLR oracle); the Shield emits **0** of each (every
-decision gets a certificate). The federated half (16 honest / 4 Byzantine, dim 200)
-is reported honestly: robust aggregation is only a *partial* bound — under adaptive
-Fang-median the FedAvg distance from the honest mean is 8.23 vs median 4.96 /
-trimmed 5.81, while **Krum is worse at 12.2**, and under small-step ALIE the robust
-aggregators sit *further* from the honest mean than FedAvg. The guarantee is the
-deterministic Shield, not the aggregators (the repair layer is certified unlearning,
-§8). The DSA demonstrator benchmark
-(`benchmarks/secure_dsa_benchmark.py` → `benchmarks/results/secure_dsa.json`)
-runs a federated DSA agent under ALIE/Fang poisoning and shows the Shield keeps
-every emission legal and the audit chain intact. The adversarial-robustness
-benchmark (`benchmarks/neural_rx_pgd_benchmark.py` →
-`benchmarks/results/neural_rx_pgd.json`) grades the Shield against an attack it
-was **not** hand-coded for — a real white-box PGD attack on a real numpy neural
-receiver (input gradient verified by finite difference): the neural receiver's
-SER is ~22× the classical demapper's under attack, and the Shield's
-independent-measurement fallback cuts the block-error impact ~12×.
+The blocker this addresses is the one that keeps AI advisory rather than
+actuating: a transmission outside a licence is a regulatory breach, not a
+degraded KPI, so an assurance argument that terminates in a probability is the
+wrong shape for the liability. That question became live in 2026 — an AI
+uplink-interference rApp was field-trialled across roughly 1500 5G and 1300 4G
+cells and assessed at autonomy Level 3.86 toward Level 4, and the two largest RAN
+vendors opened their SMO marketplaces to one another over R1. Operators will
+actuate licensed spectrum through planners they did not write and cannot inspect
+while retaining sole liability. See [`SIXG_READINESS.md`](SIXG_READINESS.md) and
+[`ECOSYSTEM.md`](ECOSYSTEM.md).
 
-Beyond these, a **five-family adversarial campaign** is committed (numpy, no mocks)
-with thirteen result files under `benchmarks/results/` and **75 adversarial tests**
-in CI: evasion (FGSM/BIM/MIM/transfer/boundary), physical-layer jamming +
-imperfect-CSI, FL model-poisoning (sign-flip / scaling / Gaussian / Min-Max /
-Min-Sum / ALIE / Fang) against every aggregator, FL data-poisoning + backdoor on
-the DSA loop, and an integrity/audit/bypass battery. It reports honestly where our
-defenses FAIL — adaptive poisoning beats Krum/median, a backdoor survives median at
-its breakdown point, the white-box evasion gap collapses under realistic fading —
-and where they hold (8/8 integrity probes; the Shield bounds the emitted action to
-legal spectrum even from a compromised model). See `docs/THREAT_MODEL.md` §7. The
-campaign now also *repairs* the worst FAIL: **certified federated unlearning**
-(`federated_unlearning_suite.json`) removes a backdoor an undefended aggregator let
-through (success 1.0 → 0.04) with a signed, audit-chainable certificate — bridging
-the NTU/DTC federated-unlearning research (`docs/THREAT_MODEL.md` §8). A further
-**privacy & erasure stack** (24 tests, 3 result files) closes the privacy face of
-the threat model (`docs/THREAT_MODEL.md` §9): DP-FedAvg with a real Rényi-DP
-accountant (membership-inference AUC 0.97→~0.5 as ε falls), verifiable two-server
-secure aggregation (malicious-server tamper/drop detection 1.0), and provable
-GDPR-Art.17 subject-level erasure — each grounded in a specific Lam et al. paper.
+The exposure is measured rather than argued: over 8000 decisions on ray-traced
+ASU-campus propagation at 3.5 GHz, **4658** requested actions were out of licence
+and **0** passed the emission boundary; **2442** of those were demanded by the
+real geometry rather than by any attack, because 46% of measured receivers need
+more than the licensed EIRP to close their link. A further **461** actions were
+inside the emission mask yet harmful by adjacent-channel leakage; after
+projection, **0**.
 
-**Self-score: Strong.** The benchmarks are real, committed, reproducible, and
-adversarially exhaustive — including attacks that defeat our own defenses, reported
-openly. The remaining gap is live over-the-air I/Q, not attack coverage. The
-original "the benchmark only tests what the
-Shield was coded to catch" critique.
+## 3. Commercial impact and feasibility
 
-**Gap & closure.** The committed benchmark exercises a *synthetic* poisoned trace,
-not live I/Q. The current robust-aggregation numbers are against a naive Byzantine
-model — they would **not** survive an ALIE (Baruch) or Fang adaptive attack, and
-we say so. **M3–4** adds those adaptive attackers to the benchmark; **M5–6**
-adds live AI-PHY telemetry; **M11–12** releases the public benchmark + dataset.
+**Self-assessment: Adequate on feasibility, Gap on commercial validation.**
+This is the weakest criterion and we do not dress it up.
 
----
+**Feasibility.** Enforcement is transparent to the standard interface: 12/12
+policies acknowledged `enforceStatus = ENFORCED` by the production Go
+`ric-plt/a1` mediator with RMR 4.9.4 driving the official `ric-app/hw-python`
+xApp, with no patch to either, confirmed by a three-witness proof and rebuilt
+from source by `.github/workflows/xapp-e2e.yml`. It ships as an ordinary
+non-real-time rApp: container images, a Helm chart whose rendered templates are
+asserted by tests, EIAP and MantaRay onboarding descriptors, OAuth2 and mTLS
+credential paths, and a TimescaleDB evidence backend. It is torch-free and
+installs on stock Python with no accelerator.
 
-## Criterion 4 — Datasets (weight 10%)
+**The control is not a performance tax.** Where the optimum is feasible,
+enforcement surrenders **0.0 dB** — which is what makes it adoptable by a RAN
+team rather than merely mandated at them.
 
-**What it measures.** Is there a committed, documented, reusable dataset?
+**Gap.** No operator pilot, no vendor-platform onboarding, and no revenue. The
+EIAP and MantaRay packages are wire-contract tests against publicly documented
+surfaces, not interoperability results, and no vendor has onboarded this. The
+"tens of microseconds per candidate action" enforcement cost is measured on one
+host with no committed benchmark. WP1 and WP3 of the twelve-month plan are the
+work that converts technical readiness into commercial validation.
 
-**Our evidence.** A committed, versioned dataset has landed:
-`datasets/spectrum_dsa/traces.jsonl` (1,620 federated-DSA decision traces, honest
-+ ALIE/Fang-poisoned) with `manifest.json`, a full `DATASHEET.md` (provenance,
-schema, synthetic-deterministic collection, intended use, honest limitations), and
-a reproducible generator. The adversarial campaign additionally commits nine
-`benchmarks/results/*.json` files that are themselves reusable evaluation artifacts.
+## 4. Strength of execution plan
 
-**Self-score: Adequate.** A real, documented, regenerable dataset is committed; it
-is synthetic-deterministic (not over-the-air), which the datasheet states plainly.
+**Self-assessment: Adequate.**
 
-**Gap & closure.** The dataset is synthetic; **M5–6** captures real
-neural-PHY / DSA traces on a testbed (srsRAN / NVIDIA Aerial) and **M11–12**
-publishes the dataset + benchmark suite openly.
+Four work packages, each with a named owner, a falsifiable exit gate and a costed
+allocation summing to the US$150,000 request: conformance profile with a second
+independent planner shielded unmodified (G1); a second ray-traced scenario and
+band reproducing every gate without retuning (G2); measured coexistence, exiting
+on positive learning gain over a zero-data policy on measured data (G3);
+audit-grade export and E2SM-RC closed loop, exiting on external replication from
+the published archive (G4).
 
----
+**Dominant risk.** WP3 depends on access to a measured interference source or
+bench slot, which the project cannot supply for itself. Mitigation is sequencing
+— WP1, WP2 and WP4 carry no external dependency — plus held contingency
+and a documented fallback to a multi-cell ray-traced incumbent, published as the
+weaker result it would be rather than presented as measured.
 
-## Criterion 5 — Deployment feasibility & openness / pre-competitive value (weight 14%)
+**Gap.** No written testbed-access commitment yet. Authorship and affiliation
+sign-off from the named academic co-authors is outstanding and must precede any
+submission that names them.
 
-**What it measures.** Can an operator actually deploy this? Is it open and
-pre-competitive (complementary to vendors, not a walled garden)?
+## 5. Alignment with AI-RAN priorities
 
-**Our evidence.** Apache-2.0; torch-free (numpy + pydantic), installs on stock
-Python 3.10+ with no accelerator. Real R1 / A1 / O1 adapters
-(`src/horizon_ric/rapp/`, `src/horizon_ric/io/`) behind mTLS, OAuth2, circuit
-breakers, and Casbin RBAC. The Shield validates the *data* an AI block emits, so
-it never has to run the model — it is complementary to NVIDIA Aerial / Nokia
-MantaRay / Ericsson, not competitive. The full test suite (490+ tests) is green
-in CI (ruff + mypy + pytest + docker + yang-strict).
+**Self-assessment: Strong on openness, Adequate on standardization.**
 
-**Self-score: Strong** on openness and packaging; **Adequate** on field-proof.
+Apache-2.0, developed in the open with public CI, and every published figure
+reproducible from a checksum-pinned archive
+([`REPRODUCIBILITY.md`](REPRODUCIBILITY.md)). Vendor-neutral by construction: the
+layer never reads the planner, so it binds a member's model without that member
+disclosing anything about it, and it is complementary to vendor AI stacks rather
+than competitive with them. The invariant and certificate schema are offered as a
+**candidate** assurance profile for enforceable service objectives, and the
+protected-slice floor as a concrete realisation of capacity an AI cannot
+reallocate. The threat→control mapping in
+[`THREAT_MODEL.md`](THREAT_MODEL.md) is a candidate input to O-RAN WG11, not an
+adopted contribution.
 
-**Gap & closure.** No operator/testbed pilot yet, and HSM custody ships with
-in-memory + SoftHSM2 backends (production CloudHSM/Luna wire through the same
-PKCS#11 path). **M9–10** runs an operator pilot with a 24-h soak and production
-PKCS#11 custody.
+**Gap.** Nothing has been submitted to a working group yet, and band-specific
+TS 38.104 EIRP and spectral-mask numbers are calibrated per deployment rather
+than byte-verified against the specification text here. No 6G or IMT-2030
+compliance is claimed or claimable: no such specification exists, and 3GPP
+Rel-21 normative work is expected around end-2028.
 
 ---
 
-## Criterion 6 — Standardization contribution (weight 12%)
+## Expected output types
 
-**What it measures.** Does the work feed an open standard?
+| Output type | Status |
+|---|---|
+| Prototypes | The enforcement layer runs as a non-real-time rApp; a live demonstration emits policy through the production A1 mediator into a real xApp, including a Shield-corrected over-power proposal refused rather than emitted. |
+| Algorithms or models | Invariant algebra with fixed-point composition, protected-slice floor, certificate schema (`src/horizon_ric/shield/`). |
+| Benchmarking-ready code | `benchmarks/` with `scripts/verify_*.py` gates in `.github/workflows/realdata.yml`; each gate proven to fail under injected regression. |
+| Datasets | Checksum-pinned measurement manifests (`datasets/`) and per-decision evidence chains. Audit-grade export format is WP4, not yet built. |
+| Standardization contributions | Candidate assurance profile; not yet submitted. |
 
-**Our evidence.** `docs/THREAT_MODEL.md` maps O-RAN WG11 / OWASP-ML /
-3GPP TR 33.898 AI/ML threats to controls with an honest GAP register, positioned
-as a **candidate input to O-RAN WG11** — not an adopted contribution and not a
-competing standard.
+## Where this assessment could be wrong
 
-**Self-score: Adequate.**
-
-**Gap & closure.** We state honestly that band-specific TS 38.104 EIRP / spectral-
-mask numbers are **calibrated per-deployment in M1–2**, not byte-verified against
-the spec text here. The threat→control mapping is a *candidate* input; **M11–12**
-submits it to WG11. The normative spec remains owned by O-RAN WG11 / 3GPP.
-
----
-
-## Criterion 7 — Research lineage, team credibility & regulatory grounding (weight 10%)
-
-**What it measures.** Is there a credible team and a real research base? Is the
-regulatory framing matched to the funder?
-
-**Our evidence.** [`RESEARCH_ALIGNMENT.md`](RESEARCH_ALIGNMENT.md) establishes
-continuity with the NTU/SCRIPTS/DTC team — Prof. Kwok-Yan Lam (PI), Dr Li Feng,
-Bowen Shen — and their published federated-DSA / LEO-power-control line, funded
-under Singapore's FCP (IMDA + NRF). The regulatory spine is Singapore-first
-(IMDA spectrum regulation; NTN/LEO PFD as a first-class scenario), with EU
-(AI Act / NIS2 / Ofcom) retained as a secondary illustrative analogue.
-
-**Self-score: Strong** on lineage and regulatory match.
-
-**Gap & closure.** The team's published work is the *decision-maker*; the bridge
-that runs their agent through this trust layer is the in-build demonstrator
-(Criterion 1). **M1–2 / M5–6** close that bridge.
-
----
-
-## Summary table
-
-| # | Criterion | Weight | Self-score | Key gap → closing milestone |
-|---|---|---|---|---|
-| 1 | AI-for-RAN relevance & track fit | 20% | Adequate | DSA demonstrator in build → M1–2 / M5–6 |
-| 2 | Genuine innovation (audit binding only) | 18% | Strong (narrow) | Externally citable + Sigstore log → M11–12 |
-| 3 | Benchmarking-ready code & reproducibility | 16% | Strong | Live over-the-air I/Q (attack coverage now exhaustive: 5 families, 75 tests, + certified unlearning repair) → M5–6 |
-| 4 | Datasets | 10% | Adequate | Over-the-air testbed traces → M5–6 |
-| 5 | Deployment feasibility & openness | 14% | Strong / Adequate | Operator pilot + prod HSM → M9–10 |
-| 6 | Standardization contribution | 12% | Adequate | Calibrate TS 38.104; submit to WG11 → M1–2 / M11–12 |
-| 7 | Research lineage & regulatory grounding | 10% | Strong | Bridge demonstrator → M1–2 / M5–6 |
-
-**Honesty note.** No criterion is a Gap after the adversarial campaign landed; the
-softest scores are **Adequate**. The strongest honest claim is narrow: a
-per-decision, tamper-evident, replayable evidence binding around an AI-RAN agent's
-decisions, plus a deterministic output-shield that holds even when the model is
-compromised. Everything else — the shield concept, the aggregators, the crypto — is
-prior art we compose, not invent, and we **publish where adaptive attacks defeat
-our ML-layer defenses** (Min-Max/Min-Sum/Fang vs the robust aggregators; a backdoor
-surviving coordinate-median at its breakdown point). The remaining named gaps are a
-Sigstore transparency log, an operator/testbed pilot, and live over-the-air I/Q —
-milestones, not silent omissions.
+The honest summary is narrow: a projection-enforced control path whose safety
+property does not depend on the planner, with per-decision replayable evidence,
+gated by CI against measured propagation. Everything else — the shielding
+concept, the aggregators, the cryptography — is prior art we compose rather
+than invent. Three specific ways a reviewer should expect to find us short:
+the propagation is site-specific ray tracing and not over-the-air capture; the
+RAN is open-source software and not vendor equipment; and no third party has yet
+reproduced any of it. The red rows of
+[`CLAIM_LEDGER.md`](CLAIM_LEDGER.md) list every claim we have had to withdraw or
+qualify, including one — "effective SER never exceeds the classical
+baseline" — that our own gate caught and corrected to a 1 dB envelope with a
+worst measured case of 0.370 dB.

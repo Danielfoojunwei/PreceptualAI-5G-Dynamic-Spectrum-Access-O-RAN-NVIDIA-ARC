@@ -44,9 +44,11 @@ emits in eight mechanisms:
    ceiling, AI-PHY envelope, lawful-intercept), emitting a
    `SafetyCertificate`.
 2. **At-decision-time evidence** — a SHA-256 hash-chained, RFC-3161-anchored
-   `DecisionRecord` with a replayable counterfactual.
-3. **Model provenance** — a signature over `(weights ‖ training-manifest)`,
-   verified on promotion.
+   `DecisionRecord` with a replayable counterfactual. The `SafetyCertificate`
+   inside it is signed with **Ed25519** (`shield/signing.py`).
+3. **Model provenance** — an **RSA-PSS** signature over
+   `(weights ‖ training-manifest)`, optionally HSM-held over PKCS#11, verified
+   on promotion (`provenance/signing.py`, `security/hsm.py`).
 4. **Federated aggregation** — robust aggregation (Krum / median / trimmed-mean)
    bounding a poisoning client's pull on the shared DSA policy, plus Shamir
    secure aggregation for update privacy.
@@ -122,8 +124,16 @@ What is **not** novel here, with prior art:
   Baruch et al. (NeurIPS-19, *"A Little Is Enough"*) and Fang et al.
   (USENIX Security-20). We use them as a baseline, not a frontier, and we do not
   claim robustness against adaptive attackers.
-- **The crypto is standard.** SHA-256, RSA-PSS, Shamir secret sharing, and
-  RFC-3161 are off-the-shelf. We compose them; we do not invent them.
+- **The crypto is standard.** SHA-256, Ed25519, RSA-PSS, Shamir secret sharing,
+  and RFC-3161 are off-the-shelf. We compose them; we do not invent them.
+  They are also three *separate* mechanisms carrying three separate claims, and
+  conflating them would overstate all three: **Ed25519** signs each
+  per-decision `SafetyCertificate` (`shield/signing.py`); **RSA-PSS**, optionally
+  in an HSM over PKCS#11, signs model and dataset artefacts for provenance
+  (`provenance/signing.py`); **RFC-3161** timestamps anchor the SHA-256 evidence
+  chain to an external time authority (`evidence/rfc3161.py`). A valid
+  certificate signature says nothing about artefact provenance, and neither says
+  anything about when the record was written.
 
 So: **no "SOTA" claim anywhere except, narrowly, the audit / certificate
 binding.** The reframing is deliberate — Horizon-RIC is an AI-for-RAN *enabler
