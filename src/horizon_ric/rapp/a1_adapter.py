@@ -774,6 +774,10 @@ class A1Adapter:
                         "type": "string",
                         "pattern": "^[0-9a-f]{64}$",
                     },
+                    # Hex, but deliberately not length-pinned to Ed25519's 128
+                    # characters: a post-quantum signature is far longer, and a
+                    # schema that has to be re-registered to rotate algorithm
+                    # is a schema that will not be rotated.
                     "signature": {"type": "string", "pattern": "^[0-9a-f]+$"},
                     "signing_key_fingerprint": {
                         "type": "string",
