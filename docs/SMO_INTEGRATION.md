@@ -12,23 +12,33 @@ across vendors; only the wire shape differs.
 
 This document is the canonical reference for:
 
-  * the four A1 dialects Horizon-RIC supports today
-  * what an operator changes to add a fifth (or N+1) SMO vendor
+  * the five A1 dialects Horizon-RIC supports today
+  * what an operator changes to add a sixth (or N+1) SMO vendor
   * the per-capability × per-dialect compatibility matrix
   * the exact URL Horizon-RIC PUTs a policy to, for each dialect
 
 ## 1. Dialect switch
 
-`A1AdapterConfig.dialect` selects one of:
+`A1AdapterConfig.dialect` selects one of five values. The set is enforced in
+`A1Adapter.__init__` (`supported_dialects`, `src/horizon_ric/rapp/a1_adapter.py:160`);
+any other value raises `ValueError` at construction.
 
 | Dialect   | Vendor / SMO                                   | Auth                   |
 |-----------|------------------------------------------------|------------------------|
 | `legacy`  | Historical near-RT-RIC A1AP mirror             | plain HTTP (dev only)  |
 | `osc`     | OSC NONRTRIC PMS reference                     | OAuth2 / mTLS optional |
+| `osc_a1`  | OSC Near-RT RIC A1 interface as implemented by `o-ran-sc/sim-a1-interface` — the nested `/a1-p/policytypes/{id}/policies/{policy_id}` surface, driven by `scripts/osc_a1_live_smoke.py` | plain HTTP / mTLS optional |
 | `eiap`    | Ericsson EIAP rApp SDK / EIAP A1 PolicyManagement | OAuth2 client-credentials with the Ericsson IDP |
 | `mantaray`| Nokia MantaRay SMO via SDN-R                   | Keycloak-issued JWT    |
 
+`osc_a1` is deliberately separate from `osc`: `osc` is the Non-RT RIC Policy
+Management Service northbound API, while `osc_a1` addresses the Near-RT RIC A1
+interface directly. Like `legacy`, it takes the `else` branch of
+`emit_policy._do_put` (`a1_adapter.py:394`) and PUTs a **bare `policy_payload`**
+body with no vendor envelope.
+
 The dialect drives:
+  * `A1Adapter._policy_type_url(...)` — where to register a policy type
   * `A1Adapter._policy_create_url(...)` — where to PUT a new policy
   * `A1Adapter._policy_instance_url(...)` — where to GET / DELETE one
   * `A1Adapter._policy_status_url(...)` — where to read enforcement state
@@ -42,12 +52,12 @@ agnostic.
 ## 2. Adding a new SMO vendor
 
 A new vendor is **one new dialect, one URL builder, one schema map**.
-Concretely, add a fifth dialect (call it `acme`) like so:
+Concretely, add a sixth dialect (call it `acme`) like so:
 
   1. **Extend the enum**: add `acme` to the documented values of
      `A1AdapterConfig.dialect` (no Enum class is enforced — strings are
      used for forward-compat).
-  2. **URL builders**: add `acme` branches to the four `_policy_*_url`
+  2. **URL builders**: add `acme` branches to the five `_policy_*_url`
      methods on `A1Adapter` (file
      `src/horizon_ric/rapp/a1_adapter.py`). Each branch returns the
      vendor-specific path.
@@ -64,6 +74,7 @@ Concretely, add a fifth dialect (call it `acme`) like so:
      `httpx.Auth` subclass.
   6. **Tests**: add a per-dialect test module following the pattern of
      the existing `tests/test_a1_osc_dialect.py`,
+     `tests/test_a1_osc_a1_dialect.py`,
      `tests/test_a1_mantaray_dialect.py`, and
      `tests/test_a1_eiap_dialect.py` — at least four
      `httpx.MockTransport`-backed assertions (URL, body shape, auth
@@ -78,21 +89,22 @@ ships the same JSON Schema for the policy payload.
 
 ## 3. Compatibility matrix
 
-| Capability                                   | legacy | osc | eiap | mantaray |
-|----------------------------------------------|:------:|:---:|:----:|:--------:|
-| A1AP policy create / status / delete         | ✅     | ✅  | ✅   | ✅       |
-| A1-EI enrichment job (PUT/DELETE)            | ✅     | ⚠️* | ⚠️*  | ⚠️*      |
-| OAuth2 client-credentials                    | n/a    | ✅  | ✅   | ✅       |
-| mTLS (WG11 §6 cipher allow-list)             | ✅     | ✅  | ✅   | ✅       |
-| Tamper-evident evidence store                | ✅     | ✅  | ✅   | ✅       |
-| Federated weights-only learning              | ✅     | ✅  | ✅   | ✅       |
-| Cosign-signed audit export                   | ✅     | ✅  | ✅   | ✅       |
-| O-RAN.WG2.O1-v06.00 PM bulk-data ingest      | ✅     | ✅  | ✅   | ✅       |
+| Capability                                   | legacy | osc | osc_a1 | eiap | mantaray |
+|----------------------------------------------|:------:|:---:|:------:|:----:|:--------:|
+| A1AP policy create / status / delete         | ✅     | ✅  | ✅     | ✅   | ✅       |
+| A1-EI enrichment job (PUT/DELETE)            | ✅     | ⚠️* | ⚠️*    | ⚠️*  | ⚠️*      |
+| OAuth2 client-credentials                    | n/a    | ✅  | n/a    | ✅   | ✅       |
+| mTLS (WG11 §6 cipher allow-list)             | ✅     | ✅  | ✅     | ✅   | ✅       |
+| Tamper-evident evidence store                | ✅     | ✅  | ✅     | ✅   | ✅       |
+| Federated weights-only learning              | ✅     | ✅  | ✅     | ✅   | ✅       |
+| Cosign-signed audit export                   | ✅     | ✅  | ✅     | ✅   | ✅       |
+| O-RAN.WG2.O1-v06.00 PM bulk-data ingest      | ✅     | ✅  | ✅     | ✅   | ✅       |
 
 \* A1-EI is currently emitted on the legacy path (`/A1-EI/v1/eijobs/...`)
-regardless of dialect because all four SMOs ship A1-EI compatibility
-shims under that path. A vendor-specific A1-EI URL switch is on the
-roadmap and would follow the same one-branch-per-dialect pattern.
+regardless of dialect because all five SMO surfaces ship A1-EI
+compatibility shims under that path. A vendor-specific A1-EI URL switch
+is on the roadmap and would follow the same one-branch-per-dialect
+pattern.
 
 ## 4. Exact URL Horizon-RIC PUTs a policy to, per dialect
 
@@ -105,6 +117,7 @@ type (policy_type_id = 20001). The base URL is
 |------------|--------|-------------------------------------------------------------------------|
 | `legacy`   | PUT    | `/A1-P/v2/policytypes/20001/policies/{policy_id}`                       |
 | `osc`      | PUT    | `/a1-policy/v2/policies`                                                |
+| `osc_a1`   | PUT    | `/a1-p/policytypes/20001/policies/{policy_id}`                          |
 | `eiap`     | PUT    | `/A1-PolicyManagement/v2/policies`                                      |
 | `mantaray` | PUT    | `/sdn-r/api/v1/policies`                                                |
 
@@ -112,6 +125,8 @@ The corresponding bodies:
 
   * **legacy**: the policy JSON itself, conforming to the registered
     type schema (no envelope).
+  * **osc_a1**: the same bare `policy_payload` as `legacy` (no
+    envelope) — both take the `else` branch of `emit_policy._do_put`.
   * **osc**: `{policy_id, policytype_id, ric_id, service_id, transient,
     policy_data}` per `pms-api.json` in
     `o-ran-sc/nonrtric-plt-a1policymanagementservice`.
