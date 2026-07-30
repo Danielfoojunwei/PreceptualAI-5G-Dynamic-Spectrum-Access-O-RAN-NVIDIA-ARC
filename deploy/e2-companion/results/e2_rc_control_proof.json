@@ -1,0 +1,348 @@
+{
+  "asn1_control_types_available": [
+    "E2SM-RC-ControlHeader",
+    "E2SM-RC-ControlHeader-Format1",
+    "E2SM-RC-ControlHeader-Format2",
+    "E2SM-RC-ControlMessage",
+    "E2SM-RC-ControlMessage-Format1",
+    "E2SM-RC-ControlMessage-Format1-Item",
+    "E2SM-RC-ControlMessage-Format2",
+    "E2SM-RC-ControlMessage-Format2-ControlAction-Item",
+    "E2SM-RC-ControlMessage-Format2-Style-Item"
+  ],
+  "asn1_types_exercised": [
+    "E2SM-RC-ControlHeader",
+    "E2SM-RC-ControlHeader-Format1",
+    "E2SM-RC-ControlMessage",
+    "E2SM-RC-ControlMessage-Format1",
+    "E2SM-RC-ControlMessage-Format1-Item"
+  ],
+  "cases": {
+    "approved_clean": {
+      "action_proposed": {
+        "antenna_gain_dBi": 10.0,
+        "bandwidth_hz": 20000000.0,
+        "block": "risk_band_planner",
+        "frequency_hz": 3450000000.0,
+        "tx_power_dBm": 20.0
+      },
+      "action_safe_encoded": {
+        "antenna_gain_dBi": 10.0,
+        "bandwidth_hz": 20000000.0,
+        "frequency_hz": 3450000000.0,
+        "tx_power_dBm": 20.0
+      },
+      "decision_id": "dec-clean",
+      "decoded_header": {
+        "ric-controlHeader-formats": {
+          "controlHeader-Format1": {
+            "ric-ControlAction-ID": 1,
+            "ric-Style-Type": 1,
+            "ueID": {
+              "gNB-UEID": {
+                "amf-UE-NGAP-ID": 112358132134,
+                "guami": {
+                  "aMFPointer": {
+                    "bits_hex": "00",
+                    "n_bits": 6
+                  },
+                  "aMFRegionID": {
+                    "bits_hex": "80",
+                    "n_bits": 8
+                  },
+                  "aMFSetID": {
+                    "bits_hex": "0040",
+                    "n_bits": 10
+                  },
+                  "pLMNIdentity": {
+                    "octets_hex": "00f110"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "decoded_message": {
+        "ric-controlMessage-formats": {
+          "controlMessage-Format1": {
+            "ranP-List": [
+              {
+                "ranParameter-ID": 1,
+                "ranParameter-valueType": {
+                  "ranP-Choice-ElementTrue": {
+                    "ranParameter-value": {
+                      "valueReal": 3450000000.0
+                    }
+                  }
+                }
+              },
+              {
+                "ranParameter-ID": 2,
+                "ranParameter-valueType": {
+                  "ranP-Choice-ElementTrue": {
+                    "ranParameter-value": {
+                      "valueReal": 20000000.0
+                    }
+                  }
+                }
+              },
+              {
+                "ranParameter-ID": 3,
+                "ranParameter-valueType": {
+                  "ranP-Choice-ElementTrue": {
+                    "ranParameter-value": {
+                      "valueReal": 20.0
+                    }
+                  }
+                }
+              },
+              {
+                "ranParameter-ID": 4,
+                "ranParameter-valueType": {
+                  "ranP-Choice-ElementTrue": {
+                    "ranParameter-value": {
+                      "valueReal": 10.0
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "decoded_parameters": {
+        "1": 3450000000.0,
+        "2": 20000000.0,
+        "3": 20.0,
+        "4": 10.0
+      },
+      "header_bytes_len": 20,
+      "header_hex": "0002001a291109a60000f1108000400101000000",
+      "header_sha256": "c1057b3f3e80f9baa48ab773e9697ce25c3a66aa10799c57b007f375a167c9cd",
+      "message_bytes_len": 36,
+      "message_hex": "000004000002068007019b45a500010205800801312d0002020380020500030203800105",
+      "message_sha256": "02e2b7c4c0b9797db50fb1a0e3948fbd5aa07aa5f698ccf1ae0bada126ab47ce",
+      "ran_parameter_ids": {
+        "antenna_gain_dBi": 4,
+        "bandwidth_hz": 2,
+        "frequency_hz": 1,
+        "tx_power_dBm": 3
+      },
+      "ric_control_action_id": 1,
+      "ric_style_type": 1,
+      "shield": {
+        "corrections": [],
+        "emit_blocked": false,
+        "projected": false,
+        "safe": true,
+        "violated_ids": []
+      },
+      "ue_id_amf_ue_ngap_id": 112358132134
+    },
+    "approved_projected": {
+      "action_proposed": {
+        "antenna_gain_dBi": 10.0,
+        "bandwidth_hz": 20000000.0,
+        "block": "risk_band_planner",
+        "frequency_hz": 3450000000.0,
+        "tx_power_dBm": 40.0
+      },
+      "action_safe_encoded": {
+        "antenna_gain_dBi": 10.0,
+        "bandwidth_hz": 20000000.0,
+        "frequency_hz": 3450000000.0,
+        "tx_power_dBm": 23.0
+      },
+      "decision_id": "dec-projected",
+      "decoded_header": {
+        "ric-controlHeader-formats": {
+          "controlHeader-Format1": {
+            "ric-ControlAction-ID": 1,
+            "ric-Style-Type": 1,
+            "ueID": {
+              "gNB-UEID": {
+                "amf-UE-NGAP-ID": 112358132134,
+                "guami": {
+                  "aMFPointer": {
+                    "bits_hex": "00",
+                    "n_bits": 6
+                  },
+                  "aMFRegionID": {
+                    "bits_hex": "80",
+                    "n_bits": 8
+                  },
+                  "aMFSetID": {
+                    "bits_hex": "0040",
+                    "n_bits": 10
+                  },
+                  "pLMNIdentity": {
+                    "octets_hex": "00f110"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "decoded_message": {
+        "ric-controlMessage-formats": {
+          "controlMessage-Format1": {
+            "ranP-List": [
+              {
+                "ranParameter-ID": 1,
+                "ranParameter-valueType": {
+                  "ranP-Choice-ElementTrue": {
+                    "ranParameter-value": {
+                      "valueReal": 3450000000.0
+                    }
+                  }
+                }
+              },
+              {
+                "ranParameter-ID": 2,
+                "ranParameter-valueType": {
+                  "ranP-Choice-ElementTrue": {
+                    "ranParameter-value": {
+                      "valueReal": 20000000.0
+                    }
+                  }
+                }
+              },
+              {
+                "ranParameter-ID": 3,
+                "ranParameter-valueType": {
+                  "ranP-Choice-ElementTrue": {
+                    "ranParameter-value": {
+                      "valueReal": 23.0
+                    }
+                  }
+                }
+              },
+              {
+                "ranParameter-ID": 4,
+                "ranParameter-valueType": {
+                  "ranP-Choice-ElementTrue": {
+                    "ranParameter-value": {
+                      "valueReal": 10.0
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "decoded_parameters": {
+        "1": 3450000000.0,
+        "2": 20000000.0,
+        "3": 23.0,
+        "4": 10.0
+      },
+      "header_bytes_len": 20,
+      "header_hex": "0002001a291109a60000f1108000400101000000",
+      "header_sha256": "c1057b3f3e80f9baa48ab773e9697ce25c3a66aa10799c57b007f375a167c9cd",
+      "message_bytes_len": 36,
+      "message_hex": "000004000002068007019b45a500010205800801312d0002020380001700030203800105",
+      "message_sha256": "e54b81fe9fa05b346f1d4e87c028bef3aace8593c09470ffe5a71312a3e572e3",
+      "ran_parameter_ids": {
+        "antenna_gain_dBi": 4,
+        "bandwidth_hz": 2,
+        "frequency_hz": 1,
+        "tx_power_dBm": 3
+      },
+      "ric_control_action_id": 1,
+      "ric_style_type": 1,
+      "shield": {
+        "corrections": [
+          "Tx power reduced by 17.00 dB to meet EIRP ceiling 33.00 dBm."
+        ],
+        "emit_blocked": false,
+        "projected": true,
+        "safe": true,
+        "violated_ids": []
+      },
+      "ue_id_amf_ue_ngap_id": 112358132134
+    },
+    "blocked_fail_closed": {
+      "action_proposed": {
+        "antenna_gain_dBi": 12.0,
+        "bandwidth_hz": 400000000.0,
+        "block": "poisoned_planner",
+        "frequency_hz": 3900000000.0,
+        "tx_power_dBm": 46.0
+      },
+      "decision_id": "dec-blocked",
+      "header_hex": null,
+      "message_hex": null,
+      "raised": {
+        "message": "Shield refused this action; it cannot be encoded as an E2SM-RC control request (decision_id=dec-blocked): emit_blocked; not safe; violated invariants spectral_mask_ts38104, max_eirp",
+        "type": "RcControlError"
+      },
+      "shield": {
+        "corrections": [
+          "carrier bandwidth 400.000 MHz exceeds usable channel 100.000 MHz (after 0.000 MHz guard band); cannot place \u2014 emit blocked."
+        ],
+        "emit_blocked": true,
+        "projected": true,
+        "safe": false,
+        "violated_ids": [
+          "spectral_mask_ts38104",
+          "max_eirp"
+        ]
+      }
+    }
+  },
+  "choice_arms_used": {
+    "E2SM-RC-ControlHeader-Format1.ueID (UEID)": "gNB-UEID (UEID-GNB)",
+    "E2SM-RC-ControlHeader.ric-controlHeader-formats": "controlHeader-Format1",
+    "E2SM-RC-ControlMessage-Format1-Item.ranParameter-valueType": "ranP-Choice-ElementTrue",
+    "E2SM-RC-ControlMessage.ric-controlMessage-formats": "controlMessage-Format1",
+    "RANParameter-Value (float)": "valueReal",
+    "RANParameter-Value (int)": "valueInt"
+  },
+  "deterministic": true,
+  "environment": {
+    "asn1tools": "0.167.0",
+    "note": "the only host-dependent block in this file",
+    "python": "3.11.15"
+  },
+  "optional_ies_omitted": {
+    "E2SM-RC-ControlHeader-Format1.ric-ControlDecision": "OPTIONAL; omitted rather than asserting an accept/reject semantic the caller did not request",
+    "UEID-GNB.gNB-CU-UE-F1AP-ID-List / gNB-CU-CP-UE-E1AP-ID-List": "OPTIONAL; the spec states these 'may not be included' in NearRT-RIC to E2 Node messages"
+  },
+  "proof": "e2sm_rc_control_construction",
+  "regenerate": "see deploy/e2-companion/E2_RC_PROOF.md, section Reproduce",
+  "shield_under_test": {
+    "band_hi_hz": 3500000000.0,
+    "band_lo_hz": 3400000000.0,
+    "factory": "horizon_ric.shield.default_terrestrial_shield",
+    "invariant_chain": [
+      "numeric_domain_sanity",
+      "spectral_mask_ts38104",
+      "max_eirp",
+      "neural_rx_envelope",
+      "constellation_legality"
+    ],
+    "max_eirp_dBm": 33.0
+  },
+  "spec": {
+    "asn1_modules": [
+      "E2SM-COMMON-IEs",
+      "E2SM-RC-IEs"
+    ],
+    "byte_for_byte_identical_to_upstream": true,
+    "bytes": 50985,
+    "codec": "per (asn1tools aligned PER)",
+    "e2sm": "E2SM-RC",
+    "sha256": "09f295cb59d4145efd64fe510f602c994d6df65e9beba33aab2e98cdf5bc642b",
+    "upstream_commit": "ef6d722f22191eea74089966983da1f5ec1fedd4",
+    "upstream_describe": "v2.0.0-224-gef6d722f",
+    "upstream_path": "src/sm/rc_sm/ie/asn/e2sm_rc_v1_03_standard.asn",
+    "upstream_repo": "https://gitlab.eurecom.fr/mosaic5g/flexric.git",
+    "variant": "standard (not FlexRIC's *_modified.asn)",
+    "vendored_path": "src/horizon_ric/e2/asn1/e2sm_rc_v1_03_standard.asn",
+    "version": "v1.03"
+  },
+  "what_is_proven": "E2SM-RC RIC Control Header and Control Message payloads are constructed in aligned PER against the vendored O-RAN E2SM-RC v1.03 standard ASN.1 and decode back to the same fields; a Shield-refused action cannot be encoded at all. No live delivery is claimed - this package has no E2AP/SCTP transport by design."
+}
