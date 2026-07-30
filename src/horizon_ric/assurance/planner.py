@@ -53,6 +53,7 @@ Stdlib only — this module is importable on the decision path.
 
 from __future__ import annotations
 
+import inspect
 import math
 from typing import Any, Mapping, Protocol, runtime_checkable
 
@@ -149,6 +150,79 @@ class Planner(Protocol):
     planner_id: str
 
     def propose(self, observation: Observation) -> Action: ...
+
+
+def planner_contract_problems(candidate: Any) -> list[str]:
+    """Report every way ``candidate`` fails to be a :class:`Planner`.
+
+    ``isinstance(x, Planner)`` is not a conformance check and must not be used
+    as one. ``runtime_checkable`` verifies attribute *presence* only: a planner
+    whose method is ``propose(self)`` returning some private dataclass passes
+    ``isinstance`` and then raises ``TypeError`` at the call site, because the
+    arity was never compared. That is a worse failure than a clean rejection,
+    since it looks like conformance right up to the moment it is used.
+
+    So this checks the signature. It is the executable form of requirement P-1
+    in ``docs/conformance/ASSURANCE_PROFILE.md`` and closes that document's
+    first known gap; an empty list means conformant.
+    """
+    problems: list[str] = []
+
+    planner_id = getattr(candidate, "planner_id", None)
+    if planner_id is None:
+        problems.append("missing the required 'planner_id' attribute")
+    elif not isinstance(planner_id, str) or not planner_id:
+        problems.append(
+            f"planner_id must be a non-empty str, got {planner_id!r}"
+        )
+
+    propose = getattr(candidate, "propose", None)
+    if propose is None:
+        problems.append("missing the required 'propose' method")
+        return problems
+    if not callable(propose):
+        problems.append("'propose' is not callable")
+        return problems
+
+    try:
+        sig = inspect.signature(propose)
+    except (TypeError, ValueError) as exc:  # pragma: no cover - exotic callables
+        problems.append(f"cannot introspect 'propose': {type(exc).__name__}")
+        return problems
+
+    # One positional parameter, the observation. `propose` is read off the
+    # instance, so `self` is already bound and must not be counted.
+    positional = [
+        p
+        for p in sig.parameters.values()
+        if p.kind
+        in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    ]
+    takes_var_positional = any(
+        p.kind is inspect.Parameter.VAR_POSITIONAL for p in sig.parameters.values()
+    )
+    required = [p for p in positional if p.default is inspect.Parameter.empty]
+    if not positional and not takes_var_positional:
+        problems.append(
+            "propose() takes no observation argument; the contract is "
+            f"propose(observation) -> Action, got propose{sig}"
+        )
+    elif len(required) > 1:
+        problems.append(
+            f"propose() requires {len(required)} positional arguments; the "
+            f"contract is propose(observation) -> Action, got propose{sig}"
+        )
+
+    return problems
+
+
+def conforms_to_planner(candidate: Any) -> bool:
+    """``True`` when ``candidate`` satisfies the :class:`Planner` contract.
+
+    Prefer :func:`planner_contract_problems` when reporting to a human — it
+    says *why*.
+    """
+    return not planner_contract_problems(candidate)
 
 
 def _json_problems(value: Any, path: str) -> list[str]:
@@ -345,6 +419,8 @@ __all__ = [
     "Observation",
     "Planner",
     "PlannerContractError",
+    "conforms_to_planner",
+    "planner_contract_problems",
     "shielded",
     "validate_proposed_action",
 ]
