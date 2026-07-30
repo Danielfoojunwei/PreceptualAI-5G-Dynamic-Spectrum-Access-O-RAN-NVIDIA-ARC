@@ -251,10 +251,16 @@ pack, with a hand-written Draft-07 subset validator (the repo has no
   and returning it. It is a simulator: it has no policy handlers, which is why
   `enforceStatus` is `NOT_ENFORCED`;
 - that the four other dialects (`legacy`, `osc`, `eiap`, `mantaray`) carry the
-  envelope end to end against real targets. The schema and the builder are
-  dialect-independent — the envelope is a key inside `policy_payload`, which
-  every dialect transports verbatim — but only `osc_a1` was exercised here on a
-  real socket;
+  envelope end to end against **real vendor targets**. Only `osc_a1` was
+  exercised here on a real socket. The transport claim itself is no longer left
+  as reasoning, though: `tests/test_a1_assurance_all_dialects.py` pins, offline
+  over `httpx.MockTransport`, that all five dialects deliver the envelope to the
+  transport boundary byte for byte and that the digest arriving still covers the
+  signed bytes — through each of the three distinct body shapes (`legacy` and
+  `osc_a1` PUT a bare payload, `osc` nests it under `policy_data`, `eiap` and
+  `mantaray` under `policyData`). It also fails if a sixth dialect is added to
+  the adapter without being covered. What remains unproven is the *vendor
+  platform* on the far end, not our side of the wire;
 - anything about a radio, operator traffic, RAN load, an E2 node, a conformance
   certification, or carrier-scale behaviour;
 - that a receiver can *revoke* or *reject* on a failed reference. A-5 of the
