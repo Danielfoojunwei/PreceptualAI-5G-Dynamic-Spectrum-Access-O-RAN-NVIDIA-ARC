@@ -24,3 +24,21 @@ jobs:
       - name: Run pytest (fast pack)
         run: |
           pytest tests/ -m "not integration and not slow" -q --maxfail=10
+
+      - name: Gate G1 — second independent planner shielded unmodified
+        # WP1's load-bearing claim: a planner written against the radio rather
+        # than against the Shield is enforced without editing either side. The
+        # gate lives here rather than in realdata.yml because it needs no
+        # dataset — the planner is stdlib-only and the link model is declared,
+        # not measured.
+        #
+        # Re-running the benchmark and comparing to the committed result is the
+        # point. A committed JSON is an assertion about a file; only re-execution
+        # makes it evidence about the system. The verifier also pins the SHA-256
+        # of shield.py, invariants.py and the planner, so editing either side to
+        # make the numbers agree fails the gate instead of passing it.
+        run: |
+          python benchmarks/g1_second_planner.py --out "$RUNNER_TEMP/g1.json"
+          python scripts/verify_g1_second_planner.py \
+            --committed benchmarks/results/g1_second_planner.json \
+            --fresh "$RUNNER_TEMP/g1.json"
