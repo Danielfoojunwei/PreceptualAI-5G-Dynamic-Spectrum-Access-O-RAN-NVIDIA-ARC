@@ -114,18 +114,14 @@ def build_html() -> str:
                        % (esc(label), esc(rest)))
         if head.startswith("VI."):
             out.append('<div class="tblock">')
-            out.append('<p class="tabcap"><b>Table I.</b> Requested budget, '
-                       'US$150,000 over twelve months.</p>')
-            out.append('<table class="budget"><tr><th>Item</th>'
-                       '<th class="n">US$</th></tr>')
-            for item, amount, why in C.BUDGET:
-                out.append('<tr><td>%s <span class="why">&mdash; %s</span></td>'
-                           '<td class="n">%s</td></tr>'
-                           % (esc(item), esc(why), format(amount, ",")))
-            out.append('<tr><td><b>Total requested</b></td>'
-                       '<td class="n"><b>%s</b></td></tr></table>'
-                       % format(C.BUDGET_TOTAL, ","))
-            out.append('</div>')
+            out.append('<p class="tabcap"><b>Table I.</b> What we ask of the '
+                       'Alliance, and what goes back in return. No funding is '
+                       'requested.</p>')
+            out.append('<table class="budget crit">')
+            for ask, gives in C.ALLIANCE_ASKS:
+                out.append('<tr><td><b>%s</b> %s</td></tr>'
+                           % (esc(ask), esc(gives)))
+            out.append('</table></div>')
         if head.startswith("VIII."):
             out.append('<div class="tblock">')
             out.append('<p class="tabcap"><b>Table II.</b> The five official '

@@ -5,8 +5,9 @@ soffice cannot load any file in this sandbox, so Word's own validator is not
 available; these checks stand in for it. They are the failure modes that
 actually bit during the first build: unreferenced parts left in the package,
 paragraph-property children emitted out of schema order, a section that lost
-its column count, an executive summary outside the template's word band, a
-budget that does not add up, and an uncited reference.
+its column count, an executive summary outside the template's word band,
+a funding figure creeping back into a proposal that asks for access, and an
+uncited reference.
 """
 from __future__ import annotations
 
@@ -155,7 +156,7 @@ def check_layout(doc):
         ok = 3.0 <= w_in <= 6.5 and 1.0 <= h_in <= 3.0
         check(ok, "%s sized sanely" % name, "%.2f x %.2f in" % (w_in, h_in))
 
-    check(len(doc.tables) == 2, "two tables (budget, criteria map)",
+    check(len(doc.tables) == 2, "two tables (in-kind asks, criteria map)",
           "found %d" % len(doc.tables))
 
 
@@ -180,11 +181,28 @@ def check_content(doc):
           "executive summary within the template's 150-250 word band",
           "%d words" % words)
 
-    total = sum(a for _, a, _ in C.BUDGET)
-    check(total == C.BUDGET_TOTAL == 150_000,
-          "budget lines sum to the requested total",
-          "%s vs %s" % (format(total, ","), format(C.BUDGET_TOTAL, ",")))
-    check("150,000" in text, "the total appears in the document body")
+    # This proposal asks for access, not money. A currency figure anywhere in
+    # the document means the funding ask crept back in — the amount and the
+    # word "budget" are both easy to reintroduce by accident when editing a
+    # section that used to carry them.
+    money = re.findall(r"(?:US\$|\$|€|£)\s?\d[\d,.]*|\b\d{2,3},000\b", text)
+    check(not money, "no funding figure anywhere in the document",
+          "found: %s" % sorted(set(money))[:5])
+    # Phrase-scoped rather than banning the word "budget", which has an
+    # innocent timing sense elsewhere in the document.
+    for phrase in ("requested budget", "budget summing", "total requested",
+                   "funding request", "we request us"):
+        check(phrase not in text.lower(),
+              "funding language absent: %r" % phrase)
+
+    # ...and the in-kind asks must actually be there in its place.
+    for ask, _ in C.ALLIANCE_ASKS:
+        head = ask.split(",")[0]
+        check(head in text, "in-kind ask present: %s" % head)
+    for programme in ("Data-for-AI", "Test Methodology", "AI-for-RAN",
+                      "endorsed lab"):
+        check(programme in text,
+              "names the Alliance capability it draws on: %s" % programme)
 
     body_only = text.split("References")[0]
     cited = {int(n) for n in re.findall(r"\[(\d+)\]", body_only)}
@@ -210,8 +228,7 @@ def check_content(doc):
         check(forbidden.lower() not in text.lower(),
               "withdrawn claim absent: %r" % forbidden, why)
 
-    for want in ("0.370", "4658", "2442", "461", "12/12", "150,000",
-                 "1 dB envelope", "US$150,000"):
+    for want in ("0.370", "4658", "2442", "461", "12/12", "1 dB envelope"):
         check(want in text, "gated figure present: %s" % want)
 
     # The Call requires six content items and scores against five criteria.

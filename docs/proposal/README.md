@@ -77,7 +77,12 @@ Beyond layout, the validator enforces things a reviewer would otherwise have to
 take on trust:
 
 - Every reference is cited, and no citation points past the list.
-- The budget lines sum to the requested total.
+- No currency figure appears anywhere, and none of the funding phrases the
+  document used to carry survive. This proposal asks for access — measured
+  environments, a member planner, a working-group route — not money, and
+  every in-kind ask in `ALLIANCE_ASKS` is asserted present, along with the named
+  Alliance capabilities it draws on (Data-for-AI, Test Methodology, AI-for-RAN,
+  the endorsed labs).
 - The gated figures (4658, 2442, 461, 0.370, 12/12) are present.
 - Claims the ledger marks **red** are absent in their withdrawn form — "none
   reached the radio", "never exceeds the classical baseline", and any assertion
@@ -96,5 +101,5 @@ number is what caught it.
   1–2 page limit applies, the condensation to write is the executive summary
   plus Table II plus Fig. 2, and the rest becomes an appendix.
 - **Authorship sign-off.** The document names Bowen Shen and Dr Feng Li as work
-  package owners with budget attached. Their written approval of the byline,
+  package owners. Their written approval of the byline,
   affiliation and role must precede any submission.

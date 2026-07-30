@@ -12,7 +12,7 @@ its layout contract exactly rather than editing it in place:
       Executive Summary heading + body, Keywords, bottom-bordered rule
       the two full-width figures
   section 2 two columns, <w:cols w:num="2" w:space="360"/>
-      sections I-IX, in-column figure and budget table, REFERENCES
+      sections I-IX, in-column figure and two tables, REFERENCES
 
 Paragraph-property children are emitted in schema order
 (pStyle, keepNext, pBdr, spacing, ind, jc, rPr, sectPr) — Word rejects the
@@ -32,7 +32,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Inches, Pt, RGBColor, Twips
+from docx.shared import Inches, Pt, Twips
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -206,46 +206,28 @@ def figure(doc, png: Path, width_in: float, caption: str, *,
     return cap
 
 
-def budget_table(doc):
-    rows = len(C.BUDGET) + 2
-    t = doc.add_table(rows=rows, cols=2)
+def asks_table(doc):
+    """Table I — the in-kind asks. One row per ask: the ask in bold, then what
+    it unblocks and what goes back in return."""
+    t = doc.add_table(rows=len(C.ALLIANCE_ASKS), cols=1)
     t.style = "Table Grid"
     t.alignment = WD_TABLE_ALIGNMENT.CENTER
     t.autofit = False
-    widths = (Inches(COL_WIDTH_IN - 0.72), Inches(0.72))
-
-    def cell_text(cell, text, *, bold=False, italic=False, pt=7.5, right=False):
+    for row, (ask, gives) in zip(t.rows, C.ALLIANCE_ASKS):
+        cell = row.cells[0]
+        cell.width = Inches(COL_WIDTH_IN)
         cell.text = ""
         p = cell.paragraphs[0]
-        p.paragraph_format.space_after = Pt(0.5)
         p.paragraph_format.space_before = Pt(0.5)
-        if right:
-            p.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        r = p.add_run(text)
+        p.paragraph_format.space_after = Pt(0.5)
+        p.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        r = p.add_run(ask + "  ")
         r.font.name = SERIF
-        r.font.size = Pt(pt)
-        r.bold = bold
-        r.italic = italic
-        return p
-
-    cell_text(t.cell(0, 0), "Item", bold=True)
-    cell_text(t.cell(0, 1), "US$", bold=True, right=True)
-    for i, (item, amount, why) in enumerate(C.BUDGET, start=1):
-        p = cell_text(t.cell(i, 0), item)
-        r = p.add_run("  — " + why)
+        r.font.size = Pt(7.2)
+        r.bold = True
+        r = p.add_run(gives)
         r.font.name = SERIF
-        r.font.size = Pt(6.8)
-        r.italic = True
-        r.font.color.rgb = RGBColor(0x44, 0x44, 0x44)
-        cell_text(t.cell(i, 1), "{:,}".format(amount), right=True)
-    last = len(C.BUDGET) + 1
-    cell_text(t.cell(last, 0), "Total requested", bold=True)
-    cell_text(t.cell(last, 1), "{:,}".format(C.BUDGET_TOTAL), bold=True,
-              right=True)
-
-    for row in t.rows:
-        for cell, w in zip(row.cells, widths):
-            cell.width = w
+        r.font.size = Pt(7.0)
     return no_split(t)
 
 
@@ -318,10 +300,10 @@ def emit_sections(doc, groups) -> None:
             figure(doc, HERE / "fig-plan.png", COL_WIDTH_IN - 0.02,
                    C.FIG3_CAPTION, caption_pt=7.2)
         if head.startswith("VI."):
-            caption_only(doc, "Table I.  Requested budget, "
-                              "US$150,000 over twelve months.",
+            caption_only(doc, "Table I.  What we ask of the Alliance, and what "
+                              "goes back in return. No funding is requested.",
                          keep_with_next=True)
-            budget_table(doc)
+            asks_table(doc)
         if head.startswith("VIII."):
             caption_only(doc, "Table II.  The five official evaluation "
                               "criteria, and where this proposal answers them.",

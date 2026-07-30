@@ -29,30 +29,29 @@ AFFIL_LINE = ("¹PreceptualAI, Singapore · "
 
 EXEC_SUMMARY = (
     "Learned control has crossed into live actuation of licensed spectrum, and "
-    "the two largest RAN vendors have opened their rApp ecosystems to one "
-    "another, so operators will soon actuate spectrum through planners they "
-    "neither wrote nor can inspect while retaining sole liability for the "
-    "licence. Every existing assurance method — constrained reinforcement "
-    "learning, Lagrangian penalties, confidence gating — lowers the "
-    "probability of a violation without bounding it, and binds the argument to "
-    "one trained artefact. Horizon-RIC removes the constraint from the "
-    "objective and places it in the topology. A projection operator, the "
-    "Decision Safety Shield, sits between the planner and the southbound "
-    "interface: the planner emits a proposal, never an action, and only the "
-    "projected action exists downstream, so an out-of-licence emission is "
-    "unrepresentable rather than unlikely. A fail-closed guard chain refuses "
-    "any emission whose corrections were not audited, and every decision and "
-    "refusal is appended to a hash-chained, Ed25519-signed evidence store. The "
-    "property therefore survives retraining, vendor substitution and an "
-    "adversarial planner. The layer is built and exercised against third-party "
-    "open-source O-RAN software on real sockets — 12 of 12 policies "
-    "acknowledged ENFORCED by the production ric-plt/a1 mediator driving the "
-    "ric-app/hw-python xApp — and driven by ray-traced propagation for 4096 "
-    "receivers. Across 8000 decisions on that geometry, 4658 requested actions "
-    "were out of licence and none passed the emission boundary; 2442 were "
-    "demanded by the propagation itself rather than by any attack. We request "
-    "US$150,000 over twelve months to turn this into a conformance profile the "
-    "Alliance can adopt."
+    "vendors have opened their rApp ecosystems to one another, so operators "
+    "will soon actuate spectrum through planners they neither wrote nor can "
+    "inspect while keeping sole liability for the licence. Existing assurance "
+    "methods — constrained reinforcement learning, Lagrangian penalties, "
+    "confidence gating — lower the probability of a violation without "
+    "bounding it, and bind the argument to one trained artefact. Horizon-RIC "
+    "moves the constraint out of the objective and into the topology. A "
+    "projection operator, the Decision Safety Shield, sits between the planner "
+    "and the southbound interface: the planner emits a proposal, never an "
+    "action, and only the projected action exists downstream, so an "
+    "out-of-licence emission is unrepresentable rather than unlikely. A "
+    "fail-closed guard chain refuses any emission whose corrections were not "
+    "audited, and every decision and refusal is appended to a hash-chained, "
+    "Ed25519-signed store. The property survives retraining, vendor "
+    "substitution and an adversarial planner. The layer is exercised against "
+    "third-party open-source O-RAN software on real sockets — 12 of 12 "
+    "policies acknowledged ENFORCED by the production ric-plt/a1 mediator — "
+    "and driven by ray-traced propagation for 4096 receivers. Across 8000 "
+    "decisions, 4658 requested actions were out of licence and none passed the "
+    "emission boundary; 2442 were demanded by the propagation itself rather "
+    "than by any attack. We ask the Alliance not for money but for what only it "
+    "can supply: measured environments through its endorsed labs, a member's "
+    "planner to shield, and a working-group route for the profile."
 )
 
 KEYWORDS = ("AI-RAN assurance, O-RAN, action projection, safe reinforcement "
@@ -122,7 +121,7 @@ SECTIONS = [
         "surrenders 0.0 dB, which is what makes it adoptable by the RAN team "
         "rather than merely mandated at them. We have no operator pilot and no "
         "revenue; converting technical readiness into commercial validation is "
-        "precisely what WP1 and WP3 are funded to do, and we name it as the "
+        "precisely what WP1 and WP3 are for, and we name it as the "
         "weakest part of this proposal rather than dress it up.",
 
         "What is missing today is an assurance mechanism indifferent to which "
@@ -284,7 +283,7 @@ SECTIONS = [
         "TimescaleDB evidence backend live-tested to SQL-level tamper "
         "detection. It is torch-free and installs on stock Python with no "
         "accelerator. Enforcement itself costs tens of microseconds per "
-        "candidate action, so it sits inside a non-real-time control budget "
+        "candidate action, so it sits well inside a non-real-time control period "
         "with room to spare.",
 
         "It is also exercised against the open stack it must coexist with: the "
@@ -332,7 +331,7 @@ SECTIONS = [
         "without contacting us.",
     ]),
 
-    ("VI.  Team, Budget and Execution Risk", [
+    ("VI.  Team, and What We Ask of the Alliance", [
         "Daniel Foo (PreceptualAI, Singapore) is the architect and implementer "
         "of the enforcement layer, the evidence chain and the O-RAN "
         "integration, and leads WP1 and WP4. Bowen Shen (Nanyang Technological "
@@ -342,23 +341,42 @@ SECTIONS = [
         "secure-learning programme [1], [2], [3] and leads WP3, with oversight "
         "of the measurement methodology across all packages.",
 
-        "We request US$150,000 over twelve months (Table I). The allocation is "
-        "weighted towards the two things that convert current evidence into an "
-        "adoptable profile: engineering time on the conformance and export "
-        "work, and measured environments to replace the modelled ones. "
-        "Independent replication is funded explicitly, because a result nobody "
-        "outside the project has reproduced is not yet evidence.",
+        "The engineering is not the binding constraint — the layer is built, "
+        "and the twelve-month plan above is deliverable by this team. What we "
+        "cannot manufacture for ourselves is access, and it happens to be "
+        "exactly what the Alliance has spent two years assembling. Its "
+        "endorsed labs with Keysight Technologies, Northeastern University, "
+        "Singapore University of Technology and Design and VIAVI Solutions "
+        "exist for data creation and benchmarking [15]; its Data-for-AI "
+        "initiative is defining a structured data-management and collection "
+        "pipeline drawing on both real-time systems and simulators [15]; its "
+        "Test Methodology initiative is developing standardised evaluation "
+        "metrics for AI-driven RAN solutions [15]; and its AI-for-RAN working "
+        "group is the natural home for an assurance profile [14]. Table I sets "
+        "out what we ask against what we return.",
+
+        "The asks are ordered by how much they change the evidence. A measured "
+        "interference source converts our weakest result — a modelled "
+        "incumbent — into a measured one, and it is the only gate in the "
+        "plan we cannot attempt alone. A member's planner converts G1 from a "
+        "demonstration into an industrial result: we can shield a planner "
+        "without reading it, which means a member risks no disclosure by "
+        "letting us try, and a failure would be the most useful outcome in the "
+        "programme because it would name an invariant the profile is missing. "
+        "An operator willing to run the layer in shadow mode — emitting "
+        "certificates and refusals with nothing actuated — would close the "
+        "one criterion on which we are honestly weak.",
 
         "Execution risk. The dominant risk is WP3: if no measured interference "
         "source or bench slot can be secured, gate G3 cannot be attempted. The "
         "mitigation is sequencing — WP1, WP2 and WP4 carry no external "
         "dependency and deliver the profile, the second scenario and the export "
-        "format regardless — plus a held contingency and a documented "
-        "fallback to a multi-cell ray-traced incumbent, which we would publish "
-        "as a weaker result rather than present as measured. The second risk is "
-        "that gate G1 exposes a planner our invariant set cannot express; that "
-        "outcome is a publishable finding about the profile's coverage, and the "
-        "schema is versioned so it can absorb it.",
+        "format regardless — plus a documented fallback to a multi-cell "
+        "ray-traced incumbent, which we would publish as the weaker result it "
+        "is rather than present as measured. The second risk is that gate G1 "
+        "exposes a planner our invariant set cannot express; that outcome is a "
+        "publishable finding about the profile's coverage, and the schema is "
+        "versioned so it can absorb it.",
     ]),
 
     ("VII.  Expected Deliverables and Impact", [
@@ -403,6 +421,21 @@ SECTIONS = [
         "standards-facing, because the schema is offered as a profile rather "
         "than a product; and packaged for the exact integration path the March "
         "2026 marketplace reciprocity created [10].",
+
+        "It also lands on the work the Alliance is already doing rather than "
+        "beside it. The AI-for-RAN working group's remit is spectral and energy "
+        "efficiency [14] — which is precisely where a learned planner wants "
+        "to push against a licence, and therefore precisely where an "
+        "enforcement layer earns its place. Test Methodology is developing "
+        "standardised evaluation metrics for AI-driven RAN solutions [15]; our "
+        "falsification rule, that every published gate must be shown to fail "
+        "under an injected regression, is offered as a contribution to it, "
+        "because a metric no one can fail is not a metric. Data-for-AI is "
+        "building a structured collection pipeline across real-time systems and "
+        "simulators [15]; the pinned-manifest and data-dependence tooling that "
+        "binds our results to their inputs transfers directly, and the "
+        "per-decision evidence chain is itself a candidate dataset format for "
+        "assurance work.",
 
         "The timing is set by the standards calendar. ITU-R M.2160 places "
         "security, privacy and resilience among the four design principles that "
@@ -453,36 +486,57 @@ CRITERIA = [
      "as an ordinary rApp with Helm, OAuth2/mTLS and onboarding descriptors. "
      "Weakest criterion: no operator pilot and no revenue yet."),
     ("4.  Strength of execution plan",
-     "§V, §VI — four work packages with named owners, falsifiable exit "
-     "gates, a costed budget summing to the request, and a stated dominant "
-     "risk with its mitigation and fallback."),
+     "§V, §VI — four work packages with named owners and falsifiable exit "
+     "gates, three of which carry no external dependency, plus a stated "
+     "dominant risk with its mitigation and fallback."),
     ("5.  Alignment with AI-RAN priorities",
-     "§VII, §VIII — open, permissively licensed, pre-competitive; the "
-     "invariant and certificate schema offered as a candidate assurance "
-     "profile ahead of the Release 21 window [11], [12]."),
+     "§VI, §VII, §VIII — open, permissively licensed, pre-competitive; the "
+     "schema offered as a candidate assurance profile to AI-for-RAN [14], the "
+     "falsification rule offered to Test Methodology and the provenance "
+     "tooling to Data-for-AI [15], ahead of the Release 21 window [11], [12]."),
 ]
 
-BUDGET = [
-    ("WP1  Conformance profile, second planner shielded (D. Foo)", 30_000,
-     "6 person-months engineering; draft A1/E2 profile, schema release"),
-    ("WP2  Second ray-traced scenario and band (B. Shen)", 22_000,
-     "4 person-months; scenario generation, gate re-execution"),
-    ("WP3  Measured coexistence, real interference source (F. Li)", 18_000,
-     "3 person-months; measurement design and supervision"),
-    ("WP4  Audit-grade export and E2SM-RC closed loop (D. Foo)", 26_000,
-     "5 person-months; export format, near-real-time enforcement"),
-    ("Compute and data", 16_000,
-     "GPU and CPU hours, CI minutes, ray-tracing scenario generation"),
-    ("RF bench and measurement", 20_000,
-     "SDR hardware, spectrum-analyser hire, chamber and bench time"),
-    ("Independent replication and security review", 9_000,
-     "Third-party re-execution of every gate; external review of the guard chain"),
-    ("Standards work and dissemination", 5_000,
-     "O-RAN and Alliance contributions, travel, open-access fees"),
-    ("Contingency", 4_000,
-     "2.7%; held against the WP3 measurement-access risk"),
+# Table I — what we ask of the Alliance, and what goes back in return.
+# Ordered by how much each ask changes the evidence, not by how easy it is.
+ALLIANCE_ASKS = [
+    ("Bench time in an endorsed lab, with a real interference source",
+     "Unblocks WP3 and gate G3 — the only gate this team cannot attempt "
+     "alone. Replaces the modelled incumbent, the weakest input in the "
+     "evidence base. In return: the measurement scripts, the pinned "
+     "manifests and the raw results, published whether or not they favour us."),
+
+    ("A member's planner to shield, under NDA or in the open",
+     "Turns G1 from a demonstration into an industrial result. The layer "
+     "never reads the planner, so a member discloses nothing by letting us "
+     "try. A failure is the most useful outcome available: it names an "
+     "invariant the profile is missing. In return: the member gets a "
+     "per-decision compliance record for its own planner, at no change to it."),
+
+    ("An operator willing to run the layer in shadow mode",
+     "Certificates and refusals emitted, nothing actuated. Closes the one "
+     "criterion on which this proposal is honestly weak — no operator "
+     "pilot. In return: an audit-grade evidence chain over the operator's own "
+     "control path, and any defect we find reported before it matters."),
+
+    ("Alignment with the Data-for-AI collection pipeline",
+     "Our benchmarks are bound to checksum-pinned archives and our gates "
+     "fail when the input moves; that discipline is directly reusable as a "
+     "provenance layer for Alliance datasets. In return: the manifest and "
+     "data-dependence tooling, and the per-decision evidence chain as a "
+     "candidate dataset format for assurance work."),
+
+    ("A route into Test Methodology and the AI-for-RAN working group",
+     "The invariant and certificate schema are offered as a candidate "
+     "assurance profile, and our falsification rule — every published "
+     "gate must be shown to fail under an injected regression — is offered "
+     "as a methodology contribution. In return: the profile, the schemas and "
+     "the harness, permissively licensed."),
+
+    ("A second measured scenario or band from a member environment",
+     "Unblocks WP2 and gate G2, which asks whether every gate reproduces "
+     "without retuning a single constant. In return: a published reproduction "
+     "report, including any constant that turns out to have been tuned."),
 ]
-BUDGET_TOTAL = 150_000
 
 REFERENCES = [
     "F. Li, B. Shen, J. Guo, K.-Y. Lam, G. Wei, and L. Wang, “Dynamic "
@@ -533,6 +587,15 @@ REFERENCES = [
 
     "O-RAN Software Community, “RIC platform A1 mediator (ric-plt/a1) and "
     "ric-app/hw-python,” gerrit.o-ran-sc.org.",
+
+    "AI-RAN Alliance working groups: AI-for-RAN, AI-and-RAN and AI-on-RAN. "
+    "[Online]. Available: ai-ran.org",
+
+    "AI-RAN Alliance, “Data-for-AI” and “Test Methodology” "
+    "initiatives, and four AI-RAN Alliance-endorsed labs with Keysight "
+    "Technologies, Northeastern University, Singapore University of Technology "
+    "and Design, and VIAVI Solutions, for data creation and benchmarking. "
+    "Announced at MWC 2025; 75 members across 17 countries at that date.",
 ]
 
 # Repository the reviewers can check every number against.
