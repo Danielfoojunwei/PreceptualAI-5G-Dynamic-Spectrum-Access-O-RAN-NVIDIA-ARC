@@ -219,8 +219,16 @@ def check_content(doc):
     # exists is not disclosed here. The mirror of the earlier check therefore
     # applies — the delivered framing must not leak back in through an edit.
     low = text.lower()
+    # The first four are the phrasings the re-baselined draft used. The last two
+    # are the ones that actually survived the revert, in places a word search for
+    # "delivered" would not have flagged as being about WP1 at all: a WP4 line
+    # promising "the E2SM-RC payloads that WP1 already constructs", and a Table I
+    # line calling G1 "a delivered demonstration". Both said WP1 was finished
+    # while §V scheduled it for months 1-4 — a contradiction a reviewer would
+    # notice before we did.
     for leak in ("already delivered", "delivered before any award",
-                 "delivered baseline", "wp1 delivered"):
+                 "delivered baseline", "wp1 delivered",
+                 "wp1 already", "delivered demonstration"):
         check(leak not in low,
               "no completion claim for WP1 leaks into the document: %r" % leak)
     check("wp1, months 1" in low,

@@ -19,7 +19,7 @@ describes, and this one has to stay checkable against
 ```sh
 python docs/proposal/mkfigs.py        # regenerate all three figures
 python docs/proposal/build_docx.py    # assemble the .docx
-python docs/proposal/validate_docx.py # 87 checks; exits non-zero on any failure
+python docs/proposal/validate_docx.py # 89 checks; exits non-zero on any failure
 python docs/proposal/preview.py       # render the preview PDF
 ```
 
@@ -91,6 +91,15 @@ take on trust:
   validator enforces the decision in both directions: WP1 must appear with its
   months, and no completion claim ("already delivered", "delivered baseline")
   may leak back in through a later edit.
+
+  Two leaks did survive the first pass, and are worth knowing about if you edit
+  the text: a §V line promising "the E2SM-RC payloads that **WP1 already
+  constructs**", and a Table I line calling G1 "a **delivered
+  demonstration**". Neither matched the phrase list, and neither reads as being
+  about WP1's status until you notice it contradicts §V scheduling WP1 for
+  months 1–4. Both phrases are now in the list. The general shape to watch for
+  is a sentence about some *other* work package that quietly asserts WP1's
+  output already exists.
 
   Worth knowing if you revisit this: the repository URL is in the proposal's
   masthead, so a reviewer who follows it can see the state of WP1 for

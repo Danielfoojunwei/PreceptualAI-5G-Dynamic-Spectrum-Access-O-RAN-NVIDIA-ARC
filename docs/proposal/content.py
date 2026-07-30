@@ -337,8 +337,8 @@ SECTIONS = [
 
         "WP4, months 8–12 — audit-grade export and a delivered E2 "
         "control action. Evidence export in a form a spectrum authority can "
-        "verify offline; and the E2SM-RC payloads that WP1 already constructs "
-        "carried over a real E2 termination to a node with a UE attached. Gate "
+        "verify offline; and WP1's E2SM-RC control payloads carried over a real "
+        "E2 termination to a node with a UE attached. Gate "
         "G4: a RIC Control Request derived from a signed certificate is accepted "
         "by an E2 node, and one derived from a refused decision cannot be "
         "constructed at all.",
@@ -543,8 +543,8 @@ ALLIANCE_ASKS = [
 
     ("FUND  Audit-grade export and a delivered E2 control action (WP4)",
      "Person-months to make the evidence chain verifiable offline by a spectrum "
-     "authority, and to carry the E2SM-RC payloads WP1 already constructs over "
-     "a real E2 termination. In return: the export format and the E2 binding, "
+     "authority, and to carry WP1's E2SM-RC control payloads over a real E2 "
+     "termination. In return: the export format and the E2 binding, "
      "open and offered to the profile."),
 
     ("FUND  Independent replication and security review (WP5)",
@@ -560,7 +560,8 @@ ALLIANCE_ASKS = [
      "measurement artefact, and co-authorship of what it produces."),
 
     ("ACCESS  A member's planner to shield, under NDA or in the open",
-     "Turns G1 from a delivered demonstration into an industrial result. The "
+     "Turns G1 from a demonstration on a planner we wrote ourselves into an "
+     "industrial result. The "
      "layer never reads the planner, so a member discloses nothing by letting "
      "us try, and a failure is the most useful outcome available: it names an "
      "invariant the profile is missing. In return: the member gets a "
