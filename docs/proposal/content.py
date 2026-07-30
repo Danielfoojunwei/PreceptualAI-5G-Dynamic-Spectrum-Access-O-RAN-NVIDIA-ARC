@@ -26,8 +26,6 @@ TITLE = ("Horizon-RIC: Projection-Enforced Safety for "
 AUTHOR_LINE = "Daniel Foo¹, Bowen Shen², Feng Li²"
 AFFIL_LINE = ("¹PreceptualAI, Singapore · "
               "²Nanyang Technological University, Singapore")
-CONTACT_LINE = ("Correspondence: Daniel Foo — danielfoojunwei@gmail.com  ·  "
-                "Funding requested: US$150,000 over 12 months")
 
 EXEC_SUMMARY = (
     "Learned control has crossed into live actuation of licensed spectrum, and "

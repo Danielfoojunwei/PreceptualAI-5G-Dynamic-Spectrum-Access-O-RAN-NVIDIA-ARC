@@ -32,7 +32,6 @@ body { margin: 0; }
 .authors { text-align: center; font-size: 11pt; margin: 0 0 1pt; }
 .affil { text-align: center; font-size: %(body)spt; font-style: italic;
          margin: 0 0 1pt; }
-.contact { text-align: center; font-size: 8.5pt; margin: 0 0 4pt; }
 h3.absh { font-size: %(body)spt; font-weight: bold; margin: 6pt 0 2pt; }
 p { margin: 0 0 %(after)spt; text-indent: 0.22in; text-align: justify; }
 p.first { text-indent: 0; }
@@ -94,7 +93,6 @@ def build_html() -> str:
     out.append('<div class="title">%s</div>' % esc(C.TITLE))
     out.append('<div class="authors">%s</div>' % esc(C.AUTHOR_LINE))
     out.append('<div class="affil">%s</div>' % esc(C.AFFIL_LINE))
-    out.append('<div class="contact">%s</div>' % esc(C.CONTACT_LINE))
     out.append('<h3 class="absh">Executive Summary</h3>')
     out.append('<p class="first">%s</p>' % esc(C.EXEC_SUMMARY))
     out.append('<p class="kw"><b>Keywords &mdash;</b> %s</p>' % esc(C.KEYWORDS))

@@ -8,7 +8,7 @@ its layout contract exactly rather than editing it in place:
   margins   top/bottom 1440, left/right 1080  (text block 7.0in x 9.0in)
   section 1 single column, <w:cols w:space="720"/>
       IEEETitle -> centred title, sz 48 (24pt)
-      three centred author/affiliation/contact lines
+      two centred author/affiliation lines
       Executive Summary heading + body, Keywords, bottom-bordered rule
       the two full-width figures
   section 2 two columns, <w:cols w:num="2" w:space="360"/>
@@ -340,7 +340,6 @@ def build() -> Path:
     for line, pt, italic in (
         (C.AUTHOR_LINE, 11.0, False),
         (C.AFFIL_LINE, 9.5, True),
-        (C.CONTACT_LINE, 8.5, False),
     ):
         ap = doc.add_paragraph(style="IEEEAuthors")
         ap.paragraph_format.space_after = Pt(1)
