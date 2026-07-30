@@ -48,10 +48,10 @@ EXEC_SUMMARY = (
     "driven by ray-traced propagation for 4096 receivers. Across 8000 "
     "decisions, 4658 requested actions were out of licence and none passed the "
     "emission boundary; 2442 were demanded by the propagation itself rather "
-    "than by any attack. Work package one is already delivered. We "
-    "ask for funding against the remaining four, and for the thing funding "
-    "cannot buy: measured environments through the Alliance's endorsed labs, a "
-    "member's planner to shield, and a working-group route for the profile."
+    "than by any attack. We ask for funding against the work packages below, "
+    "and for the thing funding cannot buy: measured environments through the "
+    "Alliance's endorsed labs, a member's planner to shield, and a "
+    "working-group route for the profile."
 )
 
 KEYWORDS = ("AI-RAN assurance, O-RAN, action projection, safe reinforcement "
@@ -84,10 +84,8 @@ FIG2_CAPTION = (
 
 FIG3_CAPTION = (
     "Fig. 3.  Work packages, owners (DF Daniel Foo, BS Bowen Shen, FL Feng Li) "
-    "and exit gates. WP1 is shown hatched because it is already delivered and "
-    "its gate G1 is met and re-run by CI; the funded plan is WP2 to WP5. Each "
-    "gate is a falsifiable criterion, not a report — a gate that cannot fail "
-    "is treated as no gate."
+    "and the five exit gates. Each gate is a falsifiable criterion, not a "
+    "report — a gate that cannot fail is treated as no gate."
 )
 
 SECTIONS = [
@@ -314,35 +312,30 @@ SECTIONS = [
         "directly.",
     ]),
 
-    ("V.  Twelve-Month Timeline and Milestones, on a Delivered Baseline", [
+    ("V.  Twelve-Month Timeline and Milestones", [
         "Fig. 3 gives the schedule, owners and exit gates. Each gate is a "
         "falsifiable criterion; where a gate fails, the failure is published.",
 
-        "WP1 is already delivered, before any award. The invariant and "
-        "safety-certificate schema are published as machine-readable schemas and "
-        "a draft assurance profile, and gate G1 — a second, independently "
-        "written planner shielded without modification to either the planner or "
-        "the Shield — is met and re-run by CI. The second planner is a UCB1 "
-        "bandit that imports nothing from the enforcement layer; over 4000 "
-        "decisions it requested 3546 out-of-licence actions and none passed the "
-        "boundary. The gate pins the SHA-256 of the Shield and of the planner, so "
-        "editing either side to make the numbers agree fails it rather than "
-        "passing it. The team has already shipped its first work package to the "
-        "standard the rest are written to, which is the most useful thing a "
-        "reviewer can know about the plan below.",
+        "WP1, months 1–4 — conformance profile. The invariant and "
+        "safety-certificate schema are mapped onto O-RAN A1 and E2 and released "
+        "as a draft assurance profile with machine-readable schemas. Gate G1: a "
+        "second, independently written planner is shielded without modification "
+        "to either the planner or the Shield, and the gate pins the SHA-256 of "
+        "both so editing either side to make the numbers agree fails it rather "
+        "than passing it.",
 
-        "WP2, months 1–4 — second scenario and band. An independent "
+        "WP2, months 3–6 — second scenario and band. An independent "
         "ray-traced scenario with genuine frequency selectivity, at a different "
         "carrier. Gate G2: every published gate reproduces without retuning any "
         "constant, or the discrepancy is published.",
 
-        "WP3, months 3–7 — measured coexistence. The modelled "
+        "WP3, months 6–9 — measured coexistence. The modelled "
         "incumbent is replaced by a multi-cell or bench-measured interference "
         "source. Gate G3: learning gain over the zero-data constant-power "
         "policy is positive on measured data — the honest test of whether "
         "AI contributes anything in this regime.",
 
-        "WP4, months 6–10 — audit-grade export and a delivered E2 "
+        "WP4, months 8–12 — audit-grade export and a delivered E2 "
         "control action. Evidence export in a form a spectrum authority can "
         "verify offline; and the E2SM-RC payloads that WP1 already constructs "
         "carried over a real E2 termination to a node with a UE attached. Gate "
@@ -350,7 +343,7 @@ SECTIONS = [
         "by an E2 node, and one derived from a refused decision cannot be "
         "constructed at all.",
 
-        "WP5, months 9–12 — independent replication and "
+        "WP5, months 10–12 — independent replication and "
         "standardisation. The profile is submitted to the AI-RAN Alliance "
         "working group and to O-RAN WG11 as candidate input, and a third party "
         "re-executes every gate from the published archive. Gate G5: an external "
@@ -360,7 +353,7 @@ SECTIONS = [
     ("VI.  Team, and What We Ask For", [
         "Daniel Foo (PreceptualAI, Singapore) is the architect and implementer "
         "of the enforcement layer, the evidence chain and the O-RAN "
-        "integration; he delivered WP1 and leads WP4. Bowen Shen (Nanyang "
+        "integration, and leads WP1 and WP4. Bowen Shen (Nanyang "
         "Technological University) contributes the federated DSA and "
         "satellite-IoT spectrum work this layer sits on [1], [3] and leads WP2. "
         "Dr Feng Li (Nanyang Technological University) contributes the dynamic "
@@ -394,7 +387,7 @@ SECTIONS = [
         "by how easy it is to grant. A measured interference source converts our "
         "weakest input — a modelled incumbent — into a measured one, and "
         "it is the only gate in the plan we cannot attempt alone. A member's "
-        "planner converts G1 from a delivered demonstration into an industrial "
+        "planner converts G1 from an in-house demonstration into an industrial "
         "result: the layer never reads the planner, so a member risks no "
         "disclosure by letting us try, and a failure would be the most useful "
         "outcome in the programme because it would name an invariant the profile "
@@ -404,9 +397,9 @@ SECTIONS = [
 
         "Execution risk. The dominant risk is WP3: if no measured interference "
         "source or bench slot can be secured, gate G3 cannot be attempted. The "
-        "mitigation is sequencing — WP2, WP4 and WP5 carry no external "
-        "dependency and deliver the second scenario, the export format and the "
-        "replication regardless — plus a documented fallback to a multi-cell "
+        "mitigation is sequencing — WP1, WP2, WP4 and WP5 carry no external "
+        "dependency and deliver the profile, the second scenario, the export "
+        "format and the replication regardless — plus a documented fallback to a multi-cell "
         "ray-traced incumbent, which we would publish as the weaker result it "
         "is rather than present as measured. The second risk is that a member's "
         "planner exposes an invariant our set cannot express; that outcome is a "
@@ -521,10 +514,9 @@ CRITERIA = [
      "as an ordinary rApp with Helm, OAuth2/mTLS and onboarding descriptors. "
      "Weakest criterion: no operator pilot and no revenue yet."),
     ("4.  Strength of execution plan",
-     "§V, §VI — WP1 delivered before any award, gate and all, and re-run by "
-     "CI; four remaining packages with named owners, falsifiable exit gates, "
-     "three of them free of external dependency, and a stated dominant risk "
-     "with its mitigation and fallback."),
+     "§V, §VI — five work packages with named owners and falsifiable exit "
+     "gates, four of them free of external dependency, plus a stated dominant "
+     "risk with its mitigation and fallback."),
     ("5.  Alignment with AI-RAN priorities",
      "§VI, §VII, §VIII — open, permissively licensed, pre-competitive; the "
      "schema offered as a candidate assurance profile to AI-for-RAN [14], the "

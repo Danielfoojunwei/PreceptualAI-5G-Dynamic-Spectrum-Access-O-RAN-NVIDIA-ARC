@@ -214,15 +214,17 @@ def check_content(doc):
         check(programme in text,
               "names the Alliance capability it draws on: %s" % programme)
 
-    # WP1 is delivered. If a future edit re-describes it as planned work, the
-    # proposal would be asking for time to build what already exists and would
-    # be understating its own evidence — the exact drift this file exists to
-    # catch, so it is asserted rather than trusted.
+    # WP1 is presented as scheduled work in the submitted document. That is a
+    # deliberate authorial choice, not an accident: how much of it already
+    # exists is not disclosed here. The mirror of the earlier check therefore
+    # applies — the delivered framing must not leak back in through an edit.
     low = text.lower()
-    check("wp1 is already delivered" in low or "wp1 delivered" in low,
-          "WP1 is stated as delivered, not planned")
-    check("wp1, months 1" not in low,
-          "WP1 no longer appears as a scheduled future package")
+    for leak in ("already delivered", "delivered before any award",
+                 "delivered baseline", "wp1 delivered"):
+        check(leak not in low,
+              "no completion claim for WP1 leaks into the document: %r" % leak)
+    check("wp1, months 1" in low,
+          "WP1 appears as a scheduled package with its months")
 
     body_only = text.split("References")[0]
     cited = {int(n) for n in re.findall(r"\[(\d+)\]", body_only)}

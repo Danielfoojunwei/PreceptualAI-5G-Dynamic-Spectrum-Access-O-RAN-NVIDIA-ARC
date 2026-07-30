@@ -19,7 +19,7 @@ describes, and this one has to stay checkable against
 ```sh
 python docs/proposal/mkfigs.py        # regenerate all three figures
 python docs/proposal/build_docx.py    # assemble the .docx
-python docs/proposal/validate_docx.py # 84 checks; exits non-zero on any failure
+python docs/proposal/validate_docx.py # 87 checks; exits non-zero on any failure
 python docs/proposal/preview.py       # render the preview PDF
 ```
 
@@ -84,11 +84,18 @@ take on trust:
   funded — at least three `FUND` lines, at least three `ACCESS` lines, every
   ask present in the rendered text, and the Alliance capabilities it draws on
   named (Data-for-AI, Test Methodology, AI-for-RAN, the endorsed labs).
-- **WP1 is asserted delivered.** If an edit ever re-describes it as a scheduled
-  future package, the build fails. That is not pedantry: WP1's schemas, profile
-  and G1 gate are built and CI-gated, so a plan that asked for time to build
-  them would understate its own evidence — the exact drift this directory
-  exists to prevent.
+- **WP1 is presented as scheduled work, deliberately.** Much of it is in fact
+  already built and CI-gated in this repository — the schemas, the draft
+  profile, the G1 gate. How far along it is is not disclosed in the submitted
+  document, and that is an authorial decision rather than an oversight. The
+  validator enforces the decision in both directions: WP1 must appear with its
+  months, and no completion claim ("already delivered", "delivered baseline")
+  may leak back in through a later edit.
+
+  Worth knowing if you revisit this: the repository URL is in the proposal's
+  masthead, so a reviewer who follows it can see the state of WP1 for
+  themselves. The choice being made here is not to conceal, only not to
+  advertise.
 - The gated figures (4658, 2442, 461, 0.370, 12/12) are present.
 - Claims the ledger marks **red** are absent in their withdrawn form — "none
   reached the radio", "never exceeds the classical baseline", and any assertion
