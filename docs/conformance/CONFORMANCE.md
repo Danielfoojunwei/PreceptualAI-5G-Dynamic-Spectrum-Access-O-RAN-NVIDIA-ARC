@@ -3,7 +3,7 @@
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
 
-**Version:** 0.3.0
+**Version:** 0.4.0
 **Date:** 2026-07-30
 **Component:** [`docs/oda/component.yaml`](../oda/component.yaml)
 **OpenAPI:** [`docs/openapi/horizon-ric-rapp.yaml`](../openapi/horizon-ric-rapp.yaml)
@@ -61,7 +61,9 @@ states it directly: it "deliberately contains NO E2AP/SCTP transport of its own"
 | E2SM-KPM v03.00 | `E2SM-KPM-IndicationMessage` decode (Format 1/2 → one event, Format 3 → one event per `ueMeasReportList` entry) and `E2SM-KPM-IndicationHeader` Format 1 (`colletStartTime`, `senderName`) | ✅ | `src/horizon_ric/e2/kpm_bridge.py:363` (`from_e2sm_kpm_indication`), `tests/test_e2_kpm_bridge.py` |
 | E2SM-KPM v03.00 | Committed ASN.1 module, sha256-pinned to the FlexRIC original | ✅ | `src/horizon_ric/e2/asn1/e2sm_kpm_v03.00_standard.asn1`, `src/horizon_ric/e2/asn1/PROVENANCE.md`, `tests/test_e2_kpm_bridge.py::test_committed_asn1_spec_matches_flexric_provenance` |
 | E2AP / SCTP | E2 association, RIC Subscription, ActionDefinition, EventTriggerDefinition | ❌ | Out of scope by design: the near-RT RIC owns the E2 association and Horizon consumes the E2SM payloads it surfaces (`src/horizon_ric/e2/__init__.py:3`) |
-| E2SM-RC | RIC Control (near-real-time enforcement) | 🟡 | WP4 roadmap, no code and no vendored ASN.1 today. See [`ASSURANCE_PROFILE.md`](ASSURANCE_PROFILE.md) §7.2 |
+| E2SM-RC v1.03 | RIC Control payload construction (`controlHeader-Format1`, `controlMessage-Format1`) | ✅ | Vendored standard ASN.1, aligned PER encode with round-trip decode; `src/horizon_ric/e2/rc_control.py`, `tests/test_e2_rc_control.py` |
+| E2SM-RC v1.03 | Refused decision cannot be encoded (fail closed) | ✅ | `control_from_disposition` raises on `emit_blocked` / not `safe` / non-empty `violated_ids`, and encodes `safe_action` only |
+| E2SM-RC v1.03 | RIC Control **delivery** (`RICcontrolRequest` over E2AP) | ❌ | No transport in this package by design. Three reasons in [`E2_RC_PROOF.md`](../../deploy/e2-companion/E2_RC_PROOF.md); remains WP4 work |
 
 ## O-RAN.WG11 Security Specification
 

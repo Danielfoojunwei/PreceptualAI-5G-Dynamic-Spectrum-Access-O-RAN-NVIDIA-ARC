@@ -1,7 +1,11 @@
 # Horizon-RIC Assurance Conformance Profile
 
-**Version:** 0.1.0
+**Version:** 0.1.1
 **Date:** 30 July 2026
+**Changes in 0.1.1:** §7.2 rewritten. Version 0.1.0 stated that no E2SM-RC
+existed in this repository; that stopped being true a few commits later, when
+the control payload encoder landed. The E2 table row and the non-goal in §2 are
+corrected with it. Nothing else changed.
 **Status:** **DRAFT.** This document is **candidate input to a standardisation
 discussion, not an adopted standard.** No standards body has reviewed it, no
 vendor has implemented it, and every requirement in it is open to being wrong.
@@ -65,9 +69,10 @@ produced by something the model does not control.
   was checked against a *declared* invariant set and records the result. An
   invariant nobody wrote is not enforced by anything here, and the certificate
   makes no claim about it.
-* **It does not define near-real-time enforcement.** There is no E2SM-RC in this
-  repository. Section 7 records that as out of scope for profile version 0.1.0
-  and as WP4 roadmap work.
+* **It does not define near-real-time enforcement.** E2SM-RC control payloads
+  can now be *constructed* from a disposition, and a refused action cannot be
+  constructed at all (§7.2), but nothing here delivers one. Binding a
+  certificate to a delivered E2 control action remains WP4 work.
 * **It does not replace the O-RAN WG11 security specification, the WG4
   conformance test specification, or 3GPP TS 28.105 AI/ML management.** It sits
   under them. Where they say what to protect, this says what a disposition record
@@ -507,7 +512,10 @@ exports exactly three names: `KpmBridgeError`, `KpmMeasurementBridge`,
 | E2SM-KPM v03.00 `E2SM-KPM-IndicationHeader` decode | ⚠️ Format 1 only | Reads `colletStartTime` (the spec's own typo, reproduced faithfully) and `senderName` (`kpm_bridge.py:394`) |
 | E2AP / SCTP transport | ❌ | The near-RT RIC owns the E2 association, by design |
 | RIC Subscription, `ActionDefinition`, `EventTriggerDefinition` | ❌ | Not decoded, not encoded, not vendored |
-| E2SM-RC control (`ControlHeader` / `ControlMessage`) | 🟡 | WP4 roadmap. No code and no vendored ASN.1 in this repository today |
+| E2SM-RC v1.03 `ControlHeader` / `ControlMessage` **encode** | ✅ | `controlHeader-Format1` and `controlMessage-Format1` constructed in aligned PER and decoded back through the same spec (`src/horizon_ric/e2/rc_control.py`, `tests/test_e2_rc_control.py`) |
+| E2SM-RC **fail-closed** on a refused disposition | ✅ | `control_from_disposition` raises rather than encoding when the certificate is `emit_blocked`, not `safe`, or carries `violated_ids`; it encodes `safe_action`, never the proposal |
+| E2SM-RC control **delivery** | ❌ | No `RICcontrolRequest`, no E2AP, no transport. See `deploy/e2-companion/E2_RC_PROOF.md` for the three independent reasons |
+| E2SM-RC RAN Parameter ID assignment | ⚠️ | The encoder's default IDs are local placeholders. The spec assigns them per node via `RANFunctionDefinition-Control-Action-Item`; a real deployment must read them from the E2 node and pass `parameter_ids=` |
 
 The only vendored ASN.1 is
 [`src/horizon_ric/e2/asn1/e2sm_kpm_v03.00_standard.asn1`](../../src/horizon_ric/e2/asn1/e2sm_kpm_v03.00_standard.asn1),
@@ -548,18 +556,49 @@ is reported as `null` (`kpm_bridge.py:104`, `:130`). Any other metric present in
 the indication is carried into `payload["measurements"]` and ignored by the risk
 mapping.
 
-### 7.2 E2SM-RC is out of scope for profile version 0.1.0
+### 7.2 E2SM-RC: payloads are constructed and gated; delivery is not
 
-There is no E2SM-RC anywhere in this repository's own source. A grep for
-`e2sm[-_]rc`, `ric_control`, `RicControlRequest` and `control_action` across
-`src/`, `tests/`, `scripts/` and `benchmarks/` returns zero hits; the only
-occurrences in the tree are the WP4 roadmap lines in `docs/proposal/`. The
-vendored FlexRIC git submodule contains an `rc_sm` service model in C, which
-Horizon-RIC neither builds nor calls.
+Version 0.1.0 of this document said there was no E2SM-RC anywhere in this
+repository. That was true when it was written and false a few commits later, so
+it is corrected here rather than left to be discovered.
 
-Near-real-time enforcement via E2SM-RC is WP4 work, months 8 to 12. A profile
-version that binds a certificate to an E2 control action is a future document, and
-this one does not pretend otherwise.
+What exists now. The O-RAN E2SM-RC v1.03 standard ASN.1 is vendored at
+[`src/horizon_ric/e2/asn1/e2sm_rc_v1_03_standard.asn`](../../src/horizon_ric/e2/asn1/e2sm_rc_v1_03_standard.asn),
+byte-for-byte from the same pinned FlexRIC commit as the KPM spec, and
+[`src/horizon_ric/e2/rc_control.py`](../../src/horizon_ric/e2/rc_control.py)
+compiles it under aligned PER to construct `controlHeader-Format1` and
+`controlMessage-Format1` payloads, decoding each one back through the same spec
+to the same fields. The provenance argument is stronger than a from-scratch
+implementation would give: FlexRIC's own asn1c wire codec for RC was generated
+from this same file, so the bytes an E2 node parses and the bytes constructed
+here derive from one source text.
+
+**The requirement this adds to the profile.** A conformant implementation must
+make the E2 control path subject to the same enforcement as the southbound policy
+path. Concretely: the only function that turns a decision into E2SM-RC bytes must
+refuse when the certificate is `emit_blocked`, when it is not `safe`, or when
+`violated_ids` is non-empty; and when it succeeds it must encode the *projected*
+action, never the proposal. Otherwise adding a control path creates a second,
+unguarded route to the radio beside the one the Shield governs — which would be a
+net loss in assurance despite looking like a gain in capability.
+`control_from_disposition` implements this and `tests/test_e2_rc_control.py`
+pins both directions.
+
+**What is still out of scope.** Delivery. There is no `RICcontrolRequest`, no
+E2AP, and no transport in this package — the near-RT RIC owns the E2 association
+by design. [`E2_RC_PROOF.md`](../../deploy/e2-companion/E2_RC_PROOF.md) records
+the three independent reasons a delivered control action cannot be demonstrated
+here and does not claim one. Binding a certificate to an *accepted and acted upon*
+E2 control action remains WP4 work.
+
+**One honest limitation a reader must not miss.** The encoder's default RAN
+Parameter IDs are local placeholders, not specification constants. E2SM-RC
+assigns them per E2 node through
+`RANFunctionDefinition-Control-Action-Item.ran-ControlActionParameters-List`,
+which pairs each `ranParameter-ID` with its `ranParameter-name`. A real
+deployment must read that list off the node it is controlling and pass
+`parameter_ids=`; the defaults exist so the encode path is testable, not because
+they mean anything on a live E2 interface.
 
 ---
 
