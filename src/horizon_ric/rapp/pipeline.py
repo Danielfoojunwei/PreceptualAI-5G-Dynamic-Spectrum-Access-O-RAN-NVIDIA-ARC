@@ -6,8 +6,9 @@ drives for every ingested :class:`~horizon_ric.io.schemas.TelemetryEvent`:
     1. deterministic risk-band planner proposes an A1 policy (+ alternatives)
     2. the Decision Safety Shield disposes the proposed action
     3. the pre-emit guard chain makes the final go/no-go call
-    4. the policy is emitted over A1 (the adapter persists the DecisionRecord
-       and increments the emit metrics itself on success)
+    4. the policy is emitted over A1, carrying a verifiable reference to the
+       certificate in the optional ``assurance`` envelope (the adapter persists
+       the DecisionRecord and increments the emit metrics itself on success)
     5. enforcement status is polled from the Near-RT RIC
     6. refusals and emit failures are appended to the evidence store too, so
        the audit chain covers every decision — not only the ones that shipped
@@ -35,6 +36,7 @@ import httpx
 import structlog
 from prometheus_client import Counter, Gauge
 
+from horizon_ric.assurance.profile import emit_profile, profile_digest
 from horizon_ric.evidence.schema import (
     ConstraintCorrection,
     DecisionRecord,
@@ -47,7 +49,7 @@ from horizon_ric.policy.counterfactual import (
     build_rejected_alternatives,
 )
 from horizon_ric.policy.emit_guards import GuardFailure, run_guard_chain
-from horizon_ric.rapp.a1_adapter import A1Adapter, EvidencePersistError
+from horizon_ric.rapp.a1_adapter import A1Adapter, EvidencePersistError, assurance_envelope
 from horizon_ric.runtime.circuit_breaker import CircuitBreakerError
 from horizon_ric.shield import default_terrestrial_shield
 
@@ -199,6 +201,23 @@ class DecisionPipeline:
             band_hi_hz=config.band_hi_hz,
             max_eirp_dBm=config.max_eirp_dbm,
         )
+        # Digest of the invariant set THIS pipeline enforces, reflected off the
+        # live Shield once at construction (the configuration is static for the
+        # instance's lifetime, so recomputing it per decision would buy
+        # nothing). It rides on every A1 policy in the `assurance` envelope so a
+        # receiver can tell which invariant chain — with which band edges and
+        # which EIRP ceiling — graded the action, and detect a silently
+        # reconfigured Shield after a redeploy.
+        self._profile_digest = profile_digest(
+            emit_profile(
+                self._shield,
+                profile_id=f"{config.rapp_id}/terrestrial",
+                description=(
+                    f"band {config.band_lo_hz:.0f}-{config.band_hi_hz:.0f} Hz, "
+                    f"max EIRP {config.max_eirp_dbm} dBm"
+                ),
+            )
+        )
         # Optional Ed25519 certificate signing. Keys are NEVER generated
         # implicitly — a configured-but-unreadable path is a hard startup
         # error (generate via `python -m horizon_ric.shield.signing
@@ -232,6 +251,12 @@ class DecisionPipeline:
         (``A1Adapter._policy_create_schema``; ``additionalProperties: False``)
         plus the optional ``rapp_metadata`` envelope linking back to the
         DecisionRecord.
+
+        The second optional envelope, ``assurance``, is deliberately NOT added
+        here. A candidate is what the planner *proposes*, and the certificate
+        does not exist until the Shield has disposed of it — a payload cannot
+        contain a digest of a certificate over itself. It is merged in step 7
+        of :meth:`process_event`, into a copy.
         """
         meta = {"rapp_metadata": {"decision_id": decision_id}}
         priority = max(1, min(15, 1 + round(risk * 14)))
@@ -520,11 +545,24 @@ class DecisionPipeline:
 
         # 7. Emit over A1. On success the adapter appends the record to the
         #    evidence store and increments the emit/persist metrics itself.
+        #
+        #    The certificate crosses the wire here, in the optional `assurance`
+        #    envelope declared by every create schema (schema 1.1.0). It is
+        #    merged into a COPY, never into `payload` itself: `Shield.dispose`
+        #    shallow-copies the action, so `certificate.action_proposed`
+        #    ["policy_payload"] is the very same dict object as `payload`, and
+        #    mutating it in place would retroactively change the bytes the
+        #    signature was computed over — the certificate would stop verifying
+        #    against itself. `record.chosen_action["policy_payload"]` is left
+        #    pointing at the pre-envelope payload for the same reason: it must
+        #    keep matching what the Shield actually graded.
+        envelope = assurance_envelope(certificate, profile_digest=self._profile_digest)
+        wire_payload = {**payload, "assurance": envelope} if envelope else payload
         evidence_persist_failed = False
         try:
             policy_id, http_status = await self.a1.emit_policy(
                 policy_type,
-                payload,
+                wire_payload,
                 decision_record=record,
                 safety_certificate=certificate,
             )

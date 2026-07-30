@@ -5,8 +5,13 @@ on:
   pull_request:
     paths:
       - "src/horizon_ric/rapp/a1_adapter.py"
+      - "src/horizon_ric/rapp/pipeline.py"
       - "scripts/osc_a1_live_smoke.py"
+      - "scripts/verify_a1_assurance_wire.py"
+      - "deploy/xapp-e2e/a1_assurance_proof.py"
+      - "deploy/xapp-e2e/results/a1-assurance-wire-proof.json"
       - "tests/test_a1_osc_a1_dialect.py"
+      - "tests/test_a1_assurance_envelope.py"
       - ".github/workflows/osc-a1-integration.yml"
 
 permissions:
@@ -78,3 +83,48 @@ jobs:
       - name: Stop simulator
         if: always()
         run: docker rm --force horizon-osc-a1-sim || true
+
+  a1-assurance-wire:
+    # Gates the claim that a SafetyCertificate now crosses a real O-RAN A1
+    # socket as a verifiable reference. Separate from the job above because it
+    # runs the simulator in-process rather than in Docker: the proof owns the
+    # simulator's lifecycle so it can bind a free port and tear it down, and it
+    # needs the source tree rather than an image to import OSC_2.1.0/main.py.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out only the A1 simulator submodule
+        # Not `submodules: recursive` on the checkout: that would also pull
+        # flexric and ocudu, which are large and irrelevant here.
+        run: git submodule update --init --depth 1 third_party/sim-a1-interface
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Horizon-RIC and the simulator's pinned runtime
+        # deps/locks/a1sim.txt carries the simulator's own Flask/Connexion pins
+        # (connexion==2.14.2), which is what the vendored OSC_2.1.0 app needs.
+        run: |
+          python -m pip install '.[dev]'
+          python -m pip install -r deps/locks/a1sim.txt
+      - name: Drive the assurance envelope across the real A1 socket
+        run: |
+          python deploy/xapp-e2e/a1_assurance_proof.py \
+            --out "$RUNNER_TEMP/a1-assurance-wire.json"
+      - name: Verify against the committed result
+        # Re-running and comparing is the point. The verifier also pins the
+        # simulator's git commit, so a run against a hand-rolled stub fails
+        # rather than passing quietly, and it requires the negative control:
+        # a policy type whose schema does not declare `assurance` must reject
+        # the same body, or the positive case proves only that nothing was
+        # validating.
+        run: |
+          python scripts/verify_a1_assurance_wire.py \
+            --committed deploy/xapp-e2e/results/a1-assurance-wire-proof.json \
+            --fresh "$RUNNER_TEMP/a1-assurance-wire.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: a1-assurance-wire-proof
+          path: ${{ runner.temp }}/a1-assurance-wire.json
