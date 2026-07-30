@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from typing import Any
 
@@ -54,6 +55,7 @@ from horizon_ric.shield import default_terrestrial_shield
 from horizon_ric.shield.certificate import SafetyCertificate
 from horizon_ric.shield.signing import (
     canonical_certificate_bytes,
+    generate_signing_key,
     key_fingerprint,
     signed_certificate,
     verify_certificate,
@@ -481,6 +483,121 @@ def test_profile_digest_is_carried_only_when_supplied():
     assert (
         assurance_envelope(cert, profile_digest="ab" * 32)["profile_digest"] == "ab" * 32
     )
+
+
+async def test_pipeline_emit_does_not_invalidate_the_signature_it_shipped():
+    """Regression test for the sharpest hazard in this change.
+
+    ``Shield.dispose`` shallow-copies the action, so
+    ``certificate.action_proposed["policy_payload"]`` is the *same dict object*
+    as the payload the pipeline is about to emit. Merging the envelope into that
+    dict in place would retroactively change the bytes
+    ``canonical_certificate_bytes`` produces, and the signature — computed
+    before the merge — would stop verifying. The pipeline therefore merges into
+    a copy. This test verifies the signature *after* the emit has happened, so
+    an in-place merge fails it.
+
+    No HTTP here: the property under test is in-process aliasing, and the A1
+    collaborator only has to record what it was handed. The real-socket
+    coverage is ``deploy/xapp-e2e/a1_assurance_proof.py``, which does the same
+    verification against the returned body of the official O-RAN-SC simulator.
+    """
+    import tempfile
+    from datetime import datetime, timezone
+
+    from horizon_ric.io.schemas import TelemetryEvent
+    from horizon_ric.rapp.pipeline import DecisionPipeline, PipelineConfig
+
+    class _CapturingA1:
+        def __init__(self) -> None:
+            self.bodies: list[dict[str, Any]] = []
+            self.certificates: list[SafetyCertificate] = []
+            self.records: list[Any] = []
+
+        async def emit_policy(
+            self,
+            policy_type: str,
+            policy_payload: dict[str, Any],
+            policy_id: str | None = None,
+            decision_record: Any = None,
+            safety_certificate: SafetyCertificate | None = None,
+        ) -> tuple[str, int]:
+            # Snapshot through JSON: the wire only ever sees serialised bytes.
+            self.bodies.append(json.loads(json.dumps(policy_payload)))
+            assert safety_certificate is not None
+            self.certificates.append(safety_certificate)
+            self.records.append(decision_record)
+            return "p-signature-survival", 202
+
+        async def get_policy_status(
+            self, policy_type: str, policy_id: str
+        ) -> dict[str, str]:
+            return {"enforceStatus": "ENFORCED"}
+
+    class _Store:
+        def append(self, record: Any) -> None:  # pragma: no cover — happy path
+            pass
+
+    with tempfile.TemporaryDirectory() as tmp:
+        from pathlib import Path as _Path
+
+        key = generate_signing_key(_Path(tmp) / "signing.pem")
+        previous = os.environ.get("HORIZON_CERT_SIGNING_KEY_PATH")
+        os.environ["HORIZON_CERT_SIGNING_KEY_PATH"] = str(_Path(tmp) / "signing.pem")
+        try:
+            a1 = _CapturingA1()
+            pipeline = DecisionPipeline(
+                a1, _Store(), PipelineConfig(status_poll_interval_s=0.01)
+            )
+            event = TelemetryEvent(
+                event_id="evt-assurance-0001",
+                modality="kpm_5g",
+                source_id="test-src",
+                ts_utc=datetime.now(timezone.utc),
+                sequence=1,
+                payload={"sla_risk_30s": 0.05},
+            )
+            result = await pipeline.process_event(event)
+        finally:
+            if previous is None:
+                os.environ.pop("HORIZON_CERT_SIGNING_KEY_PATH", None)
+            else:
+                os.environ["HORIZON_CERT_SIGNING_KEY_PATH"] = previous
+
+    assert result.accepted is True
+    body = a1.bodies[0]
+    certificate = a1.certificates[0]
+    envelope = body["assurance"]
+
+    # The signature is on the wire and the certificate still verifies — checked
+    # after the emit, which is the whole point.
+    assert envelope["signature"] == certificate.signature
+    assert verify_certificate(certificate, key.public_key()) is True
+    assert (
+        envelope["certificate_digest"]
+        == hashlib.sha256(canonical_certificate_bytes(certificate)).hexdigest()
+    )
+    key.public_key().verify(
+        bytes.fromhex(envelope["signature"]), canonical_certificate_bytes(certificate)
+    )
+    assert envelope["signing_key_fingerprint"] == key_fingerprint(key.public_key())
+    assert envelope["profile_digest"] == pipeline._profile_digest
+    assert body["rapp_metadata"] == {"decision_id": result.decision_id}
+
+    # The certificate's own view of the proposed payload is the pre-envelope
+    # one, and so is the DecisionRecord's: both must keep matching what the
+    # Shield actually graded.
+    assert "assurance" not in certificate.action_proposed["policy_payload"]
+    record = a1.records[0]
+    assert "assurance" not in record.chosen_action["policy_payload"]
+    # The evidence side-channel keeps its three-field subset plus signature.
+    assert set(record.chosen_action["certificate"]) == {
+        "safe",
+        "projected",
+        "violated_ids",
+        "signature",
+        "signing_key_fingerprint",
+    }
 
 
 def test_pipeline_stamps_the_live_shield_profile_digest():
