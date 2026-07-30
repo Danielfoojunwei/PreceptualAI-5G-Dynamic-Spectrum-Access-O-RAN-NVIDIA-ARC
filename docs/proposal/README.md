@@ -19,7 +19,7 @@ describes, and this one has to stay checkable against
 ```sh
 python docs/proposal/mkfigs.py        # regenerate all three figures
 python docs/proposal/build_docx.py    # assemble the .docx
-python docs/proposal/validate_docx.py # 69 checks; exits non-zero on any failure
+python docs/proposal/validate_docx.py # 84 checks; exits non-zero on any failure
 python docs/proposal/preview.py       # render the preview PDF
 ```
 
@@ -77,12 +77,18 @@ Beyond layout, the validator enforces things a reviewer would otherwise have to
 take on trust:
 
 - Every reference is cited, and no citation points past the list.
-- No currency figure appears anywhere, and none of the funding phrases the
-  document used to carry survive. This proposal asks for access — measured
-  environments, a member planner, a working-group route — not money, and
-  every in-kind ask in `ALLIANCE_ASKS` is asserted present, along with the named
-  Alliance capabilities it draws on (Data-for-AI, Test Methodology, AI-for-RAN,
-  the endorsed labs).
+- **Funding is requested; no amount is named.** The proposal asks to be funded
+  for named work (WP2–WP5) and separately asks for access that funding cannot
+  buy. The validator therefore enforces both halves: no currency figure and no
+  amount spelled out in words, *and* that the document still says what it wants
+  funded — at least three `FUND` lines, at least three `ACCESS` lines, every
+  ask present in the rendered text, and the Alliance capabilities it draws on
+  named (Data-for-AI, Test Methodology, AI-for-RAN, the endorsed labs).
+- **WP1 is asserted delivered.** If an edit ever re-describes it as a scheduled
+  future package, the build fails. That is not pedantry: WP1's schemas, profile
+  and G1 gate are built and CI-gated, so a plan that asked for time to build
+  them would understate its own evidence — the exact drift this directory
+  exists to prevent.
 - The gated figures (4658, 2442, 461, 0.370, 12/12) are present.
 - Claims the ledger marks **red** are absent in their withdrawn form — "none
   reached the radio", "never exceeds the classical baseline", and any assertion

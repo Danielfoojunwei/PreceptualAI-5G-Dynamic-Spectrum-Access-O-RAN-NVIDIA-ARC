@@ -181,28 +181,48 @@ def check_content(doc):
           "executive summary within the template's 150-250 word band",
           "%d words" % words)
 
-    # This proposal asks for access, not money. A currency figure anywhere in
-    # the document means the funding ask crept back in — the amount and the
-    # word "budget" are both easy to reintroduce by accident when editing a
-    # section that used to carry them.
+    # Funding IS requested — against named work packages — but no amount is
+    # named here, because the right amount depends on which lab and which
+    # measured environment the Alliance can open. So the rule is narrow and
+    # mechanical: no currency figure, and no amount spelled out in words. Both
+    # are easy to reintroduce by accident when editing a section that used to
+    # carry one.
     money = re.findall(r"(?:US\$|\$|€|£)\s?\d[\d,.]*|\b\d{2,3},000\b", text)
-    check(not money, "no funding figure anywhere in the document",
+    check(not money, "no monetary figure anywhere in the document",
           "found: %s" % sorted(set(money))[:5])
-    # Phrase-scoped rather than banning the word "budget", which has an
-    # innocent timing sense elsewhere in the document.
-    for phrase in ("requested budget", "budget summing", "total requested",
-                   "funding request", "we request us"):
-        check(phrase not in text.lower(),
-              "funding language absent: %r" % phrase)
+    spelled = re.findall(
+        r"\b(?:one|two|three|four|five|six|seven|eight|nine|ten)\s+"
+        r"hundred\s+(?:and\s+)?(?:fifty|thousand)|\bthousand\s+(?:US\s*)?dollars?\b",
+        text, flags=re.I)
+    check(not spelled, "no amount spelled out in words",
+          "found: %s" % sorted(set(spelled))[:3])
 
-    # ...and the in-kind asks must actually be there in its place.
+    # The flip side: the proposal must actually say what it wants funded, or
+    # removing the figure would have quietly removed the ask.
+    check("fund" in text.lower(), "the proposal does ask for funding")
+    funded = [a for a, _ in C.ALLIANCE_ASKS if a.startswith("FUND")]
+    access = [a for a, _ in C.ALLIANCE_ASKS if a.startswith("ACCESS")]
+    check(len(funded) >= 3, "several funded lines are named",
+          "%d funded" % len(funded))
+    check(len(access) >= 3, "several access asks are named",
+          "%d access" % len(access))
     for ask, _ in C.ALLIANCE_ASKS:
-        head = ask.split(",")[0]
-        check(head in text, "in-kind ask present: %s" % head)
+        head = ask.split("  ", 1)[1].split(",")[0]
+        check(head in text, "ask present: %s" % head)
     for programme in ("Data-for-AI", "Test Methodology", "AI-for-RAN",
                       "endorsed lab"):
         check(programme in text,
               "names the Alliance capability it draws on: %s" % programme)
+
+    # WP1 is delivered. If a future edit re-describes it as planned work, the
+    # proposal would be asking for time to build what already exists and would
+    # be understating its own evidence — the exact drift this file exists to
+    # catch, so it is asserted rather than trusted.
+    low = text.lower()
+    check("wp1 is already delivered" in low or "wp1 delivered" in low,
+          "WP1 is stated as delivered, not planned")
+    check("wp1, months 1" not in low,
+          "WP1 no longer appears as a scheduled future package")
 
     body_only = text.split("References")[0]
     cited = {int(n) for n in re.findall(r"\[(\d+)\]", body_only)}

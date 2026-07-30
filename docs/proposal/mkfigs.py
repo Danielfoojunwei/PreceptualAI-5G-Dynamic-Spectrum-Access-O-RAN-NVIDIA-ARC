@@ -214,16 +214,21 @@ def enforcement_figure(ps, ev):
 
 
 WPS = [
-    ("WP1  Conformance profile\n        + second planner shielded", 0, 4, "DF", "#3b5ea8"),
-    ("WP2  Second ray-traced\n        scenario and band", 3, 6, "BS", "#1f6f4a"),
-    ("WP3  Measured coexistence\n        (real interferer)", 6, 9, "FL", "#d9873f"),
-    ("WP4  Audit-grade export\n        + E2SM-RC closed loop", 8, 12, "DF", "#7a4b8f"),
+    ("WP1  Conformance profile\n        + G1 second planner", 0, 4, "DF", "#3b5ea8", True),
+    ("WP2  Second ray-traced\n        scenario and band", 4, 8, "BS", "#1f6f4a", False),
+    ("WP3  Measured coexistence\n        (real interferer)", 6, 11, "FL", "#d9873f", False),
+    ("WP4  Audit-grade export\n        + delivered E2 control", 9, 14, "DF", "#7a4b8f", False),
+    ("WP5  Replication and\n        standardisation", 12, 16, "DF+FL", "#5b6b7a", False),
 ]
+# Month 4 is the award boundary: WP1 sits to its left because it is already
+# delivered, and the funded plan is everything to its right.
+DELIVERED_MONTHS = 4
 GATES = [
     (4, "G1"),
-    (6, "G2"),
-    (9, "G3"),
-    (12, "G4"),
+    (8, "G2"),
+    (11, "G3"),
+    (14, "G4"),
+    (16, "G5"),
 ]
 
 
@@ -235,14 +240,32 @@ def plan_figure():
     ax.xaxis.grid(True, color=GRID, lw=0.4, zorder=0)
     ax.set_axisbelow(True)
 
-    for i, (label, a, b, owner, colour) in enumerate(WPS):
+    for i, (label, a, b, owner, colour, delivered) in enumerate(WPS):
         y = len(WPS) - 1 - i
+        # Delivered work is hatched and unfilled so the eye separates what is
+        # already done from what the funding would buy. Fudging that distinction
+        # would be the one dishonest thing this figure could do.
         ax.add_patch(
-            Rectangle((a, y - 0.27), b - a, 0.54, facecolor=colour, alpha=0.86,
-                      edgecolor=INK, lw=0.5, zorder=3)
+            Rectangle(
+                (a, y - 0.27), b - a, 0.54,
+                facecolor="none" if delivered else colour,
+                alpha=1.0 if delivered else 0.86,
+                edgecolor=colour if delivered else INK,
+                hatch="////" if delivered else None,
+                lw=0.9 if delivered else 0.5, zorder=3,
+            )
         )
         ax.annotate(owner, ((a + b) / 2, y), ha="center", va="center",
-                    fontsize=6.0, color="white", fontweight="bold", zorder=4)
+                    fontsize=6.0,
+                    color=colour if delivered else "white",
+                    fontweight="bold", zorder=4)
+
+    # The award boundary. Everything left of it is delivered.
+    ax.axvline(DELIVERED_MONTHS, color=INK, lw=0.8, zorder=5)
+    ax.annotate("delivered", (DELIVERED_MONTHS - 0.25, -0.5), ha="right",
+                va="center", fontsize=5.0, style="italic", color=INK)
+    ax.annotate("funded plan", (DELIVERED_MONTHS + 0.25, -0.5), ha="left",
+                va="center", fontsize=5.0, style="italic", color=INK)
 
     for m, g in GATES:
         ax.annotate(g, (m, len(WPS) - 0.42), ha="center", va="bottom",
@@ -253,11 +276,11 @@ def plan_figure():
     ax.set_yticks(range(len(WPS)))
     ax.set_yticklabels([w[0] for w in reversed(WPS)], fontsize=5.5,
                        linespacing=1.15)
-    ax.set_ylim(-0.62, len(WPS) - 0.32)
-    ax.set_xlim(0, 12.4)
-    ax.set_xticks(range(0, 13, 2))
-    ax.set_xlabel("month", fontsize=6.2, labelpad=1.5)
-    ax.set_title("Twelve-month plan: owners and exit gates", fontsize=6.6, pad=4)
+    ax.set_ylim(-0.75, len(WPS) - 0.32)
+    ax.set_xlim(0, 16.5)
+    ax.set_xticks(range(0, 17, 4))
+    ax.set_xlabel("month (0 = start of WP1)", fontsize=6.2, labelpad=1.5)
+    ax.set_title("WP1 delivered; twelve funded months follow", fontsize=6.6, pad=4)
     ax.tick_params(axis="y", length=0)
 
     fig.savefig(HERE / "fig-plan.png", bbox_inches="tight", pad_inches=0.012)

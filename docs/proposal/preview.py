@@ -114,9 +114,11 @@ def build_html() -> str:
                        % (esc(label), esc(rest)))
         if head.startswith("VI."):
             out.append('<div class="tblock">')
-            out.append('<p class="tabcap"><b>Table I.</b> What we ask of the '
-                       'Alliance, and what goes back in return. No funding is '
-                       'requested.</p>')
+            out.append('<p class="tabcap"><b>Table I.</b> What we ask for '
+                       '&mdash; funding against named work, and the access '
+                       'funding cannot buy &mdash; with what goes back in '
+                       'return. Amounts are in the costed breakdown, not '
+                       'here.</p>')
             out.append('<table class="budget crit">')
             for ask, gives in C.ALLIANCE_ASKS:
                 out.append('<tr><td><b>%s</b> %s</td></tr>'

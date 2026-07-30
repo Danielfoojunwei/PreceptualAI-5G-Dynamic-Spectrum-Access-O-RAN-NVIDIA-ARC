@@ -300,8 +300,10 @@ def emit_sections(doc, groups) -> None:
             figure(doc, HERE / "fig-plan.png", COL_WIDTH_IN - 0.02,
                    C.FIG3_CAPTION, caption_pt=7.2)
         if head.startswith("VI."):
-            caption_only(doc, "Table I.  What we ask of the Alliance, and what "
-                              "goes back in return. No funding is requested.",
+            caption_only(doc, "Table I.  What we ask for — funding against "
+                              "named work, and the access funding cannot buy "
+                              "— with what goes back in return. Amounts are "
+                              "in the costed breakdown, not here.",
                          keep_with_next=True)
             asks_table(doc)
         if head.startswith("VIII."):
