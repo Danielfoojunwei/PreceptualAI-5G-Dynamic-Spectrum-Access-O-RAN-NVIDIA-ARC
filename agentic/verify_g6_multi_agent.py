@@ -10,7 +10,7 @@ The claim under gate:
     not depend on arrival order, and where it cannot resolve it, refuses the
     whole transaction rather than part of it.
 
-Six checks. Every one of them can fail, and the falsification log in
+Nine checks. Every one of them can fail, and the falsification log in
 ``agentic/README.md`` records the edit that makes each fail.
 
 The first check is the one that matters most. A "multi-agent conflict" whose
@@ -39,6 +39,11 @@ REPO = HERE.parent
 sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(HERE / "src"))
 
+from dataclasses import dataclass  # noqa: E402
+
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (  # noqa: E402
+    Ed25519PrivateKey,
+)
 from horizon_agentic.aggregate import AbsoluteSliceCapacityFloor  # noqa: E402
 from horizon_agentic.bundle import (  # noqa: E402
     SafetyTransaction,
@@ -49,6 +54,15 @@ from horizon_agentic.envelope import (  # noqa: E402
     AuthorityGrant,
     AuthorityPolicy,
 )
+from horizon_agentic.evidence import (  # noqa: E402
+    TransactionEvidenceChain,
+    verify_chain,
+)
+from horizon_agentic.identity import (  # noqa: E402
+    AgentRegistry,
+    EnvelopeAuthenticator,
+    sign_envelope,
+)
 from horizon_agentic.telemetry_trust import (  # noqa: E402
     FieldBound,
     TelemetryRecord,
@@ -58,11 +72,14 @@ from horizon_agentic.telemetry_trust import (  # noqa: E402
 )
 
 from horizon_ric.shield import default_terrestrial_shield  # noqa: E402
+from horizon_ric.shield.certificate import InvariantCheck  # noqa: E402
 
 ROOT = "operator-root"
 BAND_LO, BAND_HI = 3.40e9, 3.50e9
 MAX_EIRP_DBM = 33.0
 FLOOR_HZ = 20e6
+CELL = "cell-3450-A"
+NOW = 1_700_000_000.0
 
 BASELINE: dict[str, Any] = {
     "block": "ran_control",
@@ -79,11 +96,15 @@ BASELINE: dict[str, Any] = {
 PINNED = [
     REPO / "src/horizon_ric/shield/shield.py",
     REPO / "src/horizon_ric/shield/invariants.py",
+    REPO / "src/horizon_ric/shield/certificate.py",
+    REPO / "src/horizon_ric/assurance/planner.py",
     HERE / "src/horizon_agentic/aggregate.py",
     HERE / "src/horizon_agentic/conflict.py",
     HERE / "src/horizon_agentic/envelope.py",
     HERE / "src/horizon_agentic/bundle.py",
     HERE / "src/horizon_agentic/telemetry_trust.py",
+    HERE / "src/horizon_agentic/identity.py",
+    HERE / "src/horizon_agentic/evidence.py",
 ]
 
 
@@ -113,6 +134,9 @@ def _energy(bandwidth_hz: float = 50e6) -> AgentActionEnvelope:
         delegation_chain=(ROOT, "energy-agent"),
         requested_action={**BASELINE, "bandwidth_hz": bandwidth_hz},
         mutates=frozenset({"bandwidth_hz"}),
+        resource_id=CELL,
+        nonce="energy-1",
+        issued_at=NOW,
     )
 
 
@@ -128,6 +152,9 @@ def _slice(share: float = 0.25) -> AgentActionEnvelope:
             "prb_allocation": {"safety_critical": share, "embb": 1.0 - share},
         },
         mutates=frozenset({"prb_allocation"}),
+        resource_id=CELL,
+        nonce="slice-1",
+        issued_at=NOW,
     )
 
 
@@ -240,6 +267,9 @@ def check_atomic_refusal() -> dict[str, Any]:
             "prb_allocation": {"safety_critical": 0.25, "embb": 0.75},
         },
         mutates=frozenset({"prb_allocation"}),
+        resource_id=CELL,
+        nonce="starved-1",
+        issued_at=NOW,
     )
     result = _txn(_policy()).evaluate([env], context={"baseline_action": starved})
     unreadable = False
@@ -272,6 +302,9 @@ def check_authority_is_enforced() -> dict[str, Any]:
             "prb_allocation": {"safety_critical": 0.05, "embb": 0.95},
         },
         mutates=frozenset({"prb_allocation"}),
+        resource_id=CELL,
+        nonce="overreach-1",
+        issued_at=NOW,
     )
     result = _txn(_policy()).evaluate([_slice(), overreaching], context=_ctx())
     return {
@@ -334,6 +367,196 @@ def check_telemetry_gate_refuses() -> dict[str, Any]:
     return {"id": "telemetry_gate_refuses", "passed": bool(ok), "refused_by": refused_by}
 
 
+def check_identity_is_enforced() -> dict[str, Any]:
+    """An unsigned or impersonated envelope must refuse the transaction.
+
+    Added after review pointed out that the gate ran the layer with
+    authentication *disabled*: the artefact offered as evidence exercised
+    neither identity nor signing, which are the parts that close what
+    `identity.py` calls "not a subtle hole".
+    """
+    keys = {
+        "energy-agent": Ed25519PrivateKey.generate(),
+        "slice-agent": Ed25519PrivateKey.generate(),
+    }
+    registry = AgentRegistry({n: k.public_key() for n, k in keys.items()})
+
+    def auth() -> EnvelopeAuthenticator:
+        return EnvelopeAuthenticator(registry, clock=lambda: NOW)
+
+    signed_ok = _txn(_policy(), authenticator=auth()).evaluate(
+        [sign_envelope(_slice(), keys["slice-agent"])], context=_ctx()
+    )
+    unsigned = _txn(_policy(), authenticator=auth()).evaluate(
+        [_slice()], context=_ctx()
+    )
+    impersonated = _txn(_policy(), authenticator=auth()).evaluate(
+        [sign_envelope(_energy(), keys["slice-agent"])], context=_ctx()
+    )
+    replayed_gate = auth()
+    once = sign_envelope(_slice(), keys["slice-agent"])
+    first = _txn(_policy(), authenticator=replayed_gate).evaluate(
+        [once], context=_ctx()
+    )
+    second = _txn(_policy(), authenticator=replayed_gate).evaluate(
+        [once], context=_ctx()
+    )
+    return {
+        "id": "identity_enforced",
+        "passed": (
+            signed_ok.committed
+            and not unsigned.committed
+            and not impersonated.committed
+            and first.committed
+            and not second.committed
+        ),
+        "signed_committed": signed_ok.committed,
+        "unsigned_committed": unsigned.committed,
+        "impersonated_committed": impersonated.committed,
+        "replay_committed": second.committed,
+    }
+
+
+def check_evidence_is_signed_and_chained() -> dict[str, Any]:
+    """Every transaction, committed or refused, must leave a verifiable record."""
+    key = Ed25519PrivateKey.generate()
+    chain = TransactionEvidenceChain()
+    txn = _txn(_policy(), signing_key=key, chain=chain)
+
+    committed = txn.evaluate([_slice()], context=_ctx(), transaction_id="t-commit")
+    txn.evaluate([_energy()], context=_ctx(), transaction_id="t-second")
+    starved = {**BASELINE, "bandwidth_hz": 30e6}
+    refused = _txn(_policy(), signing_key=key, chain=chain).evaluate(
+        [_slice()], context={"baseline_action": starved}, transaction_id="t-refuse"
+    )
+    intact = verify_chain(chain.entries, public_key=key.public_key()) is None
+
+    # Tamper with the first record; the break must be localised to it.
+    import dataclasses
+
+    from horizon_agentic.evidence import chain_hash
+
+    victim = chain.entries[0]
+    forged = dataclasses.replace(victim.certificate, committed=False)
+    chain.entries[0] = dataclasses.replace(victim, certificate=forged)
+    broken = verify_chain(chain.entries)
+
+    # The real attack: an attacker with store access rewrites the record,
+    # recomputes its hash, AND rewrites the successor's `prev_hash` to match —
+    # a fully re-linked chain. This is caught only because the predecessor hash
+    # is *hashed into* each entry, so changing the successor's `prev_hash`
+    # changes its own `entry_hash`. A first pass falsified this by removing
+    # prev from the hash and the gate stayed green, because it only tested a
+    # partial rewrite that the stored-prev comparison catches on its own.
+    forged_hash = chain_hash(victim.prev_hash, forged)
+    chain.entries[0] = dataclasses.replace(
+        victim, certificate=forged, entry_hash=forged_hash
+    )
+    successor = chain.entries[1]
+    chain.entries[1] = dataclasses.replace(successor, prev_hash=forged_hash)
+    relinked = verify_chain(chain.entries)
+
+    return {
+        "id": "evidence_signed_and_chained",
+        "passed": (
+            committed.certificate.signature is not None
+            and refused.certificate.signature is not None
+            and refused.certificate.committed is False
+            and bool(refused.certificate.refusals)
+            and intact
+            and broken is not None
+            and broken.index == 0
+            and relinked is not None
+            and relinked.index == 1
+        ),
+        "commit_signed": committed.certificate.signature is not None,
+        "refusal_signed": refused.certificate.signature is not None,
+        "refusal_states_reasons": list(refused.certificate.refusals),
+        "chain_intact_before_tamper": intact,
+        "tamper_localised_to_index": broken.index if broken else None,
+        "relink_detected_at_index": relinked.index if relinked else None,
+    }
+
+
+def check_no_silent_partial_commit() -> dict[str, Any]:
+    """Dropping every member must refuse, not report an empty success.
+
+    The envelopes are built against the starved baseline on purpose. An earlier
+    version of this check reused the standard 100 MHz envelopes against a
+    30 MHz baseline, so the transaction refused at *authority* — the declared
+    bandwidth did not match — and the check passed without ever reaching the
+    resolution path it exists to test. Falsifying the guard did not fail the
+    gate, which is how the mistake surfaced.
+    """
+    starved = {**BASELINE, "bandwidth_hz": 30e6}
+
+    def env(agent_id, scopes, action, mutates, nonce):
+        return AgentActionEnvelope(
+            agent_id=agent_id,
+            agent_version="1.0.0",
+            target_domain="ran",
+            granted_scopes=frozenset(scopes),
+            delegation_chain=(ROOT, agent_id),
+            requested_action=action,
+            mutates=frozenset(mutates),
+            resource_id=CELL,
+            nonce=nonce,
+            issued_at=NOW,
+        )
+
+    # A purpose-built aggregate, because the branch is otherwise unreachable
+    # with the shipped set: every single-member subset inherits the baseline
+    # for the keys it does not mutate, so one member alone almost always
+    # satisfies the capacity floor and resolution succeeds before emptying.
+    # This one is violated by any non-empty set and satisfied by the empty set,
+    # which is exactly the shape that produces "resolved, with nobody left".
+    @dataclass(frozen=True)
+    class _RefuseAnyMember:
+        id: str = "gate_probe_refuse_any_member"
+        reads: frozenset[str] = frozenset({"bandwidth_hz"})
+
+        def evaluate(self, actions, context):
+            return InvariantCheck(
+                invariant_id=self.id,
+                satisfied=not actions,
+                margin=0.0 if not actions else -1.0,
+                unit="count",
+                detail=f"{len(actions)} member(s) present",
+            )
+
+    probe = SafetyTransaction(
+        shield=default_terrestrial_shield(
+            band_lo_hz=BAND_LO, band_hi_hz=BAND_HI, max_eirp_dBm=MAX_EIRP_DBM
+        ),
+        policy=_policy(),
+        aggregates=[_RefuseAnyMember()],
+    )
+    result = probe.evaluate(
+        [
+            env("energy-agent", {"spectrum"},
+                {**starved, "bandwidth_hz": 25e6}, {"bandwidth_hz"}, "e"),
+            env("slice-agent", {"slice"},
+                {**starved, "prb_allocation": {"safety_critical": 0.21, "embb": 0.79}},
+                {"prb_allocation"}, "s"),
+        ],
+        context={"baseline_action": starved},
+    )
+    reached_resolution = (
+        result.resolution is not None
+        and result.resolution.resolved
+        and not result.resolution.admitted
+    )
+    return {
+        "id": "no_silent_partial_commit",
+        "passed": (
+            reached_resolution and not result.committed and bool(result.refusals)
+        ),
+        "reached_resolution": reached_resolution,
+        "committed": result.committed,
+        "refusals": list(result.refusals),
+    }
+
+
 def source_digests() -> dict[str, str]:
     out = {}
     for path in PINNED:
@@ -350,6 +573,9 @@ def run() -> dict[str, Any]:
         check_atomic_refusal(),
         check_authority_is_enforced(),
         check_telemetry_gate_refuses(),
+        check_identity_is_enforced(),
+        check_evidence_is_signed_and_chained(),
+        check_no_silent_partial_commit(),
     ]
     return {
         "gate": "G6",

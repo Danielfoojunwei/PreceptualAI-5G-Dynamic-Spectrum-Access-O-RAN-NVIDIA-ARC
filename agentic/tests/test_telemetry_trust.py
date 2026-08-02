@@ -237,13 +237,19 @@ def test_agreeing_sources_are_admitted() -> None:
     assert verdict.trusted, verdict.refusals
 
 
-def test_merge_is_not_value_dependent() -> None:
-    """A hostile source must not be able to steer the admitted value.
+def test_corroborated_merge_takes_the_median_not_the_first_source() -> None:
+    """Corrected, and worth recording why.
 
-    Merging by mean, newest, max or min would all let one corroborating source
-    move the result by choosing what it reports. Selecting by source id is
-    boring on purpose: it is the only rule an attacker cannot influence by
-    changing its measurement.
+    An earlier version of this module took the reading from the
+    lexicographically first source, and this test asserted that was "the only
+    rule an attacker cannot influence by changing its measurement". That claim
+    was false, and an adversarial review reproduced it: the attacker does not
+    change its measurement, it changes its *name*. Registering as
+    ``aaa-sensor`` wins every contested field, permanently and for free — a
+    registration-time choice, not an ongoing attack.
+
+    The median needs two of three sources to move, so a single hostile source
+    is bounded rather than authoritative.
     """
     pol = policy(
         corroborate=frozenset({"interference_dBm"}),
@@ -258,7 +264,140 @@ def test_merge_is_not_value_dependent() -> None:
         ]
     )
     assert verdict.trusted, verdict.refusals
-    assert verdict.state["interference_dBm"] == -95.0  # sensor-a sorts first
+    assert verdict.state["interference_dBm"] == -93.5
+
+
+def test_a_lexicographically_first_source_no_longer_dictates() -> None:
+    """The attack the previous rule permitted, now bounded.
+
+    ``aaa-sensor`` reports a value at the edge of the tolerance window; two
+    honest sources agree. Under the old rule the attacker's number was the
+    admitted state outright. Under the median it cannot be, and the honest
+    reading survives.
+    """
+    pol = TrustPolicy(
+        secrets={"aaa-sensor": b"a", "gnb-1": b"b", "gnb-2": b"c"},
+        max_age_s=5.0,
+        bounds=BOUNDS,
+        required_fields=frozenset({"interference_dBm"}),
+        corroborate=frozenset({"interference_dBm"}),
+        corroboration_tolerance={"interference_dBm": 5.0},
+        min_corroborating_sources=3,
+    )
+    gate = TelemetryTrustGate(pol, clock=FrozenClock())
+    verdict = gate.admit(
+        [
+            record(source="aaa-sensor", secret=b"a", interference_dBm=-91.0),
+            record(source="gnb-1", secret=b"b", interference_dBm=-95.0),
+            record(source="gnb-2", secret=b"c", interference_dBm=-95.5),
+        ]
+    )
+    assert verdict.trusted, verdict.refusals
+    assert verdict.state["interference_dBm"] == -95.0
+    assert verdict.state["interference_dBm"] != -91.0
+
+
+def test_admitted_state_is_read_only() -> None:
+    """Editing the world model after the gate certified it must not be possible."""
+    gate = TelemetryTrustGate(policy(), clock=FrozenClock())
+    verdict = gate.admit([record()])
+    assert verdict.trusted
+    with pytest.raises(TypeError):
+        verdict.state["rsrp_dBm"] = 999.0  # type: ignore[index]
+
+
+def test_a_non_ascii_auth_tag_is_refused_not_raised() -> None:
+    """`hmac.compare_digest` raises TypeError on non-ASCII str arguments.
+
+    An exception escaping the gate is not a refusal: it propagates out of the
+    transaction and defeats the fail-closed discipline the whole module is
+    built on — from a party holding no key at all.
+    """
+    gate = TelemetryTrustGate(policy(), clock=FrozenClock())
+    tampered = TelemetryRecord("sensor-a", 1000.0, 1, {"rsrp_dBm": -90.0}, "é" * 64)
+    verdict = gate.admit([tampered])
+    assert not verdict.trusted
+    assert any(c.check_id == "source_authenticated" for c in verdict.refusals)
+
+
+def test_one_bad_record_does_not_veto_the_whole_batch() -> None:
+    """Otherwise anyone who can put a packet on the bus silences the domain.
+
+    Per-record failures belong in the evidence, but the verdict must turn on
+    the batch-level checks over the records that authenticated. The earlier
+    `all(c.passed for c in checks)` folded in every per-record check, which
+    made the `authentic` filter unreachable and handed a denial-of-service to
+    an unauthenticated party.
+    """
+    gate = TelemetryTrustGate(policy(), clock=FrozenClock())
+    verdict = gate.admit(
+        [
+            record(seq=1),
+            record(source="sensor-rogue", secret=SECRET_A, seq=1),
+        ]
+    )
+    assert verdict.trusted, [f"{c.check_id}: {c.detail}" for c in verdict.refusals]
+    assert verdict.state["rsrp_dBm"] == -90.0
+    assert any(
+        c.check_id == "source_authenticated" and not c.passed for c in verdict.checks
+    ), "the rejected record must still appear in the evidence"
+
+
+def test_in_batch_duplicates_are_refused() -> None:
+    """Replay state advances after the batch, so two identical records in one
+    batch were both admitted."""
+    gate = TelemetryTrustGate(policy(), clock=FrozenClock())
+    duplicate = record(seq=7)
+    verdict = gate.admit([duplicate, duplicate])
+    assert not verdict.trusted
+    assert any("within one batch" in c.detail for c in verdict.refusals)
+
+
+def test_a_huge_sequence_jump_cannot_wedge_a_source() -> None:
+    """One record at 2**63 would otherwise silence a source permanently."""
+    gate = TelemetryTrustGate(policy(max_sequence_gap=100), clock=FrozenClock())
+    assert gate.admit([record(seq=1)]).trusted
+    wedge = gate.admit([record(seq=2**63)])
+    assert not wedge.trusted
+    assert any("jumps" in c.detail for c in wedge.refusals)
+    assert gate.admit([record(seq=2)]).trusted, "the genuine source must survive"
+
+
+def test_a_source_cannot_report_fields_outside_its_remit() -> None:
+    """Nothing otherwise binds a source to the fields it is entitled to send."""
+    pol = policy(allowed_fields={"sensor-a": frozenset({"rsrp_dBm"})})
+    gate = TelemetryTrustGate(pol, clock=FrozenClock())
+    verdict = gate.admit([record(rsrp_dBm=-90.0, prb_utilisation=0.5)])
+    assert not verdict.trusted
+    assert any(c.check_id == "field_authorization" for c in verdict.refusals)
+
+
+def test_non_finite_values_cannot_be_signed() -> None:
+    """`json.dumps` emits bare NaN/Infinity, which is not valid JSON.
+
+    A tag computed over bytes no conforming parser can read is verifiable by
+    nobody but us, which defeats the point of authenticating at all.
+    """
+    with pytest.raises(ValueError):
+        canonical_record_bytes(
+            TelemetryRecord("sensor-a", 1000.0, 1, {"rsrp_dBm": float("nan")})
+        )
+
+
+def test_int_and_float_timestamps_produce_the_same_bytes() -> None:
+    """Same instant, same tag. A JSON round-trip must not invalidate a record."""
+    a = TelemetryRecord("sensor-a", 1700000000, 1, {"rsrp_dBm": -90.0})
+    b = TelemetryRecord("sensor-a", 1700000000.0, 1, {"rsrp_dBm": -90.0})
+    assert canonical_record_bytes(a) == canonical_record_bytes(b)
+
+
+def test_canonical_bytes_are_domain_separated() -> None:
+    """A per-source secret reused for another message with a compatible JSON
+    shape would otherwise permit cross-protocol forgery."""
+    from horizon_agentic.telemetry_trust import DOMAIN_TAG
+
+    raw = canonical_record_bytes(TelemetryRecord("s", 1.0, 1, {"rsrp_dBm": -90.0}))
+    assert raw.startswith(DOMAIN_TAG)
 
 
 def test_refused_state_cannot_be_read() -> None:

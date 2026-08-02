@@ -51,6 +51,10 @@ __all__ = [
     "AggregateInvariant",
     "AbsoluteSliceCapacityFloor",
     "AggregateEirpBudget",
+    "SpectralSeparation",
+    "PrbConservation",
+    "AggregatePfdCeiling",
+    "RESOURCE_IDS_KEY",
     "effective_bandwidth_hz",
     "effective_allocation",
 ]
@@ -83,6 +87,29 @@ def _finite(value: Any) -> float | None:
     except (TypeError, ValueError, OverflowError):
         return None
     return number if math.isfinite(number) else None
+
+
+RESOURCE_IDS_KEY = "_resource_ids"
+
+
+def _by_resource(
+    actions: Sequence[Action], context: Context
+) -> list[tuple[str, Action]]:
+    """Pair each action with the resource it addresses.
+
+    Falls back to the action's index when the context carries no resource ids,
+    which treats every member as its own resource. That is the conservative
+    default for summing limits — it over-counts rather than under-counts — and
+    :class:`~horizon_agentic.bundle.SafetyTransaction` always supplies real ids,
+    so the fallback is only reached by a caller driving an aggregate directly.
+    """
+    ids = context.get(RESOURCE_IDS_KEY)
+    if not isinstance(ids, Sequence) or len(ids) != len(actions):
+        return [(f"#{i}", action) for i, action in enumerate(actions)]
+    return [
+        (str(rid) if rid else f"#{i}", action)
+        for i, (rid, action) in enumerate(zip(ids, actions))
+    ]
 
 
 def effective_bandwidth_hz(actions: Sequence[Action]) -> float | None:
@@ -240,9 +267,19 @@ class AggregateEirpBudget:
         return power + gain
 
     def evaluate(self, actions: Sequence[Action], context: Context) -> InvariantCheck:
-        contributions = [
-            eirp for eirp in (self._eirp_dBm(a) for a in actions) if eirp is not None
-        ]
+        # Sum across DISTINCT resources, not across bundle members. Two agents
+        # describing the same cell are not two carriers: an earlier version
+        # summed members and manufactured a phantom +3.01 dB out of a second
+        # agent merely *declaring* the power it was not changing — the exact
+        # declared-versus-mutated distinction the envelope exists to draw.
+        per_resource: dict[str, float] = {}
+        for resource, action in _by_resource(actions, context):
+            eirp = self._eirp_dBm(action)
+            if eirp is None:
+                continue
+            # Within one resource the worst case is the highest proposal.
+            per_resource[resource] = max(per_resource.get(resource, eirp), eirp)
+        contributions = list(per_resource.values())
         if not contributions:
             return InvariantCheck(
                 invariant_id=self.id,
@@ -260,7 +297,201 @@ class AggregateEirpBudget:
             margin=margin,
             unit="dBm",
             detail=(
-                f"{len(contributions)} emission(s) sum to {total:.3f} dBm against a "
+                f"{len(contributions)} resource(s) sum to {total:.3f} dBm against a "
                 f"site budget of {self.max_total_eirp_dBm:.3f} dBm"
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class SpectralSeparation:
+    """Guard separation between carriers placed by *different* agents.
+
+    ``SpectralMaskInvariant`` checks that one carrier sits inside the licensed
+    band. Two agents can each place a carrier impeccably inside that band and
+    place them on top of each other: overlap is a property of the pair, and a
+    per-action mask check has no second carrier to compare against.
+
+    The physical limit is adjacent-channel leakage. Two carriers need their
+    centres separated by at least half of each occupied bandwidth plus a guard,
+    or the skirt of one lands in the passband of the other. The same arithmetic
+    the shipped ``SpectralMaskInvariant`` applies to a band edge, applied here
+    to a neighbour.
+
+    The reported margin is the *worst* pair, not an average: an aggregate check
+    that averaged would let one badly-placed pair hide behind several
+    well-placed ones.
+    """
+
+    guard_hz: float = 1e6
+    id: str = "spectral_separation"
+    reads: frozenset[str] = frozenset({"frequency_hz", "bandwidth_hz"})
+
+    def evaluate(self, actions: Sequence[Action], context: Context) -> InvariantCheck:
+        # One carrier per resource. Without this, two agents describing the
+        # same cell appear as two carriers separated by 0 Hz and the check
+        # reports an overlap that does not exist — a false refusal, which in a
+        # fail-closed system is as damaging as a false admission.
+        by_resource: dict[str, tuple[float, float]] = {}
+        for resource, action in _by_resource(actions, context):
+            centre = _finite(action.get("frequency_hz"))
+            width = _finite(action.get("bandwidth_hz"))
+            if centre is None or width is None or width <= 0.0 or centre <= 0.0:
+                continue
+            existing = by_resource.get(resource)
+            # Widest proposal for a resource is the worst case for overlap.
+            if existing is None or width > existing[1]:
+                by_resource[resource] = (centre, width)
+        carriers = [by_resource[k] for k in sorted(by_resource)]
+
+        if len(carriers) < 2:
+            return InvariantCheck(
+                invariant_id=self.id,
+                satisfied=True,
+                margin=float("inf"),
+                unit="Hz",
+                detail=(
+                    f"{len(carriers)} carrier(s) in the bundle; separation is a "
+                    "property of a pair"
+                ),
+            )
+
+        worst: float | None = None
+        worst_pair = ""
+        for i in range(len(carriers)):
+            for j in range(i + 1, len(carriers)):
+                (f_i, bw_i), (f_j, bw_j) = carriers[i], carriers[j]
+                required = (bw_i + bw_j) / 2.0 + self.guard_hz
+                actual = abs(f_i - f_j)
+                slack = actual - required
+                if worst is None or slack < worst:
+                    worst = slack
+                    worst_pair = (
+                        f"{f_i / 1e6:.3f} MHz ({bw_i / 1e6:.3f} MHz wide) and "
+                        f"{f_j / 1e6:.3f} MHz ({bw_j / 1e6:.3f} MHz wide): "
+                        f"separated by {actual / 1e6:.3f} MHz, need "
+                        f"{required / 1e6:.3f} MHz"
+                    )
+        assert worst is not None  # len(carriers) >= 2
+        return InvariantCheck(
+            invariant_id=self.id,
+            satisfied=worst >= 0.0,
+            margin=worst,
+            unit="Hz",
+            detail=f"closest pair — {worst_pair}",
+        )
+
+
+@dataclass(frozen=True)
+class PrbConservation:
+    """The PRB shares must still describe a possible allocation.
+
+    ``ProtectedSliceFloorInvariant.project`` is careful to keep an allocation
+    "a valid simplex rather than merely being clipped" — it reclaims pro rata
+    so the shares keep summing to one. Merging allocations across a bundle
+    discards that guarantee, and an earlier version of this module replaced it
+    with nothing: three agents each raising their own slice committed 160% of
+    the cell's PRBs with a comfortable margin on every other check.
+
+    The floor invariant cannot catch this. It asks whether one slice has
+    *enough*; nobody was asking whether the cell had that much to give.
+    """
+
+    tolerance: float = 1e-9
+    id: str = "prb_conservation"
+    reads: frozenset[str] = frozenset({"prb_allocation"})
+
+    def evaluate(self, actions: Sequence[Action], context: Context) -> InvariantCheck:
+        allocation = effective_allocation(actions)
+        if allocation is None:
+            baseline = context.get("baseline_action")
+            if isinstance(baseline, Mapping) and baseline:
+                allocation = effective_allocation([baseline])
+        if not allocation:
+            return InvariantCheck(
+                invariant_id=self.id,
+                satisfied=True,
+                margin=float("inf"),
+                unit="fraction",
+                detail="no PRB allocation in the bundle or the baseline",
+            )
+        total = sum(allocation.values())
+        margin = 1.0 + self.tolerance - total
+        negative = sorted(k for k, v in allocation.items() if v < 0.0)
+        detail = (
+            f"{len(allocation)} slice(s) sum to {total:.4f} of the cell's PRBs"
+        )
+        if negative:
+            detail += f"; negative share(s) for {negative}"
+        return InvariantCheck(
+            invariant_id=self.id,
+            satisfied=margin >= 0.0 and not negative,
+            margin=margin,
+            unit="fraction",
+            detail=detail,
+        )
+
+
+@dataclass(frozen=True)
+class AggregatePfdCeiling:
+    """Power-flux density at a ground point, summed over beams.
+
+    ``PfdCeilingInvariant`` bounds one downlink. PFD from several beams
+    illuminating the same point adds in the linear domain exactly as EIRP does,
+    and no per-beam ceiling expresses the total. The module exists to add
+    aggregate analogues of the single-action limits, and this was the one the
+    repository's own comments call "funding-relevant" — the LEO power-control
+    problem — so its absence was the more conspicuous for it.
+
+    Uses the same slant-range spreading term as the single-action invariant:
+    PFD = EIRP - 10*log10(4*pi*d^2), per MHz of occupied bandwidth.
+    """
+
+    max_pfd_dBW_m2_MHz: float = -146.0
+    id: str = "aggregate_pfd_ceiling"
+    reads: frozenset[str] = frozenset(
+        {"tx_power_dBm", "sat_antenna_gain_dBi", "slant_range_m", "bandwidth_hz"}
+    )
+
+    @staticmethod
+    def _pfd_dBW(action: Action) -> float | None:
+        power = _finite(action.get("tx_power_dBm"))
+        distance = _finite(action.get("slant_range_m"))
+        bandwidth = _finite(action.get("bandwidth_hz"))
+        if power is None or distance is None or bandwidth is None:
+            return None
+        if distance <= 0.0 or bandwidth <= 0.0:
+            return None
+        gain = _finite(action.get("sat_antenna_gain_dBi")) or 0.0
+        eirp_dBW = power + gain - 30.0
+        spreading = 10.0 * math.log10(4.0 * math.pi * distance * distance)
+        per_mhz = 10.0 * math.log10(bandwidth / 1e6)
+        return eirp_dBW - spreading - per_mhz
+
+    def evaluate(self, actions: Sequence[Action], context: Context) -> InvariantCheck:
+        beams = [
+            pfd
+            for _, action in _by_resource(actions, context)
+            if (pfd := self._pfd_dBW(action)) is not None
+        ]
+        if not beams:
+            return InvariantCheck(
+                invariant_id=self.id,
+                satisfied=True,
+                margin=float("inf"),
+                unit="dBW/m^2/MHz",
+                detail="no beam in the bundle declares a slant range; PFD not engaged",
+            )
+        linear = sum(10.0 ** (pfd / 10.0) for pfd in beams)
+        total = 10.0 * math.log10(linear) if linear > 0 else float("-inf")
+        margin = self.max_pfd_dBW_m2_MHz - total
+        return InvariantCheck(
+            invariant_id=self.id,
+            satisfied=margin >= 0.0,
+            margin=margin,
+            unit="dBW/m^2/MHz",
+            detail=(
+                f"{len(beams)} beam(s) sum to {total:.3f} dBW/m^2/MHz against a "
+                f"ceiling of {self.max_pfd_dBW_m2_MHz:.3f}"
             ),
         )

@@ -89,6 +89,7 @@
         ],
         "required_fields": [
           "corroboration",
+          "field_range",
           "required_fields"
         ],
         "source_authenticated": [
@@ -97,17 +98,50 @@
           "source_authenticated"
         ]
       }
+    },
+    {
+      "id": "identity_enforced",
+      "impersonated_committed": false,
+      "passed": true,
+      "replay_committed": false,
+      "signed_committed": true,
+      "unsigned_committed": false
+    },
+    {
+      "chain_intact_before_tamper": true,
+      "commit_signed": true,
+      "id": "evidence_signed_and_chained",
+      "passed": true,
+      "refusal_signed": true,
+      "refusal_states_reasons": [
+        "authority.slice-agent: agent 'slice-agent' changes ['bandwidth_hz'] without declaring them as mutations; declared state must match the baseline"
+      ],
+      "relink_detected_at_index": 1,
+      "tamper_localised_to_index": 0
+    },
+    {
+      "committed": false,
+      "id": "no_silent_partial_commit",
+      "passed": true,
+      "reached_resolution": true,
+      "refusals": [
+        "conflict resolution dropped every member: energy-agent (priority 20, gate_probe_refuse_any_member), slice-agent (priority 15, gate_probe_refuse_any_member)"
+      ]
     }
   ],
   "claim": "two individually-legal agent actions can jointly breach a protected slice's capacity commitment; the bundle detects it, resolves it deterministically by operator priority, and refuses atomically when it cannot",
   "gate": "G6",
   "passed": true,
   "source_digests": {
-    "agentic/src/horizon_agentic/aggregate.py": "ac98cb633583f2940c6d745f988f59f0ee04a4d0e49a0875f6a5a81d86ad256f",
-    "agentic/src/horizon_agentic/bundle.py": "d1503f2eae9254e184be7f04b0bf3add090bdf4ad5a57b8e4052cba7525154a5",
-    "agentic/src/horizon_agentic/conflict.py": "47803ceaee0b7ec7feab6bbf88fea99f13d6ab5d74f21e3c51f9e539d69b58c6",
-    "agentic/src/horizon_agentic/envelope.py": "ce0bed7a3dd00caf0f3d39ef933cdbf409d57d9f1d082a3500f0ec16b6cdfc5d",
-    "agentic/src/horizon_agentic/telemetry_trust.py": "aedfae743b1e12b9879ce1bf49fdf7c33a0d44839172c633d98bb0ded4bd18fb",
+    "agentic/src/horizon_agentic/aggregate.py": "bccd175c07ab564e15929dfd93172ff4e8b22678a1c64e732ef0cb40ab84e67d",
+    "agentic/src/horizon_agentic/bundle.py": "2a7e62ae0ace121a6ddf896885e7cb7ce8ec8701cc13fa68892f663b67933db6",
+    "agentic/src/horizon_agentic/conflict.py": "52ab192a6ee688da1aa1e09fff4332b9b1c76ed8af25a17d0603d0a2e3cfc833",
+    "agentic/src/horizon_agentic/envelope.py": "ec2e4aa6223a03cc588d52c58dcda83d7d9195964bc9e6216a21ee7ae6270c65",
+    "agentic/src/horizon_agentic/evidence.py": "c37cf9f2256fe9b2516dc031f28caacdd4b6b24e713ddd09284a4371efbe988c",
+    "agentic/src/horizon_agentic/identity.py": "911ad7b68b411d6deb65be445bc9085f1298b968122479c218ebb4fb199772f7",
+    "agentic/src/horizon_agentic/telemetry_trust.py": "17ba10b2661f3cc578e8d8df48b4009d73309c4da20b8981f4ee30d8e099fd0d",
+    "src/horizon_ric/assurance/planner.py": "e9b6bb33a3df196fbc4c27adb3506534909463a7a3d2a066715915f1141f8643",
+    "src/horizon_ric/shield/certificate.py": "a20ca02733c2b7de9bdefa67da6d547021b75b1d2298f84cccd581c2e7bec6cc",
     "src/horizon_ric/shield/invariants.py": "fe9185068e5f6becae25ff3248121f94429f99fa653a4559c364ca30940511ee",
     "src/horizon_ric/shield/shield.py": "b8e227b0dbfe1a22a8ea9550f23f818fbaf607ad073dd9e9ed4a4673300a966e"
   }

@@ -82,8 +82,56 @@ BASELINE = {
 
 
 def test_a_well_formed_envelope_is_authorized() -> None:
-    verdict = authorize(envelope(), make_policy())
+    verdict = authorize(envelope(), make_policy(), baseline=BASELINE)
     assert verdict.authorized, verdict.problems
+
+
+def test_no_baseline_refuses_undeclared_state_rather_than_waving_it_through() -> None:
+    """The degraded mode must stay sound, not silently permissive.
+
+    Found by adversarial review, reproduced end to end: a slice-scoped agent
+    carrying `tx_power_dBm` it did not declare as a mutation was authorized
+    when no baseline was supplied, and the Shield then clamped the value to
+    something *legal* and emitted it. Clamping restores physics, not authority
+    — the agent still moved transmit power with no spectrum scope.
+    """
+    no_baseline = authorize(envelope(), make_policy())
+    assert not no_baseline.authorized
+    assert any("no baseline was supplied" in p for p in no_baseline.problems)
+
+    # Declaring everything it carries is sound without a baseline, so the
+    # degraded mode is restrictive rather than unusable.
+    complete = authorize(
+        envelope(mutates=frozenset({"frequency_hz", "bandwidth_hz", "tx_power_dBm"})),
+        make_policy(),
+    )
+    assert complete.authorized, complete.problems
+
+
+def test_the_operator_root_may_not_present_envelopes() -> None:
+    """A one-element chain skips narrowing entirely.
+
+    `(ROOT,)` from `agent_id=ROOT` satisfies every structural check — starts at
+    root, ends at the presenting agent, no repeats — and `zip(chain, chain[1:])`
+    is empty, so no narrowing is evaluated and the caller inherits every scope
+    the root holds. Reproduced by adversarial review.
+    """
+    verdict = authorize(
+        AgentActionEnvelope(
+            agent_id=ROOT,
+            agent_version="1.0.0",
+            target_domain="ran",
+            granted_scopes=frozenset(SCOPE_ACTION_KEYS),
+            delegation_chain=(ROOT,),
+            requested_action=dict(BASELINE),
+            mutates=frozenset({"tx_power_dBm"}),
+        ),
+        make_policy(),
+        baseline=BASELINE,
+    )
+    assert not verdict.authorized
+    assert any("may not present envelopes" in p for p in verdict.problems)
+    assert any("no delegation step" in p for p in verdict.problems)
 
 
 def test_ungranted_agent_is_refused() -> None:

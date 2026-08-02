@@ -90,7 +90,22 @@ class AgentActionEnvelope:
     delegation_chain: tuple[str, ...]
     requested_action: Mapping[str, Any]
     mutates: frozenset[str] = frozenset()
+    # Which physical resource the action addresses — a cell, sector or carrier.
+    # Every aggregate limit that matters in RAN is scoped to one: without this,
+    # two agents describing the SAME cell are indistinguishable from two
+    # carriers, and a summing invariant manufactures power that does not exist
+    # while a pair-wise one reports two co-sited carriers as overlapping.
+    resource_id: str = ""
+    # Identity. `agent_id` alone is an assertion anyone can make; these are what
+    # bind it to a key the operator registered, and what stop a captured
+    # envelope from being replayed. Verified by
+    # `horizon_agentic.identity.EnvelopeAuthenticator`, which
+    # `SafetyTransaction` runs before authority — deciding what a principal may
+    # do presupposes knowing which principal it is.
     nonce: str = ""
+    issued_at: float = 0.0
+    signature: str = ""
+    signing_key_fingerprint: str = ""
 
     @property
     def written_keys(self) -> frozenset[str]:
@@ -165,6 +180,21 @@ def _chain_problems(env: AgentActionEnvelope, policy: AuthorityPolicy) -> list[s
     chain = env.delegation_chain
     if not chain:
         return [f"agent {env.agent_id!r} presented no delegation chain"]
+    if env.agent_id == policy.root_principal:
+        # The root delegates; it does not act. Without this, a one-element
+        # chain `(ROOT,)` from `agent_id=ROOT` satisfies every structural check
+        # — starts at root, ends at the presenting agent, no repeats — and the
+        # narrowing loop `zip(chain, chain[1:])` is *empty*, so no narrowing is
+        # ever evaluated. The attacker inherits every scope the root holds.
+        problems.append(
+            f"the operator root {policy.root_principal!r} may not present "
+            "envelopes; it exists to delegate authority, not to exercise it"
+        )
+    if len(chain) < 2:
+        problems.append(
+            f"delegation chain {list(chain)} has no delegation step in it; "
+            "a single-element chain is never narrowed by anything"
+        )
     if chain[0] != policy.root_principal:
         problems.append(
             f"delegation chain starts at {chain[0]!r}, not the operator root "
@@ -288,7 +318,20 @@ def authorize(
             f"{sorted(undeclared)}"
         )
 
-    if baseline is not None:
+    if baseline is None:
+        # Without a baseline there is nothing to compare declared state
+        # against, so `mutates` is a self-report: an agent can carry a changed
+        # key, omit it from `mutates`, and no scope check will look at it.
+        # Refusing unless the action mutates everything it carries keeps the
+        # degraded mode sound instead of silently permissive.
+        undeclared_keys = sorted(env.declared_only)
+        if undeclared_keys:
+            problems.append(
+                f"agent {env.agent_id!r} carries undeclared state {undeclared_keys} "
+                "and no baseline was supplied to check it against; supply a "
+                "baseline or declare every key the action carries"
+            )
+    else:
         smuggled = sorted(
             key
             for key in env.declared_only

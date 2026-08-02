@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://preceptual.ai/horizon/schemas/agent-action-envelope-1.0.0.json",
+  "title": "AgentActionEnvelope",
+  "description": "A network action proposed by an identified agent, together with the delegated authority it claims. Everything here is a claim until horizon_agentic.identity verifies the signature and horizon_agentic.envelope.authorize checks it against the operator's policy; the envelope itself proves nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agent_id",
+    "agent_version",
+    "target_domain",
+    "granted_scopes",
+    "delegation_chain",
+    "requested_action",
+    "mutates",
+    "nonce",
+    "issued_at",
+    "signature",
+    "resource_id"
+  ],
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identity claimed by the agent. Meaningless without a verifying signature: any process can set this string."
+    },
+    "agent_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_domain": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The domain the action targets. Only 'ran' is implemented; the field admits the possibility of others and nothing more."
+    },
+    "granted_scopes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "spectrum",
+          "slice",
+          "phy",
+          "ntn"
+        ]
+      },
+      "description": "Scopes the agent claims. The effective set is the intersection with the operator's grant, so over-claiming gains nothing and is refused."
+    },
+    "delegation_chain": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Ordered principals from the operator root to this agent. Valid only if each step holds a subset of its delegator's scopes and domains: delegation narrows, never widens."
+    },
+    "requested_action": {
+      "type": "object",
+      "description": "The action, in the key contract of horizon_ric.assurance.planner. Carries every REQUIRED_ACTION_KEY, including keys the agent is only declaring rather than changing.",
+      "required": [
+        "block",
+        "frequency_hz",
+        "bandwidth_hz",
+        "tx_power_dBm"
+      ],
+      "properties": {
+        "block": {
+          "type": "string"
+        },
+        "frequency_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "bandwidth_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "tx_power_dBm": {
+          "type": "number"
+        },
+        "antenna_gain_dBi": {
+          "type": "number"
+        },
+        "prb_allocation": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "mutates": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      },
+      "description": "The subset of requested_action the agent asks to CHANGE. Everything else is declared state and must match the baseline. This distinction is required: REQUIRED_ACTION_KEYS forces every action to carry frequency_hz, bandwidth_hz and tx_power_dBm, so authority keyed on key presence would make a legal slice action impossible to express."
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique per agent. A signature without a nonce is replayable indefinitely."
+    },
+    "issued_at": {
+      "type": "number",
+      "description": "Epoch seconds. Bounds how long a captured envelope stays useful, and is what allows the nonce set to be evicted rather than growing without limit."
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]*$",
+      "description": "Hex Ed25519 signature over the canonical envelope bytes, which include mutates, granted_scopes and delegation_chain \u2014 the fields authority actually reads. Deliberately not length-pinned, matching the A1 assurance envelope."
+    },
+    "signing_key_fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]*$",
+      "description": "SHA-256 of the raw Ed25519 public key. Advisory: the signature already binds the key, but a mismatch signals a misconfiguration worth refusing on."
+    },
+    "resource_id": {
+      "type": "string",
+      "description": "The physical resource the action addresses \u2014 a cell, sector or carrier. Every aggregate limit that matters in RAN is scoped to one. Without it, two agents describing the SAME cell are indistinguishable from two carriers: a summing invariant manufactures power that does not exist, and a pair-wise one reports two co-sited carriers as overlapping."
+    }
+  }
+}

@@ -52,7 +52,9 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import statistics
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Callable, Iterable, Mapping, Sequence
 
 __all__ = [
@@ -66,6 +68,9 @@ __all__ = [
     "sign_record",
     "TelemetryTrustError",
 ]
+
+
+DOMAIN_TAG = b"horizon-telemetry-v1\x00"
 
 
 class TelemetryTrustError(RuntimeError):
@@ -99,12 +104,23 @@ def canonical_record_bytes(record: TelemetryRecord) -> bytes:
     excluded — a signature cannot cover itself.
     """
     payload = {
-        "source_id": record.source_id,
-        "observed_at": record.observed_at,
-        "sequence": record.sequence,
+        "source_id": str(record.source_id),
+        # Coerced, both of them. `1700000000` and `1700000000.0` are the same
+        # instant and produced different bytes, so any JSON round-trip over the
+        # wire invalidated an otherwise valid tag.
+        "observed_at": float(record.observed_at),
+        "sequence": int(record.sequence),
         "fields": {str(k): float(v) for k, v in sorted(record.fields.items())},
     }
-    return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    # allow_nan=False: json.dumps emits bare `NaN`/`Infinity`, which is not
+    # valid JSON. A tag over bytes no conforming parser can read is not
+    # verifiable by anyone but us.
+    body = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
+    # Domain separation: a per-source secret reused for another message with a
+    # compatible JSON shape would otherwise permit cross-protocol forgery.
+    return DOMAIN_TAG + body
 
 
 def sign_record(record: TelemetryRecord, secret: bytes) -> TelemetryRecord:
@@ -159,6 +175,13 @@ class TrustPolicy:
     corroborate: frozenset[str] = frozenset()
     corroboration_tolerance: Mapping[str, float] = field(default_factory=dict)
     max_skew_s: float = 1.0
+    max_sequence_gap: int = 10_000
+    min_corroborating_sources: int = 2
+    # Which fields each source may report. A source absent from this mapping
+    # may report anything bounded, which is the permissive default; naming a
+    # source pins it. Without this, any registered source can inject any
+    # bounded field and — if it sorts first — override the honest reading.
+    allowed_fields: Mapping[str, frozenset[str]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         missing = set(self.corroborate) - set(self.corroboration_tolerance)
@@ -244,7 +267,14 @@ class TelemetryTrustGate:
         expected = hmac.new(
             secret, canonical_record_bytes(record), hashlib.sha256
         ).hexdigest()
-        if not hmac.compare_digest(expected, record.auth_tag):
+        # Compare bytes, not str. `hmac.compare_digest` raises TypeError on
+        # str arguments containing non-ASCII, so a tag of "e"*64 with an
+        # accent escaped as an exception rather than a refusal — from a party
+        # holding no key. An exception out of the gate defeats the whole
+        # fail-closed discipline; bytes comparison never raises.
+        if not hmac.compare_digest(
+            expected.encode("ascii"), record.auth_tag.encode("utf-8", "replace")
+        ):
             return TrustCheck(
                 "source_authenticated",
                 False,
@@ -289,12 +319,29 @@ class TelemetryTrustGate:
                 f"sequence {record.sequence} from {record.source_id!r} does not "
                 f"exceed high-water mark {high}",
             )
+        if high is not None and record.sequence - high > self._policy.max_sequence_gap:
+            # Without this bound, a single record at 2**63 raises the mark past
+            # anything the genuine source will ever emit and silences it
+            # permanently. A forward jump is as suspicious as a backward one.
+            return TrustCheck(
+                "replay",
+                False,
+                f"sequence {record.sequence} from {record.source_id!r} jumps "
+                f"{record.sequence - high} past the high-water mark "
+                f"{high}; limit {self._policy.max_sequence_gap}",
+            )
         return TrustCheck(
             "replay", True, f"sequence {record.sequence} from {record.source_id!r} is new"
         )
 
     def _ranges(self, record: TelemetryRecord) -> TrustCheck:
         problems: list[str] = []
+        if not record.fields:
+            # "Trusted nothing" is indistinguishable from trusted state to a
+            # caller that only reads `verdict.trusted`.
+            return TrustCheck(
+                "field_range", False, f"record from {record.source_id!r} carries no fields"
+            )
         for name, value in sorted(record.fields.items()):
             bound = self._policy.bounds.get(name)
             if bound is None:
@@ -319,6 +366,24 @@ class TelemetryTrustGate:
             "field_range", True, f"{len(record.fields)} field(s) within declared bounds"
         )
 
+    def _fields_permitted(self, record: TelemetryRecord) -> TrustCheck:
+        allowed = self._policy.allowed_fields.get(record.source_id)
+        if allowed is None:
+            return TrustCheck(
+                "field_authorization", True, "no per-source field restriction"
+            )
+        outside = sorted(set(record.fields) - set(allowed))
+        if outside:
+            return TrustCheck(
+                "field_authorization",
+                False,
+                f"source {record.source_id!r} reported fields outside its remit: "
+                f"{outside}",
+            )
+        return TrustCheck(
+            "field_authorization", True, f"{len(record.fields)} field(s) within remit"
+        )
+
     # ── admission ────────────────────────────────────────────────────────
     def admit(self, records: Sequence[TelemetryRecord]) -> TrustVerdict:
         """Admit the state carried by ``records``, or refuse the whole batch.
@@ -341,6 +406,14 @@ class TelemetryTrustGate:
             )
             return TrustVerdict(False, tuple(checks))
 
+        # Batch-level, not per-record. A duplicate is not "one bad packet from
+        # a stranger" — which must not veto the batch — but the same source
+        # sending the same sequence twice, which means either a replay or a
+        # confused sensor. Neither is a state you want to build an action from,
+        # so it refuses the batch.
+        keys = [(r.source_id, int(r.sequence)) for r in records]
+        duplicates = sorted({k for k in keys if keys.count(k) > 1})
+
         authentic: list[TelemetryRecord] = []
         for record in records:
             per_record = [
@@ -348,6 +421,7 @@ class TelemetryTrustGate:
                 self._freshness(record),
                 self._replay(record),
                 self._ranges(record),
+                self._fields_permitted(record),
             ]
             checks.extend(per_record)
             if all(c.passed for c in per_record):
@@ -359,25 +433,48 @@ class TelemetryTrustGate:
             for name, value in record.fields.items():
                 contributors.setdefault(name, []).append((record.source_id, float(value)))
 
-        # Deterministic merge: for a field seen by several sources, take the
-        # reading from the lexicographically first source. Anything
-        # value-dependent (mean, median, newest) would let a hostile source
-        # move the admitted value by choosing what it reports.
+        # Merge rule, corrected. An earlier version took the reading from the
+        # lexicographically first source and claimed that was "the only rule an
+        # attacker cannot influence by changing its measurement". That was
+        # wrong in a way worth recording: the attacker does not change its
+        # measurement, it changes its *name*. Registering as `aaa-sensor` wins
+        # every contested field, forever, for free.
+        #
+        # For corroborated fields the median is taken instead: with three
+        # sources an attacker must control two to move it, where the previous
+        # rule needed only a well-chosen id. For uncorroborated fields the
+        # lowest-sorting source still decides, and that is exactly why a field
+        # that matters belongs in `corroborate`.
         for name, seen in contributors.items():
-            merged[name] = sorted(seen)[0][1]
+            values = [value for _, value in sorted(seen)]
+            if name in self._policy.corroborate and len(values) >= 2:
+                merged[name] = statistics.median(values)
+            else:
+                merged[name] = values[0]
 
-        missing = sorted(set(self._policy.required_fields) - set(merged))
-        checks.append(
+        batch_checks = [
             TrustCheck(
                 "required_fields",
-                not missing,
+                not (missing := sorted(set(self._policy.required_fields) - set(merged))),
                 f"missing required field(s): {missing}" if missing else "all present",
-            )
-        )
+            ),
+            self._corroborate(contributors),
+            TrustCheck(
+                "batch_duplicates",
+                not duplicates,
+                f"duplicate (source, sequence) within one batch: {duplicates}"
+                if duplicates
+                else "no duplicates in batch",
+            ),
+        ]
+        checks.extend(batch_checks)
 
-        checks.append(self._corroborate(contributors))
-
-        trusted = all(c.passed for c in checks)
+        # The verdict turns on the BATCH checks, evaluated over the records
+        # that authenticated — not on every per-record check. Folding those in
+        # made the `authentic` filter unreachable and handed a denial of
+        # service to anyone able to put one bad packet on the bus. Per-record
+        # failures stay in `checks` as evidence, which is where they belong.
+        trusted = bool(authentic) and all(c.passed for c in batch_checks)
         if trusted:
             for record in authentic:
                 self._high_water[record.source_id] = max(
@@ -386,7 +483,11 @@ class TelemetryTrustGate:
                 self._seen.setdefault(record.source_id, set()).add(
                     hashlib.sha256(canonical_record_bytes(record)).hexdigest()
                 )
-        return TrustVerdict(trusted, tuple(checks), merged if trusted else None)
+        # Read-only: a caller mutating admitted state would be editing the
+        # world model after the gate certified it.
+        return TrustVerdict(
+            trusted, tuple(checks), MappingProxyType(dict(merged)) if trusted else None
+        )
 
     def _corroborate(
         self, contributors: Mapping[str, Iterable[tuple[str, float]]]
@@ -395,9 +496,10 @@ class TelemetryTrustGate:
         for name in sorted(self._policy.corroborate):
             seen = sorted(set(contributors.get(name, ())))
             sources = {source for source, _ in seen}
-            if len(sources) < 2:
+            need = self._policy.min_corroborating_sources
+            if len(sources) < need:
                 problems.append(
-                    f"{name}: needs 2 independent sources, saw {len(sources)}"
+                    f"{name}: needs {need} independent sources, saw {len(sources)}"
                 )
                 continue
             values = [value for _, value in seen]

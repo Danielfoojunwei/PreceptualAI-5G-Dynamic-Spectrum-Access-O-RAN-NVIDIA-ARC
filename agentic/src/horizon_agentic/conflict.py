@@ -43,7 +43,15 @@ from horizon_agentic.aggregate import AggregateInvariant
 from horizon_agentic.envelope import AuthorityPolicy
 from horizon_ric.shield.certificate import InvariantCheck
 
-__all__ = ["DroppedMember", "ConflictResolution", "resolve_conflicts"]
+__all__ = [
+    "DroppedMember",
+    "ConflictResolution",
+    "resolve_conflicts",
+    "RESOURCE_IDS_KEY",
+]
+
+# Context key carrying the resource id of each live action, aligned by index.
+RESOURCE_IDS_KEY = "_resource_ids"
 
 Action = Mapping[str, Any]
 
@@ -70,6 +78,23 @@ class ConflictResolution:
     rounds: int
 
 
+def _improves(before: InvariantCheck, after: InvariantCheck) -> bool:
+    """Did removing a member move the violated invariant toward satisfaction?
+
+    Margins may be ``None`` (an invariant that reports no margin) or infinite
+    (not applicable), so the comparison is written to fall back to "no
+    improvement" rather than raising on either.
+    """
+    if after.satisfied and not before.satisfied:
+        return True
+    if before.margin is None or after.margin is None:
+        return False
+    try:
+        return float(after.margin) > float(before.margin)
+    except (TypeError, ValueError, OverflowError):
+        return False
+
+
 def _reads(invariant: AggregateInvariant) -> frozenset[str]:
     """Action keys an aggregate invariant depends on.
 
@@ -91,6 +116,7 @@ def resolve_conflicts(
     policy: AuthorityPolicy,
     context: Mapping[str, Any],
     *,
+    resource_ids: Sequence[str] | None = None,
     max_rounds: int = 8,
 ) -> ConflictResolution:
     """Drop the least important conflicting requests until the aggregates hold.
@@ -104,13 +130,19 @@ def resolve_conflicts(
     if len(actions) != len(agent_ids):
         raise ValueError("actions and agent_ids must correspond one-to-one")
 
+    resources = list(resource_ids or ["" for _ in actions])
+    if len(resources) != len(actions):
+        raise ValueError("resource_ids must correspond one-to-one with actions")
     admitted = list(range(len(actions)))
     dropped: list[DroppedMember] = []
     checks: tuple[InvariantCheck, ...] = ()
 
     for round_index in range(max_rounds + 1):
         live = [actions[i] for i in admitted]
-        checks = tuple(inv.evaluate(live, context) for inv in invariants)
+        # Resource ids travel with the surviving members, rebuilt each round so
+        # a dropped member's resource goes with it.
+        live_ctx = {**context, RESOURCE_IDS_KEY: [resources[i] for i in admitted]}
+        checks = tuple(inv.evaluate(live, live_ctx) for inv in invariants)
         violated = [c for c in checks if not c.satisfied]
         if not violated:
             return ConflictResolution(
@@ -120,20 +152,53 @@ def resolve_conflicts(
             break
 
         first = violated[0]
-        culprit_invariant = next(
+        culpable_invariant = next(
             (inv for inv in invariants if inv.id == first.invariant_id), None
         )
-        keys = _reads(culprit_invariant) if culprit_invariant is not None else frozenset()
+        keys = (
+            _reads(culpable_invariant) if culpable_invariant is not None else frozenset()
+        )
 
         # Candidates are members that touch what the violated invariant reads.
         # An invariant declaring no keys makes every member a candidate.
-        candidates = [
-            i
-            for i in admitted
-            if not keys or (set(actions[i]) & keys)
-        ]
-        if not candidates:
+        touching = [i for i in admitted if not keys or (set(actions[i]) & keys)]
+        if not touching:
             break
+
+        # Culpability before priority. Key-intersection alone is nearly a no-op
+        # here: `bandwidth_hz` is in REQUIRED_ACTION_KEYS, so every well-formed
+        # action "touches" what AbsoluteSliceCapacityFloor reads, and the
+        # victim was decided purely by operator priority. That turns resolution
+        # into a targeted denial primitive — an agent with a low priority
+        # number submits an action that drives an aggregate into violation, and
+        # a rival's legitimate request is dropped instead of its own.
+        #
+        # A member is culpable when removing it actually improves the violated
+        # invariant. That is general: it needs no per-invariant introspection,
+        # and it costs one extra evaluation per candidate on a path that only
+        # runs when something is already wrong.
+        # Tiered, because "improves it" is too weak on its own. Dropping any
+        # member that lowered *some* contested value usually improves the
+        # margin a little, so an improvement test alone re-admits nearly
+        # everyone and priority decides again. Repair is the strong signal:
+        # prefer members whose removal actually satisfies the invariant, and
+        # fall back to mere improvement only when nothing repairs it.
+        if culpable_invariant is not None:
+            repairs: list[int] = []
+            improves: list[int] = []
+            for i in touching:
+                keep = [j for j in admitted if j != i]
+                without = [actions[j] for j in keep]
+                after = culpable_invariant.evaluate(
+                    without, {**context, RESOURCE_IDS_KEY: [resources[j] for j in keep]}
+                )
+                if after.satisfied:
+                    repairs.append(i)
+                elif _improves(first, after):
+                    improves.append(i)
+            candidates = repairs or improves or touching
+        else:
+            candidates = touching
 
         # Total order: least important first, then agent id, then position.
         # Every component is needed for the result to be independent of the
