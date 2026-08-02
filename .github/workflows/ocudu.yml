@@ -42,7 +42,14 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install Horizon-RIC
-        run: python -m pip install '.[dev]'
+        # `oran` is required, not optional, for this subtree: it carries
+        # asn1tools, which `rc_control.rc_spec()` needs to compile the vendored
+        # E2SM-RC ASN.1 — and `horizon_ric.e2.__init__` imports the KPM bridge
+        # eagerly, so the import fails at collection rather than at first use.
+        # The main pytest job installs '.[dev,oran,otel]'; this one previously
+        # installed only '.[dev]' and went green locally because the dev venv
+        # already had asn1tools from an earlier run.
+        run: python -m pip install '.[dev,oran]'
 
       - name: Lint
         run: python -m ruff check ocudu/

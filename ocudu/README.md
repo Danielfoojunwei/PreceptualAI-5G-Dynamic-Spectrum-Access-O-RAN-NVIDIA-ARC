@@ -120,7 +120,18 @@ python ocudu/verify_g8_ocudu_conformance.py --out ocudu/results/g8-ocudu-conform
 PYTHONPATH=src:agentic/src:ocudu/src python -m pytest ocudu/tests -q
 ```
 
-Needs the `third_party/ocudu` submodule initialised. No new dependencies.
+Needs the `third_party/ocudu` submodule initialised, and the `oran` extra —
+`asn1tools` is what compiles the vendored E2SM-RC ASN.1, and
+`horizon_ric.e2.__init__` imports it eagerly, so a missing extra fails at
+collection rather than at first use. No *new* dependencies are added.
+
+The `ocudu` CI job first went red on exactly this: it installed `.[dev]` while
+the main pytest job installs `.[dev,oran,otel]`, and the whole subtree had gone
+green locally because the development venv already carried `asn1tools` from an
+earlier task. `test_ci_installs_every_extra_this_subtree_needs` now asserts the
+workflow's install line against the extra that declares `asn1tools`, so the two
+facts — what the code imports and what CI installs — are checked against each
+other rather than assumed to agree.
 
 ## Gate G8, and that it can fail
 

@@ -350,3 +350,47 @@ def test_sequence_numbers_advance_per_cell() -> None:
     records = records_from_metrics(parse_metrics(two))
     assert {r.source_id for r in records} == {"ocudu-pci-1", "ocudu-pci-2"}
     assert all(r.sequence == 1 for r in records)
+
+
+# ── the workflow's declared extras must cover the import chain ───────────
+def test_ci_installs_every_extra_this_subtree_needs() -> None:
+    """Regression: the `ocudu` job installed `.[dev]` and failed on import.
+
+    `horizon_ric.e2.__init__` imports the KPM bridge eagerly, which imports
+    `asn1tools` — a member of the `oran` extra, not `dev`. The failure was
+    invisible locally because the development venv already had asn1tools from
+    an earlier task, so the whole subtree went green on a machine that happened
+    to be provisioned differently from CI.
+
+    Asserting on the workflow text is blunt, but it is the only place the two
+    facts meet: what the code imports, and what CI installs.
+    """
+    import re
+
+    import tomllib
+
+    workflow = (
+        Path(__file__).resolve().parents[2] / ".github/workflows/ocudu.yml"
+    ).read_text(encoding="utf-8")
+    match = re.search(r"pip install '\.\[([a-z,]+)\]'", workflow)
+    assert match, "could not find the install line in the ocudu workflow"
+    installed = set(match.group(1).split(","))
+
+    pyproject = tomllib.loads(
+        (Path(__file__).resolve().parents[2] / "pyproject.toml").read_text(
+            encoding="utf-8"
+        )
+    )
+    extras = pyproject["project"]["optional-dependencies"]
+
+    # asn1tools is what the E2SM-RC encoder cannot run without.
+    providing = {
+        name
+        for name, deps in extras.items()
+        if any(d.startswith("asn1tools") for d in deps)
+    }
+    assert providing, "asn1tools is no longer declared in any extra"
+    assert providing & installed, (
+        f"the ocudu workflow installs {sorted(installed)}, none of which "
+        f"provides asn1tools (declared in {sorted(providing)})"
+    )
