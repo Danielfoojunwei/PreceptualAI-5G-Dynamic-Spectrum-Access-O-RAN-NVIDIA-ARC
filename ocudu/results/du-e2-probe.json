@@ -1,5 +1,27 @@
 {
   "answer": "YES - once the RF driver does not hang DU start. This CORRECTS an earlier committed result that said it never attempts a connection.",
+  "automated_reproduction": {
+    "command": "python ocudu/e2/du_e2_probe.py --config ocudu/e2/ocudu-gnb-e2-du-joins.yml --shim <sctp_udp_shim.so>",
+    "du_agent_joined": true,
+    "gnb_units_connected": [
+      "E2-CU-CP",
+      "E2-CU-UP",
+      "E2-DU"
+    ],
+    "note": "This result was first established by hand. It now reproduces unattended: ocudu/e2/du_e2_probe.py with the working config and the SCTP shim, no manual step.",
+    "ric_e2_setup_requests": 3,
+    "ric_ran_types": [
+      "ngran_gNB",
+      "ngran_gNB_CUUP",
+      "ngran_gNB_DU"
+    ],
+    "wait": {
+      "budget_s": 60.0,
+      "floor_s": 15.0,
+      "reason": "du_join_observed",
+      "waited_s": 15.0
+    }
+  },
   "binaries": {
     "flexric_commit": "ef6d722f22191eea74089966983da1f5ec1fedd4",
     "gnb_sha256": "4062065b90629803b0937b8de48f95f5bd3c0b4050fbf720522c7ea29f61eab5",
@@ -15,7 +37,7 @@
       "E2-DU"
     ]
   },
-  "known_flakiness": "FlexRIC's nearRT-RIC aborts with 'free(): invalid pointer' if started while a previous instance still holds the UDP port under the shim. When that happens the RIC-side witness is empty even though the join succeeded; the gNB-side E2setupResponse is then the sufficient witness, since it cannot be self-generated. The run recorded here used a single clean RIC and captured BOTH witnesses.",
+  "known_flakiness": "FlexRIC's nearRT-RIC aborts with 'free(): invalid pointer' during teardown on this host. Whatever its cause, an abort flushes no C stdio buffers, and because the RIC's stdout is a file it is block-buffered \u2014 so the abort silently destroyed the entire RIC-side witness. Observed directly: one run reported three successful E2 setups at the gNB while the RIC's log held 120 bytes and not one setup line. The probe now launches both processes under 'stdbuf -oL -eL', which removes the dependency on a clean exit; with it, both witnesses survive the same abort. An earlier version of this field blamed a previous RIC instance holding the UDP port; that was a guess and it was not the cause.",
   "not_determined": "Why the main pool reports 1 thread despite nproc=4 and an explicit expert_execution.threads.main_pool.nof_threads: 4 (supplied as YAML and on the command line). Whether the ZMQ hang would also occur with a genuinely larger main pool was not tested.",
   "probe": "ocudu_du_e2_agent_join",
   "question": "Does OCUDU's DU-side E2 agent join the near-RT RIC?",

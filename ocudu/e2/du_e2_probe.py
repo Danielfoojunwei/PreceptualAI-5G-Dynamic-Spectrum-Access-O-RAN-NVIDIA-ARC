@@ -69,6 +69,15 @@ def _popen(cmd: list[str], log: Path, shim: Path | None) -> subprocess.Popen:
     if shim is not None:
         env["LD_PRELOAD"] = str(shim)
     fh = log.open("w", encoding="utf-8", errors="replace")
+    # Force line buffering. C stdio block-buffers when stdout is a file, and
+    # relying on the exit flush cost us the RIC-side witness entirely: on this
+    # host FlexRIC aborts during SIGTERM cleanup with "free(): invalid
+    # pointer", and an abort flushes nothing. The gNB reported three
+    # successful E2 setups while the RIC's log held 120 bytes and no setup at
+    # all. `stdbuf` fixes that without touching FlexRIC, and it is the
+    # difference between one witness and two.
+    if shutil.which("stdbuf") is not None:
+        cmd = ["stdbuf", "-oL", "-eL", *cmd]
     return subprocess.Popen(
         cmd, stdout=fh, stderr=subprocess.STDOUT, env=env, start_new_session=True
     )
