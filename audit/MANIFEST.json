@@ -1,0 +1,215 @@
+{
+  "schema": "horizon-ric.audit.reproduce/1",
+  "description": "Machine-readable catalogue of every verification gate invoked in Horizon-RIC CI. Each entry names the gate, the exact command reproduce.py runs, the committed evidence it checks, and the class of requirement an external party must satisfy to run it. The `requirement` field is one of: none | horizon | docker | submodule:<name> | network. `command` and `regen` are argv lists WITHOUT the leading python interpreter (reproduce.py prepends the running interpreter). The token {FRESH} is replaced at runtime with a per-gate temp file.",
+  "requirement_classes": {
+    "none": "Pure stdlib + committed data. Runs on a clean checkout with no Horizon install, no Docker, no submodule, no network. reproduce.py runs the verifier in committed-vs-committed self-check mode, which re-executes every safety/structural/count invariant the CI verifier enforces against the committed evidence.",
+    "horizon": "Requires the Horizon-RIC package importable (pip install -e .). reproduce.py regenerates the fresh result from source and compares it to the committed result, exactly as CI does.",
+    "docker": "Requires a running Docker daemon to stand up the live stack.",
+    "submodule:<name>": "Requires third_party/<name> to be checked out (git submodule update --init).",
+    "network": "Requires network egress to (re)download a dataset before the gate can run. reproduce.py never downloads multi-GB datasets automatically; these are skipped with the manual command stated in README_reproduce.md."
+  },
+  "gates": [
+    {
+      "id": "g1_second_planner",
+      "title": "G1 - independent second planner is enforced by the Shield",
+      "requirement": "horizon",
+      "regen": ["benchmarks/g1_second_planner.py", "--out", "{FRESH}"],
+      "command": ["scripts/verify_g1_second_planner.py", "--committed", "benchmarks/results/g1_second_planner.json", "--fresh", "{FRESH}"],
+      "result_file": "benchmarks/results/g1_second_planner.json",
+      "ci_workflow": ".github/workflows/test.yml",
+      "notes": "Benchmark planner imports horizon_ric.planners and horizon_ric.shield, so the fresh run needs the Horizon install; the verifier also pins the SHA-256 of shield.py, invariants.py and the planner. Stdlib-only link model, no dataset."
+    },
+    {
+      "id": "poisoning_shield",
+      "title": "Poisoning -> Shield: 4658 illegal requests, 0 survive on 8000 measured decisions",
+      "requirement": "none",
+      "regen": null,
+      "command": ["scripts/verify_poisoning_shield.py", "--committed", "benchmarks/results/poisoning_shield.json", "--fresh", "benchmarks/results/poisoning_shield.json"],
+      "result_file": "benchmarks/results/poisoning_shield.json",
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Dependency-free verifier (no horizon_ric import). Self-check re-asserts the safety invariants (0 illegal after Shield, 0 in-spec-but-harmful, nonzero unguarded illegals), the oracle-independence marker, the poisoned/geometry violation split, and the self-reported PASS. Full regeneration from raw DeepMIMO rays is the network-class deepmimo path."
+    },
+    {
+      "id": "antijam",
+      "title": "Anti-jam MVDR null-steering invariants on measured angular data",
+      "requirement": "none",
+      "regen": null,
+      "command": ["scripts/verify_antijam.py", "--committed-result", "benchmarks/results/antijam.json", "--actual-result", "benchmarks/results/antijam.json", "--actual-manifest", "datasets/deepmimo_asu_3p5/angular_manifest.json"],
+      "result_file": "benchmarks/results/antijam.json",
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Dependency-free verifier. Self-check re-asserts the anti-jam physical invariants (jammer collapses SINR, MVDR restores >5 dB, null >10 dB deep) and the trust chain, bound to the committed angular manifest."
+    },
+    {
+      "id": "beam_management",
+      "title": "Beam-management sweep invariants on measured angular data",
+      "requirement": "none",
+      "regen": null,
+      "command": ["scripts/verify_beam_management.py", "--committed-result", "benchmarks/results/beam_management.json", "--actual-result", "benchmarks/results/beam_management.json", "--actual-manifest", "datasets/deepmimo_asu_3p5/angular_manifest.json"],
+      "result_file": "benchmarks/results/beam_management.json",
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Dependency-free verifier. Self-check re-asserts array-gain bounds under the 10log10(8) ceiling, steering beats a fixed beam, codebook exercised, trust chain refuses the over-power activation."
+    },
+    {
+      "id": "mobility_handover",
+      "title": "Mobility-handover invariants on measured ray geometry",
+      "requirement": "none",
+      "regen": null,
+      "command": ["scripts/verify_mobility_handover.py", "--committed-result", "benchmarks/results/mobility_handover.json", "--actual-result", "benchmarks/results/mobility_handover.json", "--actual-manifest", "datasets/deepmimo_asu_3p5/angular_manifest.json"],
+      "result_file": "benchmarks/results/mobility_handover.json",
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Dependency-free verifier. Self-check re-asserts the handover decisions and invariants bound to the committed angular manifest."
+    },
+    {
+      "id": "exploration_truncation",
+      "title": "Exploration-truncation: legality is the Shield's own predicate",
+      "requirement": "none",
+      "regen": null,
+      "command": ["scripts/verify_exploration_truncation.py", "--committed-result", "benchmarks/results/exploration_truncation.json", "--actual-result", "benchmarks/results/exploration_truncation.json", "--actual-manifest", "datasets/deepmimo_asu_3p5/manifest.json"],
+      "result_file": "benchmarks/results/exploration_truncation.json",
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Dependency-free verifier. Self-check re-asserts illegal_proposal_rate == projection_rate (the retracted-28-arm-bug guard), the free-lunch shield_masked control, non-negative realised regret against the zero-data cap, and that no executed action is illegal."
+    },
+    {
+      "id": "federated_coverage",
+      "title": "Federated-coverage: poisoned FedAvg diverges, honest path holds",
+      "requirement": "none",
+      "regen": null,
+      "command": ["scripts/verify_federated_coverage.py", "--committed-result", "benchmarks/results/federated_coverage.json", "--actual-result", "benchmarks/results/federated_coverage.json", "--actual-manifest", "datasets/deepmimo_asu_3p5/manifest.json"],
+      "result_file": "benchmarks/results/federated_coverage.json",
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Dependency-free verifier. Self-check re-asserts the federated-coverage invariants bound to the committed manifest; chaotic poisoned floats are tolerance-compared, never byte-compared."
+    },
+    {
+      "id": "credit_assignment",
+      "title": "Credit-assignment shield-learning invariants on measured data",
+      "requirement": "none",
+      "regen": null,
+      "command": ["scripts/verify_credit_assignment.py", "--committed-result", "benchmarks/results/credit_assignment.json", "--actual-result", "benchmarks/results/credit_assignment.json", "--actual-manifest", "datasets/deepmimo_asu_3p5/manifest.json"],
+      "result_file": "benchmarks/results/credit_assignment.json",
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Dependency-free verifier (generic shield-learning loop in realdata.yml). Self-check re-asserts the credit-assignment invariants bound to the committed manifest."
+    },
+    {
+      "id": "safety_utility_frontier",
+      "title": "Safety-utility frontier invariants on measured data",
+      "requirement": "none",
+      "regen": null,
+      "command": ["scripts/verify_safety_utility_frontier.py", "--committed-result", "benchmarks/results/safety_utility_frontier.json", "--actual-result", "benchmarks/results/safety_utility_frontier.json", "--actual-manifest", "datasets/deepmimo_asu_3p5/manifest.json"],
+      "result_file": "benchmarks/results/safety_utility_frontier.json",
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Dependency-free verifier (generic shield-learning loop in realdata.yml). Self-check re-asserts the frontier invariants bound to the committed manifest."
+    },
+    {
+      "id": "committed_projection_capacity_2x2",
+      "title": "Committed benchmark: 2x2 projection capacity claims still hold",
+      "requirement": "none",
+      "regen": null,
+      "command": ["scripts/verify_committed_benchmark.py", "--benchmark", "projection_capacity_2x2", "--committed", "benchmarks/results/projection_capacity_2x2.json", "--fresh", "benchmarks/results/projection_capacity_2x2.json"],
+      "result_file": "benchmarks/results/projection_capacity_2x2.json",
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Dependency-free verifier. Self-check re-asserts the exact/tol/must_hold/nonzero spec against the committed result."
+    },
+    {
+      "id": "committed_integrity_attack_suite",
+      "title": "Committed benchmark: integrity-attack suite claims still hold",
+      "requirement": "none",
+      "regen": null,
+      "command": ["scripts/verify_committed_benchmark.py", "--benchmark", "integrity_attack_suite", "--committed", "benchmarks/results/integrity_attack_suite.json", "--fresh", "benchmarks/results/integrity_attack_suite.json"],
+      "result_file": "benchmarks/results/integrity_attack_suite.json",
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Dependency-free verifier. Self-check re-asserts the exact/tol/must_hold/nonzero spec against the committed result."
+    },
+    {
+      "id": "committed_evasion_suite",
+      "title": "Committed benchmark: evasion suite claims still hold",
+      "requirement": "none",
+      "regen": null,
+      "command": ["scripts/verify_committed_benchmark.py", "--benchmark", "evasion_suite", "--committed", "benchmarks/results/evasion_suite.json", "--fresh", "benchmarks/results/evasion_suite.json"],
+      "result_file": "benchmarks/results/evasion_suite.json",
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Dependency-free verifier. Self-check re-asserts that effective SER inside the Shield's bound holds, plus the exact/tol/must_hold/nonzero spec, against the committed result."
+    },
+    {
+      "id": "evidence_audit",
+      "title": "Offline evidence audit (Ed25519 certificate/chain verification)",
+      "requirement": "none",
+      "regen": null,
+      "command": ["audit/verify_evidence.py", "audit/fixtures/evidence-sample.jsonl"],
+      "result_file": "audit/fixtures/evidence-sample.jsonl",
+      "ci_workflow": null,
+      "companion": true,
+      "notes": "Companion offline verifier produced by the evidence-audit work item (audit/verify_evidence.py, backed by audit/src/horizon_audit). Requirement is none (pure stdlib + cryptography over committed data). Runs against audit/fixtures/evidence-sample.jsonl, a committed, self-verifying per-tenant hash chain built by audit/fixtures/build_evidence_sample.py using the same horizon_audit.chain.chain_hash the verifier recomputes. reproduce.py SKIPs loudly if verify_evidence.py has not landed yet; the gate is not itself invoked by any CI workflow."
+    },
+    {
+      "id": "data_dependence",
+      "title": "Benchmarks claiming real data must actually depend on it (--quick)",
+      "requirement": "network",
+      "regen": null,
+      "command": ["scripts/verify_data_dependence.py", "--quick", "--features", "datasets/deepmimo_asu_3p5/generated/channel_features.jsonl", "--manifest", "datasets/deepmimo_asu_3p5/manifest.json"],
+      "result_file": null,
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Also imports horizon_ric.data.lineage. Perturbs the measured features and requires each benchmark to move its numbers or reject the input, so it needs the generated DeepMIMO channel_features.jsonl (not committed; rebuilt from the network-hosted DeepMIMO release) AND the Horizon install. Classified network as the fundamental external dependency."
+    },
+    {
+      "id": "deepmimo_reproduction",
+      "title": "Cross-host DeepMIMO reproduction (manifest + result, tolerance-bounded)",
+      "requirement": "network",
+      "regen": null,
+      "command": ["scripts/verify_deepmimo_reproduction.py", "--expected-manifest", "datasets/deepmimo_asu_3p5/manifest.json", "--actual-manifest", "datasets/deepmimo_asu_3p5/manifest.json", "--expected-result", "benchmarks/results/deepmimo_dsa.json", "--actual-result", "benchmarks/results/deepmimo_dsa.json", "--absolute-float-tolerance", "0.0001"],
+      "result_file": "benchmarks/results/deepmimo_dsa.json",
+      "ci_workflow": ".github/workflows/realdata.yml",
+      "notes": "Pure cross-host differ with no standalone invariants: a meaningful gate requires a freshly rebuilt result from the DeepMIMO release (multi-GB network download + deepmimo build). Not run offline; the self-comparison of committed-to-committed would be vacuous."
+    },
+    {
+      "id": "a1_assurance_wire",
+      "title": "A1 assurance-wire proof verified against committed result",
+      "requirement": "submodule:sim-a1-interface",
+      "regen": null,
+      "command": ["scripts/verify_a1_assurance_wire.py", "--committed", "deploy/xapp-e2e/results/a1-assurance-wire-proof.json", "--fresh", "deploy/xapp-e2e/results/a1-assurance-wire-proof.json"],
+      "result_file": "deploy/xapp-e2e/results/a1-assurance-wire-proof.json",
+      "ci_workflow": ".github/workflows/osc-a1-integration.yml",
+      "notes": "Verifier pins the vendored OSC simulator's git commit against the working-tree submodule HEAD, so it requires third_party/sim-a1-interface checked out even in self-check mode."
+    },
+    {
+      "id": "g6_multi_agent",
+      "title": "G6 - multi-agent enforcement (regenerated and self-comparing)",
+      "requirement": "horizon",
+      "regen": null,
+      "command": ["agentic/verify_g6_multi_agent.py", "--out", "{FRESH}"],
+      "result_file": "agentic/results/g6-multi-agent.json",
+      "ci_workflow": ".github/workflows/agentic.yml",
+      "notes": "Imports horizon_ric.shield. Regenerates the G6 checks and self-reports PASS/FAIL; the workflow then diffs {FRESH} against the committed result. Needs PYTHONPATH including agentic/src."
+    },
+    {
+      "id": "g8_ocudu_conformance",
+      "title": "G8 - OCUDU E2SM conformance (re-extracted from submodule source)",
+      "requirement": "submodule:ocudu",
+      "regen": null,
+      "command": ["ocudu/verify_g8_ocudu_conformance.py", "--out", "{FRESH}"],
+      "result_file": "ocudu/results/g8-ocudu-conformance.json",
+      "ci_workflow": ".github/workflows/ocudu.yml",
+      "notes": "Re-extracts the E2SM control-action catalogue from third_party/ocudu source (catalogue_is_reproducible) and imports horizon_ocudu; requires the ocudu submodule checked out and PYTHONPATH including ocudu/src."
+    },
+    {
+      "id": "xapp_e2e_proof",
+      "title": "xApp end-to-end proof (live A1 mediator + hw xApp)",
+      "requirement": "docker",
+      "regen": null,
+      "command": ["scripts/xapp_e2e_proof.py", "--a1-base-url", "http://127.0.0.1:10000", "--report", "{TMPDIR}/pipeline-report.json", "--mediator-log", "{TMPDIR}/a1mediator.log", "--xapp-log", "{TMPDIR}/hwxapp.log", "--out", "{TMPDIR}/xapp-e2e-proof.json"],
+      "result_file": "deploy/xapp-e2e/results/xapp-e2e-proof.json",
+      "ci_workflow": ".github/workflows/xapp-e2e.yml",
+      "notes": "Uses httpx against a live A1 mediator; the committed proof is produced only after standing up the Docker stack (scripts/run_horizon_rapp.py replay + O-RAN SC a1mediator + hw-python xApp). Requires a running Docker daemon; the command shown is the CI verify step, not a standalone offline run."
+    },
+    {
+      "id": "a1_assurance_proof",
+      "title": "A1 assurance envelope driven across the real OSC A1 socket",
+      "requirement": "submodule:sim-a1-interface",
+      "regen": null,
+      "command": ["deploy/xapp-e2e/a1_assurance_proof.py", "--out", "{FRESH}"],
+      "result_file": "deploy/xapp-e2e/results/a1-assurance-wire-proof.json",
+      "ci_workflow": ".github/workflows/osc-a1-integration.yml",
+      "probe_imports": ["requests", "connexion"],
+      "notes": "Generator for the a1_assurance_wire proof. Additionally needs the vendored simulator runtime (pip install -r deps/locks/a1sim.txt: connexion==2.14.2, requests, flask); reproduce.py SKIPs it when that runtime is absent even though the submodule is present. Imports horizon_ric and boots the vendored OSC_2.1.0 A1 simulator from third_party/sim-a1-interface (git submodule update --init) plus its pinned runtime (deps/locks/a1sim.txt); httpx drives a real A1 socket. Requires the submodule (and the simulator runtime)."
+    }
+  ]
+}
