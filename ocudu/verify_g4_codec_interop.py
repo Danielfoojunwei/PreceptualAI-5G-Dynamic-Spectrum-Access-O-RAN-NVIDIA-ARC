@@ -285,9 +285,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
         "closes": "the readability half of G4",
         "does_not_close": (
-            "the delivery half of G4: OCUDU registers the Style 2 Action 6 "
-            "executor only in e2_du_factory.cpp and the DU E2 agent has not "
-            "been observed to join"
+            "the delivery half of G4: no xApp has yet issued a RIC Control "
+            "Request carrying this payload to the Style 2 Action 6 executor "
+            "OCUDU registers in e2_du_factory.cpp, and no acknowledgement has "
+            "been observed coming back. An earlier version of this field said "
+            "the DU E2 agent had not been observed to join; that was wrong and "
+            "is superseded by ocudu/results/du-e2-probe.json, which records the "
+            "DU joining as ngran_gNB_DU with RAN function 3 (ORAN-E2SM-RC) "
+            "accepted. See ocudu/e2/DU_E2_FINDING.md."
         ),
         "source_digests": {
             "ocudu/e2/flexric_decode_check.c": _sha256(CHECKER_SRC),
