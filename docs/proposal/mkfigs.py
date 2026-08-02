@@ -58,6 +58,9 @@ plt.rcParams.update(
     }
 )
 
+# Set by enforcement_figure() so its rendered axes can be inspected.
+LAST_ENFORCEMENT_FIGURE = None
+
 DOLLAR = "US" + chr(92) + "$"  # avoid mathtext italicising a bare $
 
 
@@ -210,7 +213,12 @@ def enforcement_figure(ps, ev):
     ax.set_xticklabels(["neural RX\nunguarded", "through\nthe Shield"])
     ax.set_ylim(0, 25)
     ax.set_ylabel("worst symbol-error penalty (dB)")
-    ax.set_title("(d) white-box attack,\nworst over 5 attacks\n$\\times$ 3 regimes", pad=3)
+    # NOT "white-box": the worst ratio over this grid is the `boundary`
+    # attack, which evasion_suite.json documents as decision-based
+    # black-box. Titling this panel "white-box attack" committed, in the
+    # figure the proposal embeds, the exact misattribution the prose was
+    # corrected for.
+    ax.set_title("(d) worst attack,\n5 attacks\n$\\times$ 3 regimes", pad=3)
     ax.annotate("%.1f dB\n(%.0f$\\times$)" % (worst_unguarded_db, worst_unguarded_x),
                 (0, worst_unguarded_db), textcoords="offset points", xytext=(0, 3),
                 ha="center", fontsize=6.2, fontweight="bold", linespacing=1.0)
@@ -219,6 +227,13 @@ def enforcement_figure(ps, ev):
                 fontsize=6.6, fontweight="bold", color=GOOD)
 
     fig.savefig(HERE / "fig-enforcement.png", bbox_inches="tight", pad_inches=0.012)
+    # Kept so a verifier can read the bars and titles that were actually
+    # DRAWN. audit/verify_proposal_claims.py used to grep this file's source
+    # for literal bar heights and was defeated by a single space, passing a
+    # check whose own docstring promised it would fail. Source is not the
+    # artefact; the artefact is.
+    global LAST_ENFORCEMENT_FIGURE
+    LAST_ENFORCEMENT_FIGURE = fig
     plt.close(fig)
     return {
         "decisions": decisions,

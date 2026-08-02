@@ -234,6 +234,40 @@ def test_a_dead_gnb_is_reported_as_such_not_as_a_missing_join():
     assert out["waited_s"] == 5.0
 
 
+def test_a_join_then_a_crash_is_not_reported_as_a_missing_join():
+    """The gNB joining at t=13 and dying at t=14 is a POSITIVE about E2.
+
+    The exit check ran before the log was read, so this returned plain
+    `gnb_exited` — which the probe documents as "the answer is about the gNB,
+    not about E2". It is about E2: the DU joined. Reported as its own reason
+    rather than folded into either of the others.
+    """
+    log = {"text": ""}
+    n = {"i": 0}
+
+    def running():
+        n["i"] += 1
+        if n["i"] >= 13:
+            log["text"] = DU_JOINED
+        return n["i"] < 14
+
+    out = _wait(lambda: log["text"], running, floor=15.0)
+    assert out["reason"] == "du_join_observed_then_gnb_exited"
+    assert out["waited_s"] == 14.0
+
+
+def test_a_crash_with_only_a_cu_up_join_is_still_a_missing_du():
+    """The substring guard, on the new exit path too."""
+    n = {"i": 0}
+
+    def running():
+        n["i"] += 1
+        return n["i"] < 6
+
+    out = _wait(lambda: "[E2-CU-UP] [I] E2 Setup procedure successful.", running)
+    assert out["reason"] == "gnb_exited"
+
+
 def test_a_cu_up_join_alone_never_ends_the_wait_early():
     """The substring guard again, this time on the early-exit condition."""
     out = _wait(
@@ -250,9 +284,13 @@ def test_a_cu_up_join_alone_never_ends_the_wait_early():
 def test_stillness_is_not_consulted_anywhere():
     """Guard against the old rule being reintroduced.
 
-    A log that never changes for the entire budget, with a DU join present
-    from the start, must exit on the join and not on the stillness.
+    A log that never changes must NOT end the wait early on its own: with no
+    DU line present the wait runs to the budget rather than stopping at the
+    six seconds of stillness the old rule used. (The join-present case is
+    covered by test_a_join_before_the_floor_does_not_cut_the_others_short,
+    which this test used to duplicate with a weaker assertion.)
     """
-    out = _wait(lambda: DU_JOINED, lambda: True, budget=60.0, floor=15.0)
-    assert out["reason"] == "du_join_observed"
-    assert out["waited_s"] < 60.0
+    out = _wait(lambda: "[E2-CU-CP] [I] E2 Setup procedure successful.",
+                lambda: True, budget=40.0, floor=15.0)
+    assert out["reason"] == "budget_exhausted"
+    assert out["waited_s"] == 40.0

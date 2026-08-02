@@ -11,15 +11,15 @@ describes, and this one has to stay checkable against
 
 | File | What it is |
 |---|---|
-| `Horizon-RIC_AI-RAN_Call-for-Innovation_Proposal.docx` | The submission. Five pages, US Letter, IEEE two-column. |
+| `Horizon-RIC_AI-RAN_Call-for-Innovation_Proposal.docx` | The submission. Three pages — two of body plus references, US Letter, IEEE two-column. |
 | `Horizon-RIC_Proposal_PREVIEW.pdf` | Page-accurate preview, for reading and page counting without Word. |
 
 ## Rebuilding
 
 ```sh
-python docs/proposal/mkfigs.py        # regenerate all three figures
+python docs/proposal/mkfigs.py        # regenerate the one embedded figure
 python docs/proposal/build_docx.py    # assemble the .docx
-python docs/proposal/validate_docx.py # 89 checks; exits non-zero on any failure
+python docs/proposal/validate_docx.py # 83 checks; exits non-zero on any failure
 python docs/proposal/preview.py       # render the preview PDF
 ```
 
@@ -56,7 +56,7 @@ its geometry rather than editing a copy of it:
 - US Letter, 12240 × 15840 twips; margins 1440 top/bottom, 1080 left/right, so
   the text block is 7.0 × 9.0 in and each column is 3.375 in.
 - `IEEETitle` (24 pt centred), `IEEEAuthors`, `AbstractHeading` styles.
-- Four sections joined by **continuous** breaks: single-column masthead →
+- Two sections joined by a **continuous** break: single-column masthead →
   two columns → single-column band for the wide results figure → two
   columns. Continuous is what keeps each band on the same page instead of
   starting a new one; it is the standard idiom for a full-width figure in a

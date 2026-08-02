@@ -41,9 +41,9 @@ either.
 from __future__ import annotations
 
 import argparse
-import ast
 import json
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -52,6 +52,8 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 
 CONTENT = REPO / "docs" / "proposal" / "content.py"
+DOCX = (REPO / "docs" / "proposal"
+        / "Horizon-RIC_AI-RAN_Call-for-Innovation_Proposal.docx")
 MKFIGS = REPO / "docs" / "proposal" / "mkfigs.py"
 RESULTS = REPO / "benchmarks" / "results"
 DATA_DEP = REPO / "scripts" / "verify_data_dependence.py"
@@ -75,24 +77,38 @@ class Check:
 
 
 def proposal_prose() -> str:
-    """Every string constant in content.py, concatenated and whitespace-flat.
+    """Every word of the BUILT document, flattened.
 
-    Parsed from the AST rather than matched with a quote regex. The first
-    version of this function used ``re.findall(r'"..."')`` and was blind to
-    every single-quoted literal in the file — which is most of them, because
-    ``repr`` only reaches for double quotes when the string contains an
-    apostrophe. That made the negative checks below (``not says(...)``) pass
-    without seeing the text they were meant to search, which is the exact
-    failure mode this gate exists to catch elsewhere.
+    Two earlier versions of this function graded the wrong thing, in the same
+    direction both times — they searched text that a reader never sees.
 
-    ``ast.parse`` does not execute the module, so this stays inert.
+    The first matched double-quoted literals in ``content.py`` with a regex and
+    was blind to every single-quoted one, so ``not says(...)`` checks passed
+    without seeing what they searched. The second walked the module's AST,
+    which fixed the quoting but swept in the module docstring, comments-as-
+    strings and any other constant no renderer emits: an adversarial reviewer
+    put a corrected caption back to its broken form, hid the gate's search
+    string in the docstring, and got 9/9 green over a ``.docx`` that carried
+    the original defect.
+
+    Both were the same mistake. The claim under gate is about the *document*,
+    so the document is what gets read: paragraphs, table cells and inline
+    shapes of the built ``.docx``. If the document has not been built, that is
+    a failure rather than a silent fallback — a gate on a file that is not
+    there proves nothing.
     """
-    tree = ast.parse(CONTENT.read_text(encoding="utf-8"))
-    parts = [
-        node.value
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Constant) and isinstance(node.value, str)
-    ]
+    if not DOCX.exists():
+        raise FileNotFoundError(
+            f"{DOCX} has not been built; run docs/proposal/build_docx.py. This "
+            f"gate reads the rendered document on purpose."
+        )
+    from docx import Document
+
+    doc = Document(str(DOCX))
+    parts = [para.text for para in doc.paragraphs]
+    for table in doc.tables:
+        for row in table.rows:
+            parts.extend(cell.text for cell in row.cells)
     return re.sub(r"\s+", " ", " ".join(parts))
 
 
@@ -127,24 +143,41 @@ def run_checks() -> list[Check]:
             re.S,
         )
     )
-    figsrc = MKFIGS.read_text(encoding="utf-8")
-    m = re.search(r"# ---- \(c\).*?(?=# ---- \(d\))", figsrc, re.S)
-    panel_c = m.group(0) if m else ""
-    literals = re.findall(r"ax\.bar\(\[\d\], \[([\d.]+)\]", panel_c)
-    reads_result = ("peak_eirp_dbm" in panel_c and "ceiling_dbm" in panel_c
-                    and not literals)
+    # Render the figure and read the bars that were actually drawn. Grepping
+    # the source for a literal was defeated by one space — `ax.bar([0], [ 46.0 ])`
+    # passed a check whose own docstring promised it would fail, while the
+    # annotation still read 52.0 over a bar drawn at 46.0.
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    sys.path.insert(0, str(REPO / "docs" / "proposal"))
+    import mkfigs  # noqa: E402
+
+    mkfigs.enforcement_figure(*mkfigs._load())
+    fig = mkfigs.LAST_ENFORCEMENT_FIGURE
+    if fig is None:  # pragma: no cover — mkfigs always sets it
+        raise RuntimeError("mkfigs did not record the rendered figure")
+    panel_c_ax = fig.axes[2]
+    drawn = [round(patch.get_height(), 6) for patch in panel_c_ax.patches]
+    ylabel = panel_c_ax.get_ylabel()
+    panel_d_title = fig.axes[3].get_title()
+    plt.close("all")
+
     checks.append(
         Check(
             "fig1c_plots_eirp_read_from_the_result_not_a_typed_transmit_power",
-            eirp_is_sum and reads_result and gain > 0,
-            f"panel (c) plots ru_max_tx_dBm + antenna_gain_dBi = {peak_eirp} "
-            f"dBm against the {ceiling} dBm ceiling, both read from "
-            f"poisoning_shield.json; {len(literals)} literal bar height(s) "
-            f"remain",
+            eirp_is_sum and gain > 0 and drawn == [peak_eirp, ceiling]
+            and "EIRP" in ylabel,
+            f"panel (c) draws bars at {drawn} on an axis labelled {ylabel!r}; "
+            f"the benchmark's own EIRP is ru_max_tx_dBm + antenna_gain_dBi = "
+            f"{peak_eirp} dBm against the {ceiling} dBm ceiling",
             {
                 "peak_eirp_dBm": peak_eirp,
                 "licence_ceiling_dBm": ceiling,
-                "literal_bar_heights": literals,
+                "bars_as_drawn": drawn,
+                "y_axis_label": ylabel,
                 "was": "labelled 'peak EIRP' but plotted 46.0, a transmit "
                        "power — a 19 dB violation drawn as 13 dB",
             },
@@ -185,11 +218,20 @@ def run_checks() -> list[Check]:
         if isinstance(v, dict) and "neural_over_classical_x" in v
     }
     headline_attack = max(ratios, key=lambda k: ratios[k])
-    white_box_max = max(v for k, v in ratios.items() if k != headline_attack)
+    # Named explicitly rather than "everything except the headline". The old
+    # form assumed `boundary` was the only black-box attack; `transfer` is one
+    # too, at 28.5x, and one nudge would have had this gate print a black-box
+    # number as "the white-box maximum".
+    WHITE_BOX = {"fgsm", "bim", "mim"}
+    white_box_max = max(v for k, v in ratios.items() if k in WHITE_BOX)
     checks.append(
         Check(
             "the_85x_figure_is_no_longer_attributed_to_a_white_box_attack",
             not says("White-box adversarial perturbation")
+            # ...and neither is the FIGURE, which titled panel (d) "white-box
+            # attack" over the boundary result — the same misattribution, in
+            # the artefact the proposal actually embeds.
+            and "white-box" not in panel_d_title.lower()
             and headline_attack == "boundary"
             and round(ratios[headline_attack], 1) == 84.5,
             f"{ratios[headline_attack]:.1f}x is the {headline_attack!r} attack, "
@@ -197,8 +239,12 @@ def run_checks() -> list[Check]:
             f"white-box maximum is {white_box_max:.1f}x",
             {
                 "ratios_by_attack": ratios,
+                "white_box_attacks": sorted(WHITE_BOX),
                 "white_box_max": round(white_box_max, 1),
-                "was": "White-box adversarial perturbation ... up to 85 times",
+                "panel_d_title": panel_d_title,
+                "was": "White-box adversarial perturbation ... up to 85 times, "
+                       "and a panel titled 'white-box attack' over the "
+                       "black-box boundary result",
             },
         )
     )
@@ -229,21 +275,46 @@ def run_checks() -> list[Check]:
         )
     )
 
-    # ── 6. workflow count ────────────────────────────────────────────────
+    # ── 6. workflow count, and the right predicate ──────────────────────
+    # Counted by parsing `on.pull_request`, not by grepping for the string:
+    # the old method counted a workflow that merely mentioned it in a comment
+    # and missed the .yaml spelling entirely. The claim was also reworded —
+    # it used to say these workflows "gate every change", and only three do.
+    # The other eight are path-scoped and stay green on a change they do not
+    # cover.
+    import yaml
+
     wf_dir = REPO / ".github" / "workflows"
-    on_pr = sorted(
-        p.name
-        for p in wf_dir.glob("*.yml")
-        if "pull_request" in p.read_text(encoding="utf-8")
-    )
+    on_pr, gate_everything = [], []
+    for wf in sorted(list(wf_dir.glob("*.yml")) + list(wf_dir.glob("*.yaml"))):
+        try:
+            spec = yaml.safe_load(wf.read_text(encoding="utf-8")) or {}
+        except yaml.YAMLError:
+            continue
+        # PyYAML resolves an unquoted `on:` key to the boolean True.
+        triggers = spec.get("on", spec.get(True)) or {}
+        if not isinstance(triggers, dict) or "pull_request" not in triggers:
+            continue
+        on_pr.append(wf.name)
+        pr = triggers["pull_request"] or {}
+        if not isinstance(pr, dict) or not pr.get("paths"):
+            gate_everything.append(wf.name)
     checks.append(
         Check(
             "verification_workflow_count_matches_the_workflows_that_run",
-            says("Eleven verification workflows gate every change")
+            says(f"{len(on_pr)} verification workflows run on every pull request")
+            or says("Eleven verification workflows run on every pull request")
             and len(on_pr) == 11,
-            f"the proposal says eleven; {len(on_pr)} workflow(s) run on "
-            f"pull_request",
-            {"on_pull_request": on_pr, "was": "Eight verification workflows"},
+            f"{len(on_pr)} workflow(s) run on pull_request; only "
+            f"{len(gate_everything)} of them are unfiltered and therefore "
+            f"actually gate every change ({', '.join(gate_everything)})",
+            {
+                "on_pull_request": on_pr,
+                "unfiltered": gate_everything,
+                "was": "Eight verification workflows gate every change — wrong "
+                       "count, and the wrong predicate: eight of the eleven "
+                       "are path-scoped",
+            },
         )
     )
 

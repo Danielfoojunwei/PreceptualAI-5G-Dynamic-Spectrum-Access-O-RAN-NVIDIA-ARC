@@ -26,6 +26,7 @@ import content as C  # noqa: E402
 
 DOCX = HERE / "Horizon-RIC_AI-RAN_Call-for-Innovation_Proposal.docx"
 PREVIEW = HERE / "Horizon-RIC_Proposal_PREVIEW.pdf"
+CONTENT = HERE / "content.py"
 
 # CT_PPr's element sequence. A child appearing out of this order makes Word
 # refuse the file.
@@ -312,6 +313,21 @@ def check_pagination():
     if not PREVIEW.exists():
         check(False, "preview PDF present to measure pagination against",
               "missing %s — run preview.py" % PREVIEW.name)
+        return
+    # The PDF on disk is not necessarily the document just validated. A
+    # reviewer rebuilt only the .docx with 4500 extra words and this check
+    # still reported three pages, because it read a preview from before the
+    # edit. Staleness is now a failure: the .docx and the preview both derive
+    # from content.py, so a preview older than either is not evidence about
+    # this document.
+    stale_against = [
+        src for src in (CONTENT, DOCX)
+        if src.exists() and src.stat().st_mtime > PREVIEW.stat().st_mtime
+    ]
+    if stale_against:
+        check(False, "preview PDF is newer than the sources it renders",
+              "stale against %s — run preview.py"
+              % ", ".join(s.name for s in stale_against))
         return
     try:
         import pypdfium2 as pdfium

@@ -50,7 +50,18 @@ jobs:
       - name: Install the build's own dependencies
         # Deliberately not the Horizon package: the proposal build reads
         # committed result JSON and must not depend on importing horizon_ric.
-        run: python -m pip install python-docx matplotlib weasyprint pypdfium2
+        # PINNED on purpose. fig-enforcement.png embeds the producing
+        # matplotlib version in its Software chunk, and the comparison below
+        # is byte-exact — so an unpinned bump makes this job fail on a PR that
+        # touched nothing. The .docx (part-for-part) and the page count have
+        # the same exposure via python-docx and weasyprint.
+        run: |
+          python -m pip install \
+            'python-docx==1.2.0' \
+            'matplotlib==3.11.1' \
+            'weasyprint==66.0' \
+            'pypdfium2==5.0.4' \
+            'pyyaml'
 
       - name: Rebuild figures, .docx and preview from content.py
         run: |
@@ -74,14 +85,53 @@ jobs:
           here = pathlib.Path("docs/proposal")
 
           # Figures: byte-identical or the plot changed without the JSON.
-          out = subprocess.run(
-              ["git", "status", "--porcelain", "--", "docs/proposal"],
-              capture_output=True, text=True).stdout.strip()
-          dirty = [ln for ln in out.splitlines()
-                   if ln.split()[-1].endswith((".png", ".svg"))]
+          # -z, because `ln.split()[-1]` silently missed a path with a space
+          # in it: git quotes those in the default format, so the last token
+          # ended in a quote and never matched the suffix test.
+          raw = subprocess.run(
+              ["git", "status", "--porcelain", "-z", "--", "docs/proposal"],
+              capture_output=True).stdout.decode()
+          fields, entries = raw.split("\0"), []
+          i = 0
+          while i < len(fields):
+              f = fields[i]
+              if not f:
+                  i += 1
+                  continue
+              status, path = f[:2], f[3:]
+              # A rename entry is followed by its ORIGINAL path in the next
+              # NUL-separated field; the entry itself already carries the new
+              # one, which is the file we care about.
+              if status[0] in ("R", "C"):
+                  i += 1
+              entries.append((status, path))
+              i += 1
+          dirty = [f"{st} {pa}" for st, pa in entries
+                   if pa.endswith((".png", ".svg"))]
           if dirty:
               problems.append("figures differ from the committed copies:\n  "
                               + "\n  ".join(dirty))
+
+          # #8 — the committed preview PDF was never compared to anything.
+          # It cannot be byte-compared (metadata differs every build), so
+          # compare what it is FOR: page count and per-page text.
+          import pypdfium2 as pdfium
+          pdf = here / "Horizon-RIC_Proposal_PREVIEW.pdf"
+          committed_pdf = pathlib.Path("/tmp/committed_preview.pdf")
+          committed_pdf.write_bytes(subprocess.run(
+              ["git", "show", f"HEAD:{pdf.as_posix()}"],
+              capture_output=True).stdout)
+          fresh_doc, old_doc = pdfium.PdfDocument(str(pdf)), pdfium.PdfDocument(str(committed_pdf))
+          if len(fresh_doc) != len(old_doc):
+              problems.append(f"preview page count differs: rebuilt "
+                              f"{len(fresh_doc)} vs committed {len(old_doc)}")
+          else:
+              for n in range(len(fresh_doc)):
+                  a = fresh_doc[n].get_textpage().get_text_range()
+                  b = old_doc[n].get_textpage().get_text_range()
+                  if a != b:
+                      problems.append(f"preview page {n + 1} text differs from "
+                                      f"the committed copy")
 
           # .docx: compare part-for-part, ignoring zip timestamps.
           docx = here / "Horizon-RIC_AI-RAN_Call-for-Innovation_Proposal.docx"

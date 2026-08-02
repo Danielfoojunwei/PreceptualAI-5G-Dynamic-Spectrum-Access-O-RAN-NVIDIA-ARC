@@ -131,15 +131,16 @@ jobs:
           PY
 
       - name: Proposal sentences vs the result files they cite
-        # validate_docx.py checks 89 things about the document and not one of
-        # them is whether a sentence agrees with its JSON. Six do not. Same
-        # reading as above: green means "unchanged", not "correct", and
-        # correcting a sentence is what turns this red.
+        # validate_docx.py checks 83 things about the document and not one of
+        # them is whether a sentence agrees with its JSON. Seven did not, and
+        # are corrected; this gate holds the corrections in place. It grades
+        # the BUILT .docx and the RENDERED figure, not the source of either —
+        # two earlier versions graded source and were both defeated.
         run: |
           python audit/verify_proposal_claims.py \
             --out "$RUNNER_TEMP/proposal-claims.json"
 
-      - name: Compare against the committed disagreements
+      - name: Compare against the committed corrections
         run: |
           python - <<'PY'
           import json, os, sys

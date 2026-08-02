@@ -25,39 +25,36 @@ Both arms are scored on the same thing: the reward of what was actually
 emitted. That is the only comparison that means anything, because it is the
 only one the radio can pay.
 
-MEASURED — 3 seeds x 2 arms x 4000 decisions
---------------------------------------------
-====  ===================  ===================  =============  =============
-seed  illegal req (open)   illegal req (closed) reward open    reward closed
-====  ===================  ===================  =============  =============
-…802  3585                 2610                 .1113 -> .1049 .0963 -> .1502
-11    3423                 2555                 .1388 -> .2170 .1106 -> .1419
-12    3338                 2613                 .1189 -> .2069 .1013 -> .1326
-====  ===================  ===================  =============  =============
+WHAT IT MEASURES
+----------------
+Numbers are deliberately NOT reproduced here. An earlier version pasted a
+results table into this docstring and it went stale the moment the noise
+model changed — the same drift this repository gates against everywhere else.
+The run writes ``end-to-end-learning.json``; read that.
 
-**What holds in every seed.** Enforcement: 0 illegal emissions out of 24000
-decisions, graded by an oracle that shares no constant with the Shield. And
-closing the loop reduces how much illegality is *requested* — the closed arm
-asks for 73-78% as many illegal emissions as the open one.
+**What has held in every seed run so far.** Enforcement: zero illegal
+emissions, every arm of every seed, graded by an oracle that shares no
+constant with the Shield. And closing the loop reduces how much illegality is
+*requested* — roughly three-quarters as many illegal proposals as the open
+arm.
 
-**What does not hold, and was published before it was checked.** The first
-version of this demo ran one seed, found the closed arm\'s realised reward
-rising while the open arm\'s fell, and headlined that closing the loop is the
-only arm in which learning works. Two further seeds contradict it: in seeds 11
-and 12 the open arm ends *higher*, and by a wide margin. The effect was a
-single-seed artifact and the claim is withdrawn.
+**What did not hold, and was published before it was checked.** The first
+version of this demo ran a single seed, found the closed arm's realised reward
+rising while the open arm's fell, and headlined that closing the loop is the
+only arm in which learning works. Further seeds contradict it: the effect held
+on 1 of 10 in an independent sweep, and the seed it held on was this file's
+default. It was an artifact and the claim is withdrawn. Because a single seed
+already produced one false headline here, the report now states only findings
+that hold in **every** seed, and prints a split result as split.
 
-Reading the three seeds together, the honest direction is the opposite of the
-original guess: closing the loop appears to **cost** realised utility. The
-mechanism is the same one that refutes the other hypothesis below. Projection
-clamps every over-ceiling proposal to exactly the ceiling — which is the best
-*legal* power. The open-loop planner climbs a fictional gradient to maximum
-power and is therefore clamped onto the legal optimum every time; being wrong
-about the world lands it in the right place. The closed-loop planner sees a
-flat plateau above the ceiling, has no gradient to climb, and keeps exploring
-it — including arms that pay less. This is stated as a direction, not a
-result: three seeds is three seeds, and ``--seeds`` exists so it can be
-checked properly.
+The direction that remains — stated as a possible mechanism, not a result — is
+the opposite of the original guess: closing the loop may *cost* realised
+utility. Projection clamps every over-ceiling proposal to exactly the ceiling,
+which is the best *legal* power. The open-loop planner climbs a fictional
+gradient to maximum power and is therefore clamped onto the legal optimum
+every time; being wrong about the world lands it in the right place. The
+closed-loop planner sees a flat plateau above the ceiling, has no gradient to
+climb, and keeps exploring it — including arms that pay less.
 
 **A hypothesis this demo refuted, in every seed.** It was built expecting the
 closed arm to converge toward compliance — for the illegal-request rate to
@@ -182,11 +179,14 @@ def make_continuous_reward(centres_hz: tuple[float, ...], *, seed: int):
     the first such projection.
 
     So the same seeded per-arm realisation is kept and evaluated at the nearest
-    arm for any other frequency. Frequency-selective fading is smooth on the
-    scale of the arm spacing, so this is the physically sensible reading rather
-    than a convenience — and it is the only way the two arms of this
-    demonstration can share one environment, which they must, or the comparison
-    means nothing.
+    arm for any other frequency. Note what this is NOT: the declared model
+    draws each arm's fading i.i.d., so it is not smooth between arms and
+    nearest-arm lookup is not interpolation of a smooth field — it is a
+    piecewise-constant extension of a model that was only ever defined on the
+    grid. It does not bias either arm, because both score the emission the same
+    way and the open arm's feedback frequency is always exactly on-grid, but
+    a real frequency-selective model would be the honest thing here and this
+    is not one.
     """
     import random as _random
 
@@ -194,15 +194,27 @@ def make_continuous_reward(centres_hz: tuple[float, ...], *, seed: int):
     fading_dB = {c: fading_rng.uniform(0.0, MAX_FADING_DB) for c in centres_hz}
     noise_rng = _random.Random(seed + 1)
     grid = tuple(centres_hz)
+    # The open arm calls this twice per decision (once to score the emission,
+    # once to feed the planner its proposal's reward) and the closed arm once.
+    # Sharing one noise stream therefore desynchronised the two arms and threw
+    # away the paired-comparison variance reduction the design claims. A
+    # per-decision draw, indexed by the caller, gives both arms the same noise
+    # on the same decision.
+    draws: dict[int, float] = {}
 
-    def reward(centre_hz: float, tx_power_dBm: float) -> float:
+    def noise(step: int) -> float:
+        while step not in draws:
+            draws[len(draws)] = noise_rng.gauss(0.0, MEASUREMENT_NOISE_DB)
+        return draws[step]
+
+    def reward(centre_hz: float, tx_power_dBm: float, step: int = 0) -> float:
         nearest = min(grid, key=lambda c: abs(c - centre_hz))
         sinr_dB = (
             tx_power_dBm
             + ANTENNA_GAIN_DBI
             - REF_PATH_LOSS_DB
             - fading_dB[nearest]
-            + noise_rng.gauss(0.0, MEASUREMENT_NOISE_DB)
+            + noise(step)
         )
         util = math.log2(1.0 + 10.0 ** (sinr_dB / 10.0)) / MAX_SPECTRAL_EFF
         return min(1.0, max(0.0, util))
@@ -319,7 +331,9 @@ def run_arm(
             if graded["illegal"]:
                 illegal_emissions += 1
             realised = reward(
-                float(emitted["frequency_hz"]), float(emitted["tx_power_dBm"])
+                float(emitted["frequency_hz"]),
+                float(emitted["tx_power_dBm"]),
+                d,
             )
         realised_reward.append(realised)
 
@@ -330,7 +344,7 @@ def run_arm(
         else:
             # What the planner asked for. The projection is outside the loop.
             planner.observe(
-                choice, reward(choice.centre_hz, choice.tx_power_dBm)
+                choice, reward(choice.centre_hz, choice.tx_power_dBm, d)
             )
 
         # 5. Evidence. A real record on a real hash chain, refusals included —
@@ -401,17 +415,49 @@ def run_arm(
     }
 
 
-def verify_offline(evidence: Path, pubkey_pem: Path) -> dict[str, Any]:
-    """Run the standalone verifier the way a regulator would.
+_BLOCKING_DRIVER = """
+import runpy
+import sys
 
-    ``horizon_ric`` is removed from the subprocess's path. If the verifier has
-    quietly grown a dependency on our code, it fails here rather than passing
-    on a machine that happens to have us installed.
+
+class _RefuseHorizonRic:
+    '''Make `import horizon_ric` fail, however it is installed.'''
+
+    def find_spec(self, name, path=None, target=None):
+        if name == "horizon_ric" or name.startswith("horizon_ric."):
+            raise ImportError(
+                "horizon_ric is deliberately unavailable: this subprocess "
+                "exists to prove the verifier does not need it"
+            )
+        return None
+
+
+sys.meta_path.insert(0, _RefuseHorizonRic())
+sys.argv = sys.argv[1:]
+runpy.run_path(sys.argv[0], run_name="__main__")
+"""
+
+
+def verify_offline(evidence: Path, pubkey_pem: Path) -> dict[str, Any]:
+    """Run the standalone verifier the way a regulator would — and prove it.
+
+    An earlier version stripped ``/src`` entries out of PYTHONPATH and called
+    that isolation. It is not: ``horizon_ric`` is installed, so it lives in
+    site-packages and stays importable no matter what PYTHONPATH says. The
+    subprocess claimed "the regulator's view" while our package sat right
+    there, and a verifier that had quietly grown a dependency on it would have
+    passed.
+
+    So the import is now *blocked* rather than merely un-pathed: a meta-path
+    finder raises ``ImportError`` for ``horizon_ric`` and anything under it,
+    and the verifier is run inside that subprocess. Passing here means the
+    verifier genuinely did not touch our code — which is the claim.
     """
-    env_path = [p for p in sys.path if not p.endswith("/src")]
     proc = subprocess.run(
         [
             sys.executable,
+            "-c",
+            _BLOCKING_DRIVER,
             str(REPO / "audit" / "verify_evidence.py"),
             str(evidence),
             "--pubkey",
@@ -420,7 +466,6 @@ def verify_offline(evidence: Path, pubkey_pem: Path) -> dict[str, Any]:
         ],
         capture_output=True,
         text=True,
-        env={"PYTHONPATH": ":".join(env_path), "PATH": "/usr/bin:/bin"},
     )
     report: dict[str, Any]
     try:
@@ -430,6 +475,11 @@ def verify_offline(evidence: Path, pubkey_pem: Path) -> dict[str, Any]:
         report = {"result": "ERROR", "stdout": proc.stdout[-800:],
                   "stderr": proc.stderr[-800:]}
     report["exit_code"] = proc.returncode
+    # If the verifier had imported horizon_ric, the driver's finder would have
+    # raised and this run would not be a PASS. Recording it as an explicit
+    # field so a reader does not have to infer it from the absence of a crash.
+    report["horizon_ric_import_blocked"] = True
+    report["horizon_ric_was_not_imported"] = proc.returncode == 0
     return report
 
 
@@ -491,7 +541,14 @@ def main(argv: list[str] | None = None) -> int:
             v = m["offline_verification"]
             if v.get("exit_code") != 0 or v.get("result") != "PASS":
                 problems.append(
-                    f"seed {seed} {arm}: evidence did not verify offline: {v}"
+                    f"seed {seed} {arm}: evidence did not verify offline: "
+                    f"{ {k: v[k] for k in ('result', 'exit_code', 'error') if k in v} }"
+                )
+            if not v.get("horizon_ric_was_not_imported"):
+                problems.append(
+                    f"seed {seed} {arm}: the verifier did not complete with "
+                    f"horizon_ric blocked; the standalone claim is not "
+                    f"established"
                 )
             if not v.get("chain", {}).get("intact"):
                 problems.append(f"seed {seed} {arm}: hash chain not intact")

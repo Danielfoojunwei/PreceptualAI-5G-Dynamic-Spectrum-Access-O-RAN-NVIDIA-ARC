@@ -2,12 +2,16 @@
   "checks": [
     {
       "data": {
+        "bars_as_drawn": [
+          52.0,
+          33.0
+        ],
         "licence_ceiling_dBm": 33.0,
-        "literal_bar_heights": [],
         "peak_eirp_dBm": 52.0,
-        "was": "labelled 'peak EIRP' but plotted 46.0, a transmit power \u2014 a 19 dB violation drawn as 13 dB"
+        "was": "labelled 'peak EIRP' but plotted 46.0, a transmit power \u2014 a 19 dB violation drawn as 13 dB",
+        "y_axis_label": "peak EIRP (dBm)"
       },
-      "detail": "panel (c) plots ru_max_tx_dBm + antenna_gain_dBi = 52.0 dBm against the 33.0 dBm ceiling, both read from poisoning_shield.json; 0 literal bar height(s) remain",
+      "detail": "panel (c) draws bars at [np.float64(52.0), np.float64(33.0)] on an axis labelled 'peak EIRP (dBm)'; the benchmark's own EIRP is ru_max_tx_dBm + antenna_gain_dBi = 52.0 dBm against the 33.0 dBm ceiling",
       "id": "fig1c_plots_eirp_read_from_the_result_not_a_typed_transmit_power",
       "passed": true
     },
@@ -26,6 +30,7 @@
     },
     {
       "data": {
+        "panel_d_title": "(d) worst attack,\n5 attacks\n$\\times$ 3 regimes",
         "ratios_by_attack": {
           "bim": 28.599999999999994,
           "boundary": 84.50000000000001,
@@ -33,7 +38,12 @@
           "mim": 28.599999999999994,
           "transfer": 28.500000000000004
         },
-        "was": "White-box adversarial perturbation ... up to 85 times",
+        "was": "White-box adversarial perturbation ... up to 85 times, and a panel titled 'white-box attack' over the black-box boundary result",
+        "white_box_attacks": [
+          "bim",
+          "fgsm",
+          "mim"
+        ],
         "white_box_max": 28.6
       },
       "detail": "84.5x is the 'boundary' attack, which the suite documents as decision-based black-box; the white-box maximum is 28.6x",
@@ -70,9 +80,14 @@
           "test.yml",
           "xapp-e2e.yml"
         ],
-        "was": "Eight verification workflows"
+        "unfiltered": [
+          "build.yml",
+          "lint.yml",
+          "test.yml"
+        ],
+        "was": "Eight verification workflows gate every change \u2014 wrong count, and the wrong predicate: eight of the eleven are path-scoped"
       },
-      "detail": "the proposal says eleven; 11 workflow(s) run on pull_request",
+      "detail": "11 workflow(s) run on pull_request; only 3 of them are unfiltered and therefore actually gate every change (build.yml, lint.yml, test.yml)",
       "id": "verification_workflow_count_matches_the_workflows_that_run",
       "passed": true
     },

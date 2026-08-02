@@ -100,7 +100,7 @@ SECTIONS = [
     ]),
 
     ('IV.  Deployment Feasibility', [
-        'Enforcement is transparent to the standard interface: the 12/12 result needed no patch to the mediator or the xApp, because the layer changes what may be emitted, not how. It ships as an ordinary non-real-time rApp — container images, a Helm chart with template-rendering tests, EIAP and MantaRay onboarding descriptors, OAuth2 and mTLS, a TimescaleDB evidence backend live-tested to SQL-level tamper detection — is torch-free, and costs 27 µs per candidate action at the median. Eleven verification workflows gate every change.',
+        'Enforcement is transparent to the standard interface: the 12/12 result needed no patch to the mediator or the xApp, because the layer changes what may be emitted, not how. It ships as an ordinary non-real-time rApp — container images, a Helm chart with template-rendering tests, EIAP and MantaRay onboarding descriptors, OAuth2 and mTLS, a TimescaleDB evidence backend live-tested to SQL-level tamper detection — is torch-free, and costs 27 µs per candidate action on average. Eleven verification workflows run on every pull request.',
 
         'What is not proven. No vendor platform has onboarded this; the RAN software is open-source rather than vendor equipment; the propagation is one scenario; and the OCUDU CU/DU E2 join — all three of CU-CP, CU-UP and DU, with RAN function 3 accepted — runs over a disclosed UDP transport substitution because the host kernel has no SCTP.',
 

@@ -128,16 +128,24 @@ def wait_for_join(
     keeps the positive case from cutting off the CU-CP and CU-UP associations
     that arrive alongside it.
     """
+    def du_joined() -> bool:
+        return any("DU" in m.group("unit") for m in _GNB_CONN.finditer(read_gnb()))
+
     start = clock()
     while True:
         sleep(1.0)
         waited = clock() - start
         if not gnb_running():
-            return {"waited_s": round(waited, 1), "reason": "gnb_exited"}
-        if waited >= floor_s and _GNB_CONN.search(read_gnb()) is not None:
-            joined = {m.group("unit") for m in _GNB_CONN.finditer(read_gnb())}
-            if any("DU" in u for u in joined):
-                return {"waited_s": round(waited, 1), "reason": "du_join_observed"}
+            # Read the log BEFORE concluding the answer is about the gNB. A
+            # gNB that joins at t=13 and dies at t=14 used to be reported as
+            # `gnb_exited`, which this module's own docstring reads as "the
+            # answer is about the gNB, not about E2" — false, and precisely
+            # the kind of negative this probe exists to stop producing.
+            reason = ("du_join_observed_then_gnb_exited" if du_joined()
+                      else "gnb_exited")
+            return {"waited_s": round(waited, 1), "reason": reason}
+        if waited >= floor_s and du_joined():
+            return {"waited_s": round(waited, 1), "reason": "du_join_observed"}
         if waited >= budget_s:
             return {"waited_s": round(waited, 1), "reason": "budget_exhausted"}
 
@@ -212,6 +220,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", type=Path, help="write the result JSON here")
     args = p.parse_args(argv)
 
+    # A floor above the budget makes du_join_observed unreachable: the wait
+    # would always hit the budget first and report budget_exhausted, i.e. a
+    # negative, no matter what the gNB did.
+    if args.floor_s > args.settle_s:
+        p.error("--floor-s (%g) exceeds --settle-s (%g); a join could never "
+                "be reported" % (args.floor_s, args.settle_s))
+
     for name, path in (("RIC", args.ric), ("gNB", args.gnb), ("config", args.config)):
         if not path.exists():
             print(f"error: {name} not found at {path}", file=sys.stderr)
@@ -270,8 +285,10 @@ def main(argv: list[str] | None = None) -> int:
     # negative result is only worth as much as the wait behind it, so this
     # travels with the verdict rather than being reconstructable from the
     # logs. `budget_exhausted` alongside `du_agent_joined: false` is the
-    # honest negative; `gnb_exited` means the gNB died and the answer is
-    # about the gNB, not about E2.
+    # honest negative. `gnb_exited` means the gNB died with no DU association
+    # in its log, so the answer is about the gNB rather than about E2 —
+    # but only after the log has been read, because a gNB that joins and then
+    # dies reports `du_join_observed_then_gnb_exited` and is a POSITIVE.
     result["wait"] = {**waited, "budget_s": args.settle_s, "floor_s": args.floor_s}
 
     text = json.dumps(result, indent=2, sort_keys=True)
