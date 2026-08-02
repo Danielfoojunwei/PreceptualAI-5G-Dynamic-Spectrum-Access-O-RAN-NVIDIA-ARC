@@ -1,0 +1,114 @@
+{
+  "checks": [
+    {
+      "id": "not_staged",
+      "passed": true,
+      "per_agent": {
+        "energy-agent": {
+          "aggregate_margin_hz": 5000000.0,
+          "aggregate_satisfied": true,
+          "shield_projected": false,
+          "shield_safe": true,
+          "shield_violated": []
+        },
+        "slice-agent": {
+          "aggregate_margin_hz": 5000000.0,
+          "aggregate_satisfied": true,
+          "shield_projected": false,
+          "shield_safe": true,
+          "shield_violated": []
+        }
+      }
+    },
+    {
+      "capacity_mhz": 12.5,
+      "floor_mhz": 20.0,
+      "id": "joint_violation_detected",
+      "margin_hz": -7500000.0,
+      "passed": true
+    },
+    {
+      "distinct_outcomes": 1,
+      "id": "order_independent",
+      "outcome": [
+        "(('slice-agent',), ('energy-agent',))"
+      ],
+      "passed": true
+    },
+    {
+      "dropped_inverted": [
+        "slice-agent"
+      ],
+      "dropped_normal": [
+        "energy-agent"
+      ],
+      "id": "priority_decides",
+      "passed": true
+    },
+    {
+      "actions_unreadable": true,
+      "cites_the_floor": true,
+      "committed": false,
+      "id": "atomic_refusal",
+      "passed": true,
+      "refusals": [
+        "aggregate.absolute_slice_capacity_floor: slice 'safety_critical' holds 0.5000 x 30.000 MHz = 15.000 MHz against an absolute floor of 20.000 MHz"
+      ]
+    },
+    {
+      "id": "authority_enforced",
+      "passed": true,
+      "refusals": [
+        "authority.energy-agent: agent 'energy-agent' mutates keys outside its scopes ['spectrum']: ['prb_allocation']"
+      ]
+    },
+    {
+      "id": "telemetry_gate_refuses",
+      "passed": true,
+      "refused_by": {
+        "corroboration": [
+          "corroboration"
+        ],
+        "field_range": [
+          "corroboration",
+          "field_range",
+          "field_range",
+          "required_fields"
+        ],
+        "freshness": [
+          "corroboration",
+          "freshness",
+          "freshness",
+          "required_fields"
+        ],
+        "replay": [
+          "corroboration",
+          "replay",
+          "replay",
+          "required_fields"
+        ],
+        "required_fields": [
+          "corroboration",
+          "required_fields"
+        ],
+        "source_authenticated": [
+          "corroboration",
+          "required_fields",
+          "source_authenticated"
+        ]
+      }
+    }
+  ],
+  "claim": "two individually-legal agent actions can jointly breach a protected slice's capacity commitment; the bundle detects it, resolves it deterministically by operator priority, and refuses atomically when it cannot",
+  "gate": "G6",
+  "passed": true,
+  "source_digests": {
+    "agentic/src/horizon_agentic/aggregate.py": "ac98cb633583f2940c6d745f988f59f0ee04a4d0e49a0875f6a5a81d86ad256f",
+    "agentic/src/horizon_agentic/bundle.py": "d1503f2eae9254e184be7f04b0bf3add090bdf4ad5a57b8e4052cba7525154a5",
+    "agentic/src/horizon_agentic/conflict.py": "47803ceaee0b7ec7feab6bbf88fea99f13d6ab5d74f21e3c51f9e539d69b58c6",
+    "agentic/src/horizon_agentic/envelope.py": "ce0bed7a3dd00caf0f3d39ef933cdbf409d57d9f1d082a3500f0ec16b6cdfc5d",
+    "agentic/src/horizon_agentic/telemetry_trust.py": "aedfae743b1e12b9879ce1bf49fdf7c33a0d44839172c633d98bb0ded4bd18fb",
+    "src/horizon_ric/shield/invariants.py": "fe9185068e5f6becae25ff3248121f94429f99fa653a4559c364ca30940511ee",
+    "src/horizon_ric/shield/shield.py": "b8e227b0dbfe1a22a8ea9550f23f818fbaf607ad073dd9e9ed4a4673300a966e"
+  }
+}

@@ -1,0 +1,94 @@
+name: Horizon-Agentic
+
+# Self-contained CI for the additive `agentic/` subtree. Deliberately a
+# separate workflow with its own path filter rather than an edit to test.yml:
+# this track is experimental and must not be able to turn the main pipeline
+# red, and the main pipeline's scope must not quietly grow to cover it.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "agentic/**"
+      - ".github/workflows/agentic.yml"
+      # The gate pins the SHA-256 of these, so a change here can legitimately
+      # fail G6 and should run it.
+      - "src/horizon_ric/shield/shield.py"
+      - "src/horizon_ric/shield/invariants.py"
+      - "src/horizon_ric/assurance/planner.py"
+  push:
+    branches: [main]
+    paths:
+      - "agentic/**"
+      - ".github/workflows/agentic.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  agentic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Horizon-RIC
+        run: python -m pip install '.[dev]'
+
+      - name: Lint
+        run: python -m ruff check agentic/
+
+      - name: Type-check
+        # Scoped to this subtree with its own path config, so the main mypy
+        # job's settings are untouched.
+        run: |
+          python -m mypy \
+            --ignore-missing-imports \
+            --no-strict-optional \
+            agentic/src/horizon_agentic
+
+      - name: Tests
+        env:
+          PYTHONPATH: src:agentic/src
+        run: python -m pytest agentic/tests -q
+
+      - name: Gate G6 — multi-agent enforcement
+        run: |
+          python agentic/verify_g6_multi_agent.py \
+            --out "$RUNNER_TEMP/g6-fresh.json"
+
+      - name: Compare against the committed result
+        # Re-running and comparing is what makes the committed JSON evidence
+        # rather than a note. The source digests are part of the comparison, so
+        # editing an invariant to make the numbers agree fails here.
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          fresh = json.load(open(os.environ["RUNNER_TEMP"] + "/g6-fresh.json"))
+          committed = json.load(open("agentic/results/g6-multi-agent.json"))
+          problems = []
+          if not fresh["passed"]:
+              problems.append("fresh run did not pass")
+          for key in ("gate", "claim", "source_digests"):
+              if fresh[key] != committed[key]:
+                  problems.append(f"{key} differs from the committed result")
+          fresh_checks = {c["id"]: c["passed"] for c in fresh["checks"]}
+          committed_checks = {c["id"]: c["passed"] for c in committed["checks"]}
+          if fresh_checks != committed_checks:
+              problems.append(f"checks differ: {fresh_checks} vs {committed_checks}")
+          if not fresh["checks"]:
+              problems.append("no checks ran; a vacuous pass is not a pass")
+          if problems:
+              print("\n".join(problems), file=sys.stderr)
+              sys.exit(1)
+          print(f"G6 reproduced: {len(fresh['checks'])} checks, digests match")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: g6-multi-agent
+          path: ${{ runner.temp }}/g6-fresh.json
