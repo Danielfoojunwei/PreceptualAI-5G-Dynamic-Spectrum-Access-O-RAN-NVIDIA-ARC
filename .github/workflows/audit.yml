@@ -23,6 +23,10 @@ on:
       - "src/horizon_ric/shield/shield.py"
       - "agentic/src/horizon_agentic/aggregate.py"
       - "ocudu/src/horizon_ocudu/rc_slice_quota.py"
+      # verify_data_manifests.py measures these; it must run when they move.
+      - "benchmarks/results/**"
+      - "datasets/**"
+      - "examples/replay_telemetry.jsonl"
   push:
     branches: [main]
     paths:
@@ -85,6 +89,46 @@ jobs:
       - name: Offline gates via the reproduction archive
         # requirement=none gates only: pure stdlib over committed data.
         run: python audit/reproduce.py
+
+      - name: Data manifests are in exactly the state we recorded
+        # NOT "the manifests are correct" — one of them knowingly is not.
+        # benchmarks/results/SHA256SUMS is stale in all 15 entries, which
+        # means the verify command DATASETS_INDEX.md advertises exits
+        # non-zero. This step pins that number so it cannot drift further
+        # unnoticed, and goes red when someone repairs it.
+        run: |
+          python audit/verify_data_manifests.py \
+            --out "$RUNNER_TEMP/data-manifests.json"
+
+      - name: Compare against the committed measurement
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          fresh = json.load(open(os.environ["RUNNER_TEMP"] + "/data-manifests.json"))
+          committed = json.load(open("audit/results/data-manifests.json"))
+          problems = []
+          if not fresh["passed"]:
+              problems.append("fresh run did not pass")
+          if not fresh["checks"]:
+              problems.append("no checks ran; a vacuous pass is not a pass")
+          for key in ("gate", "claim", "expected"):
+              if fresh[key] != committed[key]:
+                  problems.append(f"{key} differs from the committed result")
+          f = {c["id"]: c["passed"] for c in fresh["checks"]}
+          c = {c["id"]: c["passed"] for c in committed["checks"]}
+          if f != c:
+              problems.append(f"checks differ: {f} vs {c}")
+          if problems:
+              print("\n".join(problems), file=sys.stderr)
+              sys.exit(1)
+          print(f"data manifests reproduced: {len(fresh['checks'])} checks")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-data-manifests
+          path: ${{ runner.temp }}/data-manifests.json
 
   integrated:
     # The parts that legitimately need our code installed.

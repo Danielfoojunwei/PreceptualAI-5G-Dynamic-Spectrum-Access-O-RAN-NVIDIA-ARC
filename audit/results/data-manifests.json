@@ -1,0 +1,144 @@
+{
+  "checks": [
+    {
+      "data": {
+        "expected": [
+          "benchmarks/results/SHA256SUMS",
+          "datasets/spectrum_dsa/SHA256SUMS"
+        ],
+        "found": [
+          "benchmarks/results/SHA256SUMS",
+          "datasets/spectrum_dsa/SHA256SUMS"
+        ]
+      },
+      "detail": "found 2 manifest(s): ['benchmarks/results/SHA256SUMS', 'datasets/spectrum_dsa/SHA256SUMS']",
+      "id": "every_committed_manifest_is_discovered",
+      "passed": true
+    },
+    {
+      "data": {
+        "matched": 1,
+        "mismatched": 0,
+        "mismatched_names": [],
+        "missing": 0,
+        "missing_names": [],
+        "pinned": 1
+      },
+      "detail": "1/1 pinned file(s) match",
+      "id": "spectrum_dsa_manifest_verifies",
+      "passed": true
+    },
+    {
+      "data": {
+        "matched": 0,
+        "mismatched": 15,
+        "mismatched_names": [
+          "control_plane_load.json",
+          "deepmimo_dsa.json",
+          "dp_privacy.json",
+          "dsa_poison_suite.json",
+          "evasion_suite.json",
+          "federated_unlearning.json",
+          "fl_poisoning_suite.json",
+          "integrity_attack_suite.json",
+          "jamming_suite.json",
+          "neural_rx_pgd.json",
+          "phy_fading.json",
+          "poisoning_shield.json",
+          "secure_dsa.json",
+          "subject_erasure.json",
+          "verifiable_secagg.json"
+        ],
+        "missing": 0,
+        "missing_names": [],
+        "pinned": 15
+      },
+      "detail": "15 of 15 pinned digest(s) stale (recorded: 15 of 15)",
+      "id": "benchmark_results_drift_is_exactly_as_recorded",
+      "passed": true
+    },
+    {
+      "data": {
+        "known_defect": "every pinned digest is stale \u2014 the index advertises `(cd benchmarks/results && sha256sum -c SHA256SUMS)` and it fails 15/15. Fix: regenerate the manifest over all 31 result files and add the regeneration to whatever writes them."
+      },
+      "detail": "`(cd benchmarks/results && sha256sum -c SHA256SUMS)` exits non-zero: 15 mismatch(es). every pinned digest is stale \u2014 the index advertises `(cd benchmarks/results && sha256sum -c SHA256SUMS)` and it fails 15/15. Fix: regenerate the manifest over all 31 result files and add the regeneration to whatever writes them.",
+      "id": "the_advertised_verify_command_still_fails",
+      "passed": true
+    },
+    {
+      "data": {
+        "present": 31,
+        "unpinned": [
+          "antijam.json",
+          "antijam_sample_record.json",
+          "beam_management.json",
+          "beam_management_sample_record.json",
+          "credit_assignment.json",
+          "credit_assignment_sample_record.json",
+          "exploration_truncation.json",
+          "exploration_truncation_sample_record.json",
+          "federated_coverage.json",
+          "federated_coverage_sample_record.json",
+          "g1_second_planner.json",
+          "mobility_handover.json",
+          "mobility_handover_sample_record.json",
+          "projection_capacity_2x2.json",
+          "safety_utility_frontier.json",
+          "safety_utility_frontier_sample_record.json"
+        ]
+      },
+      "detail": "15 of 31 result file(s) pinned; 16 unpinned",
+      "id": "benchmark_result_coverage_is_exactly_as_recorded",
+      "passed": true
+    },
+    {
+      "detail": "documented 85f5c95ae61d\u2026, actual 85f5c95ae61d\u2026",
+      "id": "replay_telemetry_matches_the_digest_the_index_prints",
+      "passed": true
+    },
+    {
+      "data": {
+        "absent_from_index": [
+          "5gad_inl"
+        ],
+        "dataset_dirs": [
+          "5gad_inl",
+          "deepmimo_asu_3p5",
+          "spectrum_dsa"
+        ]
+      },
+      "detail": "1 of 3 dataset dir(s) have no row in DATASETS_INDEX.md: ['5gad_inl']",
+      "id": "datasets_absent_from_the_index_are_exactly_as_recorded",
+      "passed": true
+    }
+  ],
+  "claim": "The three verification commands DATASETS_INDEX.md advertises are in exactly the state recorded here: two pass, and benchmarks/results/SHA256SUMS fails 15 of 15.",
+  "expected": {
+    "benchmark_results": {
+      "json_files_present": 31,
+      "json_files_unpinned": 16,
+      "known_defect": "every pinned digest is stale \u2014 the index advertises `(cd benchmarks/results && sha256sum -c SHA256SUMS)` and it fails 15/15. Fix: regenerate the manifest over all 31 result files and add the regeneration to whatever writes them.",
+      "matched": 0,
+      "mismatched": 15,
+      "missing": 0,
+      "pinned": 15
+    },
+    "datasets_missing_from_index": [
+      "5gad_inl"
+    ],
+    "manifest_count": 2,
+    "manifest_paths": [
+      "benchmarks/results/SHA256SUMS",
+      "datasets/spectrum_dsa/SHA256SUMS"
+    ],
+    "spectrum_dsa": {
+      "matched": 1,
+      "mismatched": 0,
+      "missing": 0,
+      "pinned": 1
+    }
+  },
+  "gate": "data-manifests",
+  "passed": true,
+  "reading_note": "passed=true means 'unchanged since we measured it', NOT 'the manifests are correct'. One of them is knowingly stale; see expected.benchmark_results.known_defect."
+}
