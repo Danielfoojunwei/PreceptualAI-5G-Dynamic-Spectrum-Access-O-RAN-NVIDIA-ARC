@@ -18,88 +18,91 @@ Two arms, same planner, same Shield, same seed, same environment:
 
 * **arm ``reward_the_emission``** — the planner is told the reward of the
   action that was actually emitted, which is what a real deployment measures,
-  because the radio transmitted the projected action and not the proposal. The
-  projection is inside the feedback loop.
+  because the radio transmitted the projected action. The projection is inside
+  the feedback loop.
 
-WHAT WAS MEASURED (4000 decisions, seed 20260802)
--------------------------------------------------
-=========================  ==================  ==================
-                           reward_the_proposal reward_the_emission
-=========================  ==================  ==================
-illegal requests           3585  (89.6%)       2610  (65.3%)
-mean reward, 1st quarter   0.1113              0.0963
-mean reward, 4th quarter   0.1049              0.1502
-illegal emissions          0                   0
-=========================  ==================  ==================
+Both arms are scored on the same thing: the reward of what was actually
+emitted. That is the only comparison that means anything, because it is the
+only one the radio can pay.
 
-**The finding.** Closing the loop around the projection does not stop the
-learner — it is the only arm in which learning actually works. Its realised
-reward rises monotonically across the run, +56% first quarter to last, while
-the open-loop arm\'s realised reward *falls*. The open-loop planner is
-optimising a fiction: it is told what its proposal would have earned, keeps
-choosing arms on that basis, and the radio keeps transmitting something else.
-It gets steadily better at a task it is not performing.
+MEASURED — 3 seeds x 2 arms x 4000 decisions
+--------------------------------------------
+====  ===================  ===================  =============  =============
+seed  illegal req (open)   illegal req (closed) reward open    reward closed
+====  ===================  ===================  =============  =============
+…802  3585                 2610                 .1113 -> .1049 .0963 -> .1502
+11    3423                 2555                 .1388 -> .2170 .1106 -> .1419
+12    3338                 2613                 .1189 -> .2069 .1013 -> .1326
+====  ===================  ===================  =============  =============
 
-**And a hypothesis this demo refuted.** It was built expecting the closed arm
-to converge toward compliance — for the illegal-request rate to decay as the
-learner discovered that over-ceiling arms buy nothing. It does not. The rate
-rises in both arms (0.601 -> 0.699 closed, 0.763 -> 0.970 open); the closed
-arm merely asks for 27% fewer illegal emissions in total.
+**What holds in every seed.** Enforcement: 0 illegal emissions out of 24000
+decisions, graded by an oracle that shares no constant with the Shield. And
+closing the loop reduces how much illegality is *requested* — the closed arm
+asks for 73-78% as many illegal emissions as the open one.
 
-The mechanism is exact, and it is the reason the original guess was wrong.
-Projection makes an over-ceiling arm *indistinguishable* from the ceiling, not
-*worse* than it. UCB1 abandons arms that pay less; it has no reason whatever to
-abandon an arm that pays the same. A tied arm keeps its optimistic bound and
-keeps being explored forever. Enforcement removes the incentive to exceed the
-licence without creating any incentive to stay inside it.
+**What does not hold, and was published before it was checked.** The first
+version of this demo ran one seed, found the closed arm\'s realised reward
+rising while the open arm\'s fell, and headlined that closing the loop is the
+only arm in which learning works. Two further seeds contradict it: in seeds 11
+and 12 the open arm ends *higher*, and by a wide margin. The effect was a
+single-seed artifact and the claim is withdrawn.
 
-That distinction matters for anyone designing this: if you want a learner to
-stop *asking*, the projection alone will not do it — you would have to price
-the correction, which is a different and more invasive design that couples the
-planner to the enforcement boundary. What the projection guarantees is what it
-claims to guarantee: nothing illegal is ever emitted, in either arm, 0 out of
-8000 decisions.
+Reading the three seeds together, the honest direction is the opposite of the
+original guess: closing the loop appears to **cost** realised utility. The
+mechanism is the same one that refutes the other hypothesis below. Projection
+clamps every over-ceiling proposal to exactly the ceiling — which is the best
+*legal* power. The open-loop planner climbs a fictional gradient to maximum
+power and is therefore clamped onto the legal optimum every time; being wrong
+about the world lands it in the right place. The closed-loop planner sees a
+flat plateau above the ceiling, has no gradient to climb, and keeps exploring
+it — including arms that pay less. This is stated as a direction, not a
+result: three seeds is three seeds, and ``--seeds`` exists so it can be
+checked properly.
 
-The demo reports whichever way both measurements come out. What is an *error*,
-and exits non-zero, is an illegal emission getting past the Shield or an
-evidence chain failing to verify.
+**A hypothesis this demo refuted, in every seed.** It was built expecting the
+closed arm to converge toward compliance — for the illegal-request rate to
+decay as the learner discovered that over-ceiling arms buy nothing. It does
+not; the rate rises in both arms in all three seeds. Projection makes an
+over-ceiling arm *indistinguishable* from the ceiling, not *worse* than it.
+UCB1 abandons arms that pay less and has no reason to abandon one that pays
+the same: a tied arm keeps its optimistic bound and keeps being explored
+forever. Enforcement removes the incentive to exceed the licence without
+creating any incentive to stay inside it. Making a learner stop *asking* would
+mean pricing the correction, which couples the planner to the enforcement
+boundary — a different and more invasive design.
 
-End to end means end to end. Each decision runs the shipping
+Because a single seed already produced one false headline here, the report
+only states a finding that holds in **every** seed. A split result is printed
+as split.
+
+HORIZON MATTERS TOO
+-------------------
+The utility effect is a late-run phenomenon and is not visible at 800
+decisions, where both arms still improve. UCB1 needs on the order of a
+thousand pulls across a 54-arm grid to commit. ``--decisions 4000`` is the
+default for that reason.
+
+End to end is literal. Each decision runs the shipping
 ``default_terrestrial_shield`` through its ordinary ``dispose`` contract, signs
 the certificate with a real Ed25519 key, and appends a real ``DecisionRecord``
-to a real hash-chained ``JsonlEvidenceStore``. At the end the chain is verified
-by ``audit/verify_evidence.py`` in a subprocess with ``horizon_ric``
-deliberately absent from its path — the regulator\'s view, not ours.
-
-Legality is graded by ``benchmarks.g1_second_planner.oracle_verdict``, which
-imports nothing from the Shield and recomputes every bound from first
-principles, so this is not the system marking its own homework.
-
-HORIZON MATTERS, AND ONE SEED IS ONE SEED
------------------------------------------
-The reward separation is a late-run effect and does **not** appear at 800
-decisions: there both arms still improve (open 0.0905 -> 0.1264, closed 0.0874
--> 0.1042) and the summary says so rather than claiming a result it cannot see.
-The open-loop arm\'s realised reward only starts falling once UCB1 has
-committed to the illegal high-power arms, which takes on the order of a
-thousand pulls across a 54-arm grid. ``--decisions 4000`` is the default for
-that reason, not for show.
-
-Everything above is one seed. Treat the direction as demonstrated and the
-magnitude as anecdotal until it has been run across several; ``--seed`` is
-there for exactly that.
+to a real hash-chained ``JsonlEvidenceStore`` — refusals included. Every chain
+is then verified by ``audit/verify_evidence.py`` in a subprocess with
+``horizon_ric`` deliberately absent from its path: the regulator\'s view, not
+ours.
 
 Cost note: ``JsonlEvidenceStore.append`` re-scans the whole file to find the
 tenant\'s last chain hash, so a run is O(n^2) in decisions — the store\'s own
-docstring says as much. 4000 decisions x 2 arms takes a few minutes.
+docstring says as much. The default 3 seeds x 2 arms x 4000 decisions takes on
+the order of fifteen minutes. ``--decisions 300 --seeds 5,6`` smoke-tests the
+whole path in seconds without pretending to measure anything.
 
 Run::
 
     PYTHONPATH=src python demo/end_to_end_learning.py --out /tmp/demo
 
 Exit codes:
-    0  the demonstration ran and its evidence verified
-    1  an illegal emission got through, or the evidence chain is broken
+    0  the demonstration ran and every evidence chain verified
+    1  an illegal emission got through, or a chain is broken
 """
 
 from __future__ import annotations
@@ -435,11 +438,18 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     ap.add_argument("--decisions", type=int, default=4000)
-    ap.add_argument("--seed", type=int, default=20260802)
+    ap.add_argument(
+        "--seeds",
+        default="20260802,11,12",
+        help="comma-separated seeds. More than one on purpose: the first "
+        "version of this demo ran a single seed and headlined a result that "
+        "two further seeds then contradicted.",
+    )
     ap.add_argument("--out", type=Path, required=True,
                     help="directory for the evidence chains and the report")
     args = ap.parse_args(argv)
 
+    seeds = [int(x) for x in str(args.seeds).split(",") if x.strip()]
     args.out.mkdir(parents=True, exist_ok=True)
     signer = _signing_key()
 
@@ -453,52 +463,128 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
 
-    arms = {}
-    for arm in ARMS:
-        evidence = args.out / f"{arm}.jsonl"
-        if evidence.exists():
-            evidence.unlink()
-        print(f"running {arm} ...", file=sys.stderr)
-        arms[arm] = run_arm(
-            arm,
-            decisions=args.decisions,
-            seed=args.seed,
-            store_path=evidence,
-            signer=signer,
-        )
-        arms[arm]["offline_verification"] = verify_offline(evidence, pub_pem)
+    runs: dict[str, dict[str, Any]] = {}
+    problems: list[str] = []
+    for seed in seeds:
+        arms: dict[str, Any] = {}
+        for arm in ARMS:
+            evidence = args.out / f"seed{seed}-{arm}.jsonl"
+            if evidence.exists():
+                evidence.unlink()
+            print(f"seed {seed}: running {arm} ...", file=sys.stderr)
+            m = run_arm(
+                arm,
+                decisions=args.decisions,
+                seed=seed,
+                store_path=evidence,
+                signer=signer,
+            )
+            m["offline_verification"] = verify_offline(evidence, pub_pem)
+            arms[arm] = m
 
-    open_arm = arms["reward_the_proposal"]
-    closed_arm = arms["reward_the_emission"]
+            if m["illegal_emissions"]:
+                problems.append(
+                    f"seed {seed} {arm}: {m['illegal_emissions']} illegal "
+                    f"emission(s) passed the Shield — the enforcement claim is "
+                    f"false in this run"
+                )
+            v = m["offline_verification"]
+            if v.get("exit_code") != 0 or v.get("result") != "PASS":
+                problems.append(
+                    f"seed {seed} {arm}: evidence did not verify offline: {v}"
+                )
+            if not v.get("chain", {}).get("intact"):
+                problems.append(f"seed {seed} {arm}: hash chain not intact")
+        runs[str(seed)] = arms
 
-    def _delta(m):
+    def _delta(m: dict[str, Any]) -> float:
         q = m["mean_reward_by_quarter"]
         return round(q[-1] - q[0], 6) if q else 0.0
 
-    open_delta, closed_delta = _delta(open_arm), _delta(closed_arm)
-    # The primary measurement: does realised reward improve? Only the arm
-    # that is told what the radio actually did can improve on what the radio
-    # actually did.
-    learning_works_only_when_closed = closed_delta > 0 and open_delta <= 0
+    per_seed: list[dict[str, Any]] = []
+    for seed_key, arms in runs.items():
+        open_a, closed_a = arms[ARMS[0]], arms[ARMS[1]]
+        per_seed.append(
+            {
+                "seed": seed_key,
+                "illegal_requests_open": open_a["illegal_requests"],
+                "illegal_requests_closed": closed_a["illegal_requests"],
+                "closed_asks_fewer": (
+                    closed_a["illegal_requests"] < open_a["illegal_requests"]
+                ),
+                "reward_delta_open": _delta(open_a),
+                "reward_delta_closed": _delta(closed_a),
+                "final_reward_open": open_a["mean_reward_by_quarter"][-1],
+                "final_reward_closed": closed_a["mean_reward_by_quarter"][-1],
+                "closed_ends_higher": (
+                    closed_a["mean_reward_by_quarter"][-1]
+                    > open_a["mean_reward_by_quarter"][-1]
+                ),
+                "illegal_rate_fell_closed": (
+                    closed_a["final_quarter_illegal_rate"]
+                    < closed_a["first_quarter_illegal_rate"]
+                ),
+                "illegal_emissions": (
+                    open_a["illegal_emissions"] + closed_a["illegal_emissions"]
+                ),
+            }
+        )
 
-    # The secondary measurement, and the hypothesis this demo was built to
-    # test. It came out false; see the module docstring for why.
-    closed_first = closed_arm["first_quarter_illegal_rate"]
-    closed_last = closed_arm["final_quarter_illegal_rate"]
-    converged = closed_last < closed_first
+    # Only what holds in EVERY seed is allowed to be a finding.
+    unanimous_fewer_asks = all(r["closed_asks_fewer"] for r in per_seed)
+    unanimous_closed_wins = all(r["closed_ends_higher"] for r in per_seed)
+    unanimous_open_wins = all(not r["closed_ends_higher"] for r in per_seed)
+    unanimous_compliance = all(r["illegal_rate_fell_closed"] for r in per_seed)
+    zero_illegal = all(r["illegal_emissions"] == 0 for r in per_seed)
+    total_decisions = args.decisions * len(ARMS) * len(seeds)
 
-    problems = []
-    for arm, m in arms.items():
-        if m["illegal_emissions"]:
-            problems.append(
-                f"{arm}: {m['illegal_emissions']} illegal emission(s) passed the "
-                f"Shield — the enforcement claim is false in this run"
-            )
-        v = m["offline_verification"]
-        if v.get("exit_code") != 0 or v.get("result") != "PASS":
-            problems.append(f"{arm}: evidence chain did not verify offline: {v}")
-        if not v.get("chain", {}).get("intact"):
-            problems.append(f"{arm}: hash chain not intact")
+    findings = []
+    if zero_illegal:
+        findings.append(
+            f"Enforcement held in every arm of every seed: 0 illegal emissions "
+            f"across {total_decisions} decisions, graded by an oracle that "
+            f"shares no constant with the Shield."
+        )
+    if unanimous_fewer_asks:
+        ratios = [
+            r["illegal_requests_closed"] / r["illegal_requests_open"]
+            for r in per_seed
+        ]
+        findings.append(
+            f"Closing the loop reduces how much illegality is REQUESTED, in "
+            f"every seed: the closed arm asks for "
+            f"{min(ratios):.0%}-{max(ratios):.0%} as many illegal emissions."
+        )
+    if not unanimous_compliance:
+        findings.append(
+            "It does NOT make the learner converge toward compliance. The "
+            "illegal-request rate rises in both arms in every seed. Projection "
+            "makes an over-ceiling arm indistinguishable from the ceiling, not "
+            "worse than it, and UCB1 never abandons a tied arm."
+        )
+    if unanimous_open_wins:
+        findings.append(
+            "And it COSTS realised utility: the open-loop arm ends with higher "
+            "realised reward in every seed. The open-loop planner climbs a "
+            "fictional gradient to maximum power, which the Shield then clamps "
+            "to exactly the ceiling — the best legal power — so being wrong "
+            "about the world lands it on the legal optimum. The closed-loop "
+            "planner sees a flat plateau above the ceiling and keeps exploring "
+            "it, including arms that pay less."
+        )
+    elif unanimous_closed_wins:
+        findings.append(
+            "Closing the loop also improves realised reward in every seed."
+        )
+    else:
+        findings.append(
+            "Realised reward does NOT separate the arms consistently: the "
+            "closed arm ends higher in "
+            f"{sum(r['closed_ends_higher'] for r in per_seed)} of "
+            f"{len(per_seed)} seeds. Any headline about utility from a single "
+            "seed would be an artifact — which is exactly what the first "
+            "version of this demo published before these seeds were run."
+        )
 
     report = {
         "demo": "end_to_end_learning",
@@ -506,59 +592,18 @@ def main(argv: list[str] | None = None) -> int:
             "Does a projection operator stop an unmodified learner from "
             "learning — and what does it learn?"
         ),
-        "finding": (
-            "Closing the loop around the projection is the only arm in which "
-            "learning works: realised reward rises "
-            f"{open_arm['mean_reward_by_quarter'][0]:.4f} -> "
-            f"{closed_arm['mean_reward_by_quarter'][-1]:.4f} while the "
-            "open-loop arm's realised reward falls. The open-loop planner "
-            "optimises a fiction — it is told what its proposal would have "
-            "earned while the radio transmits something else."
-            if learning_works_only_when_closed
-            else "Realised reward did not separate the two arms in this run; "
-                 "the demonstration reports that rather than hiding it."
-        ),
-        "learning_works_only_when_the_loop_is_closed": learning_works_only_when_closed,
-        "realised_reward_change_first_to_last_quarter": {
-            "open_loop": open_delta,
-            "closed_loop": closed_delta,
+        "seeds": seeds,
+        "decisions_per_arm": args.decisions,
+        "findings": findings,
+        "holds_in_every_seed": {
+            "zero_illegal_emissions": zero_illegal,
+            "closed_loop_asks_for_less_illegality": unanimous_fewer_asks,
+            "closed_loop_converges_toward_compliance": unanimous_compliance,
+            "closed_loop_ends_with_higher_realised_reward": unanimous_closed_wins,
+            "open_loop_ends_with_higher_realised_reward": unanimous_open_wins,
         },
-        "refuted_hypothesis": {
-            "was": (
-                "closing the loop would make the learner converge toward "
-                "compliance, the illegal-request rate decaying as it "
-                "discovered that over-ceiling arms buy nothing"
-            ),
-            "held": converged,
-            "why_not": (
-                "Projection makes an over-ceiling arm INDISTINGUISHABLE from "
-                "the ceiling, not worse than it. UCB1 abandons arms that pay "
-                "less and has no reason to abandon one that pays the same: a "
-                "tied arm keeps its optimistic bound and keeps being explored. "
-                "Enforcement removes the incentive to exceed the licence "
-                "without creating one to stay inside it. Making a learner stop "
-                "ASKING would require pricing the correction, which couples "
-                "the planner to the enforcement boundary — a different and "
-                "more invasive design."
-            ),
-            "illegal_requests_open_loop": open_arm["illegal_requests"],
-            "illegal_requests_closed_loop": closed_arm["illegal_requests"],
-        },
-        "what_the_projection_does_guarantee": (
-            "nothing illegal is emitted, in either arm: "
-            f"{sum(m['illegal_emissions'] for m in arms.values())} illegal "
-            f"emissions across {sum(m['decisions'] for m in arms.values())} "
-            "decisions"
-        ),
-        "illegal_request_rate_by_quarter": {
-            "open_loop": open_arm["illegal_request_rate_by_quarter"],
-            "closed_loop": closed_arm["illegal_request_rate_by_quarter"],
-        },
-        "enforcement_held_in_both_arms": all(
-            m["illegal_emissions"] == 0 for m in arms.values()
-        ),
-        "arms": arms,
-        "seed": args.seed,
+        "per_seed": per_seed,
+        "runs": runs,
         "problems": problems,
         "passed": not problems,
     }
@@ -569,25 +614,23 @@ def main(argv: list[str] | None = None) -> int:
 
     print()
     print(f"  question : {report['question']}")
-    for arm, m in arms.items():
-        print(
-            f"  {arm:22s} illegal requests {m['illegal_requests']:5d}"
-            f"  by quarter {m['illegal_request_rate_by_quarter']}"
-            f"  illegal emissions {m['illegal_emissions']}"
-        )
-        print(
-            f"  {'':22s} mean reward by quarter "
-            f"{m['mean_reward_by_quarter']}"
-            f"  chain {'INTACT' if m['offline_verification'].get('chain', {}).get('intact') else 'BROKEN'}"
-        )
-    print(f"  finding  : {report['finding']}")
-    print(f"  refuted  : {report['refuted_hypothesis']['was']}")
-    print(f"             held = {report['refuted_hypothesis']['held']}")
-    print(f"  guarantee: {report['what_the_projection_does_guarantee']}")
+    print(f"  {'seed':>9} {'illegal req O/C':>17} {'reward q1->q4 open':>22}"
+          f" {'reward q1->q4 closed':>22}")
+    for r, seed in zip(per_seed, seeds):
+        arms = runs[str(seed)]
+        o = arms[ARMS[0]]["mean_reward_by_quarter"]
+        c = arms[ARMS[1]]["mean_reward_by_quarter"]
+        print(f"  {r['seed']:>9} "
+              f"{r['illegal_requests_open']:>7}/{r['illegal_requests_closed']:<9}"
+              f" {o[0]:>10.4f} -> {o[-1]:<8.4f}"
+              f" {c[0]:>10.4f} -> {c[-1]:<8.4f}")
+    for f in findings:
+        print(f"  finding  : {f}")
     if problems:
         print("\n".join("  ERROR: " + p for p in problems), file=sys.stderr)
         return 1
-    print("  evidence : verified offline, without horizon_ric importable")
+    print("  evidence : every chain verified offline, without horizon_ric "
+          "importable")
     return 0
 
 
