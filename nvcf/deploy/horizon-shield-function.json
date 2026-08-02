@@ -1,0 +1,45 @@
+{
+  "_comment": [
+    "CreateFunctionRequest body registering Horizon-RIC's decision plane as an",
+    "NVCF function. Gate G10 validates this against the CreateFunctionRequest",
+    "schema in the vendored OpenAPI document, so a field that NVCF renamed or",
+    "dropped fails CI rather than a deployment.",
+    "",
+    "The choices that are not arbitrary:",
+    "",
+    "  apiBodyFormat CUSTOM  - the body is an AgentActionEnvelope, not a Triton",
+    "                          PREDICT_V2 tensor request.",
+    "  functionType  DEFAULT - the plane answers 202-then-poll, not a stream.",
+    "  health                - /v2/health with expectedStatusCode 200, matching",
+    "                          horizon_nvcf.service.HEALTH_URI. G10 asserts the",
+    "                          two agree against a real socket.",
+    "  secrets               - the Ed25519 certificate-signing key is delivered",
+    "                          by NVCF's secret mechanism, never baked into the",
+    "                          image. horizon_ric.shield.signing treats a",
+    "                          configured-but-unreadable path as a hard startup",
+    "                          failure, so a missing secret refuses to boot",
+    "                          rather than signing with a surprise key."
+  ],
+  "name": "horizon-ric-decision-plane",
+  "description": "Deterministic action-control plane: grades every agent-proposed RAN action against operator-programmed invariants and emits a signed certificate per decision.",
+  "inferenceUrl": "/v2/nvcf/pexec/functions",
+  "inferencePort": 8000,
+  "apiBodyFormat": "CUSTOM",
+  "functionType": "DEFAULT",
+  "containerImage": "ghcr.io/preceptualai/horizon-ric-shield:0.1.0",
+  "containerArgs": "--serve-nvcf --window-ms 1000",
+  "containerEnvironment": [
+    { "key": "HORIZON_SHIELD_BAND_LO_HZ", "value": "3508180000.0" },
+    { "key": "HORIZON_SHIELD_BAND_HI_HZ", "value": "3608180000.0" },
+    { "key": "HORIZON_RAPP_ID", "value": "horizon-ric" }
+  ],
+  "health": {
+    "protocol": "HTTP",
+    "uri": "/v2/health",
+    "port": 8000,
+    "timeout": "PT10S",
+    "expectedStatusCode": 200
+  },
+  "secrets": ["HORIZON_CERT_SIGNING_KEY_PATH"],
+  "tags": ["horizon-ric", "o-ran", "non-rt-ric", "rapp", "safety"]
+}

@@ -136,9 +136,9 @@
       "regen": null,
       "command": ["audit/verify_evidence.py", "audit/fixtures/evidence-sample.jsonl"],
       "result_file": "audit/fixtures/evidence-sample.jsonl",
-      "ci_workflow": null,
+      "ci_workflow": ".github/workflows/audit.yml",
       "companion": true,
-      "notes": "Companion offline verifier produced by the evidence-audit work item (audit/verify_evidence.py, backed by audit/src/horizon_audit). Requirement is none (pure stdlib + cryptography over committed data). Runs against audit/fixtures/evidence-sample.jsonl, a committed, self-verifying per-tenant hash chain built by audit/fixtures/build_evidence_sample.py using the same horizon_audit.chain.chain_hash the verifier recomputes. reproduce.py SKIPs loudly if verify_evidence.py has not landed yet; the gate is not itself invoked by any CI workflow."
+      "notes": "Companion offline verifier produced by the evidence-audit work item (audit/verify_evidence.py, backed by audit/src/horizon_audit). Requirement is none (pure stdlib + cryptography over committed data). Runs against audit/fixtures/evidence-sample.jsonl, a committed, self-verifying per-tenant hash chain built by audit/fixtures/build_evidence_sample.py using the same horizon_audit.chain.chain_hash the verifier recomputes. reproduce.py SKIPs loudly if verify_evidence.py has not landed yet. The audit.yml `offline` job runs this exact command in an environment where horizon_ric is deliberately NOT installed, and additionally requires a byte-flipped export to exit 1."
     },
     {
       "id": "data_dependence",
