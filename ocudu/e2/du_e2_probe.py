@@ -55,12 +55,12 @@ _SETUP_RX = re.compile(
 )
 _ACCEPT_FN = re.compile(r"Accepting RAN function ID (?P<id>\d+) with def = (?P<def>\S+)")
 # The gNB logs one line per E2 agent that establishes a connection.
-_GNB_CONN = re.compile(r"\[(?P<unit>E2-[A-Z-]+)\].*E2 Setup procedure successful")
+_GNB_CONN = re.compile(r"\[(?P<unit>E2-[A-Z-]+)\s*\].*E2 Setup procedure successful")
 _GNB_ADDED = re.compile(
-    r"\[(?P<unit>E2-[A-Z-]+)\].*Added supported RAN function with id (?P<id>\d+) "
+    r"\[(?P<unit>E2-[A-Z-]+)\s*\].*Added supported RAN function with id (?P<id>\d+) "
     r"and OID (?P<oid>[\d.]+)"
 )
-_GNB_TRY = re.compile(r"\[(?P<unit>E2-[A-Z-]+)\].*Trying to establish E2 connection")
+_GNB_TRY = re.compile(r"\[(?P<unit>E2-[A-Z-]+)\s*\].*Trying to establish E2 connection")
 
 
 def _popen(cmd: list[str], log: Path, shim: Path | None) -> subprocess.Popen:
@@ -128,6 +128,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--gnb", type=Path, default=DEFAULT_GNB)
     p.add_argument("--config", type=Path, default=DEFAULT_CFG)
     p.add_argument("--shim", type=Path, default=None, help="LD_PRELOAD SCTP shim")
+    p.add_argument(
+        "--gnb-arg",
+        action="append",
+        default=[],
+        help="extra argument appended to the gNB command line (repeatable). "
+        "Use to force a flag the YAML already sets, e.g. "
+        "--gnb-arg e2 --gnb-arg --enable_du_e2 --gnb-arg true",
+    )
     p.add_argument("--settle-s", type=float, default=25.0)
     p.add_argument("--workdir", type=Path, required=True)
     p.add_argument("--out", type=Path, help="write the result JSON here")
@@ -151,7 +159,8 @@ def main(argv: list[str] | None = None) -> int:
             print(ric_log.read_text(errors="replace")[-2000:], file=sys.stderr)
             return 3
 
-        gnb = _popen([str(args.gnb), "-c", str(args.config)], gnb_log, args.shim)
+        gnb_cmd = [str(args.gnb), "-c", str(args.config), *args.gnb_arg]
+        gnb = _popen(gnb_cmd, gnb_log, args.shim)
 
         # Wait until both ends stop producing new E2 lines, or the budget runs
         # out. A fixed sleep would either be slow or race the second agent.
@@ -170,18 +179,27 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 stable_for = 0.0
             last = now
-
-        result = analyse(
-            ric_log.read_text(errors="replace"), gnb_log.read_text(errors="replace")
-        )
     finally:
+        # Read the logs only AFTER teardown. FlexRIC's stdout is C stdio
+        # block-buffered when it is a file rather than a tty, so its
+        # "E2 SETUP-REQUEST rx" line sits in the process's buffer until exit.
+        # An earlier version analysed before killing and reported the RIC
+        # seeing ZERO setups while the gNB reported a successful one — the two
+        # witnesses disagreeing is what exposed it. The settle loop is also
+        # fooled by this (an unflushed log looks "stable"), which is why it is
+        # a bound on waiting rather than the thing that decides completion.
         _kill(gnb)
         _kill(ric)
+
+    result = analyse(
+        ric_log.read_text(errors="replace"), gnb_log.read_text(errors="replace")
+    )
 
     result["probe"] = "ocudu_du_e2_agent_join"
     result["binaries"] = {
         "ric": str(args.ric),
         "gnb": str(args.gnb),
+        "gnb_extra_args": list(args.gnb_arg),
         "config": str(args.config),
         "sctp_shim": str(args.shim) if args.shim else None,
     }
