@@ -27,6 +27,12 @@ on:
       - "benchmarks/results/**"
       - "datasets/**"
       - "examples/replay_telemetry.jsonl"
+      # verify_proposal_claims.py reads the prose and the figure source, so a
+      # correction to either must run it — that is how the gate reports that
+      # a disagreement has been resolved.
+      - "docs/proposal/content.py"
+      - "docs/proposal/mkfigs.py"
+      - "scripts/verify_data_dependence.py"
   push:
     branches: [main]
     paths:
@@ -124,11 +130,43 @@ jobs:
           print(f"data manifests reproduced: {len(fresh['checks'])} checks")
           PY
 
+      - name: Proposal sentences vs the result files they cite
+        # validate_docx.py checks 89 things about the document and not one of
+        # them is whether a sentence agrees with its JSON. Six do not. Same
+        # reading as above: green means "unchanged", not "correct", and
+        # correcting a sentence is what turns this red.
+        run: |
+          python audit/verify_proposal_claims.py \
+            --out "$RUNNER_TEMP/proposal-claims.json"
+
+      - name: Compare against the committed disagreements
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          fresh = json.load(open(os.environ["RUNNER_TEMP"] + "/proposal-claims.json"))
+          committed = json.load(open("audit/results/proposal-claims.json"))
+          problems = []
+          if not fresh["passed"]:
+              problems.append("fresh run did not pass")
+          if not fresh["checks"]:
+              problems.append("no checks ran; a vacuous pass is not a pass")
+          f = {c["id"]: c["passed"] for c in fresh["checks"]}
+          c = {c["id"]: c["passed"] for c in committed["checks"]}
+          if f != c:
+              problems.append(f"checks differ: {f} vs {c}")
+          if problems:
+              print("\n".join(problems), file=sys.stderr)
+              sys.exit(1)
+          print(f"proposal claims reproduced: {len(fresh['checks'])} checks")
+          PY
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: audit-data-manifests
-          path: ${{ runner.temp }}/data-manifests.json
+          path: |
+            ${{ runner.temp }}/data-manifests.json
+            ${{ runner.temp }}/proposal-claims.json
 
   integrated:
     # The parts that legitimately need our code installed.

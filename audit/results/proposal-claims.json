@@ -1,0 +1,116 @@
+{
+  "checks": [
+    {
+      "data": {
+        "actual_peak_eirp_dBm": 52.0,
+        "declared_antenna_gain_dBi": 6.0,
+        "licence_ceiling_dBm": 33.0,
+        "plotted_dBm": 46.0,
+        "proposed": "plot the unguarded bar at 52.0 dBm EIRP, or relabel the axis 'peak transmit power' and add the gain separately",
+        "understated_by_dB": 6.0
+      },
+      "detail": "panel (c) plots 46.0 dBm on an axis labelled 'peak EIRP (dBm)', but the benchmark defines EIRP as tx_power + antenna_gain, and the declared gain is 6.0 dBi \u2014 the peak requested EIRP is 52.0 dBm, 19 dB over the 33.0 dBm ceiling, not 13 dB",
+      "id": "fig2c_plots_a_transmit_power_under_an_eirp_label",
+      "passed": true
+    },
+    {
+      "data": {
+        "literals": [
+          "46.0",
+          "33.0"
+        ],
+        "proposed": "read ru_max_tx_dBm and max_eirp_dBm from poisoning_shield.json, or drop the docstring and README claim that no number in this figure is typed in"
+      },
+      "detail": "panel (c) bar heights ['46.0', '33.0'] are literals in mkfigs.py; both happen to equal declared constants today, so the figure is not wrong on that count \u2014 but it will not follow the JSON if either constant changes",
+      "id": "fig2c_numbers_are_typed_in_not_read_from_the_result",
+      "passed": true
+    },
+    {
+      "data": {
+        "proposed": "three benchmarks instead reject physically inconsistent input"
+      },
+      "detail": "the proposal says four benchmarks reject physically inconsistent input; verify_data_dependence.py's own docstring says three",
+      "id": "ray_reconstruction_rejecters_is_three_not_four",
+      "passed": true
+    },
+    {
+      "data": {
+        "proposed": "Adversarial perturbation drives the neural receiver's symbol error up to 85 times the classical baseline (29 times for the strongest white-box attack)",
+        "ratios_by_attack": {
+          "bim": 28.599999999999994,
+          "boundary": 84.50000000000001,
+          "fgsm": 28.599999999999994,
+          "mim": 28.599999999999994,
+          "transfer": 28.500000000000004
+        },
+        "white_box_max": 28.6
+      },
+      "detail": "the proposal attributes 84.5x to white-box perturbation; it is the 'boundary' attack, which the suite documents as decision-based black-box. The white-box maximum is 28.6x",
+      "id": "the_85x_figure_is_the_black_box_boundary_attack",
+      "passed": true
+    },
+    {
+      "data": {
+        "anchors": {
+          "46.0": 0.199219,
+          "52.0": 0.26001,
+          "60.0": 0.340088,
+          "78.0": 0.633057
+        },
+        "proposed": "Where the licence does not bind, enforcement surrenders nothing; where it does bind, the cost is explicit and measured \u2014 0.20 of served fraction against a 40 W small-cell anchor",
+        "scope_note": "Real site-specific ray tracing (DeepMIMO ASU 3.5 GHz), not OTA capture; one scenario; served fraction is one utility proxy among several a licensee may care about. The frontier states the Shield's real cost when the constraint binds: utility forgone at the operational 33 dBm cap is reported plainly, not netted against the free-constraint case. The EIRP cap is a regulatory licence condition, not a ",
+        "utility_forgone_at_operational_cap": 0.652588
+      },
+      "detail": "utility_forgone_at_operational_cap = 0.6526, and the result's own scope note exists to say the claim is not that the cost is zero; against deployable anchors the cost is 0.199219 (46 dBm) and 0.26001 (52 dBm)",
+      "id": "zero_utility_cost_holds_only_where_the_licence_does_not_bind",
+      "passed": true
+    },
+    {
+      "data": {
+        "all_files": [
+          "agentic.yml",
+          "audit.yml",
+          "build.yml",
+          "lint.yml",
+          "nvcf.yml",
+          "ocudu.yml",
+          "osc-a1-integration.yml",
+          "realdata.yml",
+          "release.yml",
+          "sbom.yml",
+          "test.yml",
+          "xapp-e2e.yml"
+        ],
+        "on_pull_request": [
+          "agentic.yml",
+          "audit.yml",
+          "build.yml",
+          "lint.yml",
+          "nvcf.yml",
+          "ocudu.yml",
+          "osc-a1-integration.yml",
+          "realdata.yml",
+          "test.yml",
+          "xapp-e2e.yml"
+        ],
+        "proposed": "10 verification workflows gate every change"
+      },
+      "detail": "the proposal says eight; 10 workflow(s) run on pull_request and 12 files exist",
+      "id": "verification_workflow_count_has_grown_past_eight",
+      "passed": true
+    },
+    {
+      "data": {
+        "carrier_bw_hz": 16000000.0,
+        "proposed": "six subbands across 100 MHz"
+      },
+      "detail": "the proposal reads as six subbands of 100 MHz each; the run's declared carrier_bw_hz is 16 MHz",
+      "id": "subbands_are_across_100_mhz_not_100_mhz_each",
+      "passed": true
+    }
+  ],
+  "claim": "Six sentences in docs/proposal/content.py disagree with the result files they cite, in exactly the ways recorded here.",
+  "gate": "proposal-claims",
+  "passed": true,
+  "reading_note": "passed=true means the disagreements are unchanged, NOT that the proposal is correct. Each check carries the wording it suggests under data.proposed. Fixing a sentence turns this gate red, which is how it is meant to end."
+}
