@@ -101,6 +101,6 @@
     "nvcf/src/horizon_nvcf/agent.py": "2e005f733f6c112ab41b07cfdd964e08af4e64371bff1b5c5457f07cf879d119",
     "nvcf/src/horizon_nvcf/client.py": "04682afa52217b0bf8ecdda7dac0a4c14b1a0a74ffbdcd31347ec1c593fdf1b2",
     "nvcf/src/horizon_nvcf/service.py": "a1995aa4519eeb142a08e5d9bdc1b9e73a1003e5260477efff2ba0d7ebe2cbc6",
-    "ocudu/src/horizon_ocudu/cell_config.py": "96434c03f2f6f062268844717342998c0c0c05e2085806f9c4127d52415eda0c"
+    "ocudu/src/horizon_ocudu/cell_config.py": "766834307ef4222431715757cdff541b08d25fc865474fb63b7354bd4058c0cb"
   }
 }

@@ -66,6 +66,9 @@ jobs:
           PYTHONPATH: src:agentic/src:ocudu/src:nvcf/src
         run: python -m pytest nvcf/tests ocudu/tests -q
 
+      - name: Gate G2 — second band, and no constant retuned to reach it
+        run: python ocudu/verify_g2_second_band.py --out "$RUNNER_TEMP/g2.json"
+
       - name: Gate G9 — the Shield's band comes from the OCUDU cell
         run: python ocudu/verify_g9_cell_envelope.py --out "$RUNNER_TEMP/g9.json"
 
@@ -82,6 +85,7 @@ jobs:
           tmp = os.environ["RUNNER_TEMP"]
           problems = []
           for gate, fresh_path, committed_path in (
+              ("G2", f"{tmp}/g2.json", "ocudu/results/g2-second-band.json"),
               ("G9", f"{tmp}/g9.json", "ocudu/results/g9-cell-envelope.json"),
               ("G10", f"{tmp}/g10.json", "nvcf/results/g10-nvcf-conformance.json"),
           ):
@@ -109,5 +113,6 @@ jobs:
         with:
           name: nvcf-ocudu-gates
           path: |
+            ${{ runner.temp }}/g2.json
             ${{ runner.temp }}/g9.json
             ${{ runner.temp }}/g10.json

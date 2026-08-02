@@ -60,6 +60,7 @@ from typing import Any
 __all__ = [
     "NR_BANDS",
     "TRANSMISSION_BANDWIDTH_PRB",
+    "TRANSMISSION_BANDWIDTH_PRB_FR2",
     "CellConfigError",
     "NrBand",
     "OcuduCell",
@@ -128,27 +129,59 @@ TRANSMISSION_BANDWIDTH_PRB: dict[tuple[int, int], int] = {
     (100, 30): 273, (100, 60): 135,
 }
 
+# ── TS 38.104 Table 5.3.2-2 — FR2 transmission bandwidth configuration ──────
+#
+# Added when WP2's second band (n257, 28 GHz) was brought in: the FR1 table
+# above has no entry for 50/100/200/400 MHz at 60/120 kHz, so an FR2 carrier
+# was correctly refused rather than silently mis-derived. Keeping the two
+# tables separate — rather than merging them — matters because (50, 60) is a
+# valid key in BOTH with different values (65 in FR1, 66 in FR2), and a merged
+# dict would answer the FR1 question with the FR2 number or vice versa.
+TRANSMISSION_BANDWIDTH_PRB_FR2: dict[tuple[int, int], int] = {
+    (50, 60): 66, (50, 120): 32,
+    (100, 60): 132, (100, 120): 66,
+    (200, 60): 264, (200, 120): 132,
+    (400, 120): 264,
+}
 
-def n_rb(channel_bandwidth_mhz: int, scs_khz: int) -> int:
-    """N_RB for an (channel bandwidth, SCS) pair, per TS 38.104 Table 5.3.2-1."""
+# FR1/FR2 boundary, TS 38.104 §5.1. FR1 is 410 MHz - 7.125 GHz; FR2 is
+# 24.25 - 71.0 GHz. The gap between them is not a valid NR carrier range.
+FR1_HI_HZ = 7.125e9
+FR2_LO_HZ = 24.25e9
+
+
+def _is_fr2(band: "NrBand") -> bool:
+    return band.dl_lo_hz >= FR2_LO_HZ
+
+
+def n_rb(channel_bandwidth_mhz: int, scs_khz: int, *, fr2: bool = False) -> int:
+    """N_RB for an (channel bandwidth, SCS) pair, per TS 38.104 Table 5.3.2-1/-2.
+
+    ``fr2`` selects Table 5.3.2-2. It is keyword-only and defaults to False so
+    every existing FR1 caller keeps its meaning; the frequency range is a
+    property of the band, and :func:`derive_shield_envelope` passes it from
+    there rather than guessing from the bandwidth.
+    """
+    table = TRANSMISSION_BANDWIDTH_PRB_FR2 if fr2 else TRANSMISSION_BANDWIDTH_PRB
+    which = "FR2 (TS 38.104 Table 5.3.2-2)" if fr2 else "FR1 (TS 38.104 Table 5.3.2-1)"
     key = (int(channel_bandwidth_mhz), int(scs_khz))
-    if key not in TRANSMISSION_BANDWIDTH_PRB:
+    if key not in table:
         raise CellConfigError(
             f"{channel_bandwidth_mhz} MHz at {scs_khz} kHz SCS is not a defined "
-            "FR1 transmission bandwidth configuration (TS 38.104 Table 5.3.2-1)"
+            f"{which} transmission bandwidth configuration"
         )
-    prb = TRANSMISSION_BANDWIDTH_PRB[key]
+    prb = table[key]
     if prb == 0:
         raise CellConfigError(
             f"{channel_bandwidth_mhz} MHz at {scs_khz} kHz SCS is marked N/A in "
-            "TS 38.104 Table 5.3.2-1"
+            f"{which}"
         )
     return prb
 
 
 @dataclass(frozen=True)
 class NrBand:
-    """One FR1 operating band from TS 38.104 Table 5.2-1."""
+    """One operating band — FR1 (Table 5.2-1) or FR2 (Table 5.2-2)."""
 
     number: int
     ul_lo_hz: float
@@ -177,6 +210,12 @@ NR_BANDS: dict[int, NrBand] = {
     77: _band(77, (3300, 4200), (3300, 4200), "TDD"),
     78: _band(78, (3300, 3800), (3300, 3800), "TDD"),
     79: _band(79, (4400, 5000), (4400, 5000), "TDD"),
+    # FR2, TS 38.104 Table 5.2-2. Added for WP2's second band: the DeepMIMO
+    # `o1_28` scenario is ray-traced at 28 GHz, which lands in n257.
+    257: _band(257, (26500, 29500), (26500, 29500), "TDD"),
+    258: _band(258, (24250, 27500), (24250, 27500), "TDD"),
+    260: _band(260, (37000, 40000), (37000, 40000), "TDD"),
+    261: _band(261, (27500, 28350), (27500, 28350), "TDD"),
 }
 
 
@@ -356,7 +395,11 @@ def derive_shield_envelope(cell: OcuduCell) -> ShieldEnvelope:
     lo = centre - ch_bw / 2.0
     hi = centre + ch_bw / 2.0
 
-    prb = n_rb(cell.channel_bandwidth_mhz, cell.common_scs_khz)
+    # The frequency range is a property of the BAND, never inferred from the
+    # bandwidth: 50 MHz at 60 kHz SCS is a valid entry in both tables with
+    # different answers (65 PRB in FR1, 66 in FR2), so guessing would silently
+    # mis-size the carrier by one resource block.
+    prb = n_rb(cell.channel_bandwidth_mhz, cell.common_scs_khz, fr2=_is_fr2(band))
     tx_bw = prb * 12 * cell.common_scs_khz * 1e3
 
     notes: list[str] = []
