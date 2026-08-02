@@ -38,6 +38,7 @@ import signal
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -84,6 +85,52 @@ def _kill(proc: subprocess.Popen | None) -> None:
             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
         except Exception:  # noqa: BLE001
             pass
+
+
+def wait_for_join(
+    read_gnb: Callable[[], str],
+    gnb_running: Callable[[], bool],
+    *,
+    budget_s: float,
+    floor_s: float,
+    sleep: Callable[[float], None] = time.sleep,
+    clock: Callable[[], float] = time.monotonic,
+) -> dict[str, Any]:
+    """Decide how long to let the pair run before tearing them down.
+
+    An earlier version broke out of this wait after six seconds of the
+    combined logs not changing. That was wrong in the worst available way: it
+    reported ``du_agent_joined: false`` with zero E2 setups on a host where a
+    manual run of the same binaries shows three setups and the DU joining. It
+    is wrong for two compounding reasons.
+
+    * FlexRIC's stdout is C stdio block-buffered when it is a file, so the
+      RIC's log does not grow while it works — it grows once, at exit. A
+      stillness test therefore reads "nothing is happening" precisely when the
+      most is happening. The teardown ordering already accounts for this; the
+      wait loop did not.
+    * This gNB is silent for roughly twelve seconds during cell configuration
+      before it ever attempts E2. Four seconds of RIC start-up plus six
+      seconds of stillness is ten — the probe could and did give up before the
+      subsystem it exists to observe had started.
+
+    So stillness is gone. This waits the full budget unless something
+    *positive* happens: the gNB reports a DU association, or it dies. A floor
+    keeps the positive case from cutting off the CU-CP and CU-UP associations
+    that arrive alongside it.
+    """
+    start = clock()
+    while True:
+        sleep(1.0)
+        waited = clock() - start
+        if not gnb_running():
+            return {"waited_s": round(waited, 1), "reason": "gnb_exited"}
+        if waited >= floor_s and _GNB_CONN.search(read_gnb()) is not None:
+            joined = {m.group("unit") for m in _GNB_CONN.finditer(read_gnb())}
+            if any("DU" in u for u in joined):
+                return {"waited_s": round(waited, 1), "reason": "du_join_observed"}
+        if waited >= budget_s:
+            return {"waited_s": round(waited, 1), "reason": "budget_exhausted"}
 
 
 def analyse(ric_log: str, gnb_log: str) -> dict[str, Any]:
@@ -136,7 +183,22 @@ def main(argv: list[str] | None = None) -> int:
         "Use to force a flag the YAML already sets, e.g. "
         "--gnb-arg e2 --gnb-arg --enable_du_e2 --gnb-arg true",
     )
-    p.add_argument("--settle-s", type=float, default=25.0)
+    p.add_argument(
+        "--settle-s",
+        type=float,
+        default=60.0,
+        help="upper bound on how long the pair runs. Reached whenever no DU "
+        "association appears, so a negative result costs this in full — that "
+        "is deliberate. 25s was too short on a 4-core host.",
+    )
+    p.add_argument(
+        "--floor-s",
+        type=float,
+        default=15.0,
+        help="never tear down before this. Covers the ~12s this gNB spends "
+        "configuring cells before it attempts E2, and gives the CU-CP and "
+        "CU-UP associations time to land alongside the DU's.",
+    )
     p.add_argument("--workdir", type=Path, required=True)
     p.add_argument("--out", type=Path, help="write the result JSON here")
     args = p.parse_args(argv)
@@ -151,6 +213,9 @@ def main(argv: list[str] | None = None) -> int:
     gnb_log = args.workdir / "gnb.log"
 
     ric = gnb = None
+    # Initialised before the try so the `return 3` path below and any
+    # exception still leave a well-formed `wait` block rather than a NameError.
+    waited: dict[str, Any] = {"waited_s": 0.0, "reason": "not_started"}
     try:
         ric = _popen([str(args.ric)], ric_log, args.shim)
         time.sleep(4.0)
@@ -162,32 +227,20 @@ def main(argv: list[str] | None = None) -> int:
         gnb_cmd = [str(args.gnb), "-c", str(args.config), *args.gnb_arg]
         gnb = _popen(gnb_cmd, gnb_log, args.shim)
 
-        # Wait until both ends stop producing new E2 lines, or the budget runs
-        # out. A fixed sleep would either be slow or race the second agent.
-        deadline = time.monotonic() + args.settle_s
-        last = ""
-        stable_for = 0.0
-        while time.monotonic() < deadline:
-            time.sleep(1.0)
-            now = ric_log.read_text(errors="replace") + gnb_log.read_text(
-                errors="replace"
-            )
-            if now == last:
-                stable_for += 1.0
-                if stable_for >= 6.0:
-                    break
-            else:
-                stable_for = 0.0
-            last = now
+        running = gnb  # bind non-Optional for the closure below
+        waited = wait_for_join(
+            lambda: gnb_log.read_text(errors="replace"),
+            lambda: running.poll() is None,
+            budget_s=args.settle_s,
+            floor_s=args.floor_s,
+        )
     finally:
         # Read the logs only AFTER teardown. FlexRIC's stdout is C stdio
         # block-buffered when it is a file rather than a tty, so its
         # "E2 SETUP-REQUEST rx" line sits in the process's buffer until exit.
         # An earlier version analysed before killing and reported the RIC
         # seeing ZERO setups while the gNB reported a successful one — the two
-        # witnesses disagreeing is what exposed it. The settle loop is also
-        # fooled by this (an unflushed log looks "stable"), which is why it is
-        # a bound on waiting rather than the thing that decides completion.
+        # witnesses disagreeing is what exposed it.
         _kill(gnb)
         _kill(ric)
 
@@ -204,6 +257,13 @@ def main(argv: list[str] | None = None) -> int:
         "sctp_shim": str(args.shim) if args.shim else None,
     }
     result["logs"] = {"ric": str(ric_log), "gnb": str(gnb_log)}
+    # How long the pair was allowed to run, and what ended the wait. A
+    # negative result is only worth as much as the wait behind it, so this
+    # travels with the verdict rather than being reconstructable from the
+    # logs. `budget_exhausted` alongside `du_agent_joined: false` is the
+    # honest negative; `gnb_exited` means the gNB died and the answer is
+    # about the gNB, not about E2.
+    result["wait"] = {**waited, "budget_s": args.settle_s, "floor_s": args.floor_s}
 
     text = json.dumps(result, indent=2, sort_keys=True)
     if args.out:
