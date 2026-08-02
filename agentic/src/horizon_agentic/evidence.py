@@ -65,6 +65,8 @@ __all__ = [
     "verify_chain",
     "ChainBreak",
     "utc_now_iso",
+    "SCHEMA_VERSION",
+    "describe_aggregate",
     "check_dict",
     "digest_of",
 ]
@@ -72,6 +74,7 @@ __all__ = [
 _SIGNATURE_FIELDS = ("signature", "signing_key_fingerprint")
 
 GENESIS = "0" * 64
+SCHEMA_VERSION = "1.0.0"
 
 
 def utc_now_iso() -> str:
@@ -87,9 +90,18 @@ class TransactionCertificate:
     evaluated", and those have very different meanings to an auditor.
     """
 
-    transaction_id: str
-    issued_at: str
-    committed: bool
+    schema_version: str = SCHEMA_VERSION
+    transaction_id: str = ""
+    issued_at: str = ""
+    committed: bool = False
+    # What the decision was made *against*. Without these an auditor holding a
+    # refusal certificate cannot determine what the cell's state was, which
+    # limits were in force, or with what thresholds — so the decision cannot be
+    # replayed, and determinism you cannot replay from the record is not the
+    # property being claimed.
+    baseline_digest: str = ""
+    aggregates: tuple[dict[str, Any], ...] = ()
+    epoch: int = -1
     refusals: tuple[str, ...] = ()
     telemetry_checks: tuple[dict[str, Any], ...] = ()
     authority_verdicts: tuple[dict[str, Any], ...] = ()
@@ -300,6 +312,27 @@ def check_dict(check: Any) -> dict[str, Any]:
     detail = getattr(check, "detail", None)
     if detail is not None:
         out["detail"] = str(detail)
+    return out
+
+
+def describe_aggregate(invariant: Any) -> dict[str, Any]:
+    """Record an aggregate limit's identity *and its thresholds*.
+
+    "``absolute_slice_capacity_floor`` was violated" is not replayable — the
+    same invariant with a different floor decides differently. Every dataclass
+    field that is a JSON primitive is captured, which picks up thresholds
+    without needing each invariant to declare them.
+    """
+    out: dict[str, Any] = {"id": str(getattr(invariant, "id", type(invariant).__name__))}
+    if dataclasses.is_dataclass(invariant) and not isinstance(invariant, type):
+        for f in dataclasses.fields(invariant):
+            if f.name == "id":
+                continue
+            value = getattr(invariant, f.name, None)
+            if isinstance(value, bool | int | float | str):
+                out[f.name] = value
+            elif isinstance(value, frozenset | set):
+                out[f.name] = sorted(str(v) for v in value)
     return out
 
 

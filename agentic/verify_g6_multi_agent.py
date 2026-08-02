@@ -10,7 +10,7 @@ The claim under gate:
     not depend on arrival order, and where it cannot resolve it, refuses the
     whole transaction rather than part of it.
 
-Nine checks. Every one of them can fail, and the falsification log in
+Twelve checks. Every one of them can fail, and the falsification log in
 ``agentic/README.md`` records the edit that makes each fail.
 
 The first check is the one that matters most. A "multi-agent conflict" whose
@@ -49,6 +49,12 @@ from horizon_agentic.bundle import (  # noqa: E402
     SafetyTransaction,
     TransactionRefused,
 )
+from horizon_agentic.cycle import TransactionCycle  # noqa: E402
+from horizon_agentic.emit import (  # noqa: E402
+    TransactionBinding,
+    emittable,
+    verify_binding,
+)
 from horizon_agentic.envelope import (  # noqa: E402
     AgentActionEnvelope,
     AuthorityGrant,
@@ -56,6 +62,7 @@ from horizon_agentic.envelope import (  # noqa: E402
 )
 from horizon_agentic.evidence import (  # noqa: E402
     TransactionEvidenceChain,
+    digest_of,
     verify_chain,
 )
 from horizon_agentic.identity import (  # noqa: E402
@@ -105,6 +112,8 @@ PINNED = [
     HERE / "src/horizon_agentic/telemetry_trust.py",
     HERE / "src/horizon_agentic/identity.py",
     HERE / "src/horizon_agentic/evidence.py",
+    HERE / "src/horizon_agentic/cycle.py",
+    HERE / "src/horizon_agentic/emit.py",
 ]
 
 
@@ -557,6 +566,174 @@ def check_no_silent_partial_commit() -> dict[str, Any]:
     }
 
 
+def check_cycle_serialises_agents() -> dict[str, Any]:
+    """Without a serialisation point, none of the rest of this gate means anything.
+
+    Added after review put this first. Every other check is conditional on both
+    agents' actions arriving in one evaluation, and nothing in the package
+    caused that. Submitted separately, each agent commits and the protected
+    slice is cut to 12.5 MHz anyway — the harm this layer exists to prevent,
+    delivered through it.
+    """
+    # Separately: both commit, and the net effect breaches the floor.
+    alone_e = _txn(_policy()).evaluate([_energy()], context=_ctx())
+    alone_s = _txn(_policy()).evaluate([_slice()], context=_ctx())
+    separately_harmful = (
+        alone_e.committed
+        and alone_s.committed
+        and alone_e.members[0].action["bandwidth_hz"]
+        * alone_s.members[0].action["prb_allocation"]["safety_critical"]
+        < FLOOR_HZ
+    )
+
+    # Through a cycle: decided together, culprit dropped, floor held.
+    cyc = TransactionCycle(
+        _txn(_policy()),
+        clock=lambda: NOW,
+        baseline_source=lambda: dict(BASELINE),
+        window_s=0.0,
+    )
+    accepted = [cyc.submit(_energy()).accepted, cyc.submit(_slice()).accepted]
+    joint = cyc.close()
+    dropped = {d.agent_id for d in joint.resolution.dropped} if joint.resolution else set()
+
+    # Order independence through the cycle, not just through evaluate().
+    outcomes = set()
+    for order in ([_energy(), _slice()], [_slice(), _energy()]):
+        c2 = TransactionCycle(
+            _txn(_policy()),
+            clock=lambda: NOW,
+            baseline_source=lambda: dict(BASELINE),
+            window_s=0.0,
+        )
+        for env in order:
+            c2.submit(env)
+        r2 = c2.close()
+        outcomes.add(tuple(sorted(m.agent_id for m in r2.members)))
+
+    return {
+        "id": "cycle_serialises_agents",
+        "passed": (
+            separately_harmful
+            and all(accepted)
+            and joint.committed
+            and dropped == {"energy-agent"}
+            and len(outcomes) == 1
+        ),
+        "separate_submission_is_harmful": separately_harmful,
+        "joint_committed": joint.committed,
+        "joint_dropped": sorted(dropped),
+        "distinct_outcomes_by_order": len(outcomes),
+    }
+
+
+def check_emission_binds_to_the_transaction() -> dict[str, Any]:
+    """A refused bundle's members carry clean per-action certificates.
+
+    That is the premise of the design, not a defect — which is exactly why a
+    downstream gate checking only the per-action certificate would admit an
+    action from a bundle the aggregate layer refused, and be right by its own
+    rules. The binding is what a receiver checks instead.
+    """
+    key = Ed25519PrivateKey.generate()
+    cyc = TransactionCycle(
+        _txn(_policy(), signing_key=key),
+        clock=lambda: NOW,
+        baseline_source=lambda: dict(BASELINE),
+        window_s=0.0,
+    )
+    cyc.submit(_slice())
+    committed = cyc.close()
+    actions = emittable(committed)
+    binding_ok = verify_binding(
+        actions[0].binding, committed.certificate, public_key=key.public_key()
+    )
+
+    # And a refused transaction yields nothing emittable at all.
+    starved = {**BASELINE, "bandwidth_hz": 30e6}
+    refused = _txn(_policy()).evaluate(
+        [
+            AgentActionEnvelope(
+                agent_id="slice-agent",
+                agent_version="1.0.0",
+                target_domain="ran",
+                granted_scopes=frozenset({"slice"}),
+                delegation_chain=(ROOT, "slice-agent"),
+                requested_action={
+                    **starved,
+                    "prb_allocation": {"safety_critical": 0.25, "embb": 0.75},
+                },
+                mutates=frozenset({"prb_allocation"}),
+                resource_id=CELL,
+                nonce="r",
+                issued_at=NOW,
+            )
+        ],
+        context={"baseline_action": starved},
+    )
+    try:
+        emittable(refused)
+        refused_blocked = False
+    except TransactionRefused:
+        refused_blocked = True
+
+    # A binding built by hand around a genuinely refused certificate must not
+    # verify. `emittable` will not produce one, so this constructs it directly
+    # — which is the only way to exercise the `committed` guard. A first pass
+    # mutated a committed certificate instead, and the digest comparison caught
+    # that on its own, so removing the guard left the gate green.
+    hand_built = TransactionBinding(
+        transaction_id=refused.certificate.transaction_id,
+        epoch=refused.certificate.epoch,
+        certificate_digest=digest_of(refused.certificate.to_dict()),
+        signature=refused.certificate.signature or "",
+        signing_key_fingerprint=refused.certificate.signing_key_fingerprint or "",
+    )
+    refused_rejected = not verify_binding(hand_built, refused.certificate)
+
+    return {
+        "id": "emission_binds_to_the_transaction",
+        "passed": binding_ok and refused_rejected and refused_blocked,
+        "binding_verifies": binding_ok,
+        "refused_certificate_rejected": refused_rejected,
+        "refused_transaction_yields_nothing": refused_blocked,
+    }
+
+
+def check_certificate_is_replayable() -> dict[str, Any]:
+    """A record that cannot reconstruct the decision is not evidence.
+
+    An auditor holding a refusal must be able to determine what the cell's
+    state was and which limits were in force, with what thresholds — naming the
+    violated invariant is not enough, because the same invariant with a
+    different floor decides differently.
+    """
+    cyc = TransactionCycle(
+        _txn(_policy()),
+        clock=lambda: NOW,
+        baseline_source=lambda: dict(BASELINE),
+        window_s=0.0,
+    )
+    cyc.submit(_slice())
+    cert = cyc.close().certificate
+    thresholds = {
+        a["id"]: a.get("min_capacity_hz") for a in cert.aggregates
+    }
+    return {
+        "id": "certificate_is_replayable",
+        "passed": bool(
+            cert.schema_version
+            and len(cert.baseline_digest) == 64
+            and cert.epoch == 0
+            and thresholds.get("absolute_slice_capacity_floor") == FLOOR_HZ
+        ),
+        "schema_version": cert.schema_version,
+        "baseline_digest_present": len(cert.baseline_digest) == 64,
+        "epoch": cert.epoch,
+        "aggregate_thresholds": thresholds,
+    }
+
+
 def source_digests() -> dict[str, str]:
     out = {}
     for path in PINNED:
@@ -576,6 +753,9 @@ def run() -> dict[str, Any]:
         check_identity_is_enforced(),
         check_evidence_is_signed_and_chained(),
         check_no_silent_partial_commit(),
+        check_cycle_serialises_agents(),
+        check_emission_binds_to_the_transaction(),
+        check_certificate_is_replayable(),
     ]
     return {
         "gate": "G6",

@@ -5,22 +5,35 @@
   "description": "Evidence for one multi-agent transaction, issued whether it committed or was refused. Refusals need this more than commits: a commit leaves a trace in the network, a refusal leaves nothing behind unless something records it, and the refusal is what an operator is later asked to justify.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["transaction_id", "issued_at", "committed"],
+  "required": [
+    "schema_version",
+    "transaction_id",
+    "issued_at",
+    "committed"
+  ],
   "properties": {
-    "transaction_id": { "type": "string" },
+    "transaction_id": {
+      "type": "string"
+    },
     "issued_at": {
       "type": "string",
       "description": "RFC 3339 UTC, matching horizon_ric.shield.certificate.utc_now_iso."
     },
-    "committed": { "type": "boolean" },
+    "committed": {
+      "type": "boolean"
+    },
     "refusals": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Every reason the transaction was refused, prefixed by the stage that refused it (telemetry., identity., authority., per_action_blocked:, aggregate.). A refusal certificate carrying no reasons is not evidence."
     },
     "telemetry_checks": {
       "type": "array",
-      "items": { "$ref": "#/$defs/check" },
+      "items": {
+        "$ref": "#/$defs/check"
+      },
       "description": "The trust gate's verdict, per check. Present for passes as well as failures."
     },
     "authority_verdicts": {
@@ -28,21 +41,40 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["agent_id"],
+        "required": [
+          "agent_id"
+        ],
         "properties": {
-          "agent_id": { "type": "string" },
-          "authenticated": { "type": ["boolean", "null"] },
-          "authorized": {
-            "type": ["boolean", "null"],
-            "description": "null when the transaction was refused before authority ran — an identity or telemetry refusal. The record still names the agent that tried."
+          "agent_id": {
+            "type": "string"
           },
-          "problems": { "type": "array", "items": { "type": "string" } }
+          "authenticated": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "authorized": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "null when the transaction was refused before authority ran \u2014 an identity or telemetry refusal. The record still names the agent that tried."
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       }
     },
     "aggregate_checks": {
       "type": "array",
-      "items": { "$ref": "#/$defs/check" },
+      "items": {
+        "$ref": "#/$defs/check"
+      },
       "description": "Every aggregate invariant evaluated, satisfied or not. Recording the passes is what distinguishes 'this limit was checked and held' from 'this limit was never checked'."
     },
     "dropped": {
@@ -50,15 +82,26 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["agent_id", "priority", "violated_id", "detail"],
+        "required": [
+          "agent_id",
+          "priority",
+          "violated_id",
+          "detail"
+        ],
         "properties": {
-          "agent_id": { "type": "string" },
+          "agent_id": {
+            "type": "string"
+          },
           "priority": {
             "type": "integer",
             "description": "The operator-programmed priority that decided this, read from the authority policy and never from the envelope."
           },
-          "violated_id": { "type": "string" },
-          "detail": { "type": "string" }
+          "violated_id": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
         }
       },
       "description": "Requests conflict resolution declined to apply. Resolution drops requests rather than rewriting values, so a dropped member means that dimension keeps whatever the network already had."
@@ -68,37 +111,94 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["agent_id", "action_digest", "certificate_digest"],
+        "required": [
+          "agent_id",
+          "action_digest",
+          "certificate_digest"
+        ],
         "properties": {
-          "agent_id": { "type": "string" },
-          "action_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-          "certificate_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          "agent_id": {
+            "type": "string"
+          },
+          "action_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "certificate_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
         }
       },
       "description": "Referenced by digest rather than inlined: the per-action SafetyCertificate is the authoritative record of each emission, and duplicating it here would create two things that can disagree."
     },
-    "resolution_rounds": { "type": "integer", "minimum": 0 },
-    "signature": {
-      "type": ["string", "null"],
-      "pattern": "^[0-9a-f]*$",
-      "description": "Hex Ed25519 over the canonical bytes, constructed exactly as horizon_ric.shield.signing.canonical_certificate_bytes does — sorted keys, compact separators, signature fields removed. A verifier written for one works for the other."
+    "resolution_rounds": {
+      "type": "integer",
+      "minimum": 0
     },
-    "signing_key_fingerprint": { "type": ["string", "null"], "pattern": "^[0-9a-f]*$" }
+    "signature": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]*$",
+      "description": "Hex Ed25519 over the canonical bytes, constructed exactly as horizon_ric.shield.signing.canonical_certificate_bytes does \u2014 sorted keys, compact separators, signature fields removed. A verifier written for one works for the other."
+    },
+    "signing_key_fingerprint": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]*$"
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "Version of this certificate shape."
+    },
+    "baseline_digest": {
+      "type": "string",
+      "description": "SHA-256 of the network state the bundle was decided against. Without it a refusal certificate cannot be replayed: the same bundle against a different baseline decides differently."
+    },
+    "aggregates": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "The aggregate limits that were configured, with their thresholds. Naming the violated invariant is not enough \u2014 the same invariant with a different floor decides differently."
+    },
+    "epoch": {
+      "type": "integer",
+      "description": "The cycle this transaction closed, or -1 when evaluated outside a cycle."
+    }
   },
   "$defs": {
     "check": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "passed"],
+      "required": [
+        "id",
+        "passed"
+      ],
       "properties": {
-        "id": { "type": "string" },
-        "passed": { "type": "boolean" },
+        "id": {
+          "type": "string"
+        },
+        "passed": {
+          "type": "boolean"
+        },
         "margin": {
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "description": "null where the underlying margin was infinite. json.dumps emits a bare Infinity, which is not valid JSON, and signed bytes a conforming parser cannot read are not evidence."
         },
-        "unit": { "type": "string" },
-        "detail": { "type": "string" }
+        "unit": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        }
       }
     }
   }

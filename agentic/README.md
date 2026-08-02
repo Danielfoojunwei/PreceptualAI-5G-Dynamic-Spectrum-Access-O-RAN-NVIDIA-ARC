@@ -65,7 +65,9 @@ per-action checking means.
 | `aggregate.py` | Invariants over a *set* of actions, grouped by resource, reusing `InvariantCheck` so aggregate evidence has the same shape as per-action evidence. |
 | `bundle.py` | `SafetyTransaction` — trust, identity, authority, per-action projection, aggregates, resolution, then commit-all-or-refuse-all, certified either way. |
 | `conflict.py` | Deterministic resolution: culpability first, then operator-programmed priority. Drops requests; never rewrites values. |
-| `evidence.py` | `TransactionCertificate` for **every** transaction including refusals, signed and hash-chained with tamper localisation. |
+| `evidence.py` | `TransactionCertificate` for **every** transaction including refusals, signed and hash-chained with tamper localisation. Records the baseline digest and the configured limits *with their thresholds*, so a refusal can be replayed. |
+| `cycle.py` | `TransactionCycle` — the serialisation point. Agents submit into an epoch and receive a *receipt*, not a decision; the epoch is decided as a unit, against an operator-supplied baseline. |
+| `emit.py` | `TransactionBinding` — the artefact that lets a receiver check the *transaction*, not just the action. |
 
 Aggregate limits implemented: absolute slice capacity floor, PRB conservation,
 site EIRP budget, spectral separation between carriers, aggregate PFD.
@@ -130,20 +132,26 @@ Each check was falsified by hand:
 | Refusals no longer carry their reasons into the certificate | `evidence_signed_and_chained` fails |
 | Predecessor hash no longer hashed into each chain entry | `evidence_signed_and_chained` fails |
 | Guard removed that turns "dropped everyone" into a refusal | `no_silent_partial_commit` fails |
+| Cycle decides one submission at a time instead of the epoch | `cycle_serialises_agents` fails |
+| `verify_binding` stops checking that the transaction committed | `emission_binds_to_the_transaction` fails |
+| Certificate drops the thresholds of its configured limits | `certificate_is_replayable` fails |
 
 Two properties are pinned by tests rather than by G6, and it is worth saying
 which: culpability-before-priority in conflict resolution, and telemetry being
 unable to overwrite the decision baseline. Mutating either fails
 `test_adversarial_findings.py` and leaves the gate green.
 
-**Two falsifications were wrong before they were right.** Removing the
+**Four falsifications were wrong before they were right.** Removing the
 empty-drop guard left G6 green because the scenario refused earlier, at
 authority — the envelopes declared a bandwidth the starved baseline did not
 have, so the branch under test was never reached. And the chain falsification
 only rewrote a record without re-linking its successor, which the stored
 `prev_hash` comparison catches on its own; the property that actually needs
 hashing the predecessor is resistance to a *fully re-linked* chain. Both checks
-were rebuilt to exercise the real branch.
+were rebuilt to exercise the real branch. Later, mutating `verify_binding` to
+drop its committed-check also left the gate green, because the mutation altered
+the certificate and the digest comparison caught it first — the guard only
+matters for a binding built by hand, which is now what the check constructs.
 
 **One falsification found a real bug rather than confirming a gate.** Forcing
 `authorize` to return `authorized=True` left G6 *green*: `SafetyTransaction`
@@ -176,6 +184,7 @@ is now pinned by a test in `test_adversarial_findings.py`.
 | One bad packet vetoed every decision | The verdict folded in per-record checks, making the authenticated-records filter unreachable. Anyone able to put a packet on the bus could silence the domain. |
 | A sequence of 2^63 silenced a source permanently | Forward jumps are now bounded. |
 | The corroboration merge was attacker-controlled | It took the lexicographically-first source, and this repository's own test claimed that was "the only rule an attacker cannot influence by changing its measurement". False: the attacker changes its *name*, not its measurement. Registering as `aaa-sensor` won every contested field, for free, forever. Corroborated fields now take the median. |
+| Nothing batched the agents | `SafetyTransaction.evaluate` was a pure function over a bundle nobody assembled. Two agents submitting separately each committed and the 12.5 MHz harm happened anyway, through the component built to prevent it. Every other result was conditional on batching that did not exist. `cycle.py` is the serialisation point; the baseline is now read from the operator at close time rather than asserted by the caller. |
 | A bundle could allocate 160% of the cell's PRBs | `ProtectedSliceFloorInvariant` asks whether one slice has enough; nothing asked whether the cell had that much to give. |
 | `AggregateEirpBudget` manufactured 3 dB | It summed bundle members, so a second agent *declaring* the power it was not changing added phantom transmit power. Aggregates now group by `resource_id`. |
 
@@ -195,23 +204,19 @@ is now pinned by a test in `test_adversarial_findings.py`.
   can still be wrong.
 - **No live deployment, no vendor platform, no operator pilot.** Everything
   here runs offline against the repository's own Shield.
-- **Nothing batches the agents.** This is the most important limitation and it
-  is not fixed. `SafetyTransaction.evaluate` is a pure function over a bundle
-  someone else assembled: there is no queue, no epoch, no submission window and
-  no state between calls. Two agents submitting *separately* each commit, and
-  the 12.5 MHz outcome in the table above happens anyway — through the very
-  component built to prevent it. Every result here is conditional on a
-  serialisation point that does not exist yet, and building one is the
-  precondition for both a system-derived baseline and any real emission path.
-- **No emission path.** Nothing carries a committed transaction to A1 or E2.
-  Worse, the existing wire gates would not help if one were added naively:
-  both inspect the *per-action* certificate, and every member of a refused
-  bundle carries a clean one — that is the premise of the whole design. The
-  structural property the main package is proudest of, that a Shield-refused
-  action cannot become an E2 control message, has no analogue at the
-  transaction layer yet.
-- **"Commit" means "return a tuple".** No two-phase protocol, no rollback, no
-  idempotency key, no acknowledgement from the network.
+- **No emission path.** Nothing here speaks A1 or E2. `emit.py` defines the
+  artefact such a path would have to carry and refuses to produce one for a
+  refused transaction, which closes off the naive integration before somebody
+  writes it — but no wire is spoken and no vendor has consumed a binding.
+- **"Commit" means "the transaction cleared these actions".** No two-phase
+  protocol, no rollback, no idempotency key, no acknowledgement from the
+  network. The cycle serialises *decisions*; it does not yet serialise
+  *effects*.
+- **No durable evidence store.** The chain is in-memory. `horizon_ric.evidence`
+  has a real store; nothing connects them yet.
+- **Replay state does not survive a restart.** The telemetry gate's high-water
+  marks and the authenticator's nonce set are process-local, so a restart
+  reopens a replay window the width of the freshness bound.
 - **No wire format.** The schemas under `schemas/` describe the envelope and
   the certificate, and a drift test keeps them honest against the dataclasses,
   but there is no serialiser, no parser, no ingress and no key-distribution

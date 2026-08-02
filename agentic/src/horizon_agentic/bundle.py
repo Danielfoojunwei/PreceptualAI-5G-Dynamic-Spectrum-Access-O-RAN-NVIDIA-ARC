@@ -58,6 +58,7 @@ from horizon_agentic.evidence import (
     TransactionCertificate,
     TransactionEvidenceChain,
     check_dict,
+    describe_aggregate,
     digest_of,
     signed_transaction,
     utc_now_iso,
@@ -176,6 +177,8 @@ class SafetyTransaction:
         aggregate_checks: Sequence[InvariantCheck],
         resolution: ConflictResolution | None,
         members: Sequence[CommittedMember],
+        baseline: Mapping[str, Any] | None = None,
+        epoch: int = -1,
     ) -> tuple[TransactionCertificate, ChainEntry | None]:
         authenticated_by = {v.agent_id: v.authenticated for v in identity}
         if authority:
@@ -204,6 +207,9 @@ class SafetyTransaction:
 
         certificate = TransactionCertificate(
             transaction_id=transaction_id,
+            baseline_digest=digest_of(dict(baseline)) if baseline else "",
+            aggregates=tuple(describe_aggregate(a) for a in self._aggregates),
+            epoch=epoch,
             issued_at=self._clock(),
             committed=committed,
             refusals=tuple(refusals),
@@ -247,6 +253,7 @@ class SafetyTransaction:
         context: Mapping[str, Any] | None = None,
         transaction_id: str = "",
         decision_id: str = "",
+        epoch: int = -1,
     ) -> TransactionResult:
         refusals: list[str] = []
         ctx: dict[str, Any] = dict(context or {})
@@ -261,6 +268,7 @@ class SafetyTransaction:
             aggregate_checks: Sequence[InvariantCheck] = (),
             resolution: ConflictResolution | None = None,
         ) -> TransactionResult:
+            frame = ctx.get("baseline_action")
             certificate, entry = self._certify(
                 transaction_id,
                 committed=False,
@@ -271,6 +279,8 @@ class SafetyTransaction:
                 aggregate_checks=aggregate_checks,
                 resolution=resolution,
                 members=(),
+                baseline=frame if isinstance(frame, Mapping) else None,
+                epoch=epoch,
             )
             return TransactionResult(
                 False,
@@ -464,6 +474,8 @@ class SafetyTransaction:
             aggregate_checks=resolution.checks,
             resolution=resolution,
             members=members,
+            baseline=baseline,
+            epoch=epoch,
         )
         return TransactionResult(
             True,
