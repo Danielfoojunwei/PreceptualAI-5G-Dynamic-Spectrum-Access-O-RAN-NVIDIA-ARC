@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Regenerate every figure the proposal embeds.
 
-  fig-arch.png         rasterised from fig-arch.svg, the hand-authored
-                       topology diagram that is this figure's source
-  fig-enforcement.png  plotted from gated result files (below)
-  fig-plan.png         the work-package schedule declared in WPS
+  fig-enforcement.png  plotted from gated result files (below) — the only
+                       figure the proposal embeds
+  fig-arch.png         rasterised from fig-arch.svg; NOT embedded since the
+                       two-page limit. Built only under --unused.
+  fig-plan.png         the work-package schedule declared in WPS; NOT
+                       embedded either. Built only under --unused.
 
 Every number in fig-enforcement.png is read from a result file that CI
 re-executes and verifies field by field:
@@ -15,6 +17,7 @@ not share an axis.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import math
 from pathlib import Path
@@ -292,11 +295,28 @@ def arch_figure():
 
 
 if __name__ == "__main__":
+    # Only the figure the document embeds is built by default. The two-page
+    # limit removed the architecture and work-package diagrams, and building
+    # artefacts nothing references is how a repository accumulates files that
+    # look current and are not — `arch_figure` also needs cairosvg, which the
+    # proposal CI job has no reason to install for a figure it never renders.
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "--unused",
+        action="store_true",
+        help="also rebuild fig-arch.png and fig-plan.png. Neither is embedded "
+        "in the proposal any more; fig-arch.svg remains the hand-authored "
+        "source if the diagram is wanted elsewhere. Requires cairosvg.",
+    )
+    args = ap.parse_args()
+
     ps, ev = _load()
     facts = enforcement_figure(ps, ev)
-    plan_figure()
-    arch_figure()
+    built = ["fig-enforcement.png"]
+    if args.unused:
+        plan_figure()
+        arch_figure()
+        built += ["fig-plan.png", "fig-arch.png"]
     print(json.dumps(facts, indent=2))
-    for f in ("fig-arch.png", "fig-enforcement.png", "fig-plan.png"):
-        p = HERE / f
-        print(f, p.stat().st_size, "bytes")
+    for f in built:
+        print(f, (HERE / f).stat().st_size, "bytes")

@@ -31,12 +31,16 @@ from a full checkout.
 
 - **`content.py`** — every word of the proposal, plus the shared type scale.
   Both renderers import it, so the `.docx` and the preview cannot disagree.
-- **`mkfigs.py`** — regenerates the figures. `fig-enforcement.png` is plotted
-  directly from `benchmarks/results/poisoning_shield.json` and
-  `evasion_suite.json`; no number in it is typed in. `fig-plan.png` is drawn from
-  the work-package table in the script. `fig-arch.png` is rasterised from
-  `fig-arch.svg`, which is the hand-authored source for that diagram and the one
-  file here you would edit in a vector editor.
+- **`mkfigs.py`** — regenerates `fig-enforcement.png`, the only figure the
+  proposal embeds. Every number in it is plotted from
+  `benchmarks/results/poisoning_shield.json` and `evasion_suite.json`; none is
+  typed in. That last sentence was false until the two-page revision: panel (c)
+  carried two literal bar heights and, worse, labelled a transmit power as an
+  EIRP. `audit/verify_proposal_claims.py` now holds it true.
+  The architecture and work-package diagrams are no longer embedded — the page
+  limit paid for them — and `mkfigs.py --unused` rebuilds them if wanted.
+  `fig-arch.svg` remains the hand-authored source and the one file here you
+  would edit in a vector editor.
 - **`build_docx.py`** — assembles the OOXML. See below.
 - **`validate_docx.py`** — stands in for Word's validator, which is not
   available in this environment.
