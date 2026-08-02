@@ -1,0 +1,156 @@
+{
+  "characterisation": {
+    "by_invariant": {
+      "constellation_legality": {
+        "deferred": 0,
+        "examples": [
+          "repaired: block=spectrum frequency=3450.00MHz bandwidth=20.00MHz tx_power_dBm=20.0 antenna_gain_dBi=0.0",
+          "repaired: block=spectrum frequency=3450.00MHz bandwidth=20.00MHz tx_power_dBm=20.0 antenna_gain_dBi=0.0",
+          "repaired: block=spectrum frequency=3450.00MHz bandwidth=20.00MHz tx_power_dBm=20.0 antenna_gain_dBi=0.0"
+        ],
+        "invariant_id": "constellation_legality",
+        "refused": 0,
+        "repaired": 4,
+        "verdict": "CORRECTING",
+        "violations_probed": 4
+      },
+      "max_eirp": {
+        "deferred": 96,
+        "examples": [
+          "repaired: block=spectrum frequency=3450.00MHz bandwidth=20.00MHz tx_power_dBm=33.1 antenna_gain_dBi=0.0",
+          "repaired: block=spectrum frequency=3450.00MHz bandwidth=20.00MHz tx_power_dBm=33.1 antenna_gain_dBi=0.0",
+          "repaired: block=spectrum frequency=3450.00MHz bandwidth=20.00MHz tx_power_dBm=33.1 antenna_gain_dBi=0.0"
+        ],
+        "invariant_id": "max_eirp",
+        "refused": 0,
+        "repaired": 2592,
+        "verdict": "DEFERRING",
+        "violations_probed": 2688
+      },
+      "neural_rx_envelope": {
+        "deferred": 0,
+        "examples": [
+          "repaired: block=neural_rx frequency=3450.00MHz bandwidth=20.00MHz tx_power_dBm=20.0 antenna_gain_dBi=0.0",
+          "repaired: block=neural_rx frequency=3450.00MHz bandwidth=20.00MHz tx_power_dBm=20.0 antenna_gain_dBi=0.0",
+          "repaired: block=neural_rx frequency=3450.00MHz bandwidth=20.00MHz tx_power_dBm=20.0 antenna_gain_dBi=0.0"
+        ],
+        "invariant_id": "neural_rx_envelope",
+        "refused": 0,
+        "repaired": 3,
+        "verdict": "CORRECTING",
+        "violations_probed": 3
+      },
+      "numeric_domain_sanity": {
+        "deferred": 0,
+        "examples": [
+          "refused: block=spectrum frequency=3450.00MHz bandwidth=-0.00MHz tx_power_dBm=20.0 antenna_gain_dBi=0.0",
+          "refused: block=spectrum frequency=nanMHz bandwidth=20.00MHz tx_power_dBm=20.0 antenna_gain_dBi=0.0",
+          "refused: block=spectrum frequency=3450.00MHz bandwidth=20.00MHz tx_power_dBm=inf antenna_gain_dBi=0.0"
+        ],
+        "invariant_id": "numeric_domain_sanity",
+        "refused": 6,
+        "repaired": 0,
+        "verdict": "REFUSING",
+        "violations_probed": 6
+      },
+      "spectral_mask_ts38104": {
+        "deferred": 0,
+        "examples": [
+          "repaired: block=spectrum frequency=3300.00MHz bandwidth=20.00MHz tx_power_dBm=20.0 antenna_gain_dBi=0.0",
+          "repaired: block=spectrum frequency=3600.00MHz bandwidth=20.00MHz tx_power_dBm=20.0 antenna_gain_dBi=0.0",
+          "repaired: block=spectrum frequency=3390.00MHz bandwidth=40.00MHz tx_power_dBm=20.0 antenna_gain_dBi=0.0"
+        ],
+        "invariant_id": "spectral_mask_ts38104",
+        "refused": 2,
+        "repaired": 3,
+        "verdict": "REFUSING",
+        "violations_probed": 5
+      }
+    },
+    "summary": {
+      "correcting": [
+        "constellation_legality",
+        "neural_rx_envelope"
+      ],
+      "deferring": [
+        "max_eirp"
+      ],
+      "inert": [],
+      "largest_power_clamp_dB": 1000027.0,
+      "over_power_probed": 2688,
+      "over_power_refused": 0,
+      "over_power_unrepaired": 96,
+      "refusing": [
+        "numeric_domain_sanity",
+        "spectral_mask_ts38104"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "detail": "default_terrestrial_shield builds ['constellation_legality', 'max_eirp', 'neural_rx_envelope', 'numeric_domain_sanity', 'spectral_mask_ts38104']; this gate probes ['constellation_legality', 'max_eirp', 'neural_rx_envelope', 'numeric_domain_sanity', 'spectral_mask_ts38104']. Equal=True \u2014 if a chain member is added upstream, this fails rather than quietly characterising four of five invariants.",
+      "id": "probe_covers_the_shipping_chain",
+      "passed": true
+    },
+    {
+      "detail": "an invariant this sweep never got to fail would be classified by default, not by evidence. Unprobed: none. constellation_legality=4; max_eirp=2688; neural_rx_envelope=3; numeric_domain_sanity=6; spectral_mask_ts38104=5",
+      "id": "every_invariant_was_actually_made_to_fail",
+      "passed": true
+    },
+    {
+      "detail": "6/6 non-physical actions set emit_blocked in its own projection \u2014 nothing about a negative bandwidth or a NaN frequency can be repaired, so it refuses",
+      "id": "numeric_domain_sanity_refuses",
+      "passed": true
+    },
+    {
+      "detail": "3 off-band carriers were shifted back inside the band; 2 carriers wider than the usable channel were refused. The same invariant does both, decided by whether a projection exists \u2014 which is the rule the whole design follows.",
+      "id": "spectral_mask_corrects_or_refuses_by_repairability",
+      "passed": true
+    },
+    {
+      "detail": "2688 over-power actions probed \u2014 powers from 0.1 dB to 967 dB above the 33.0 dBm ceiling, crossed with antenna gain, constellation order, PAPR and TBLER so any interaction that could block the clamp is included. REFUSED: 0. Largest clamp applied: 1000027.0 dB. MaxEirpInvariant.project subtracts the overage unconditionally, so there is no over-power action it cannot repair.",
+      "id": "max_eirp_never_refuses",
+      "passed": true
+    },
+    {
+      "detail": "96 of 2688 probes are NOT repaired by a single pass of its own projection: clamping 33.1 dBm at 60 dBi lands on tx=-26.999999999999993, whose EIRP is 33.00000000000001 \u2014 margin -7.1e-15 dB, still violated. It neither repairs nor refuses, so it is DEFERRING: it relies on the Shield's fixed-point loop.",
+      "id": "max_eirp_defers_on_floating_point_residue",
+      "passed": true
+    },
+    {
+      "detail": "tx=33.1 dBm at 60 dBi converges at max_passes=2: REFUSED at 1 (True), corrected at 2. The fixed-point loop is what makes this safe, and it is doing real work here rather than being unused headroom.",
+      "id": "residue_case_needs_two_passes",
+      "passed": true
+    },
+    {
+      "detail": "a 7.0 dB overage converges in 1 pass; a 0.1 dB overage needs 2. What matters is whether the float subtraction rounds back exactly, not how large the violation is \u2014 so a battery of large, obvious violations will never find the boundary, which is precisely how the earlier claim was missed.",
+      "id": "overage_size_does_not_predict_pass_count",
+      "passed": true
+    },
+    {
+      "detail": "audit/constants/swap_harness.py previously reported that the chain 'converges in <= 1 pass' and was therefore 'INSENSITIVE to max_passes for any value >= 1'. That was FALSE. Per-scenario convergence is now [1, 1, 1, 1, 2] over 5 scenarios, floor 2. Two defects produced the wrong answer: the battery held only large overages, and the measurement stopped at the first pair of agreeing dispositions rather than reading convergence from the settled end (the residue case is blocked at BOTH 0 and 1, so 'first repeat' concluded 0).",
+      "id": "convergence_floor_is_two_passes_not_one",
+      "passed": true
+    },
+    {
+      "detail": "a 40.0 dBm proposal is corrected to 33.0 dBm and EMITTED (emit_blocked=False, projected=True). This is what the demonstration actually shows, and it is the stronger claim: the action that reaches the RAN is not the action the planner proposed.",
+      "id": "over_power_correction_is_real_and_emitted",
+      "passed": true
+    },
+    {
+      "detail": "\u00a7VII promises 'a Shield-corrected over-power proposal refused rather than emitted'. No over-power proposal is refused, by construction, so this cannot be demonstrated and no test will produce it. The fix is a wording change, which is the author's to make \u2014 this gate deliberately does not edit the proposal. Proposed replacement: 'an over-power proposal corrected to the EIRP ceiling before emission, and a non-physical proposal refused outright'",
+      "id": "section_vii_claim_is_unobtainable_as_written",
+      "passed": true
+    }
+  ],
+  "claim": "Refusal is reserved for actions no projection can repair. An over-power proposal is always repairable, so it is always corrected and never refused.",
+  "gate": "refusal-semantics",
+  "passed": true,
+  "proposed_rewording": "an over-power proposal corrected to the EIRP ceiling before emission, and a non-physical proposal refused outright",
+  "section_vii_claim": "a Shield-corrected over-power proposal refused rather than emitted",
+  "source_digests": {
+    "audit/refusal_semantics.py": "890c492453c0f102183023602b8fa0de205633f9fdf95234d8328bb05cde0e63",
+    "src/horizon_ric/shield/invariants.py": "fe9185068e5f6becae25ff3248121f94429f99fa653a4559c364ca30940511ee",
+    "src/horizon_ric/shield/shield.py": "b8e227b0dbfe1a22a8ea9550f23f818fbaf607ad073dd9e9ed4a4673300a966e"
+  }
+}

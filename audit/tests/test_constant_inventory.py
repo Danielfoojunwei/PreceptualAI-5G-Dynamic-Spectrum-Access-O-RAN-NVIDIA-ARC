@@ -125,8 +125,19 @@ def test_max_passes_flips_and_records_headroom_finding():
     # SHA-256 pin: editing the literal 8 breaks G1's pin of shield.py.
     assert r["sha256"]["live_matches_pin"] is True
     assert r["sha256"]["flipped"] is True
-    # The honest finding: 8 is headroom, chain converges in <=1 pass.
-    assert r["finding"]["passes_needed_max"] <= 1
+    # The honest finding: 8 is headroom ABOVE a floor of 2.
+    #
+    # This assertion used to read `<= 1`, pinning the claim that the chain
+    # always converges in one pass and max_passes is therefore insensitive for
+    # any value >= 1. audit/verify_refusal_semantics.py falsified that: a
+    # 0.1 dB over-EIRP action at 60 dBi antenna gain leaves a -7.1e-15 dB
+    # floating-point residue after one clamp and needs a second pass, so it is
+    # REFUSED at max_passes=1. The test was pinning the wrong number.
+    assert r["finding"]["passes_needed_max"] == 2
+    # And pin WHY, so a future battery that drops the counterexample fails
+    # here rather than quietly reverting to the comfortable answer.
+    assert r["finding"]["passes_needed_per_scenario"].count(2) == 1
+    assert "CORRECTION" in r["finding"]["text"]
     assert r["flipped"] is True
 
 

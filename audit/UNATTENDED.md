@@ -169,20 +169,80 @@ proof has `blocked: 0`. Either soften §VII to "two complementary
 demonstrations", or wire a combined driver that emits *and* refuses through the
 same mediator run.
 
-**Gap 2 — "over-power" is not the invariant actually exercised.** §VII says the
-refused proposal is an **over-power** proposal. The committed refused proposal
-(`a1_assurance_proof.py:463`) sets `bandwidth_hz = -1.0`, which violates
-`numeric_domain_sanity` (negative bandwidth is *unfixable by projection*) —
-**not** `max_eirp`, the over-power invariant. The refusal *mechanism* is
-genuine and proven; the specific "over-power" wording is not what the evidence
-shows. Either change the negative case to a real over-power (`max_eirp`)
-violation, or change §VII to say "a Shield-blocked proposal refused rather than
-emitted" without the "over-power" qualifier.
+**Gap 2 — "over-power" is not the invariant actually exercised, and it cannot
+be.** §VII says the refused proposal is an **over-power** proposal. The
+committed refused proposal (`a1_assurance_proof.py:463`) sets
+`bandwidth_hz = -1.0`, which violates `numeric_domain_sanity` (negative
+bandwidth is *unfixable by projection*) — **not** `max_eirp`.
+
+This was first recorded here as "the proof is missing", with the suggested fix
+"change the negative case to a real over-power violation". **That suggestion
+was wrong**, and [`verify_refusal_semantics.py`](verify_refusal_semantics.py)
+is the gate that establishes why:
+
+&gt; `MaxEirpInvariant.project` subtracts the overage from `tx_power_dBm`
+&gt; unconditionally. There is no over-power action it cannot repair, so there
+&gt; is no over-power action it refuses. **2688 over-power actions** — 0.1 dB to
+&gt; 967 dB above the ceiling, crossed with antenna gain, constellation order,
+&gt; PAPR and TBLER — produce **zero** refusals.
+
+Refusal in this Shield is reserved for actions no projection can repair. That
+is the design, not an omission: the Shield is a *projection operator*. So
+§VII's sentence describes behaviour the chain deliberately does not have, and
+no test will produce it. **The fix is a wording change, not a missing proof.**
+
+The gate proposes this replacement, which is what the demonstration actually
+shows and is the stronger claim anyway — the action reaching the RAN is not
+the action the planner proposed:
+
+&gt; ~~"a Shield-corrected over-power proposal refused rather than emitted"~~
+&gt; **"an over-power proposal corrected to the EIRP ceiling before emission, and
+&gt; a non-physical proposal refused outright"**
+
+Both halves are proven: a 40.0 dBm proposal is clamped to exactly 33.0 dBm and
+emitted, and the negative-bandwidth proposal is refused with a 404 on the
+policy id.
+
+Changing §VII is the author's call — nothing under `audit/` edits the proposal.
 
 `audit/check_unattended.py` asserts the refusal that is *actually committed*
 (negative bandwidth) and emits a `[NOTE]` flagging this wording gap; it
 deliberately does **not** assert "over-power", because that would be asserting
 something the evidence does not contain.
+
+### A claim this subtree got wrong, and the correction
+
+Chasing Gap 2 turned up a defect in `audit/constants/swap_harness.py`, which
+had published:
+
+&gt; "The default chain converges in &lt;= 1 projection pass across 4 infeasible
+&gt; scenarios, so the disposition is INSENSITIVE to max_passes for any value
+&gt; &gt;= 1."
+
+**False.** `tx_power_dBm = 33.1` at `antenna_gain_dBi = 60.0` clamps to
+`-26.999999999999993`, whose EIRP is `33.00000000000001` — margin `-7.1e-15`,
+still violated. It needs a **second** pass. At `max_passes = 1` that action is
+*refused*; at 2 it is corrected. So the 1 → 2 boundary is genuinely
+behavioural and only values ≥ 2 are headroom.
+
+Two independent defects produced the wrong answer, and both are now fixed:
+
+1. **The battery held only large, obvious overages.** A 7 dB overage converges
+   in one pass and a 0.1 dB one does not — what matters is whether the float
+   subtraction rounds back exactly, not how big the violation is. The
+   counterexample is now scenario 5.
+2. **The measurement stopped at the first pair of agreeing dispositions.** The
+   residue case is blocked at *both* `max_passes=0` and `max_passes=1`, so
+   "first repeat" concluded zero passes were needed. Convergence is now read
+   from the settled end: the smallest `max_passes` whose disposition equals
+   the one at 8 and never changes again.
+
+Per-scenario convergence is now reported as `[1, 1, 1, 1, 2]`.
+
+This also reclassifies `max_eirp` itself. It is **DEFERRING**, not
+CORRECTING: on 96 of 2688 probes its own projection neither repairs the
+violation nor refuses, leaving it to the Shield's fixed-point loop. That loop
+is doing real work here rather than being unused headroom.
 
 ---
 

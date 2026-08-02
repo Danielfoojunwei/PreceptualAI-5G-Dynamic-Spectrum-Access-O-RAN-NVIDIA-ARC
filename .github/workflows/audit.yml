@@ -132,6 +132,46 @@ jobs:
       - name: Runbook claims are backed by committed evidence
         run: python audit/check_unattended.py
 
+      - name: Refusal semantics — what the Shield refuses vs corrects
+        # Establishes that §VII's "over-power proposal refused" is
+        # unobtainable rather than merely unproven, and pins the max_passes
+        # convergence floor that an earlier version of this subtree got wrong.
+        env:
+          PYTHONPATH: src:agentic/src:ocudu/src
+        run: |
+          python audit/verify_refusal_semantics.py \
+            --out "$RUNNER_TEMP/refusal-semantics.json"
+
+      - name: Compare against the committed characterisation
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          fresh = json.load(open(os.environ["RUNNER_TEMP"] + "/refusal-semantics.json"))
+          committed = json.load(open("audit/results/refusal-semantics.json"))
+          problems = []
+          if not fresh["passed"]:
+              problems.append("fresh run did not pass")
+          if not fresh["checks"]:
+              problems.append("no checks ran; a vacuous pass is not a pass")
+          for key in ("gate", "claim", "section_vii_claim", "source_digests"):
+              if fresh[key] != committed[key]:
+                  problems.append(f"{key} differs from the committed result")
+          f = {c["id"]: c["passed"] for c in fresh["checks"]}
+          c = {c["id"]: c["passed"] for c in committed["checks"]}
+          if f != c:
+              problems.append(f"checks differ: {f} vs {c}")
+          fs = fresh["characterisation"]["summary"]
+          cs = committed["characterisation"]["summary"]
+          if fs != cs:
+              problems.append(f"characterisation summary differs: {fs} vs {cs}")
+          if problems:
+              print("\n".join(problems), file=sys.stderr)
+              sys.exit(1)
+          print(f"refusal semantics reproduced: {len(fresh['checks'])} checks, "
+                f"{fs['over_power_probed']} over-power probes, "
+                f"{fs['over_power_refused']} refusals")
+          PY
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:

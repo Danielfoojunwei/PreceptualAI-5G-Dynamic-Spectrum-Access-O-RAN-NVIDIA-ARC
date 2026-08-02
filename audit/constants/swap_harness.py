@@ -219,9 +219,31 @@ def swap_aggregate_floor() -> dict[str, Any]:
 def measure_projection_passes() -> dict[str, Any]:
     """How many projection passes the default terrestrial chain actually needs.
 
-    Substantiates the ``max_passes`` headroom finding: if a battery of infeasible
-    (but fixable) actions all converge in N passes, then any ``max_passes >= N``
-    reproduces the same dispositions, so the *magnitude* 8 is not tuned.
+    Substantiates the ``max_passes`` finding: the smallest ``max_passes`` for
+    which each action's disposition stops changing is the number of passes that
+    action needs, and the maximum over the battery is the smallest value of
+    ``max_passes`` that reproduces every committed disposition.
+
+    **A correction.** An earlier version of this battery held only the first
+    four scenarios, all of which converge in one pass, and this module
+    published the conclusion that the disposition is "INSENSITIVE to
+    max_passes for any value >= 1". That was false, and the fifth scenario is
+    the counterexample that ``audit/refusal_semantics.py`` turned up:
+
+        tx_power_dBm = 33.1, antenna_gain_dBi = 60.0, ceiling 33.0 dBm
+
+    ``MaxEirpInvariant.project`` subtracts ``overage = 33.1 + 60.0 - 33.0``
+    from ``tx_power_dBm``. In binary floating point that lands on
+    ``-26.999999999999993``, whose EIRP is ``33.00000000000001`` — margin
+    ``-7.1e-15``, so the invariant is *still* unsatisfied. A second pass
+    clears the residue. At ``max_passes=1`` this action is REFUSED; at 2 it is
+    corrected.
+
+    The size of the overage does not predict the pass count: a **7 dB**
+    overage converges in one pass and this **0.1 dB** one does not, because
+    what matters is whether the float subtraction rounds back exactly. So the
+    1 -> 2 boundary is genuinely behavioural, and only values >= 2 are
+    headroom.
     """
     from horizon_ric.shield.shield import Shield, ShieldConfig, default_terrestrial_shield
 
@@ -234,21 +256,39 @@ def measure_projection_passes() -> dict[str, Any]:
          "tx_power_dBm": 45.0, "antenna_gain_dBi": 6.0, "constellation_order": 128, "papr_dB": 12.0},
         {"block": "neural_rx", "frequency_hz": 3.51e9, "bandwidth_hz": 20e6, "tx_power_dBm": 40.0,
          "antenna_gain_dBi": 6.0, "predicted_tbler": 0.01, "baseline_tbler": 0.1},
+        # The counterexample. Needs two passes; see the docstring.
+        {"block": "x", "frequency_hz": 3.45e9, "bandwidth_hz": 20e6, "tx_power_dBm": 33.1,
+         "antenna_gain_dBi": 60.0},
     ]
+    # Smallest max_passes at which the disposition equals its settled value AND
+    # never changes again. An earlier version stopped at the first *repeat*,
+    # which is not the same thing and got the answer wrong: the residue
+    # scenario is blocked at both max_passes=0 and max_passes=1 and only flips
+    # at 2, so "first repeat" concluded 0 passes were needed. Convergence has
+    # to be read from the settled end, not from the first pair that agree.
+    MAX = 8
     needed = 0
+    per_scenario: list[int] = []
     for action in scenarios:
-        # Smallest max_passes for which the disposition stops changing == passes needed.
-        prev_blocked = None
-        for mp in range(0, 9):
-            shield = Shield(invariants, ShieldConfig(max_passes=mp))
-            blocked = shield.dispose(dict(action)).certificate.emit_blocked
-            if prev_blocked is not None and blocked == prev_blocked:
-                needed = max(needed, mp - 1)
+        dispositions = [
+            Shield(invariants, ShieldConfig(max_passes=mp))
+            .dispose(dict(action))
+            .certificate.emit_blocked
+            for mp in range(MAX + 1)
+        ]
+        settled = dispositions[MAX]
+        converged_at = MAX
+        for mp in range(MAX + 1):
+            if all(d == settled for d in dispositions[mp:]):
+                converged_at = mp
                 break
-            prev_blocked = blocked
-        else:  # pragma: no cover - would mean it never stabilised in 8 passes
-            needed = max(needed, 8)
-    return {"passes_needed_max": needed, "scenarios": len(scenarios)}
+        per_scenario.append(converged_at)
+        needed = max(needed, converged_at)
+    return {
+        "passes_needed_max": needed,
+        "passes_needed_per_scenario": per_scenario,
+        "scenarios": len(scenarios),
+    }
 
 
 def swap_max_passes() -> dict[str, Any]:
@@ -288,17 +328,27 @@ def swap_max_passes() -> dict[str, Any]:
             "action is blocked (emit_blocked=True)"
         ),
     }
+    needed = convergence["passes_needed_max"]
     finding = {
-        "id": "max_passes_is_headroom",
+        "id": "max_passes_is_headroom_above_the_convergence_floor",
         "text": (
-            f"The default chain converges in <= {convergence['passes_needed_max']} "
-            f"projection pass(es) across {convergence['scenarios']} infeasible "
-            f"scenarios, so the disposition is INSENSITIVE to max_passes for any "
-            f"value >= 1: the committed 8 is conservative headroom, not a tuned "
-            f"threshold. Its exact value is gate-bearing ONLY through G1's SHA-256 "
-            f"pin of shield.py — which the sha256 swap below breaks."
+            f"The default chain needs up to {needed} projection pass(es) across "
+            f"{convergence['scenarios']} infeasible scenarios, so the disposition "
+            f"is insensitive to max_passes only for values >= {needed}: the "
+            f"committed 8 is headroom ABOVE that floor, not a tuned threshold. "
+            f"CORRECTION: this module previously reported the floor as 1 and the "
+            f"constant as insensitive for any value >= 1. That was false. A "
+            f"0.1 dB over-EIRP action at 60 dBi antenna gain leaves a "
+            f"-7.1e-15 dB floating-point residue after one clamp and needs a "
+            f"second pass; at max_passes=1 it is REFUSED. A 7 dB overage "
+            f"converges in one pass, so the size of the overage does not "
+            f"predict the pass count. Its exact value 8 remains gate-bearing "
+            f"through G1's SHA-256 pin of shield.py — which the sha256 swap "
+            f"below breaks."
         ),
-        "passes_needed_max": convergence["passes_needed_max"],
+        "passes_needed_max": needed,
+        "passes_needed_per_scenario": convergence["passes_needed_per_scenario"],
+        "corrects_earlier_finding": "max_passes_is_headroom",
     }
     sha = sha256_swap(
         "src/horizon_ric/shield/shield.py",
