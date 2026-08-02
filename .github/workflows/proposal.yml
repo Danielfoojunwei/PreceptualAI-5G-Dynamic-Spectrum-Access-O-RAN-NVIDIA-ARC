@@ -20,6 +20,10 @@ on:
       # change the figure and must re-run the build.
       - "benchmarks/results/poisoning_shield.json"
       - "benchmarks/results/evasion_suite.json"
+      # verify_proposal_claims.py reads these too.
+      - "benchmarks/results/safety_utility_frontier.json"
+      - "scripts/verify_data_dependence.py"
+      - "audit/verify_proposal_claims.py"
   push:
     branches: [main]
     paths:
@@ -59,9 +63,9 @@ jobs:
           python -m pip install \
             'python-docx==1.2.0' \
             'matplotlib==3.11.1' \
-            'weasyprint==66.0' \
-            'pypdfium2==5.0.4' \
-            'pyyaml'
+            'weasyprint==69.0' \
+            'pypdfium2==5.12.1' \
+            'pyyaml==6.0.3'
 
       - name: Rebuild figures, .docx and preview from content.py
         run: |
@@ -156,6 +160,37 @@ jobs:
           print("committed artefacts reproduce from content.py")
           PY
 
+      - name: Proposal sentences vs the result files they cite
+        # Lives here, not in audit.yml's offline job, because it grades the
+        # BUILT .docx and the RENDERED figure — it needs the same toolchain
+        # this job just used, and the offline job exists precisely to have
+        # none of it. Seven sentences disagreed with their JSON; all seven are
+        # corrected and this holds the corrections in place.
+        run: |
+          python audit/verify_proposal_claims.py \
+            --out "$RUNNER_TEMP/proposal-claims.json"
+
+      - name: Compare against the committed corrections
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          fresh = json.load(open(os.environ["RUNNER_TEMP"] + "/proposal-claims.json"))
+          committed = json.load(open("audit/results/proposal-claims.json"))
+          problems = []
+          if not fresh["passed"]:
+              problems.append("fresh run did not pass")
+          if not fresh["checks"]:
+              problems.append("no checks ran; a vacuous pass is not a pass")
+          f = {c["id"]: c["passed"] for c in fresh["checks"]}
+          c = {c["id"]: c["passed"] for c in committed["checks"]}
+          if f != c:
+              problems.append(f"checks differ: {f} vs {c}")
+          if problems:
+              print("\n".join(problems), file=sys.stderr)
+              sys.exit(1)
+          print(f"proposal claims reproduced: {len(fresh['checks'])} checks")
+          PY
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -163,3 +198,4 @@ jobs:
           path: |
             docs/proposal/Horizon-RIC_AI-RAN_Call-for-Innovation_Proposal.docx
             docs/proposal/Horizon-RIC_Proposal_PREVIEW.pdf
+            ${{ runner.temp }}/proposal-claims.json
