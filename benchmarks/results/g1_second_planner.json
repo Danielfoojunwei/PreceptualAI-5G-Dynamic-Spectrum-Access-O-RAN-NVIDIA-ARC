@@ -1,0 +1,130 @@
+{
+  "benchmark": "WP1 deliverable C / gate G1 \u2014 second independent planner under the Shield",
+  "claim": "a second, independently written planner is shielded without modification to either the planner or the Shield",
+  "seed": 0,
+  "planner": {
+    "planner_id": "ucb1_spectrum_v1",
+    "module": "src/horizon_ric/planners/ucb_spectrum.py",
+    "algorithm": "UCB1 bandit over a (centre-frequency x transmit-power) arm grid",
+    "returns": "frozen SpectrumChoice dataclass (not a dict, not an array)",
+    "imports_shield": false,
+    "imports_numpy": false,
+    "differs_from": {
+      "horizon_ric.rapp.pipeline": "deterministic risk-band rules planner emitting A1 policy dicts",
+      "horizon_ric.spectrum.federated_q": "tabular epsilon-greedy Q-learning returning a numpy Q-table"
+    }
+  },
+  "adapter": {
+    "function": "horizon_ric.planners.spectrum_choice_to_action",
+    "role": "SpectrumChoice -> Shield action dict; translation only, no safety logic",
+    "seam": "the only code that knows about both sides"
+  },
+  "shield": {
+    "constructor": "horizon_ric.shield.default_terrestrial_shield",
+    "entry_point": "Shield.dispose (ordinary public contract, unmodified)",
+    "invariant_chain": [
+      "numeric_domain_sanity",
+      "spectral_mask_ts38104",
+      "max_eirp",
+      "neural_rx_envelope",
+      "constellation_legality"
+    ]
+  },
+  "declared_constants": {
+    "band_hz": [
+      3400000000.0,
+      3500000000.0
+    ],
+    "guard_band_hz": 2000000.0,
+    "max_eirp_dBm": 33.0,
+    "antenna_gain_dBi": 6.0,
+    "carrier_bw_hz": 20000000.0,
+    "eirp_ceiling_in_tx_power_dBm": 27.0,
+    "pa_range_dBm": [
+      10.0,
+      35.0
+    ],
+    "tuning_range_hz": [
+      3390000000.0,
+      3500000000.0
+    ],
+    "eirp_tol_dB": 1e-06,
+    "band_tol_hz": 1e-06
+  },
+  "gate": {
+    "decisions": 4000,
+    "unguarded_illegal_requests": 3546,
+    "unguarded_over_eirp": 3302,
+    "unguarded_out_of_band": 2872,
+    "shielded_illegal_emits": 0,
+    "shield_blocked_emits": 0,
+    "projections_applied": 3546,
+    "emitted_decisions": 4000,
+    "shield_prevented": 3546,
+    "peak_unguarded_eirp_dBm": 41.0,
+    "peak_shielded_eirp_dBm": 33.0,
+    "unguarded_min_lower_edge_hz": 3380000000.0,
+    "unguarded_max_upper_edge_hz": 3510000000.0,
+    "shielded_min_lower_edge_hz": 3402000000.0,
+    "shielded_max_upper_edge_hz": 3498000000.0,
+    "usable_channel_hz": [
+      3402000000.0,
+      3498000000.0
+    ],
+    "max_eirp_dBm": 33.0,
+    "arm_grid": {
+      "arms": 54,
+      "centres_hz": [
+        3390000000.0,
+        3403750000.0,
+        3417500000.0,
+        3431250000.0,
+        3445000000.0,
+        3458750000.0,
+        3472500000.0,
+        3486250000.0,
+        3500000000.0
+      ],
+      "powers_dBm": [
+        10.0,
+        15.0,
+        20.0,
+        25.0,
+        30.0,
+        35.0
+      ],
+      "illegal_arms": 30,
+      "note": "the planner's arm grid is the radio's HARDWARE envelope; 30 of 54 arms are illegal under the declared licence, which is why the unguarded path is not vacuous"
+    },
+    "declared_fading_dB": {
+      "3390000000": 6.303704,
+      "3403750000": 0.508216,
+      "3417500000": 5.356817,
+      "3431250000": 3.284566,
+      "3445000000": 9.370156,
+      "3458750000": 9.175857,
+      "3472500000": 7.38491,
+      "3486250000": 6.287827,
+      "3500000000": 6.996454
+    },
+    "oracle": "independent first-principles legality oracle: EIRP = tx_power_dBm + antenna_gain_dBi against the declared licence ceiling, and occupied bandwidth (centre +/- bandwidth/2) against the declared band edges less the guard band. Every bound is an explicit argument recomputed in benchmarks/g1_second_planner.py (NOT Shield constants)",
+    "result": "PASS",
+    "honest_findings": [
+      "The planner is not adversarial and was not tuned to break anything: it maximises a plain normalised-capacity reward. It requests illegal emissions because its objective never mentions the licence and its arm grid is the PA/tuning envelope, which is what an independently written planner actually looks like.",
+      "shield_blocked_emits is 0 by construction of this arm grid: a 20 MHz carrier always fits inside the 96 MHz usable channel and an over-EIRP request is always reducible, so every violation here is repairable by projection rather than refusal. The fail-closed refusal path is exercised by tests/test_shield.py, not by this gate.",
+      "projections_applied equals unguarded_illegal_requests: the Shield's own feasibility predicate and the independent oracle agree on every decision, which is the non-trivial part \u2014 they were computed from different code and different constants.",
+      "The fading realisation and the link model are DECLARED, not measured. This gate is a claim about interfaces and enforcement, not a propagation result; the measured-propagation claims live in benchmarks/deepmimo_dsa_benchmark.py and poisoning_shield_benchmark.py."
+    ]
+  },
+  "source_sha256": {
+    "src/horizon_ric/shield/shield.py": "b8e227b0dbfe1a22a8ea9550f23f818fbaf607ad073dd9e9ed4a4673300a966e",
+    "src/horizon_ric/shield/invariants.py": "fe9185068e5f6becae25ff3248121f94429f99fa653a4559c364ca30940511ee",
+    "src/horizon_ric/planners/ucb_spectrum.py": "6f49baa92a7ec7d54abf9da047cd0c065f7a5f4fe8b347c831f8f0af0d9a47d5"
+  },
+  "runtime": {
+    "python_version": "3.11.15",
+    "python_implementation": "CPython",
+    "numpy_version": null,
+    "rng_stream_guarantee": "no numpy on this path; randomness is stdlib random.Random (Mersenne Twister), whose stream for the calls used here is stable across CPython releases, so the counts below are reproducible"
+  }
+}

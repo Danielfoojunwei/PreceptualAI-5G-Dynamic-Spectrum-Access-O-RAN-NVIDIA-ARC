@@ -1,0 +1,285 @@
+{
+  "api_body_format_enum": [
+    "PREDICT_V2",
+    "CUSTOM"
+  ],
+  "assets": {
+    "createAsset": {
+      "method": "POST",
+      "path": "/v2/nvcf/assets",
+      "path_params": [],
+      "request_headers": [],
+      "status_codes": {
+        "200": {
+          "description": "OK",
+          "headers": []
+        }
+      },
+      "summary": "Create Asset"
+    },
+    "deleteAsset": {
+      "method": "DELETE",
+      "path": "/v2/nvcf/assets/{assetId}",
+      "path_params": [
+        "assetId"
+      ],
+      "request_headers": [],
+      "status_codes": {
+        "204": {
+          "description": "No Content",
+          "headers": []
+        }
+      },
+      "summary": "Delete Asset"
+    },
+    "getAsset": {
+      "method": "GET",
+      "path": "/v2/nvcf/assets/{assetId}",
+      "path_params": [
+        "assetId"
+      ],
+      "request_headers": [],
+      "status_codes": {
+        "200": {
+          "description": "OK",
+          "headers": []
+        }
+      },
+      "summary": "Show Asset Details"
+    },
+    "getAssets": {
+      "method": "GET",
+      "path": "/v2/nvcf/assets",
+      "path_params": [],
+      "request_headers": [],
+      "status_codes": {
+        "200": {
+          "description": "OK",
+          "headers": []
+        }
+      },
+      "summary": "List Assets"
+    }
+  },
+  "function_required": [
+    "createdAt",
+    "functionType",
+    "healthUri",
+    "id",
+    "name",
+    "ncaId",
+    "status",
+    "versionId"
+  ],
+  "function_status_enum": [
+    "ACTIVE",
+    "DEPLOYING",
+    "ERROR",
+    "INACTIVE",
+    "DELETED",
+    "DEGRADED",
+    "DEGRADING"
+  ],
+  "function_type_enum": [
+    "DEFAULT",
+    "STREAMING",
+    "LLM"
+  ],
+  "gpu_specification_required": [
+    "gpu",
+    "instanceType",
+    "maxInstances",
+    "minInstances"
+  ],
+  "health_protocol_enum": [
+    "HTTP",
+    "gRPC"
+  ],
+  "health_required": [
+    "expectedStatusCode",
+    "port",
+    "protocol",
+    "timeout",
+    "uri"
+  ],
+  "invoke": {
+    "invokeFunction": {
+      "method": "POST",
+      "path": "/v2/nvcf/pexec/functions/{functionId}",
+      "path_params": [
+        "functionId"
+      ],
+      "request_headers": [
+        "NVCF-INPUT-ASSET-REFERENCES",
+        "NVCF-POLL-SECONDS"
+      ],
+      "status_codes": {
+        "200": {
+          "description": "Invocation is fulfilled",
+          "headers": [
+            "NVCF-PERCENT-COMPLETE",
+            "NVCF-REQID",
+            "NVCF-STATUS"
+          ]
+        },
+        "202": {
+          "description": "Result is pending. Client should poll using the requestId.",
+          "headers": [
+            "NVCF-PERCENT-COMPLETE",
+            "NVCF-REQID",
+            "NVCF-STATUS"
+          ]
+        },
+        "302": {
+          "description": "Client should use the URL specified in the 'Location' response header to fetch large result.",
+          "headers": [
+            "Location",
+            "NVCF-PERCENT-COMPLETE",
+            "NVCF-REQID",
+            "NVCF-STATUS"
+          ]
+        },
+        "402": {
+          "description": "Cloud credits expired for public functions. Please contact NVIDIA representatives.",
+          "headers": []
+        },
+        "403": {
+          "description": "Either missing scope in the auth(JWT / ApiKey) token and/or missing resource entry in the ApiKey for the function.",
+          "headers": []
+        },
+        "429": {
+          "description": "Client is doing too many requests per second and should slow down request rate.",
+          "headers": []
+        }
+      },
+      "summary": "Call Function"
+    },
+    "invokeFunction_1": {
+      "method": "POST",
+      "path": "/v2/nvcf/pexec/functions/{functionId}/versions/{versionId}",
+      "path_params": [
+        "functionId",
+        "versionId"
+      ],
+      "request_headers": [
+        "NVCF-INPUT-ASSET-REFERENCES",
+        "NVCF-POLL-SECONDS"
+      ],
+      "status_codes": {
+        "200": {
+          "description": "Invocation is fulfilled",
+          "headers": [
+            "NVCF-PERCENT-COMPLETE",
+            "NVCF-REQID",
+            "NVCF-STATUS"
+          ]
+        },
+        "202": {
+          "description": "Result is pending. Client should poll using the requestId.",
+          "headers": [
+            "NVCF-PERCENT-COMPLETE",
+            "NVCF-REQID",
+            "NVCF-STATUS"
+          ]
+        },
+        "302": {
+          "description": "Client should use the URL specified in the 'Location' response header to fetch large result.",
+          "headers": [
+            "Location",
+            "NVCF-PERCENT-COMPLETE",
+            "NVCF-REQID",
+            "NVCF-STATUS"
+          ]
+        },
+        "402": {
+          "description": "Cloud credits expired for public functions. Please contact NVIDIA representatives.",
+          "headers": []
+        },
+        "403": {
+          "description": "Either missing scope in the auth(JWT / ApiKey) token and/or missing resource entry in the ApiKey for the function.",
+          "headers": []
+        },
+        "429": {
+          "description": "Client is doing too many requests per second and should slow down request rate.",
+          "headers": []
+        }
+      },
+      "summary": "Call Function"
+    }
+  },
+  "invoke_status_codes": [
+    "200",
+    "202",
+    "302",
+    "402",
+    "403",
+    "429"
+  ],
+  "nvcf_headers": [
+    "NVCF-INPUT-ASSET-REFERENCES",
+    "NVCF-PERCENT-COMPLETE",
+    "NVCF-POLL-SECONDS",
+    "NVCF-REQID",
+    "NVCF-STATUS"
+  ],
+  "poll": {
+    "method": "GET",
+    "path": "/v2/nvcf/pexec/status/{requestId}",
+    "path_params": [
+      "requestId"
+    ],
+    "request_headers": [],
+    "status_codes": {
+      "200": {
+        "description": "Invocation is fulfilled",
+        "headers": [
+          "NVCF-PERCENT-COMPLETE",
+          "NVCF-REQID",
+          "NVCF-STATUS"
+        ]
+      },
+      "202": {
+        "description": "Result is pending. Client should poll using the requestId.",
+        "headers": [
+          "NVCF-PERCENT-COMPLETE",
+          "NVCF-REQID",
+          "NVCF-STATUS"
+        ]
+      },
+      "302": {
+        "description": "Client should use the URL specified in the 'Location' response header to fetch large result.",
+        "headers": [
+          "Location",
+          "NVCF-PERCENT-COMPLETE",
+          "NVCF-REQID",
+          "NVCF-STATUS"
+        ]
+      },
+      "402": {
+        "description": "Cloud credits expired for public functions. Please contact NVIDIA representatives.",
+        "headers": []
+      },
+      "403": {
+        "description": "Either missing scope in the auth(JWT / ApiKey) token and/or missing resource entry in the ApiKey for the function.",
+        "headers": []
+      }
+    },
+    "summary": "Poll For Result Using Function Invocation Request"
+  },
+  "poll_status_codes": [
+    "200",
+    "202",
+    "302",
+    "402",
+    "403"
+  ],
+  "schema": "horizon-ric.nvcf.contract/1",
+  "source": {
+    "api_version": "2.248.1",
+    "openapi_version": "3.1.0",
+    "server": "https://api.nvcf.nvidia.com",
+    "sha256": "9acb0ca9768e3342755741735198235cde685cf2622d62b1711ff7e0e14438d3",
+    "url": "https://api.nvcf.nvidia.com/v3/openapi",
+    "vendored_as": "spec/nvcf-openapi-2.248.1.json"
+  }
+}

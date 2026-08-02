@@ -1,0 +1,54 @@
+{
+  "checks": [
+    {
+      "detail": "band 1: n78 3508.18-3608.18 MHz, 273 PRB at 30 kHz (FR1). band 2: n257 27.95008-28.05008 GHz, 66 PRB at 120 kHz (FR2). Carrier separation 24.44 GHz.",
+      "id": "two_bands_derive_from_cell_configurations",
+      "passed": true
+    },
+    {
+      "detail": "100 MHz at 120 kHz SCS has no FR1 entry, so the second band was REFUSED until Table 5.3.2-2 was added: 100 MHz at 120 kHz SCS is not a defined FR1 (TS 38.104 Table 5.3.2-1) transmission bandwidth configuration",
+      "id": "fr2_carrier_refused_by_fr1_table",
+      "passed": true
+    },
+    {
+      "detail": "50 MHz at 60 kHz SCS is a valid key in BOTH tables and they give different answers: FR1 65 PRB, FR2 66 PRB. Merging them would silently mis-size a carrier by one resource block, which is why they are separate.",
+      "id": "the_two_tables_disagree_where_they_overlap",
+      "passed": true
+    },
+    {
+      "detail": "compared every numeric parameter of all 5 invariants across the two bands. Differing (excluding ['band_hi_hz', 'band_lo_hz']): NONE. The band edges themselves DO differ, and they are the two values G9 derives from the cell rather than tunes.",
+      "id": "no_constant_moved_except_the_derived_band_edges",
+      "passed": true
+    },
+    {
+      "detail": "a comparison that excludes the band edges proves nothing unless the band edges moved: 3.50818 GHz -> 27.95008 GHz",
+      "id": "the_band_edges_actually_changed",
+      "passed": true
+    },
+    {
+      "detail": "n78: {'in_carrier_passes': True, 'out_of_carrier_violates': True, 'out_of_carrier_projected_back': True}; n257: {'in_carrier_passes': True, 'out_of_carrier_violates': True, 'out_of_carrier_projected_back': True}. Identical=True. In both, an in-carrier emission passes, an emission 50 MHz below the lower edge violates the mask, and projection returns it inside the carrier.",
+      "id": "the_chain_behaves_identically_in_both_bands",
+      "passed": true
+    },
+    {
+      "detail": "audit/constants/inventory.json enumerates 22 gate-bearing constants, AST-derived from source and drift-guarded. 'Without retuning any constant' is only checkable because that list exists.",
+      "id": "the_constant_set_is_enumerated_not_assumed",
+      "passed": true
+    },
+    {
+      "detail": "NOT DONE: WP2 also asks for an independent ray-traced scenario with genuine frequency selectivity at the second carrier. The DeepMIMO `o1_28` archive reached 6.8 GB before being abandoned \u2014 it did not fit alongside the OCUDU build on this host (3.2 GB free at the point it was killed). This gate covers the BAND change only. The committed ray-traced data is still the single 3.5 GHz `asu_campus_3p5` scenario.",
+      "id": "second_scenario_is_disclosed_as_absent",
+      "passed": true
+    }
+  ],
+  "claim": "Moving the Shield to a second operating band in a different frequency range changes the derived band edges and nothing else; every safety constant is byte-identical between the two.",
+  "covers": "the band half of WP2",
+  "does_not_cover": "the second ray-traced scenario; the committed dataset is still the single 3.5 GHz asu_campus_3p5",
+  "gate": "G2",
+  "passed": true,
+  "source_digests": {
+    "audit/constants/inventory.json": "72e2f8e612953231dc117792431782601b06a52daf4b679b572e89b0a85990e7",
+    "ocudu/src/horizon_ocudu/cell_config.py": "766834307ef4222431715757cdff541b08d25fc865474fb63b7354bd4058c0cb",
+    "src/horizon_ric/shield/invariants.py": "fe9185068e5f6becae25ff3248121f94429f99fa653a4559c364ca30940511ee"
+  }
+}

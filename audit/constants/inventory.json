@@ -1,0 +1,400 @@
+{
+  "constant_count": 22,
+  "constants": [
+    {
+      "container": "AbsoluteSliceCapacityFloor",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "agentic/verify_g6_multi_agent.py"
+      ],
+      "file": "agentic/src/horizon_agentic/aggregate.py",
+      "kind": "dataclass_field",
+      "line": 175,
+      "module": "horizon_agentic.aggregate",
+      "note": "Absolute spectrum (Hz) a protected slice must retain across a bundle \u2014 the cross-agent floor no per-action share can express. G6 exercises the aggregate chain; the check flips at the boundary.",
+      "symbol": "min_capacity_hz",
+      "unit": "Hz",
+      "value": 20000000.0
+    },
+    {
+      "container": "AggregateEirpBudget",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "agentic/verify_g6_multi_agent.py"
+      ],
+      "file": "agentic/src/horizon_agentic/aggregate.py",
+      "kind": "dataclass_field",
+      "line": 257,
+      "module": "horizon_agentic.aggregate",
+      "note": "Site-level EIRP budget summed (linear) over distinct carriers. G6.",
+      "symbol": "max_total_eirp_dBm",
+      "unit": "dBm",
+      "value": 36.0
+    },
+    {
+      "container": "SpectralSeparation",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "agentic/verify_g6_multi_agent.py"
+      ],
+      "file": "agentic/src/horizon_agentic/aggregate.py",
+      "kind": "dataclass_field",
+      "line": 326,
+      "module": "horizon_agentic.aggregate",
+      "note": "Guard separation required between carriers placed by different agents. G6.",
+      "symbol": "guard_hz",
+      "unit": "Hz",
+      "value": 1000000.0
+    },
+    {
+      "container": "PrbConservation",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "agentic/verify_g6_multi_agent.py"
+      ],
+      "file": "agentic/src/horizon_agentic/aggregate.py",
+      "kind": "dataclass_field",
+      "line": 400,
+      "module": "horizon_agentic.aggregate",
+      "note": "Slack on the sum-of-shares <= 1 conservation check across a bundle. G6.",
+      "symbol": "tolerance",
+      "unit": "fraction",
+      "value": 1e-09
+    },
+    {
+      "container": "AggregatePfdCeiling",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "agentic/verify_g6_multi_agent.py"
+      ],
+      "file": "agentic/src/horizon_agentic/aggregate.py",
+      "kind": "dataclass_field",
+      "line": 450,
+      "module": "horizon_agentic.aggregate",
+      "note": "Aggregate PFD ceiling at a ground point summed (linear) over beams. G6.",
+      "symbol": "max_pfd_dBW_m2_MHz",
+      "unit": "dBW/m^2/MHz",
+      "value": -146.0
+    },
+    {
+      "container": "",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "ocudu/verify_g8_ocudu_conformance.py"
+      ],
+      "file": "ocudu/src/horizon_ocudu/rc_slice_quota.py",
+      "kind": "module_const",
+      "line": 88,
+      "module": "horizon_ocudu.rc_slice_quota",
+      "note": "E2SM-RC RAN Parameter ID for Min PRB Policy Ratio, asserted equal to the id OCUDU declares in the extracted catalogue. G8 fails if it drifts from OCUDU.",
+      "symbol": "MIN_PRB_POLICY_RATIO",
+      "unit": "ran_parameter_id",
+      "value": 11
+    },
+    {
+      "container": "",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "ocudu/verify_g8_ocudu_conformance.py"
+      ],
+      "file": "ocudu/src/horizon_ocudu/rc_slice_quota.py",
+      "kind": "module_const",
+      "line": 89,
+      "module": "horizon_ocudu.rc_slice_quota",
+      "note": "E2SM-RC RAN Parameter ID for Max PRB Policy Ratio, asserted against the catalogue. G8.",
+      "symbol": "MAX_PRB_POLICY_RATIO",
+      "unit": "ran_parameter_id",
+      "value": 12
+    },
+    {
+      "container": "",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "ocudu/verify_g8_ocudu_conformance.py"
+      ],
+      "file": "ocudu/src/horizon_ocudu/rc_slice_quota.py",
+      "kind": "module_const",
+      "line": 90,
+      "module": "horizon_ocudu.rc_slice_quota",
+      "note": "E2SM-RC RAN Parameter ID for Dedicated PRB Policy Ratio, asserted against the catalogue. G8.",
+      "symbol": "DEDICATED_PRB_POLICY_RATIO",
+      "unit": "ran_parameter_id",
+      "value": 13
+    },
+    {
+      "container": "SliceQuota",
+      "dependency": [],
+      "dependent_gates": [],
+      "file": "ocudu/src/horizon_ocudu/rc_slice_quota.py",
+      "kind": "dataclass_field",
+      "line": 131,
+      "module": "horizon_ocudu.rc_slice_quota",
+      "note": "Default PRB max ratio (percent) on a SliceQuota. FINDING: no published gate is currently sensitive to this default \u2014 it is Horizon-side input validation, not asserted by G8, so it could be retuned freely. Recorded so the claim is honest, not to imply a gate.",
+      "symbol": "max_ratio",
+      "unit": "percent",
+      "value": 100
+    },
+    {
+      "container": "UcbSpectrumPlanner.__init__",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py"
+      ],
+      "file": "src/horizon_ric/planners/ucb_spectrum.py",
+      "kind": "func_default",
+      "line": 142,
+      "module": "horizon_ric.planners.ucb_spectrum",
+      "note": "Centre-frequency arms in the planner's grid (the 9 of the 9x6 grid). G1 pins ucb_spectrum.py and its non-vacuity check requires the grid to still contain illegal arms.",
+      "symbol": "frequency_arms",
+      "unit": "count",
+      "value": 9
+    },
+    {
+      "container": "UcbSpectrumPlanner.__init__",
+      "dependency": [
+        "sha256"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py"
+      ],
+      "file": "src/horizon_ric/planners/ucb_spectrum.py",
+      "kind": "func_default",
+      "line": 143,
+      "module": "horizon_ric.planners.ucb_spectrum",
+      "note": "Power-amplifier floor of the planner's power grid. G1 pins ucb_spectrum.py.",
+      "symbol": "pa_floor_dBm",
+      "unit": "dBm",
+      "value": 10.0
+    },
+    {
+      "container": "UcbSpectrumPlanner.__init__",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py"
+      ],
+      "file": "src/horizon_ric/planners/ucb_spectrum.py",
+      "kind": "func_default",
+      "line": 144,
+      "module": "horizon_ric.planners.ucb_spectrum",
+      "note": "Power-amplifier ceiling (HARDWARE, above the 33 dBm regulatory ceiling on purpose) so the planner can request illegal emissions. G1 pins ucb_spectrum.py.",
+      "symbol": "pa_ceiling_dBm",
+      "unit": "dBm",
+      "value": 35.0
+    },
+    {
+      "container": "UcbSpectrumPlanner.__init__",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py"
+      ],
+      "file": "src/horizon_ric/planners/ucb_spectrum.py",
+      "kind": "func_default",
+      "line": 145,
+      "module": "horizon_ric.planners.ucb_spectrum",
+      "note": "Transmit-power arms in the planner's grid (the 6 of the 9x6 grid). G1 pins ucb_spectrum.py.",
+      "symbol": "power_arms",
+      "unit": "count",
+      "value": 6
+    },
+    {
+      "container": "SpectralMaskInvariant",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py"
+      ],
+      "file": "src/horizon_ric/shield/invariants.py",
+      "kind": "dataclass_field",
+      "line": 162,
+      "module": "horizon_ric.shield.invariants",
+      "note": "Guard band kept inside each licensed band edge for ACLR. Default 0 preserves band-edge-flush behaviour; G1 runs it at 2 MHz (declared_constants.guard_band_hz) and pins invariants.py.",
+      "symbol": "guard_band_hz",
+      "unit": "Hz",
+      "value": 0.0
+    },
+    {
+      "container": "MaxEirpInvariant",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py",
+        "scripts/verify_poisoning_shield.py"
+      ],
+      "file": "src/horizon_ric/shield/invariants.py",
+      "kind": "dataclass_field",
+      "line": 234,
+      "module": "horizon_ric.shield.invariants",
+      "note": "Regulatory EIRP ceiling: EIRP_dBm = tx_power + antenna_gain must not exceed it. G1 pins invariants.py; the check flips at the boundary.",
+      "symbol": "max_eirp_dBm",
+      "unit": "dBm",
+      "value": 33.0
+    },
+    {
+      "container": "ProtectedSliceFloorInvariant",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py",
+        "scripts/verify_poisoning_shield.py"
+      ],
+      "file": "src/horizon_ric/shield/invariants.py",
+      "kind": "dataclass_field",
+      "line": 297,
+      "module": "horizon_ric.shield.invariants",
+      "note": "PRB fraction reserved for the safety-critical slice that an AI planner cannot reallocate away. G1 pins invariants.py; the slice floor check flips at the boundary.",
+      "symbol": "floor",
+      "unit": "fraction",
+      "value": 0.2
+    },
+    {
+      "container": "PfdCeilingInvariant",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py"
+      ],
+      "file": "src/horizon_ric/shield/invariants.py",
+      "kind": "dataclass_field",
+      "line": 411,
+      "module": "horizon_ric.shield.invariants",
+      "note": "ITU-R-style NTN downlink power-flux-density ceiling. G1 pins invariants.py.",
+      "symbol": "max_pfd_dBW_m2_MHz",
+      "unit": "dBW/m^2/MHz",
+      "value": -146.0
+    },
+    {
+      "container": "NeuralRxEnvelopeInvariant",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py"
+      ],
+      "file": "src/horizon_ric/shield/invariants.py",
+      "kind": "dataclass_field",
+      "line": 505,
+      "module": "horizon_ric.shield.invariants",
+      "note": "Neural-RX allowed regression past the classical LMMSE baseline. G1 pins invariants.py.",
+      "symbol": "tolerance_dB",
+      "unit": "dB",
+      "value": 1.0
+    },
+    {
+      "container": "NeuralRxEnvelopeInvariant",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py"
+      ],
+      "file": "src/horizon_ric/shield/invariants.py",
+      "kind": "dataclass_field",
+      "line": 506,
+      "module": "horizon_ric.shield.invariants",
+      "note": "Minimum demap confidence for a verified neural-RX admit. G1 pins invariants.py.",
+      "symbol": "min_confidence",
+      "unit": "fraction",
+      "value": 0.2
+    },
+    {
+      "container": "ConstellationLegalityInvariant",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py"
+      ],
+      "file": "src/horizon_ric/shield/invariants.py",
+      "kind": "dataclass_field",
+      "line": 595,
+      "module": "horizon_ric.shield.invariants",
+      "note": "PAPR ceiling on a learned constellation before classical fallback. G1 pins invariants.py.",
+      "symbol": "max_papr_dB",
+      "unit": "dB",
+      "value": 8.5
+    },
+    {
+      "container": "ShieldConfig",
+      "dependency": [
+        "sha256",
+        "behavioural"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py"
+      ],
+      "file": "src/horizon_ric/shield/shield.py",
+      "kind": "dataclass_field",
+      "line": 39,
+      "module": "horizon_ric.shield.shield",
+      "note": "Bound on Shield projection passes before fail-closed. G1 pins shield.py's SHA-256, so any edit to the literal fails the gate. Behaviourally the default terrestrial/NTN chains converge in <=1 pass, so the disposition is insensitive to the magnitude above 1 (8 is conservative headroom) \u2014 the swap harness flips the disposition only by dropping it to 0. See swap_harness finding.",
+      "symbol": "max_passes",
+      "unit": "projection_passes",
+      "value": 8
+    },
+    {
+      "container": "default_terrestrial_shield",
+      "dependency": [
+        "sha256"
+      ],
+      "dependent_gates": [
+        "scripts/verify_g1_second_planner.py",
+        "scripts/verify_poisoning_shield.py"
+      ],
+      "file": "src/horizon_ric/shield/shield.py",
+      "kind": "func_default",
+      "line": 213,
+      "module": "horizon_ric.shield.shield",
+      "note": "EIRP ceiling the terrestrial shield builder installs by default; mirrors MaxEirpInvariant.max_eirp_dBm and is what G1's oracle grades against (declared_constants.max_eirp_dBm = 33.0).",
+      "symbol": "max_eirp_dBm",
+      "unit": "dBm",
+      "value": 33.0
+    }
+  ],
+  "description": "Gate-bearing constants of Horizon-RIC: numeric/threshold constants whose value decides whether a published gate passes. Regenerated from source by audit/constants/inventory.py (AST extraction, never transcription). 'dependent_gates' names the verifier script(s); 'dependency' is 'sha256' when the gate pins the file's digest and/or 'behavioural' when a gate re-runs a check the constant moves. This is the enumeration gate G2 ('no constant retuned') is checked against.",
+  "generated_by": "audit/constants/inventory.py",
+  "schema": "horizon-ric.audit.constant-inventory/1"
+}

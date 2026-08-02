@@ -1,0 +1,44 @@
+{
+  "checks": [
+    {
+      "detail": "Horizon encoded 71 octets with Python asn1tools; FlexRIC's asn1c-generated C codec decoded them (exit 0). decoding 71 octet(s) with FlexRIC's asn1c codec\ndecoded 1 top-level RAN parameter(s)",
+      "id": "flexric_codec_decodes_horizon_payload",
+      "passed": true
+    },
+    {
+      "detail": "FlexRIC recovered ids [1, 2, 3, 5, 6, 7, 8, 9, 11, 12, 13]; horizon_ocudu.visit_order() says [1, 2, 3, 5, 6, 7, 8, 9, 11, 12, 13]. These are OCUDU's own declared RAN Parameter IDs (G8 extracts them from its source), so agreement here is three implementations concurring, not two.",
+      "id": "recovered_ids_equal_our_visit_order",
+      "passed": true
+    },
+    {
+      "detail": "recovered leaves {7: '00f110', 9: '01', 11: 20, 12: 80, 13: 10} vs encoded {7: '00f110', 9: '01', 11: 20, 12: 80, 13: 10}. The three ratios are distinct on purpose \u2014 a decoder that transposed two fields would show here rather than pass by coincidence.",
+      "id": "recovered_values_equal_what_we_encoded",
+      "passed": true
+    },
+    {
+      "detail": "without SD: 71 octets, ids [1, 2, 3, 5, 6, 7, 8, 9, 11, 12, 13]. with SD: 79 octets, ids [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13]. Parameter 10 (SD) is present in one and absent from the other, and FlexRIC's decoder agrees with our encoder about which.",
+      "id": "optional_sd_appears_in_both_encodings",
+      "passed": true
+    },
+    {
+      "detail": "one byte flipped -> exit 1; empty input -> exit 1. This check nearly passed for the wrong reason: FlexRIC's asn1c wrapper does NOT raise on a malformed buffer \u2014 it returned Format 1 with zero RAN parameters and exit 0. The checker now treats an empty recovery as a failed decode. Detail: decoding 71 octet(s) with FlexRIC's asn1c codec\nerror: decoder recovered 0 RAN parameters from 71 octets \u2014 treating an e",
+      "id": "corrupted_payload_is_rejected",
+      "passed": true
+    },
+    {
+      "detail": "encoder: Python asn1tools over src/horizon_ric/e2/asn1/e2sm_rc_v1_03_standard.asn. decoder: FlexRIC third_party/flexric/src/sm/rc_sm (asn1c-generated C). Different tool, language and project, generated from the same O-RAN ASN.1 source text \u2014 which is what makes the agreement evidence rather than a tautology.",
+      "id": "the_two_codecs_are_independent",
+      "passed": true
+    }
+  ],
+  "claim": "Horizon's E2SM-RC Style 2 Action 6 payload is decoded in full, with correct values, by FlexRIC's independent asn1c-generated C codec.",
+  "closes": "the readability half of G4",
+  "does_not_close": "the delivery half of G4: no xApp has yet issued a RIC Control Request carrying this payload to the Style 2 Action 6 executor OCUDU registers in e2_du_factory.cpp, and no acknowledgement has been observed coming back. An earlier version of this field said the DU E2 agent had not been observed to join; that was wrong and is superseded by ocudu/results/du-e2-probe.json, which records the DU joining as ngran_gNB_DU with RAN function 3 (ORAN-E2SM-RC) accepted. See ocudu/e2/DU_E2_FINDING.md.",
+  "gate": "G4-codec-interop",
+  "passed": true,
+  "source_digests": {
+    "ocudu/e2/flexric_decode_check.c": "a2beb3e1ac561ff9b23a56680aee8d2d02aded63c5b66cd9393e2e31bbac71a6",
+    "ocudu/src/horizon_ocudu/rc_slice_quota.py": "bf27cdeeb873cf8ef98e046aa1d6ec2b764164e9f5746fcf56067217efecc495",
+    "src/horizon_ric/e2/asn1/e2sm_rc_v1_03_standard.asn": "09f295cb59d4145efd64fe510f602c994d6df65e9beba33aab2e98cdf5bc642b"
+  }
+}

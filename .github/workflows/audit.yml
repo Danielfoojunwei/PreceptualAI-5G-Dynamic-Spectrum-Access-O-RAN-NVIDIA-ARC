@@ -1,0 +1,227 @@
+name: Horizon-Audit
+
+# Self-contained CI for the additive `audit/` subtree, following the same
+# pattern as agentic.yml and ocudu.yml: its own path filter, its own install,
+# and no ability to turn the main pipeline red.
+#
+# The subtree's whole point is that an external party can verify our evidence
+# WITHOUT our code. That is also why verify_proposal_claims.py does NOT run
+# here: it reads the built .docx and renders the figure, so it needs
+# python-docx and matplotlib, and installing those into the job whose entire
+# purpose is "nothing is installed" would hollow it out. It runs in
+# proposal.yml, next to the artefacts it grades. Job 1 enforces exactly that: it installs nothing but the
+# offline verifier's own dependencies and runs it on a clean checkout, with
+# horizon_ric deliberately NOT importable. Job 2 runs the parts that do need
+# the Horizon install (the constant inventory reads live values out of the
+# shipping modules, so it cannot be dependency-free by construction).
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "audit/**"
+      - ".github/workflows/audit.yml"
+      # The constant inventory reads live values from these and the swap
+      # harness pins their digests, so a change here can legitimately fail it.
+      - "src/horizon_ric/shield/invariants.py"
+      - "src/horizon_ric/shield/shield.py"
+      - "agentic/src/horizon_agentic/aggregate.py"
+      - "ocudu/src/horizon_ocudu/rc_slice_quota.py"
+      # verify_data_manifests.py measures these; it must run when they move.
+      - "benchmarks/results/**"
+      - "datasets/**"
+      - "examples/replay_telemetry.jsonl"
+  push:
+    branches: [main]
+    paths:
+      - "audit/**"
+      - ".github/workflows/audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    # The regulator's environment: nothing of ours is installed.
+    name: Offline verifier (no horizon_ric installed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ONLY the verifier's own dependencies
+        # Deliberately not `pip install .` — if the verifier ever grows a
+        # hidden dependency on horizon_ric, this step is what catches it.
+        run: python -m pip install cryptography asn1tools
+
+      - name: horizon_ric must NOT be importable in this job
+        run: |
+          python - <<'PY'
+          import importlib.util, sys
+          if importlib.util.find_spec("horizon_ric") is not None:
+              sys.exit("horizon_ric is importable; this job no longer proves "
+                       "the verifier is standalone")
+          print("confirmed: horizon_ric is not importable here")
+          PY
+
+      - name: Verify the committed evidence sample
+        run: python audit/verify_evidence.py audit/fixtures/evidence-sample.jsonl
+
+      - name: A tampered export must FAIL (exit 1)
+        # A verifier that only ever says PASS proves nothing. Flip one byte of
+        # a record and require a non-zero exit.
+        run: |
+          python - <<'PY'
+          import json, pathlib, subprocess, sys, tempfile
+          src = pathlib.Path("audit/fixtures/evidence-sample.jsonl")
+          lines = [json.loads(x) for x in src.read_text().splitlines() if x.strip()]
+          lines[-1]["record"]["decision_id"] = "tampered"
+          with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as fh:
+              for obj in lines:
+                  fh.write(json.dumps(obj) + "\n")
+              path = fh.name
+          rc = subprocess.run([sys.executable, "audit/verify_evidence.py", path]).returncode
+          if rc != 1:
+              sys.exit(f"tampered export exited {rc}, expected 1")
+          print("confirmed: tampered export is rejected")
+          PY
+
+      - name: Offline gates via the reproduction archive
+        # requirement=none gates only: pure stdlib over committed data.
+        run: python audit/reproduce.py
+
+      - name: Data manifests are in exactly the state we recorded
+        # NOT "the manifests are correct" — one of them knowingly is not.
+        # benchmarks/results/SHA256SUMS is stale in all 15 entries, which
+        # means the verify command DATASETS_INDEX.md advertises exits
+        # non-zero. This step pins that number so it cannot drift further
+        # unnoticed, and goes red when someone repairs it.
+        run: |
+          python audit/verify_data_manifests.py \
+            --out "$RUNNER_TEMP/data-manifests.json"
+
+      - name: Compare against the committed measurement
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          fresh = json.load(open(os.environ["RUNNER_TEMP"] + "/data-manifests.json"))
+          committed = json.load(open("audit/results/data-manifests.json"))
+          problems = []
+          if not fresh["passed"]:
+              problems.append("fresh run did not pass")
+          if not fresh["checks"]:
+              problems.append("no checks ran; a vacuous pass is not a pass")
+          for key in ("gate", "claim", "expected"):
+              if fresh[key] != committed[key]:
+                  problems.append(f"{key} differs from the committed result")
+          f = {c["id"]: c["passed"] for c in fresh["checks"]}
+          c = {c["id"]: c["passed"] for c in committed["checks"]}
+          if f != c:
+              problems.append(f"checks differ: {f} vs {c}")
+          if problems:
+              print("\n".join(problems), file=sys.stderr)
+              sys.exit(1)
+          print(f"data manifests reproduced: {len(fresh['checks'])} checks")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-data-manifests
+          path: ${{ runner.temp }}/data-manifests.json
+
+  integrated:
+    # The parts that legitimately need our code installed.
+    name: Constant inventory + runbook claims
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Horizon-RIC
+        # `oran` carries asn1tools, which the OCUDU constants and the RFC-3161
+        # parsing both need. Learned the hard way on the ocudu job.
+        run: python -m pip install '.[dev,oran]'
+
+      - name: Lint
+        run: python -m ruff check audit/
+
+      - name: Type-check
+        run: |
+          python -m mypy \
+            --ignore-missing-imports \
+            --no-strict-optional \
+            --explicit-package-bases \
+            audit/src/horizon_audit audit/constants
+
+      - name: Tests
+        env:
+          PYTHONPATH: src:agentic/src:ocudu/src:audit/src:audit
+        run: python -m pytest audit/tests -q
+
+      - name: Constant inventory has not drifted from live source
+        env:
+          PYTHONPATH: src:agentic/src:ocudu/src:audit
+        run: python audit/constants/inventory.py --check
+
+      - name: Swap harness — every constant flips its gate
+        env:
+          PYTHONPATH: src:agentic/src:ocudu/src:audit
+        run: python audit/constants/swap_harness.py --out "$RUNNER_TEMP/swaps.json"
+
+      - name: Runbook claims are backed by committed evidence
+        run: python audit/check_unattended.py
+
+      - name: Refusal semantics — what the Shield refuses vs corrects
+        # Establishes that §VII's "over-power proposal refused" is
+        # unobtainable rather than merely unproven, and pins the max_passes
+        # convergence floor that an earlier version of this subtree got wrong.
+        env:
+          PYTHONPATH: src:agentic/src:ocudu/src
+        run: |
+          python audit/verify_refusal_semantics.py \
+            --out "$RUNNER_TEMP/refusal-semantics.json"
+
+      - name: Compare against the committed characterisation
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          fresh = json.load(open(os.environ["RUNNER_TEMP"] + "/refusal-semantics.json"))
+          committed = json.load(open("audit/results/refusal-semantics.json"))
+          problems = []
+          if not fresh["passed"]:
+              problems.append("fresh run did not pass")
+          if not fresh["checks"]:
+              problems.append("no checks ran; a vacuous pass is not a pass")
+          for key in ("gate", "claim", "section_vii_claim", "source_digests"):
+              if fresh[key] != committed[key]:
+                  problems.append(f"{key} differs from the committed result")
+          f = {c["id"]: c["passed"] for c in fresh["checks"]}
+          c = {c["id"]: c["passed"] for c in committed["checks"]}
+          if f != c:
+              problems.append(f"checks differ: {f} vs {c}")
+          fs = fresh["characterisation"]["summary"]
+          cs = committed["characterisation"]["summary"]
+          if fs != cs:
+              problems.append(f"characterisation summary differs: {fs} vs {cs}")
+          if problems:
+              print("\n".join(problems), file=sys.stderr)
+              sys.exit(1)
+          print(f"refusal semantics reproduced: {len(fresh['checks'])} checks, "
+                f"{fs['over_power_probed']} over-power probes, "
+                f"{fs['over_power_refused']} refusals")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-constant-swaps
+          path: ${{ runner.temp }}/swaps.json

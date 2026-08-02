@@ -1,0 +1,108 @@
+name: OCUDU integration
+
+# Self-contained CI for the additive `ocudu/` subtree, with its own path filter
+# — same reasoning as the agentic workflow. This track must not be able to turn
+# the main pipeline red, and the main pipeline's scope must not quietly grow to
+# cover it.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "ocudu/**"
+      - ".github/workflows/ocudu.yml"
+      # G8 pins the SHA-256 of these, and the encoder is built on them, so a
+      # change here can legitimately fail the gate and should run it.
+      - "src/horizon_ric/e2/rc_control.py"
+      - "src/horizon_ric/e2/asn1/e2sm_rc_v1_03_standard.asn"
+      - "agentic/src/horizon_agentic/telemetry_trust.py"
+  push:
+    branches: [main]
+    paths:
+      - "ocudu/**"
+      - ".github/workflows/ocudu.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  ocudu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out only the OCUDU submodule
+        # Not `submodules: recursive`: flexric and the A1 simulator are large
+        # and irrelevant to this gate. Depth 1 is enough — the extractor reads
+        # files at the pinned commit and records its SHA, it does not walk
+        # history.
+        run: git submodule update --init --depth 1 third_party/ocudu
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Horizon-RIC
+        # `oran` is required, not optional, for this subtree: it carries
+        # asn1tools, which `rc_control.rc_spec()` needs to compile the vendored
+        # E2SM-RC ASN.1 — and `horizon_ric.e2.__init__` imports the KPM bridge
+        # eagerly, so the import fails at collection rather than at first use.
+        # The main pytest job installs '.[dev,oran,otel]'; this one previously
+        # installed only '.[dev]' and went green locally because the dev venv
+        # already had asn1tools from an earlier run.
+        run: python -m pip install '.[dev,oran]'
+
+      - name: Lint
+        run: python -m ruff check ocudu/
+
+      - name: Type-check
+        run: |
+          python -m mypy \
+            --ignore-missing-imports \
+            --no-strict-optional \
+            ocudu/src/horizon_ocudu
+
+      - name: Tests
+        env:
+          PYTHONPATH: src:agentic/src:ocudu/src
+        run: python -m pytest ocudu/tests -q
+
+      - name: Gate G8 — OCUDU E2SM conformance
+        run: |
+          python ocudu/verify_g8_ocudu_conformance.py \
+            --out "$RUNNER_TEMP/g8-fresh.json"
+
+      - name: Verify the catalogue still matches OCUDU
+        # The point of the whole subtree. G8 re-extracts from OCUDU source, so
+        # a submodule bump that renumbers a RAN Parameter ID fails here rather
+        # than in a lab weeks later.
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          fresh = json.load(open(os.environ["RUNNER_TEMP"] + "/g8-fresh.json"))
+          committed = json.load(open("ocudu/results/g8-ocudu-conformance.json"))
+          problems = []
+          if not fresh["passed"]:
+              problems.append("fresh run did not pass")
+          if not fresh["checks"]:
+              problems.append("no checks ran; a vacuous pass is not a pass")
+          for key in ("gate", "claim", "source_digests"):
+              if fresh[key] != committed[key]:
+                  problems.append(f"{key} differs from the committed result")
+          fc = {c["id"]: c["passed"] for c in fresh["checks"]}
+          cc = {c["id"]: c["passed"] for c in committed["checks"]}
+          if fc != cc:
+              problems.append(f"checks differ: {fc} vs {cc}")
+          repro = next(c for c in fresh["checks"] if c["id"] == "catalogue_is_reproducible")
+          if not repro["passed"]:
+              problems.append(f"catalogue drifted from OCUDU: {repro['differing_keys']}")
+          if problems:
+              print("\n".join(problems), file=sys.stderr)
+              sys.exit(1)
+          print(f"G8 reproduced against OCUDU {repro['ocudu_commit'][:12]}")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: g8-ocudu-conformance
+          path: ${{ runner.temp }}/g8-fresh.json

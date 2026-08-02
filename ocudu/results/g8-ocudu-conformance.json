@@ -1,0 +1,99 @@
+{
+  "checks": [
+    {
+      "differing_keys": [],
+      "id": "catalogue_is_reproducible",
+      "ocudu_commit": "f46f5804e53fede1e5c3353420ce1bcd3f4e57c6",
+      "passed": true,
+      "sources": [
+        "third_party/ocudu/lib/e2/e2sm/e2sm_ccc/e2sm_ccc_asn1_packer.cpp",
+        "third_party/ocudu/lib/e2/e2sm/e2sm_ccc/e2sm_ccc_control_service_impl.h",
+        "third_party/ocudu/lib/e2/e2sm/e2sm_rc/e2sm_rc_control_action_cu_executor.cpp",
+        "third_party/ocudu/lib/e2/e2sm/e2sm_rc/e2sm_rc_control_action_du_executor.cpp"
+      ]
+    },
+    {
+      "action_id": 6,
+      "action_name": "Slice-level PRB quota",
+      "id": "slice_quota_action_exists",
+      "passed": true,
+      "style_id": 2
+    },
+    {
+      "count": 12,
+      "declared_but_unused": [],
+      "id": "parameter_ids_match_ocudu",
+      "mismatched": {},
+      "passed": true
+    },
+    {
+      "declared": [
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "id": "visit_order_matches_parser_contract",
+      "order": [
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "passed": true
+    },
+    {
+      "hex": "0000010000600000400000000144000300024400000004600000400000000544000100062a000300f110000744000100082a00010100092a0003000001000a28800114000b2880013c000c2880010a",
+      "id": "per_round_trip_is_stable",
+      "octets": 79,
+      "passed": true
+    },
+    {
+      "fraction": 0.2,
+      "id": "horizon_floor_binds_to_min_ratio",
+      "min_prb_policy_ratio_on_the_wire": [
+        20
+      ],
+      "passed": true
+    },
+    {
+      "cases": {
+        "dedicated above min": true,
+        "empty control": true,
+        "fraction out of range": true,
+        "min above max": true,
+        "minimums exceed the cell": true,
+        "ratio above 100": true,
+        "short plmn": true
+      },
+      "id": "impossible_quotas_refused",
+      "passed": true
+    }
+  ],
+  "claim": "the Slice-level PRB quota control Horizon encodes carries the RAN Parameter IDs OCUDU declares, nested in the order its parser walks, in aligned PER from the vendored O-RAN E2SM-RC v1.03 ASN.1",
+  "gate": "G8",
+  "passed": true,
+  "source_digests": {
+    "ocudu/extract_catalogue.py": "a15d9fc94097c932094d7fa88a7bce9f2f32514c85c7fa660a4a6c59687cbd70",
+    "ocudu/src/horizon_ocudu/metrics.py": "e79c673ee9c0db38ebd9d05c0b90625140a49558db75f5efd1eab13eb04776d2",
+    "ocudu/src/horizon_ocudu/rc_slice_quota.py": "bf27cdeeb873cf8ef98e046aa1d6ec2b764164e9f5746fcf56067217efecc495",
+    "src/horizon_ric/e2/asn1/e2sm_rc_v1_03_standard.asn": "09f295cb59d4145efd64fe510f602c994d6df65e9beba33aab2e98cdf5bc642b",
+    "src/horizon_ric/e2/rc_control.py": "ace653642154f35be54d1540d05b2f0f61d752b7ff5db0a8120c60b7af682952"
+  }
+}

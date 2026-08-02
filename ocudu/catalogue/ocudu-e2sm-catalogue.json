@@ -1,0 +1,170 @@
+{
+  "e2sm_ccc": {
+    "ran_configuration_structures": [
+      "O-RRMPolicyRatio"
+    ],
+    "service_model": "E2SM-CCC",
+    "styles": [
+      {
+        "ric_action_format": 1,
+        "ric_control_header_format": 1,
+        "ric_control_message_format": 1,
+        "style_id": 1,
+        "style_name": "Node Configuration and Control"
+      },
+      {
+        "ric_action_format": 1,
+        "ric_control_header_format": 2,
+        "ric_control_message_format": 2,
+        "style_id": 2,
+        "style_name": "Cell Configuration and Control"
+      }
+    ],
+    "writable_attributes": [
+      "rRMPolicyDedicatedRatio",
+      "rRMPolicyMaxRatio",
+      "rRMPolicyMemberList",
+      "rRMPolicyMinRatio",
+      "resourceType"
+    ]
+  },
+  "e2sm_rc_control_actions": [
+    {
+      "action_id": 1,
+      "action_name": "Handover Control",
+      "node": "CU",
+      "parsed_parameter_ids": [
+        4
+      ],
+      "ran_parameters": [
+        {
+          "id": 1,
+          "name": "Target Primary Cell ID"
+        },
+        {
+          "id": 2,
+          "name": ">CHOICE Target Cell"
+        },
+        {
+          "id": 3,
+          "name": ">>NR Cell"
+        },
+        {
+          "id": 4,
+          "name": ">>>NR CGI"
+        },
+        {
+          "id": 5,
+          "name": ">>E-UTRA Cell"
+        },
+        {
+          "id": 6,
+          "name": ">>>E-UTRA CGI"
+        }
+      ],
+      "service_model": "E2SM-RC",
+      "source_file": "third_party/ocudu/lib/e2/e2sm/e2sm_rc/e2sm_rc_control_action_cu_executor.cpp",
+      "structural_parameter_ids": [],
+      "style_id": 3,
+      "value_parameter_ids": [
+        4
+      ]
+    },
+    {
+      "action_id": 6,
+      "action_name": "Slice-level PRB quota",
+      "node": "DU",
+      "parsed_parameter_ids": [
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "ran_parameters": [
+        {
+          "id": 1,
+          "name": "RRM Policy Ratio List"
+        },
+        {
+          "id": 2,
+          "name": "RRM Policy Ratio Group"
+        },
+        {
+          "id": 3,
+          "name": "RRM Policy"
+        },
+        {
+          "id": 5,
+          "name": "RRM Policy Member List"
+        },
+        {
+          "id": 6,
+          "name": "RRM Policy Member"
+        },
+        {
+          "id": 7,
+          "name": "PLMN Identity"
+        },
+        {
+          "id": 8,
+          "name": "S-NSSAI"
+        },
+        {
+          "id": 9,
+          "name": "SST"
+        },
+        {
+          "id": 10,
+          "name": "SD"
+        },
+        {
+          "id": 11,
+          "name": "Min PRB Policy Ratio"
+        },
+        {
+          "id": 12,
+          "name": "Max PRB Policy Ratio"
+        },
+        {
+          "id": 13,
+          "name": "Dedicated PRB Policy Ratio"
+        }
+      ],
+      "service_model": "E2SM-RC",
+      "source_file": "third_party/ocudu/lib/e2/e2sm/e2sm_rc/e2sm_rc_control_action_du_executor.cpp",
+      "structural_parameter_ids": [
+        1,
+        3,
+        5,
+        8
+      ],
+      "style_id": 2,
+      "value_parameter_ids": [
+        2,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13
+      ]
+    }
+  ],
+  "generated_by": "ocudu/extract_catalogue.py",
+  "ocudu_commit": "f46f5804e53fede1e5c3353420ce1bcd3f4e57c6",
+  "source_digests": {
+    "third_party/ocudu/lib/e2/e2sm/e2sm_ccc/e2sm_ccc_asn1_packer.cpp": "cd8a6cd65ed6c12cd01135d6653c3cf0a5c9bd1e4c82e270c4de8aa855ea93c8",
+    "third_party/ocudu/lib/e2/e2sm/e2sm_ccc/e2sm_ccc_control_service_impl.h": "28ba47d2681f6e1ed6c9f7e753f8ad7e721abeb62cbc12859dccf8cafc6e7e1b",
+    "third_party/ocudu/lib/e2/e2sm/e2sm_rc/e2sm_rc_control_action_cu_executor.cpp": "c990d63f46627e17f1bec05d2667cfdbca3ba161c882bbd4c14f4686d9729a4c",
+    "third_party/ocudu/lib/e2/e2sm/e2sm_rc/e2sm_rc_control_action_du_executor.cpp": "74ab60ce08aaaabb6ce338255e3fa5dde33e90497afe68da6b36a7a32caa00fe"
+  }
+}

@@ -1,0 +1,259 @@
+{
+  "certificate": {
+    "canonical_bytes_len": 1676,
+    "canonical_bytes_sha256": "80dc99256ba4b2a3fbda2230ecabec6b096a52cbd271ae904eb765562242b582",
+    "decision_id": "a1-assurance-wire-proof-0001",
+    "emit_blocked": false,
+    "invariant_ids": [
+      "numeric_domain_sanity",
+      "spectral_mask_ts38104",
+      "max_eirp",
+      "neural_rx_envelope",
+      "constellation_legality"
+    ],
+    "keys_in_the_certificate": 19,
+    "keys_on_the_wire": 8,
+    "loop_tier": "non_rt",
+    "min_margin_dB": 4.0,
+    "projected": false,
+    "safe": true,
+    "self_verifies_locally": true,
+    "signature": "8bbb6e4ba7241484416591d6cac1e2e268ef4739393d5ab4841bb016530e6c20bb2b3a46c742f361f17f82089bd746bfb6d9633dd4e498ec750ef5c8b0fd5602",
+    "signing_key_fingerprint": "a8179c037bfa4c2a0560ddd349bc300509c497e77d0781e83add38f91dd9d73f",
+    "violated_ids": []
+  },
+  "generated_at_utc": "2026-07-30T09:51:19.022388+00:00",
+  "negative_case": {
+    "blocked_policy_absent_from_simulator": true,
+    "certificate": {
+      "emit_blocked": true,
+      "safe": false,
+      "violated_ids": [
+        "numeric_domain_sanity"
+      ]
+    },
+    "description": "Shield-blocked decision (negative bandwidth is unfixable by projection) offered to emit_policy with HORIZON_A1_REQUIRE_CERT=1",
+    "env": {
+      "HORIZON_A1_REQUIRE_CERT": "1"
+    },
+    "envelope_that_would_have_shipped": {
+      "certificate_digest": "6f2d6f2bdebab0619f38f7b60cdf0418811e4076daeba5aafa8369d553453439",
+      "min_margin_dB": 4.0,
+      "profile_digest": "acf0118f4eef41cd1a363770cf411b764eb2a9038b30e9c276a1c12c77e1375b",
+      "projected": true,
+      "safe": false,
+      "signature": "222cf37cb1b1ba37149b68467512771be8e093951ab28ecbcddeaa5cdba629e5ca5d27ba9ec8265828806437598ec2ec5794a11231ee5eccf0e3c2bca674eb05",
+      "signing_key_fingerprint": "a8179c037bfa4c2a0560ddd349bc300509c497e77d0781e83add38f91dd9d73f",
+      "violated_ids": [
+        "numeric_domain_sanity"
+      ]
+    },
+    "exception_type": "ValueError",
+    "policies_listed_after": [
+      "horizon-a1-assurance-proof"
+    ],
+    "policy_get_status_after": 404,
+    "refusal_message": "HORIZON_A1_REQUIRE_CERT is set and the safety certificate for the horizon.qos.priority emit is not clean (safe=False, emit_blocked=True) \u2014 refusing",
+    "refused": true
+  },
+  "policy_types": {
+    "expected_ids": [
+      20001,
+      20002,
+      20003,
+      20004
+    ],
+    "readback": {
+      "assurance_additional_properties": false,
+      "assurance_in_top_level_required": false,
+      "assurance_properties": [
+        "certificate_digest",
+        "min_margin_dB",
+        "profile_digest",
+        "projected",
+        "safe",
+        "signature",
+        "signing_key_fingerprint",
+        "violated_ids"
+      ],
+      "assurance_required": [
+        "certificate_digest",
+        "projected",
+        "safe",
+        "violated_ids"
+      ],
+      "create_schema_sha256": "69edb98480e9cad326b495803598d82f82e4725e97fd9ca7144de55661a6b999",
+      "declares_assurance": true,
+      "http_status": 200,
+      "policy_type_id": 20001
+    },
+    "registered_ids": [
+      20001,
+      20002,
+      20003,
+      20004
+    ],
+    "registration_complete": true,
+    "schema_version_declared": "1.1.0"
+  },
+  "positive_case": {
+    "body_round_trip_byte_identical": true,
+    "delete_status": 202,
+    "enforce_reason": "OTHER_REASON",
+    "enforce_status": "NOT_ENFORCED",
+    "envelope_round_trip_byte_identical": true,
+    "envelope_round_trip_equal": true,
+    "get_status": 200,
+    "policies_listed_after_delete": [],
+    "policies_listed_after_put": [
+      "horizon-a1-assurance-proof"
+    ],
+    "policy_id": "horizon-a1-assurance-proof",
+    "policy_type": "horizon.qos.priority",
+    "policy_type_id": 20001,
+    "put_status": 202,
+    "returned_body": {
+      "assurance": {
+        "certificate_digest": "80dc99256ba4b2a3fbda2230ecabec6b096a52cbd271ae904eb765562242b582",
+        "min_margin_dB": 4.0,
+        "profile_digest": "acf0118f4eef41cd1a363770cf411b764eb2a9038b30e9c276a1c12c77e1375b",
+        "projected": false,
+        "safe": true,
+        "signature": "8bbb6e4ba7241484416591d6cac1e2e268ef4739393d5ab4841bb016530e6c20bb2b3a46c742f361f17f82089bd746bfb6d9633dd4e498ec750ef5c8b0fd5602",
+        "signing_key_fingerprint": "a8179c037bfa4c2a0560ddd349bc300509c497e77d0781e83add38f91dd9d73f",
+        "violated_ids": []
+      },
+      "qos_objectives": {
+        "priority": 5
+      },
+      "rapp_metadata": {
+        "decision_id": "a1-assurance-wire-proof-0001"
+      },
+      "scope": {
+        "slice_id": "slice-a1-assurance-proof"
+      }
+    },
+    "returned_envelope": {
+      "certificate_digest": "80dc99256ba4b2a3fbda2230ecabec6b096a52cbd271ae904eb765562242b582",
+      "min_margin_dB": 4.0,
+      "profile_digest": "acf0118f4eef41cd1a363770cf411b764eb2a9038b30e9c276a1c12c77e1375b",
+      "projected": false,
+      "safe": true,
+      "signature": "8bbb6e4ba7241484416591d6cac1e2e268ef4739393d5ab4841bb016530e6c20bb2b3a46c742f361f17f82089bd746bfb6d9633dd4e498ec750ef5c8b0fd5602",
+      "signing_key_fingerprint": "a8179c037bfa4c2a0560ddd349bc300509c497e77d0781e83add38f91dd9d73f",
+      "violated_ids": []
+    },
+    "returned_envelope_canonical_sha256": "1f534041e7fbfff6cad1bcdd8509667a982e569b67880898ef476a3bb6f87a21",
+    "sent_body": {
+      "assurance": {
+        "certificate_digest": "80dc99256ba4b2a3fbda2230ecabec6b096a52cbd271ae904eb765562242b582",
+        "min_margin_dB": 4.0,
+        "profile_digest": "acf0118f4eef41cd1a363770cf411b764eb2a9038b30e9c276a1c12c77e1375b",
+        "projected": false,
+        "safe": true,
+        "signature": "8bbb6e4ba7241484416591d6cac1e2e268ef4739393d5ab4841bb016530e6c20bb2b3a46c742f361f17f82089bd746bfb6d9633dd4e498ec750ef5c8b0fd5602",
+        "signing_key_fingerprint": "a8179c037bfa4c2a0560ddd349bc300509c497e77d0781e83add38f91dd9d73f",
+        "violated_ids": []
+      },
+      "qos_objectives": {
+        "priority": 5
+      },
+      "rapp_metadata": {
+        "decision_id": "a1-assurance-wire-proof-0001"
+      },
+      "scope": {
+        "slice_id": "slice-a1-assurance-proof"
+      }
+    },
+    "sent_envelope": {
+      "certificate_digest": "80dc99256ba4b2a3fbda2230ecabec6b096a52cbd271ae904eb765562242b582",
+      "min_margin_dB": 4.0,
+      "profile_digest": "acf0118f4eef41cd1a363770cf411b764eb2a9038b30e9c276a1c12c77e1375b",
+      "projected": false,
+      "safe": true,
+      "signature": "8bbb6e4ba7241484416591d6cac1e2e268ef4739393d5ab4841bb016530e6c20bb2b3a46c742f361f17f82089bd746bfb6d9633dd4e498ec750ef5c8b0fd5602",
+      "signing_key_fingerprint": "a8179c037bfa4c2a0560ddd349bc300509c497e77d0781e83add38f91dd9d73f",
+      "violated_ids": []
+    },
+    "sent_envelope_canonical_sha256": "1f534041e7fbfff6cad1bcdd8509667a982e569b67880898ef476a3bb6f87a21",
+    "signature_verified": true,
+    "status_get_status": 200,
+    "verification": {
+      "digest_matches_canonical_bytes": true,
+      "digest_on_wire": "80dc99256ba4b2a3fbda2230ecabec6b096a52cbd271ae904eb765562242b582",
+      "ed25519_verify_error": null,
+      "ed25519_verify_over_canonical_bytes": true,
+      "public_key_fingerprint": "a8179c037bfa4c2a0560ddd349bc300509c497e77d0781e83add38f91dd9d73f",
+      "recomputed_canonical_sha256": "80dc99256ba4b2a3fbda2230ecabec6b096a52cbd271ae904eb765562242b582"
+    }
+  },
+  "result": "PASS",
+  "runtime": {
+    "docker_available": false,
+    "httpx": "0.28.1",
+    "machine": "x86_64",
+    "platform": "Linux-6.18.5-x86_64-with-glibc2.39",
+    "python": "3.11.15",
+    "wall_clock_s": 0.493
+  },
+  "schema_control_case": {
+    "assurance_declared": false,
+    "description": "The simulator validates every policy PUT against the registered create_schema. The same envelope-bearing body must be rejected by a policy type whose schema does not declare `assurance`, and the same body without the envelope must be accepted \u2014 otherwise the positive case proves only that nothing was validating.",
+    "envelope_bearing_put_status": 400,
+    "envelope_free_accepted": true,
+    "envelope_free_put_status": 202,
+    "envelope_rejected_by_simulator": true,
+    "policy_type_id": 29001,
+    "register_status": 201
+  },
+  "schema_version": "1.0",
+  "scope": "Proves the SafetyCertificate reference crosses a real O-RAN A1 socket (official o-ran-sc/sim-a1-interface, OSC_2.1.0) inside Horizon's own registered policy types, survives round-trip unchanged, and verifies by Ed25519 signature. Does NOT prove that any near-RT RIC or xApp consumes or acts on the envelope: no O-RAN specification requires it and no vendor platform has onboarded it. Not a radio, not operator traffic, not a conformance certification.",
+  "self_reported_problems": [],
+  "signing": {
+    "algorithm": "Ed25519",
+    "key_source": "horizon_ric.shield.signing.generate_signing_key",
+    "signing_key_fingerprint": "a8179c037bfa4c2a0560ddd349bc300509c497e77d0781e83add38f91dd9d73f"
+  },
+  "simulator": {
+    "base_url": "http://127.0.0.1:37873",
+    "commit": "be2943f57211f62095dc5434099e331df237aafb",
+    "commit_command": "git -C third_party/sim-a1-interface rev-parse HEAD",
+    "exit_code": -15,
+    "fallback_reason": null,
+    "fallback_used": false,
+    "healthcheck_status": 200,
+    "interface": "OSC_2.1.0",
+    "kind": "real_vendored_submodule",
+    "launch": {
+      "argv": [
+        "/home/user/venv/bin/python",
+        "-c",
+        "import sys; import main; main.app.run(port=int(sys.argv[1]), host='127.0.0.1')",
+        "37873"
+      ],
+      "cwd": "third_party/sim-a1-interface/near-rt-ric-simulator/src/OSC_2.1.0",
+      "env": {
+        "APIPATH": "third_party/sim-a1-interface/near-rt-ric-simulator/api/OSC_2.1.0",
+        "PYTHONPATH": "third_party/sim-a1-interface/near-rt-ric-simulator/src/common"
+      },
+      "note": "started natively (no Docker daemon in this environment); src/start.sh exports the same APIPATH/PYTHONPATH and runs the same main.py"
+    },
+    "log_tail": [
+      "[2026-07-30 09:51:19.505]",
+      "-----Response-----",
+      "Resp Headers:  Content-Type: application/json",
+      "Content-Length: 2",
+      "",
+      "",
+      "Resp Body:  b'[]'",
+      "127.0.0.1 - - [30/Jul/2026 09:51:19] \"GET /a1-p/policytypes/20001/policies HTTP/1.1\" 200 -"
+    ],
+    "name": "O-RAN-SC sim-a1-interface near-rt-ric-simulator",
+    "port": 37873,
+    "readiness_wait_s": 0.325,
+    "source_modified": false,
+    "submodule_path": "third_party/sim-a1-interface",
+    "upstream": "https://gerrit.o-ran-sc.org/r/sim/a1-interface"
+  },
+  "system_under_test": "Horizon-RIC A1 `assurance` envelope over the osc_a1 dialect (src/horizon_ric/rapp/a1_adapter.py)"
+}

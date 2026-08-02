@@ -1,0 +1,106 @@
+{
+  "checks": [
+    {
+      "detail": "re-extracted the contract from the vendored OpenAPI document (API 2.248.1, spec sha256 9acb0ca9768e3342...) and compared it to the committed extraction: identical=True",
+      "id": "contract_is_reproducible",
+      "passed": true
+    },
+    {
+      "detail": "invoke=/v2/nvcf/pexec/functions/{functionId}/versions/{versionId} poll=/v2/nvcf/pexec/status/{requestId}",
+      "id": "protocol_paths_are_the_specs",
+      "passed": true
+    },
+    {
+      "detail": "contract declares ['NVCF-INPUT-ASSET-REFERENCES', 'NVCF-PERCENT-COMPLETE', 'NVCF-POLL-SECONDS', 'NVCF-REQID', 'NVCF-STATUS']",
+      "id": "all_nvcf_headers_are_declared",
+      "passed": true
+    },
+    {
+      "detail": "horizon-shield-function.json against CreateFunctionRequest: no problems",
+      "id": "function_manifest_validates",
+      "passed": true
+    },
+    {
+      "detail": "horizon-shield-deployment.json against FunctionDeploymentRequest: no problems",
+      "id": "deployment_manifest_validates",
+      "passed": true
+    },
+    {
+      "detail": "the decision plane is a serialisation point: two replicas would open two epochs, and conflicting agents could be admitted in different ones. maxInstances=[1]",
+      "id": "decision_plane_is_not_horizontally_scaled",
+      "passed": true
+    },
+    {
+      "detail": "a version-less agent id is refused (True); a response declaring version 000b against an authorisation for 000a produced no envelope. reason: response declares function version 'b1d2c3e4-0000-4000-8000-00000000000b' but the operator authorised 'b1d2c3e4-0000-4000-8000-00000000000a'; a redeployed function is a different principal",
+      "id": "identity_is_the_immutable_version",
+      "passed": true
+    },
+    {
+      "detail": "14 failure modes driven, 0 produced a proposal (none). 402_credits: NVCF invocation did not yield a result: NVCF returned 402: the invocat; 403_scope: NVCF invocation did not yield a result: NVCF returned 403: the invocat; 429_throttled: NVCF invocation did not yield a result: NVCF returned 429: rate limite; 302_redirect: NVCF invocation did not yield a result: NVCF returned 302 with Locatio",
+      "id": "every_non_fulfilled_disposition_yields_no_proposal",
+      "passed": true
+    },
+    {
+      "detail": "202 -> poll -> poll -> 200 resolved in 2 poll(s), request id 'r7', disposition 'fulfilled'",
+      "id": "pending_invocations_are_polled_to_completion",
+      "passed": true
+    },
+    {
+      "detail": "gnb_ru_ran550_tdd_n78_100mhz_4x2.yml -> 3508.18-3608.18 MHz (273 PRB); the Shield grading NVCF proposals is built from the gNB's own configuration, not from a constant",
+      "id": "shield_envelope_comes_from_the_ocudu_cell",
+      "passed": true
+    },
+    {
+      "detail": "an in-carrier NVCF proposal at 3558.18 MHz committed=True",
+      "id": "nvcf_proposal_commits_when_it_is_legal",
+      "passed": true
+    },
+    {
+      "detail": "an NVCF function proposed 3450.00 MHz \u2014 inside PipelineConfig's hand-typed default band, outside the real OCUDU carrier. The Shield projected it to 3518.18 MHz, inside 3508.18-3608.18 MHz. The emitted action is not the proposed one. (The Shield corrects rather than refuses; the refusal path is gated separately below.)",
+      "id": "nvcf_out_of_band_proposal_is_projected_not_emitted",
+      "passed": true
+    },
+    {
+      "detail": "a proposal from 0000000b \u2014 a function version with no operator grant \u2014 was refused (committed=False) and TransactionResult.members RAISES rather than returning the part that passed, so a caller cannot emit it. refusals: [\"authority.nvcf:3f6c1e9a-0000-4000-8000-000000000001/b1d2c3e4-0000-4000-8000-00000000000b: agent 'nvcf:3f6c1e9a-0000-4000-8000-000000000001/b1d2c3e4-0000-4000-8000-00000000000b' holds no grant\"]",
+      "id": "unauthorised_function_version_is_refused_and_unreachable",
+      "passed": true
+    },
+    {
+      "detail": "the committed decision path terminates in E2SM-RC Style 2 Action 6 aligned PER: 71 octets (see G8 for the parameter-id conformance this reuses)",
+      "id": "committed_action_encodes_for_ocudu",
+      "passed": true
+    },
+    {
+      "detail": "GET /v2/health -> 200; the manifest declares uri=/v2/health expectedStatusCode=200",
+      "id": "service_health_matches_the_manifest",
+      "passed": true
+    },
+    {
+      "detail": "POST invoke -> 202 with NVCF-REQID='h-0-000001' (epoch 0)",
+      "id": "service_returns_202_and_a_request_id",
+      "passed": true
+    },
+    {
+      "detail": "poll before close -> 202; after close -> 200 with committed=True and a certificate for epoch 0",
+      "id": "service_polls_202_then_200_with_a_certificate",
+      "passed": true
+    },
+    {
+      "detail": "unknown request id -> 403, wrong function version -> 403, malformed envelope -> 403; all the same code and the same body, so a caller learns nothing about which ids or versions exist",
+      "id": "service_refusals_are_oracle_free_403s",
+      "passed": true
+    }
+  ],
+  "claim": "An NVCF-hosted model is a governed principal identified by its immutable function version, every response it returns is graded by a Shield whose envelope is derived from the real OCUDU cell, no invocation failure mode can produce an emitted action, and Horizon's own decision plane answers NVCF's invocation contract over a real socket.",
+  "gate": "G10",
+  "nvcf_api_version": "2.248.1",
+  "passed": true,
+  "source_digests": {
+    "nvcf/contract/nvcf-invocation-contract.json": "e3ba85b7e8704f90f06de325311919162581137dd996caf2d6acb5418796b227",
+    "nvcf/spec/nvcf-openapi-2.248.1.json": "9acb0ca9768e3342755741735198235cde685cf2622d62b1711ff7e0e14438d3",
+    "nvcf/src/horizon_nvcf/agent.py": "2e005f733f6c112ab41b07cfdd964e08af4e64371bff1b5c5457f07cf879d119",
+    "nvcf/src/horizon_nvcf/client.py": "04682afa52217b0bf8ecdda7dac0a4c14b1a0a74ffbdcd31347ec1c593fdf1b2",
+    "nvcf/src/horizon_nvcf/service.py": "a1995aa4519eeb142a08e5d9bdc1b9e73a1003e5260477efff2ba0d7ebe2cbc6",
+    "ocudu/src/horizon_ocudu/cell_config.py": "766834307ef4222431715757cdff541b08d25fc865474fb63b7354bd4058c0cb"
+  }
+}

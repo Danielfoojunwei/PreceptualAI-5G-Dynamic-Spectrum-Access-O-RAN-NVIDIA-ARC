@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://horizon-ric.example.com/schemas/safety-certificate-v1.schema.json",
+  "title": "Horizon-RIC SafetyCertificate, v1",
+  "description": "The wire form of horizon_ric.shield.certificate.SafetyCertificate.to_dict() — the certificate-by-construction record of one shielded decision.\n\nSHAPE IS CLOSED. to_dict() emits exactly 19 keys: the 18 declared dataclass fields plus 'min_margin_dB', which is a derived @property and not a field. All 19 are always present, so all 19 are required; optionality is expressed as a nullable type, never as an absent key. tests/test_assurance_schemas.py introspects dataclasses.fields(SafetyCertificate) and fails if this property set drifts from the dataclass, so adding a certificate field without updating this document breaks the build.\n\nSIGNING. horizon_ric.shield.signing.canonical_certificate_bytes signs json.dumps(to_dict() minus {signature, signing_key_fingerprint}, sort_keys=True, separators=(',',':')) with no default= handler. Since 'action_proposed' and 'action_safe' embed planner/Shield dicts verbatim, every value inside them must be JSON-primitive or signing raises TypeError — see proposed-action-v1.schema.json.\n\nHONESTY NOTE — 'severity' and 'loop_tier' are CONVENTIONAL BUT UNVALIDATED IN THE CURRENT CODE. horizon_ric.shield.certificate declares LOOP_TIERS = ('rt', 'near_rt', 'non_rt') as a module constant and it is never enforced anywhere: Shield.dispose accepts loop_tier as a free-form str defaulting to 'non_rt' and stamps whatever it is given. Likewise ConstraintViolation.severity is a bare str annotated '# \"hard\" | \"soft\"'; every violation constructed in horizon_ric.shield.invariants passes 'hard', but nothing rejects another value. The enums below are the convention this schema PINS, not a guarantee the code provides — a certificate produced by the current code could carry a loop_tier or severity outside them and would fail validation against this document. That is the intended direction of pressure.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "decision_id",
+    "issued_at",
+    "loop_tier",
+    "block",
+    "action_proposed",
+    "action_safe",
+    "invariants",
+    "corrections",
+    "violated_ids",
+    "projected",
+    "fallback_used",
+    "fallback_to",
+    "safe",
+    "emit_blocked",
+    "min_margin_dB",
+    "rng_seed",
+    "model_provenance",
+    "signature",
+    "signing_key_fingerprint"
+  ],
+  "properties": {
+    "decision_id": {
+      "type": "string",
+      "description": "Caller-supplied decision identifier. Defaults to the empty string in Shield.dispose, so an empty value means the caller did not supply one — it is not evidence of a missing decision."
+    },
+    "issued_at": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ISO-8601 UTC timestamp from datetime.now(timezone.utc).isoformat(). Not format-validated here: it is produced by the Shield, never parsed from input."
+    },
+    "loop_tier": {
+      "type": "string",
+      "enum": [
+        "rt",
+        "near_rt",
+        "non_rt"
+      ],
+      "description": "O-RAN control-loop tier the decision was taken in. CONVENTIONAL BUT UNVALIDATED by the code — see the top-level honesty note. Auditability is matched to the timescale: sub-ms RT loops sample/aggregate, Non-RT rApp loops carry the full counterfactual."
+    },
+    "block": {
+      "type": "string",
+      "description": "The AI-PHY / RIC block that PROPOSED the action, captured before any projection. Read via action.get('block', 'unknown'), so 'unknown' means the proposed action carried no block. Compare with action_safe.block to see a fallback."
+    },
+    "action_proposed": {
+      "type": "object",
+      "description": "The planner's action verbatim, before any projection — the untrusted input, preserved so the counterfactual is reconstructible. Embedded in the signed payload, so every value must be JSON-primitive. Open shape: see proposed-action-v1.schema.json.",
+      "additionalProperties": true
+    },
+    "action_safe": {
+      "type": "object",
+      "description": "The action after projection toward the safe set. May carry the Shield's own output sentinels 'emit_blocked' and 'shield_fallback_to', which are forbidden in action_proposed. Open shape.",
+      "additionalProperties": true
+    },
+    "invariants": {
+      "type": "array",
+      "description": "One InvariantCheck per invariant, in CHAIN ORDER, evaluated against action_safe after projection. Chain order is semantically significant — see invariant-profile-v1.schema.json.",
+      "items": {
+        "$ref": "#/$defs/invariantCheck"
+      }
+    },
+    "corrections": {
+      "type": "array",
+      "description": "Every correction applied across every projection pass, in the order applied. Accumulated across passes, so the same constraint_id can appear more than once and the array can be longer than the invariant chain.",
+      "items": {
+        "$ref": "#/$defs/constraintViolation"
+      }
+    },
+    "violated_ids": {
+      "type": "array",
+      "description": "Invariant ids still unsatisfied in the FINAL evaluation. Non-empty implies emit_blocked: the Shield could not make the action safe within ShieldConfig.max_passes, so it failed closed rather than raising.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "projected": {
+      "type": "boolean",
+      "description": "True iff the Shield entered its projection loop, i.e. the proposed action was not already feasible. Equivalent to `not shield.is_feasible(action, context)`."
+    },
+    "fallback_used": {
+      "type": "boolean",
+      "description": "True iff an AI-PHY invariant forced a certified classical fallback, either by setting shield_fallback_to or by rewriting 'block' to a 'classical*' value."
+    },
+    "fallback_to": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The classical block that was fallen back to (e.g. 'classical_lmmse', 'classical_qam'), read from the safe action's shield_fallback_to sentinel. Null when no fallback occurred. May be null while fallback_used is true, in the case where only 'block' was rewritten."
+    },
+    "safe": {
+      "type": "boolean",
+      "description": "True iff the final action satisfies every hard invariant. Exactly `not emit_blocked` in the current implementation."
+    },
+    "emit_blocked": {
+      "type": "boolean",
+      "description": "True iff the action must NOT be emitted to the RAN. Set when any invariant's projection refused, or when any invariant is still violated after the final evaluation. This is the fail-closed outcome; dispose() never raises instead."
+    },
+    "min_margin_dB": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "DERIVED, not a dataclass field: an @property computing the tightest margin across invariants whose unit == 'dB' (the worst-case headroom). Null when no invariant reported a dB margin — including for a perfectly safe purely-spectral decision, so null is NOT a signal of danger. Invariants with other units (Hz, fraction, bool, n/a, domain, error) are excluded from the minimum by construction."
+    },
+    "rng_seed": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Seed of the RNG stream behind the decision, for bit-exact replay. Null when the caller did not supply one."
+    },
+    "model_provenance": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Caller-supplied provenance for the model that proposed the action (model id, hash, training-run reference, and optionally an assurance-profile digest from horizon_ric.assurance.profile.profile_digest). Null when not supplied. Open shape; must be JSON-primitive throughout because it is inside the signed payload.",
+      "additionalProperties": true
+    },
+    "signature": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Hex Ed25519 signature over canonical_certificate_bytes(cert). Null when signing is not configured. Excluded from its own signed payload."
+    },
+    "signing_key_fingerprint": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "SHA-256 hex fingerprint of the raw 32-byte Ed25519 public key. Null when signing is not configured. Excluded from the signed payload."
+    }
+  },
+  "$defs": {
+    "invariantCheck": {
+      "title": "InvariantCheck",
+      "description": "Wire form of horizon_ric.shield.certificate.InvariantCheck.to_dict(). Closed shape, all 5 keys always emitted.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invariant_id",
+        "satisfied",
+        "margin",
+        "unit",
+        "detail"
+      ],
+      "properties": {
+        "invariant_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable id of the invariant that produced this check. Not enum-constrained: the Invariant Protocol is structural, so a deployment may add its own invariants. The ids shipped in this repo are listed in invariant-profile-v1.schema.json#/$defs/knownInvariantId."
+        },
+        "satisfied": {
+          "type": "boolean",
+          "description": "True iff the invariant holds for the evaluated action. An invariant that RAISED on a malformed payload is reported as unsatisfied with unit 'error' — the Shield fails closed, it never propagates the exception."
+        },
+        "margin": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Signed distance to the bound (positive => inside the safe set), in 'unit'. Null when the invariant's natural answer is not a distance (set membership, jurisdiction, not-applicable). MAY be a non-finite float: ProtectedSliceFloorInvariant reports float('inf') for a vacuously satisfied check, which json.dumps writes as the non-standard 'Infinity' literal — a strict JSON consumer of a signed certificate must be prepared for it."
+        },
+        "unit": {
+          "type": "string",
+          "description": "Meaning of 'margin'. Values in current use: 'dB', 'Hz', 'fraction', 'bool', 'domain', 'n/a' (invariant not applicable to this action), 'error' (evaluation rejected a malformed payload). Only 'dB' entries feed min_margin_dB. Not enum-constrained, because a deployment's own invariant may use another unit."
+        },
+        "detail": {
+          "type": "string",
+          "description": "Human-readable explanation for the audit log. Free-form; never parsed."
+        }
+      }
+    },
+    "constraintViolation": {
+      "title": "ConstraintViolation",
+      "description": "Wire form of horizon_ric.shield.certificate.ConstraintViolation.to_dict() — a breach, or the correction applied to fix one. Closed shape, all 4 keys always emitted.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "constraint_id",
+        "severity",
+        "margin_dB",
+        "message"
+      ],
+      "properties": {
+        "constraint_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id of the invariant that raised the violation or applied the correction. Same open-registry note as invariantCheck.invariant_id."
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "hard",
+            "soft"
+          ],
+          "description": "CONVENTIONAL BUT UNVALIDATED by the code: the dataclass field is a bare str annotated '# \"hard\" | \"soft\"' and nothing rejects another value. Every violation constructed in horizon_ric.shield.invariants passes 'hard' — lawful intercept in particular is hard-only by design, because a regulator-mandated intercept must never be a tunable trade-off in a learned policy. This enum pins the convention the code leaves open."
+        },
+        "margin_dB": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Signed distance to the bound in dB (negative => violated). Null for invariants whose natural unit is not dB — frequency clipping, set membership, jurisdiction. Note the name is dB-specific but ProtectedSliceFloorInvariant reports a PRB *fraction* here; read constraint_id before interpreting the unit."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable description of the breach and of the correction applied. Free-form; never parsed."
+        }
+      }
+    }
+  }
+}

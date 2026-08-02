@@ -142,18 +142,33 @@ async def test_pipeline_happy_path_emits_and_polls_enforcement(tmp_path: Path):
 
     # The Near-RT RIC saw exactly one policy PUT with a schema-conformant body
     # (only keys declared in A1Adapter._policy_create_schema, additionalProperties
-    # False, plus the rapp_metadata decision link).
+    # False, plus the rapp_metadata decision link and the assurance envelope).
     assert len(state["policies"]) == 1
     put = state["policies"][0]
     assert put["policy_type_id"] == 20001
     assert put["policy_id"] == result.policy_id
     body = put["body"]
-    assert set(body) == {"scope", "qos_objectives", "rapp_metadata"}
+    assert set(body) == {"scope", "qos_objectives", "rapp_metadata", "assurance"}
     assert set(body["scope"]) == {"slice_id"}
     assert body["scope"]["slice_id"].startswith("slice-")
     assert set(body["qos_objectives"]) == {"priority"}
     assert 1 <= body["qos_objectives"]["priority"] <= 15
     assert body["rapp_metadata"] == {"decision_id": result.decision_id}
+    # The certificate crosses the wire as a digest + verdict, not as a copy.
+    # Unsigned here (HORIZON_CERT_SIGNING_KEY_PATH is not set), so no signature
+    # fields. See tests/test_a1_assurance_envelope.py for the full contract.
+    assurance = body["assurance"]
+    assert set(assurance) == {
+        "certificate_digest",
+        "safe",
+        "projected",
+        "violated_ids",
+        "min_margin_dB",
+        "profile_digest",
+    }
+    assert assurance["safe"] is True
+    assert assurance["violated_ids"] == []
+    assert len(assurance["certificate_digest"]) == 64
     assert state["status_calls"] == [result.policy_id]
 
     # Evidence: exactly one record, appended by the adapter on emit success.

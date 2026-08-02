@@ -9,6 +9,7 @@ References:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import uuid
 from dataclasses import dataclass, field
@@ -16,6 +17,13 @@ from typing import Any
 
 import httpx
 import structlog
+
+# Reused, never re-implemented: the assurance envelope's ``certificate_digest``
+# is the SHA-256 of exactly the bytes the Ed25519 signer signed. Importing the
+# signer's own canonicaliser is what makes the digest on the wire and the
+# signature over it impossible to drift apart.
+from horizon_ric.shield.certificate import SafetyCertificate
+from horizon_ric.shield.signing import canonical_certificate_bytes
 
 logger = structlog.get_logger(__name__)
 
@@ -53,32 +61,115 @@ def _env_truthy(name: str) -> bool:
 
 # Standard A1 policy types (from O-RAN A1AP and 3GPP TS 23.503 alignment).
 # Each operator may extend with vendor-specific types; we ship a baseline set.
+#
+# ``schema_v`` moved 1.0.0 → 1.1.0 when the optional ``assurance`` envelope was
+# added to every create schema (see ``_policy_create_schema``). The bump is not
+# cosmetic: because every registered schema is ``additionalProperties: false``,
+# a receiver still holding the 1.0.0 schema will REJECT a 1.1.0 body that
+# carries the envelope. That is the versioning requirement stated as A-4 in
+# docs/conformance/ASSURANCE_PROFILE.md §6.2. Minor, not major, because the
+# envelope is optional: a 1.0.0 body is a valid 1.1.0 body.
 DEFAULT_POLICY_TYPES = {
     "horizon.qos.priority": {
         "policy_type_id": 20001,
         "name": "QoS priority weights per slice",
         "description": "Adjust per-slice QoS priority based on Horizon-RIC SLA risk",
-        "schema_v": "1.0.0",
+        "schema_v": "1.1.0",
     },
     "horizon.traffic.steering": {
         "policy_type_id": 20002,
         "name": "Traffic steering across TN/NTN",
         "description": "Direct traffic between terrestrial cell and NTN beam",
-        "schema_v": "1.0.0",
+        "schema_v": "1.1.0",
     },
     "horizon.admission.control": {
         "policy_type_id": 20003,
         "name": "Slice/UE admission control",
         "description": "Accept, defer, or reject AI workload based on edge load",
-        "schema_v": "1.0.0",
+        "schema_v": "1.1.0",
     },
     "horizon.spectrum.reservation": {
         "policy_type_id": 20004,
         "name": "Spectrum bin reservation",
         "description": "Reserve spectrum sub-bands for critical traffic classes",
-        "schema_v": "1.0.0",
+        "schema_v": "1.1.0",
     },
 }
+
+# Keys the ``assurance`` envelope may carry, in the order they are written onto
+# the wire. Kept next to the schema so the builder and the declared schema
+# cannot drift; ``tests/test_a1_assurance_envelope.py`` asserts they agree.
+ASSURANCE_ENVELOPE_KEYS = (
+    "certificate_digest",
+    "signature",
+    "signing_key_fingerprint",
+    "safe",
+    "projected",
+    "violated_ids",
+    "min_margin_dB",
+    "profile_digest",
+)
+
+
+def assurance_envelope(
+    certificate: SafetyCertificate | None,
+    *,
+    profile_digest: str | None = None,
+) -> dict[str, Any]:
+    """Build the A1 ``assurance`` envelope for one SafetyCertificate.
+
+    Returns ``{}`` for ``None`` — an absent certificate must leave the policy
+    body byte-identical to what it was before this envelope existed, so an
+    uncertified caller (and every pre-existing test of the wire shape) is
+    unaffected.
+
+    The envelope is deliberately NOT the certificate. ``SafetyCertificate``
+    serialises to 19 keys including two variable-length arrays
+    (``invariants``, ``corrections``) and two embedded action dicts; that is an
+    audit object, and A1 policy create is a latency-sensitive control
+    interface. What a receiver actually needs is (a) enough to *verify* — the
+    digest of the exact bytes that were signed, plus the signature and the key
+    fingerprint — and (b) enough to *decide and correlate* without fetching
+    anything: the verdict (``safe``), whether the action was rewritten to reach
+    it (``projected``), which invariants it still violates (``violated_ids``),
+    the worst-case headroom (``min_margin_dB``), and which invariant set graded
+    it (``profile_digest``). The full record stays in the evidence store,
+    joined by ``rapp_metadata.decision_id``.
+
+    ``certificate_digest`` is ``sha256(canonical_certificate_bytes(cert))`` —
+    the signer's own canonical form (``sort_keys``, tight separators, signature
+    fields removed). A receiver that later obtains the certificate can
+    therefore recompute the digest, confirm it is the object referenced on the
+    wire, and verify ``signature`` over it with the key named by
+    ``signing_key_fingerprint``. Nothing else on the wire is needed to close
+    that loop, and no second canonicalisation exists that could disagree.
+
+    This is the shape proposed as A-1…A-3 in
+    ``docs/conformance/ASSURANCE_PROFILE.md`` §6.2, promoted from illustration
+    to a registered, schema-declared field. It is a proposed extension carried
+    inside Horizon's own policy types: no standard requires a near-RT RIC to
+    read it.
+    """
+    if certificate is None:
+        return {}
+    envelope: dict[str, Any] = {
+        "certificate_digest": hashlib.sha256(
+            canonical_certificate_bytes(certificate)
+        ).hexdigest(),
+    }
+    # Signature fields are omitted rather than nulled when signing is not
+    # configured: an unsigned envelope claims nothing it cannot back.
+    if certificate.signature is not None:
+        envelope["signature"] = certificate.signature
+    if certificate.signing_key_fingerprint is not None:
+        envelope["signing_key_fingerprint"] = certificate.signing_key_fingerprint
+    envelope["safe"] = bool(certificate.safe)
+    envelope["projected"] = bool(certificate.projected)
+    envelope["violated_ids"] = [str(v) for v in certificate.violated_ids]
+    envelope["min_margin_dB"] = certificate.min_margin_dB
+    if profile_digest is not None:
+        envelope["profile_digest"] = str(profile_digest)
+    return envelope
 
 
 @dataclass
@@ -304,7 +395,7 @@ class A1Adapter:
         policy_payload: dict[str, Any],
         policy_id: str | None = None,
         decision_record: "DecisionRecord | None" = None,  # noqa: F821
-        safety_certificate: "SafetyCertificate | None" = None,  # noqa: F821
+        safety_certificate: SafetyCertificate | None = None,
     ) -> tuple[str, int]:
         """Emit an A1 policy instance to the Near-RT RIC.
 
@@ -621,6 +712,41 @@ class A1Adapter:
         These schemas are tight: each one declares its required scope and
         objective fields and rejects unknown keys. They mirror the policy
         types declared in ``DEFAULT_POLICY_TYPES``.
+
+        Two cross-cutting envelopes sit alongside the per-type scope/objective
+        blocks, and both are optional (neither appears in the top-level
+        ``required``):
+
+        ``rapp_metadata``
+            unchanged — the ``decision_id`` join key back to the DecisionRecord.
+
+        ``assurance``
+            **new in schema 1.1.0** — a verifiable reference to the
+            SafetyCertificate for the decision that produced this policy. Built
+            by :func:`assurance_envelope`; see that function for why the wire
+            carries a *digest plus signature* rather than the certificate's own
+            19 keys. In short: the receiver needs enough to verify and
+            correlate, not a copy of the audit record. The full certificate
+            lives in the evidence store and is joined by
+            ``rapp_metadata.decision_id``; ``assurance.certificate_digest``
+            is the cryptographic link between the two, because it is the
+            SHA-256 of exactly the bytes ``assurance.signature`` signs.
+
+            This is the shape proposed for standardisation in
+            ``docs/conformance/ASSURANCE_PROFILE.md`` §6.2 (requirements
+            A-1…A-3, and A-4's versioning — hence the ``schema_v`` bump to
+            1.1.0 in ``DEFAULT_POLICY_TYPES``). It is a Horizon extension
+            inside Horizon's own policy types; no O-RAN specification obliges a
+            near-RT RIC to read it.
+
+        Declaring the envelope here is load-bearing, not decorative: the
+        official ``o-ran-sc/sim-a1-interface`` near-RT RIC simulator validates
+        every policy PUT body against the registered ``create_schema``
+        (``near-rt-ric-simulator/src/OSC_2.1.0/controllers/a1_mediator_controller.py``
+        ``a1_controller_create_or_replace_policy_instance``). Under
+        ``additionalProperties: false`` an undeclared ``assurance`` key is a
+        400, which is exactly what ``deploy/xapp-e2e/a1_assurance_proof.py``
+        records as its control case.
         """
         common_meta = {
             "rapp_metadata": {
@@ -631,6 +757,42 @@ class A1Adapter:
                     "model_versions": {"type": "object"},
                 },
                 "required": ["decision_id"],
+                "additionalProperties": False,
+            },
+            "assurance": {
+                "type": "object",
+                "description": (
+                    "Verifiable reference to the Shield SafetyCertificate for "
+                    "this decision. certificate_digest is the SHA-256 of the "
+                    "certificate's canonical signing bytes; signature is "
+                    "Ed25519 over those same bytes, hex-encoded. Optional: a "
+                    "policy without it is a policy whose certificate must be "
+                    "fetched from the evidence store by decision_id instead."
+                ),
+                "properties": {
+                    "certificate_digest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$",
+                    },
+                    # Hex, but deliberately not length-pinned to Ed25519's 128
+                    # characters: a post-quantum signature is far longer, and a
+                    # schema that has to be re-registered to rotate algorithm
+                    # is a schema that will not be rotated.
+                    "signature": {"type": "string", "pattern": "^[0-9a-f]+$"},
+                    "signing_key_fingerprint": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$",
+                    },
+                    "safe": {"type": "boolean"},
+                    "projected": {"type": "boolean"},
+                    "violated_ids": {"type": "array", "items": {"type": "string"}},
+                    "min_margin_dB": {"type": ["number", "null"]},
+                    "profile_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                },
+                # The verdict is mandatory once the envelope is present: an
+                # `assurance` block that omits `safe` or `violated_ids` would
+                # let a refusal be advertised as an endorsement by omission.
+                "required": ["certificate_digest", "safe", "projected", "violated_ids"],
                 "additionalProperties": False,
             },
         }

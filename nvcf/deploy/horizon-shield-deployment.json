@@ -1,0 +1,42 @@
+{
+  "_comment": [
+    "FunctionDeploymentRequest body for the function registered by",
+    "horizon-shield-function.json. Validated by gate G10 against the",
+    "FunctionDeploymentRequest / GpuSpecificationDto schemas in the vendored",
+    "OpenAPI document.",
+    "",
+    "The choices that are not arbitrary:",
+    "",
+    "  minInstances 1        - scale-to-zero is right for inference and wrong",
+    "                          for a safety plane. A cold start is a window in",
+    "                          which agents can be invoked and the Shield",
+    "                          cannot. The invariant chain is CPU work, so a",
+    "                          held replica costs almost nothing.",
+    "  maxRequestConcurrency - 16, bounded well under TransactionCycle's",
+    "                          max_members (32), so the epoch buffer is what",
+    "                          refuses excess load, not the HTTP layer, and it",
+    "                          refuses with a 429 that means what NVCF says it",
+    "                          means: the request did not run, retry later.",
+    "  maxInstances 1        - the decision plane is a SERIALISATION POINT.",
+    "                          Two replicas would each open their own epoch, and",
+    "                          two agents whose actions conflict could land in",
+    "                          different epochs and both be admitted -- the",
+    "                          exact failure the transaction exists to remove.",
+    "                          Horizontal scaling here is not a tuning knob; it",
+    "                          is a correctness bug. Scale the AGENTS, not this.",
+    "  gpu/instanceType      - required by the schema. Horizon's chain is CPU",
+    "                          work; the smallest GPU instance is selected",
+    "                          because NVCF's placement is GPU-indexed, not",
+    "                          because a GPU is used."
+  ],
+  "deploymentSpecifications": [
+    {
+      "gpu": "L40S",
+      "instanceType": "gl40s_1.br25_2xlarge",
+      "minInstances": 1,
+      "maxInstances": 1,
+      "maxRequestConcurrency": 16,
+      "configuration": {}
+    }
+  ]
+}

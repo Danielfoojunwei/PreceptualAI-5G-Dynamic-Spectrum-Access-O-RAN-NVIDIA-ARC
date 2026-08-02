@@ -17,7 +17,7 @@ jobs:
       - run: pip install ruff
       # Whole-tree lint: src, tests, scripts and deploy (osc_emulator etc.)
       # are all gated — the full tree passes `ruff check` clean.
-      - run: ruff check src tests scripts deploy
+      - run: ruff check src tests scripts deploy docs/proposal
 
   mypy:
     runs-on: ubuntu-latest

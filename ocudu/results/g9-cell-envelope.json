@@ -1,0 +1,74 @@
+{
+  "checks": [
+    {
+      "detail": "NR-ARFCN 637212 -> 3558.180 MHz (expected 3558.180); F_REF = 3000 MHz + 15 kHz x (637212 - 600000), TS 38.104 \u00a75.4.2.1",
+      "id": "arfcn_formula_is_ts38104_exact",
+      "passed": true
+    },
+    {
+      "detail": "out-of-range ARFCN refused: NR-ARFCN 9999999 is outside the global raster defined in TS 38.104 Table 5.4.2.1-1 (0..3279165)",
+      "id": "arfcn_raster_is_bounded",
+      "passed": true
+    },
+    {
+      "detail": "100 MHz at 30 kHz SCS -> 273 PRB (expected 273)",
+      "id": "n_rb_matches_ts38104_table_5_3_2_1",
+      "passed": true
+    },
+    {
+      "detail": "undefined combination refused: 100 MHz at 15 kHz SCS is not a defined FR1 (TS 38.104 Table 5.3.2-1) transmission bandwidth configuration",
+      "id": "undefined_bandwidth_scs_is_refused",
+      "passed": true
+    },
+    {
+      "detail": "gnb_ru_ran550_tdd_n78_100mhz_4x2.yml: band n78, 3508.18-3608.18 MHz, 273 PRB, transmission bandwidth 98.28 MHz",
+      "id": "reference_cell_derives_its_carrier",
+      "passed": true
+    },
+    {
+      "detail": "PipelineConfig defaults police 3400-3500 MHz; the OCUDU cell transmits 3508.18-3608.18 MHz. The intervals are DISJOINT \u2014 the hand-typed band was never this radio's band. Recorded as a finding, not silently corrected: the fix is to export the derived values, which needs no product-source change.",
+      "id": "default_envelope_excludes_the_real_carrier",
+      "passed": true
+    },
+    {
+      "detail": "a 3450.0 MHz / 10 MHz emission passes the hand-typed envelope's spectral mask (admitted=True) and is rejected by the OCUDU-derived one (refused=True); the derived envelope is strictly the more truthful of the two",
+      "id": "default_envelope_admits_what_the_real_cell_must_refuse",
+      "passed": true
+    },
+    {
+      "detail": "a 3558.18 MHz / 20 MHz emission at the carrier centre passes the derived envelope's spectral mask",
+      "id": "derived_envelope_admits_an_in_carrier_action",
+      "passed": true
+    },
+    {
+      "detail": "pipeline.py declares ['HORIZON_SHIELD_BAND_HI_HZ', 'HORIZON_SHIELD_BAND_LO_HZ', 'HORIZON_SHIELD_MAX_EIRP_DBM']; the derivation emits ['HORIZON_SHIELD_BAND_HI_HZ', 'HORIZON_SHIELD_BAND_LO_HZ']; subset=True. Names are parsed from the pipeline AST, so a rename there fails here rather than silently unwiring the derivation.",
+      "id": "env_var_names_are_read_from_pipeline_source",
+      "passed": true
+    },
+    {
+      "detail": "10 committed OCUDU cell configuration(s) derived a carrier; 0 refused. cell_cfg_low_band_coverage_layer.yml: n28 758.00-768.00 MHz (52 PRB); cell_cfg_mid_band_capacity_layer.yml: n78 3499.99-3599.99 MHz (273 PRB); du_rf_b200_tdd_n78_20mhz.yml: n78 3740.00-3760.00 MHz (51 PRB); gnb_custom_cell_properties.yml: n78 3479.42-3499.42 MHz (51 PRB); gnb_rf_b200_tdd_n78_20mhz.yml: n78 3479.42-3499.42 MHz (51 PRB); gnb_rf_b210_fdd_srsUE.yml: n3 1832.50-1852.50 MHz (106 PRB); gnb_rf_n310_fdd_n3_20mhz.yml: n3 1833.20-1853.20 MHz (106 PRB); gnb_ru_picocom_scb_tdd_n78_20mhz.yml: n78 3365.00-3385.00 MHz (51 PRB); gnb_ru_ran550_tdd_n78_100mhz_4x2.yml: n78 3508.18-3608.18 MHz (273 PRB); gnb_ru_rpqn4800e_tdd_n78_20mhz_2x2.yml: n78 3590.00-3610.00 MHz (51 PRB)",
+      "id": "every_committed_cell_derives",
+      "passed": true
+    },
+    {
+      "detail": "antenna gain is keyword-only with no default and no OCUDU config carries one. non-finite gain: antenna_gain_dBi must be finite | config without ssb_block_power_dbm: /home/user/PreceptualAI-Horizon-RIC/third_party/ocudu/configs/gnb_rf_b210_fdd_srsUE.yml has no cell_cfg.ssb.ssb_block_power_dbm; the EIRP ceiling cannot be derived from this configuration. Supply HORIZON_SHIELD_MAX_EIRP_DBM from the site's licence instead of inferring it.",
+      "id": "eirp_is_never_invented",
+      "passed": true
+    },
+    {
+      "detail": "carrier 3750.01-3850.01 MHz (ARFCN 653334, 100 MHz) does not fit inside band n78 DL 3300-3800 MHz",
+      "id": "carrier_must_fit_its_declared_band",
+      "passed": true
+    }
+  ],
+  "claim": "The Shield's frequency envelope is derived by the normative TS 38.104 formulae from the same OCUDU cell configuration the gNB boots from, and is wired to the environment variables the unmodified pipeline already reads.",
+  "gate": "G9",
+  "passed": true,
+  "reference_config": "third_party/ocudu/configs/gnb_ru_ran550_tdd_n78_100mhz_4x2.yml",
+  "source_digests": {
+    "ocudu/src/horizon_ocudu/cell_config.py": "766834307ef4222431715757cdff541b08d25fc865474fb63b7354bd4058c0cb",
+    "src/horizon_ric/rapp/pipeline.py": "107ce49b644fea86815b4594f996f043bc0bf1054b07c331cab4da6ee72e440a",
+    "src/horizon_ric/shield/invariants.py": "fe9185068e5f6becae25ff3248121f94429f99fa653a4559c364ca30940511ee",
+    "third_party/ocudu/configs/gnb_ru_ran550_tdd_n78_100mhz_4x2.yml": "6650a2dbcc30fc65c5ac340fad5ece15f1294b5731b87778489be64016ebaf69"
+  }
+}

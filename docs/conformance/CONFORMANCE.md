@@ -3,8 +3,8 @@
 > *Canonical-to-v3-trust-layer-wave: 2026-05-08. See [`README.md`](../../README.md) for the 49-section deep dive of current state, performance, tests, and roadmap.*
 
 
-**Version:** 0.2.0
-**Date:** 2026-05-06
+**Version:** 0.4.0
+**Date:** 2026-07-30
 **Component:** [`docs/oda/component.yaml`](../oda/component.yaml)
 **OpenAPI:** [`docs/openapi/horizon-ric-rapp.yaml`](../openapi/horizon-ric-rapp.yaml)
 **SBOM:** [`deploy/sbom/horizon-ric-sbom.json`](../../deploy/sbom/horizon-ric-sbom.json)
@@ -35,11 +35,11 @@ Status legend:
 
 | Subsection | Requirement | Status | Reference |
 | --- | --- | --- | --- |
-| §6.3 (PUT policy) | Policy emission per type | ✅ | `src/horizon_ric/rapp/a1_adapter.py:243` (`emit_policy`) |
-| §6.4 (GET status) | Policy status retrieval | ✅ | `src/horizon_ric/rapp/a1_adapter.py:388` (`get_policy_status`) |
-| §6.5 (DELETE) | Policy rollback | ✅ | `src/horizon_ric/rapp/a1_adapter.py:480` (`rollback_policy`) |
-| §7 (A1-EI) | Enrichment Information jobs | ✅ | `src/horizon_ric/rapp/a1_adapter.py:435` (`create_ei_job`) |
-| Annex A | Default policy types (1, 2, 20000) | ✅ | `src/horizon_ric/rapp/a1_adapter.py` (`DEFAULT_POLICY_TYPES`) |
+| §6.3 (PUT policy) | Policy emission per type | ✅ | `src/horizon_ric/rapp/a1_adapter.py:301` (`emit_policy`) |
+| §6.4 (GET status) | Policy status retrieval | ✅ | `src/horizon_ric/rapp/a1_adapter.py:492` (`get_policy_status`) |
+| §6.5 (DELETE) | Policy rollback | ✅ | `src/horizon_ric/rapp/a1_adapter.py:584` (`rollback_policy`) |
+| §7 (A1-EI) | Enrichment Information jobs | ✅ | `src/horizon_ric/rapp/a1_adapter.py:539` (`create_ei_job`) |
+| Annex A | Default policy types registered: `horizon.qos.priority`=20001, `horizon.traffic.steering`=20002, `horizon.admission.control`=20003, `horizon.spectrum.reservation`=20004. All four are registered; only the first three are ever **emitted** by the decision pipeline (`src/horizon_ric/rapp/pipeline.py:251`) — 20004 is exercised over the wire only by `scripts/osc_a1_live_smoke.py` | ✅ | `src/horizon_ric/rapp/a1_adapter.py:56` (`DEFAULT_POLICY_TYPES`) |
 
 ## O-RAN.WG2.O1-v06.00 — O1 NETCONF/YANG
 
@@ -49,6 +49,21 @@ Status legend:
 | §6.3 get-config | Datastore retrieval (XPath/subtree) | ✅ | `src/horizon_ric/rapp/o1_adapter.py:145` (`get_config`) |
 | §6.4 edit-config | Datastore mutation | ✅ | `src/horizon_ric/rapp/o1_adapter.py:165` (`edit_config`) |
 | §7 NRM YANG | TS 28.541 NRM module ingest | ⚠️ | `src/horizon_ric/rapp/o1_adapter.py:25` (NRM scope), `deploy/yang/` |
+
+## O-RAN.WG3 E2 — E2 Service Models
+
+Horizon-RIC is a Non-RT RIC rApp and is **receive-only** on E2. The package
+states it directly: it "deliberately contains NO E2AP/SCTP transport of its own"
+(`src/horizon_ric/e2/__init__.py:5`).
+
+| Element | Requirement | Status | Reference |
+| --- | --- | --- | --- |
+| E2SM-KPM v03.00 | `E2SM-KPM-IndicationMessage` decode (Format 1/2 → one event, Format 3 → one event per `ueMeasReportList` entry) and `E2SM-KPM-IndicationHeader` Format 1 (`colletStartTime`, `senderName`) | ✅ | `src/horizon_ric/e2/kpm_bridge.py:363` (`from_e2sm_kpm_indication`), `tests/test_e2_kpm_bridge.py` |
+| E2SM-KPM v03.00 | Committed ASN.1 module, sha256-pinned to the FlexRIC original | ✅ | `src/horizon_ric/e2/asn1/e2sm_kpm_v03.00_standard.asn1`, `src/horizon_ric/e2/asn1/PROVENANCE.md`, `tests/test_e2_kpm_bridge.py::test_committed_asn1_spec_matches_flexric_provenance` |
+| E2AP / SCTP | E2 association, RIC Subscription, ActionDefinition, EventTriggerDefinition | ❌ | Out of scope by design: the near-RT RIC owns the E2 association and Horizon consumes the E2SM payloads it surfaces (`src/horizon_ric/e2/__init__.py:3`) |
+| E2SM-RC v1.03 | RIC Control payload construction (`controlHeader-Format1`, `controlMessage-Format1`) | ✅ | Vendored standard ASN.1, aligned PER encode with round-trip decode; `src/horizon_ric/e2/rc_control.py`, `tests/test_e2_rc_control.py` |
+| E2SM-RC v1.03 | Refused decision cannot be encoded (fail closed) | ✅ | `control_from_disposition` raises on `emit_blocked` / not `safe` / non-empty `violated_ids`, and encodes `safe_action` only |
+| E2SM-RC v1.03 | RIC Control **delivery** (`RICcontrolRequest` over E2AP) | ❌ | No transport in this package by design. Three reasons in [`E2_RC_PROOF.md`](../../deploy/e2-companion/E2_RC_PROOF.md); remains WP4 work |
 
 ## O-RAN.WG11 Security Specification
 
@@ -92,6 +107,17 @@ Status legend:
 | TMF638 Service Inventory | 🟡 | declared in `docs/oda/component.yaml` |
 | TMF724 Intent Management | 🟡 | declared in `docs/oda/component.yaml` |
 | TMF630 API design guidelines | ✅ | `src/horizon_ric/rapp/api.py` (OpenAPI 3.1, JSON, RFC 7807-style errors via FastAPI) |
+
+## Horizon-RIC assurance profile (own draft, not an external specification)
+
+The rows above map the repository onto specifications other people publish. The
+row below is the reverse: a draft profile of the assurance layer in this
+repository, offered as candidate input to a standardisation discussion. It is not
+an adopted standard and no vendor has implemented it.
+
+| Document | Scope | Status | Reference |
+| --- | --- | --- | --- |
+| Draft assurance conformance profile v0.1.0 | Planner action contract, invariant contract, safety-certificate schema and canonical signing form, A1 binding (implemented vs proposed), E2 binding (KPM only), third-party conformance criteria, known gaps | ⚠️ draft | [`docs/conformance/ASSURANCE_PROFILE.md`](ASSURANCE_PROFILE.md) |
 
 ---
 

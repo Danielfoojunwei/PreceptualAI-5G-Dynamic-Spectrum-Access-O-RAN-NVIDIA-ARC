@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://horizon-ric.example.com/schemas/invariant-profile-v1.schema.json",
+  "title": "Horizon-RIC assurance profile (Shield configuration), v1",
+  "description": "The shape produced by horizon_ric.assurance.profile.emit_profile(shield, profile_id=...). New in WP1.\n\nWHY THIS EXISTS. A Shield's regulatory claim lives entirely in its constructor arguments — band edges, EIRP ceiling, PAPR ceiling, neural-RX tolerance, PFD mask, protected slice floor. Before WP1 those numbers existed only at some call site, so an auditor asking what a given cell's Shield was actually enforcing had no artefact to read. emit_profile reflects a LIVE Shield instance, so the profile cannot drift from what is being enforced; profile_digest pins it in the same canonical JSON form the certificate signer uses (sort_keys, tight separators), which means a profile digest can be stamped into SafetyCertificate.model_provenance to give each certificate a cryptographic reference to the envelope that produced it.\n\nSHAPE IS CLOSED. emit_profile emits exactly these six keys and no others.\n\nORDER IS SEMANTICALLY SIGNIFICANT. 'invariant_chain' is an ordered array, not a set. Shield.dispose walks the chain in order on every projection pass, so an earlier invariant's projection is what a later one sees. NumericSanityInvariant is first in every default chain so downstream physics and regulatory checks only ever see finite values (NaN comparisons are false in surprising ways, and a negative bandwidth appears to fit inside a band). LawfulInterceptInvariant follows immediately, so a fail-closed LI refusal short-circuits the pass before any power or spectrum rewriting. Spectrum and power precede the AI-PHY envelopes, so a fallback to a classical block is decided on an already-legal carrier. Two profiles listing the same invariants in a different order therefore describe DIFFERENT enforcement and MUST digest differently — they do, because JSON arrays are ordered and sort_keys sorts keys, never array elements.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "description",
+    "invariant_chain",
+    "max_passes",
+    "action_contract"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Version of this DOCUMENT SHAPE, not of the operator's profile. Mirrors horizon_ric.assurance.profile.PROFILE_SCHEMA_VERSION; tests/test_assurance_schemas.py fails if the two drift."
+    },
+    "profile_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Operator-chosen stable identifier for this enforced configuration, e.g. 'cell-42/band-n78'. Free-form; the digest, not this string, is what pins the configuration."
+    },
+    "description": {
+      "type": "string",
+      "description": "Free-form operator note for the audit trail. Empty string when not supplied — always present, so it is inside the digest and cannot be edited after the fact without changing it."
+    },
+    "invariant_chain": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The Shield's invariants in ENFORCEMENT ORDER. See the top-level note: this ordering is part of the safety claim.",
+      "items": {
+        "$ref": "#/$defs/invariantDescriptor"
+      }
+    },
+    "max_passes": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "ShieldConfig.max_passes — how many projection passes the Shield attempts before declaring the action unfixable and failing closed with emit_blocked. Default 8. This is a termination bound, not a safety bound: exhausting it produces a refusal, never an unchecked emit."
+    },
+    "action_contract": {
+      "$ref": "#/$defs/actionContract"
+    }
+  },
+  "$defs": {
+    "invariantDescriptor": {
+      "title": "Invariant descriptor",
+      "description": "One invariant's identity and its operator-programmable limits, read off the live instance via dataclasses.fields + getattr. Closed shape.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "class_name",
+        "limits"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The invariant's stable id, as it appears in SafetyCertificate.invariants[].invariant_id and violated_ids. NOT enum-constrained: Invariant is a structural Protocol, so a deployment may add invariants of its own. The ids shipped in this repo are enumerated in #/$defs/knownInvariantId for cross-checking."
+        },
+        "class_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Python class name of the invariant instance. The literal string 'unknown' is emitted on emit_profile's degraded path, where only Shield.invariant_ids was available and the instances themselves could not be reflected — an honest marker that limits could not be read, not a real class."
+        },
+        "limits": {
+          "type": "object",
+          "description": "Every dataclass field of the invariant except 'id' (which is always the last field on the concrete invariants in horizon_ric.shield.invariants, and is already reported above). Tuples such as ConstellationLegalityInvariant.allowed_orders become arrays. An injected collaborator is NEVER serialised: LawfulInterceptInvariant.li holds the operator's LIConstraint with its LIMF rule catalogue and is reported as {\"delegated_to\": \"LIConstraint\"}, because the rApp sees warrant tags and never warrant content. Any other non-JSON-primitive value is reported as {\"opaque\": \"<TypeName>\"} rather than coerced, so a profile can never claim to describe a limit it did not actually read. Empty object for a non-dataclass invariant.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "actionContract": {
+      "title": "Action-key contract",
+      "description": "The planner action contract this Shield expects, mirroring horizon_ric.assurance.planner. Carried inside the profile so a pinned digest covers the input contract as well as the invariant limits. Closed shape.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required_keys",
+        "optional_keys",
+        "forbidden_keys",
+        "json_primitive_values_only"
+      ],
+      "properties": {
+        "required_keys": {
+          "type": "array",
+          "minItems": 1,
+          "description": "horizon_ric.assurance.planner.REQUIRED_ACTION_KEYS. Enforced in the current code only implicitly, inside NumericSanityInvariant._problems, which fails the action closed rather than reporting a missing key.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "optional_keys": {
+          "type": "array",
+          "description": "horizon_ric.assurance.planner.OPTIONAL_ACTION_KEYS — domain-checked when present, or consumed by a downstream invariant. NOT an allow-list: the action shape is open and a planner may carry deployment-specific keys the Shield ignores.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbidden_keys": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Shield OUTPUT sentinels a planner must never set: 'emit_blocked' and 'shield_fallback_to' (horizon_ric.shield.invariants.FALLBACK_KEY). A planner presetting either is forging the Shield's verdict.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "json_primitive_values_only": {
+          "type": "boolean",
+          "const": true,
+          "description": "Always true, and normative. canonical_certificate_bytes serialises the certificate with no default= handler while action_proposed embeds the planner's dict verbatim, so a Decimal, datetime, Enum, set, bytes, or numpy scalar anywhere in an action raises TypeError at signing time. Recorded as a field rather than left implicit so the requirement is inside the pinned digest."
+        }
+      }
+    },
+    "knownInvariantId": {
+      "title": "Invariant ids shipped in this repository",
+      "description": "Registry of the invariant ids defined in horizon_ric.shield.invariants, for cross-checking a profile or certificate against the shipped implementation. Referenced by no other subschema on purpose — a deployment's own invariants are legal, so constraining 'id' to this list would be wrong. tests/test_assurance_schemas.py asserts this enum equals the set of .id values read off default-constructed instances of the eight concrete invariant classes, so adding an invariant without updating this list fails the build.\n\nid -> class: numeric_domain_sanity -> NumericSanityInvariant; spectral_mask_ts38104 -> SpectralMaskInvariant; max_eirp -> MaxEirpInvariant; protected_slice_floor -> ProtectedSliceFloorInvariant; pfd_ceiling_ntn -> PfdCeilingInvariant; neural_rx_envelope -> NeuralRxEnvelopeInvariant; constellation_legality -> ConstellationLegalityInvariant; lawful_intercept -> LawfulInterceptInvariant.\n\nNOTE: protected_slice_floor is in neither default chain (default_terrestrial_shield / default_ntn_shield) and ProtectedSliceFloorInvariant is not exported from horizon_ric.shield.__init__ — import it from horizon_ric.shield.invariants and append it explicitly if a deployment needs the slice floor.",
+      "type": "string",
+      "enum": [
+        "constellation_legality",
+        "lawful_intercept",
+        "max_eirp",
+        "neural_rx_envelope",
+        "numeric_domain_sanity",
+        "pfd_ceiling_ntn",
+        "protected_slice_floor",
+        "spectral_mask_ts38104"
+      ]
+    }
+  }
+}

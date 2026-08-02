@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://horizon-ric.example.com/schemas/proposed-action-v1.schema.json",
+  "title": "Horizon-RIC proposed action (planner output), v1",
+  "description": "What a conformant planner may emit for the Decision Safety Shield to dispose of. New in WP1; the Python mirror is horizon_ric.assurance.planner (REQUIRED_ACTION_KEYS / OPTIONAL_ACTION_KEYS / validate_proposed_action), and tests/test_assurance_schemas.py pins the two together.\n\nNORMATIVE — JSON-PRIMITIVE VALUES ONLY. Every value in this object, at every depth, MUST be a JSON primitive: string, number, boolean, null, array, or object with string keys. This is not a stylistic preference. horizon_ric.shield.signing.canonical_certificate_bytes serialises the certificate with json.dumps(..., sort_keys=True, separators=(',',':')) and NO default= handler, and SafetyCertificate.action_proposed embeds this object verbatim. A Decimal, datetime, Enum, set, bytes, or numpy scalar anywhere in here therefore raises TypeError at certificate-signing time — on the evidence path, long after the decision, where the failure is hardest to attribute. Non-finite floats are likewise forbidden: json.dumps emits the non-standard NaN/Infinity literals, which no strict JSON consumer will accept.\n\nSHAPE IS OPEN. additionalProperties is deliberately true: a deployment's planner may carry domain-specific keys (cell ids, slice labels, beam indices) that the Shield ignores, and validate_proposed_action permits them too. Extra keys remain bound by the JSON-primitive rule and by the output-sentinel prohibition below, which is exactly why those 'not' clauses are load bearing rather than redundant.\n\nOUTPUT SENTINELS ARE FORBIDDEN. 'emit_blocked' and 'shield_fallback_to' (horizon_ric.shield.invariants.FALLBACK_KEY) are written BY the Shield to record a refusal or a fallback to a certified classical block. A planner that presets either one is forging the Shield's own verdict, so this schema refuses the action outright.\n\nHONESTY NOTE — the current code does not enforce this document. The required keys are enforced only implicitly, inside NumericSanityInvariant._problems, which fails the action closed rather than reporting a schema error; 'block' is read defensively via .get('block', 'unknown') and so a missing block degrades to the string 'unknown' on the certificate instead of being rejected. This schema states the contract WP1 declares; validate_proposed_action is the executable form of it.",
+  "type": "object",
+  "required": [
+    "block",
+    "frequency_hz",
+    "bandwidth_hz",
+    "tx_power_dBm"
+  ],
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "$comment": "Shield OUTPUT sentinel — never a planner input.",
+      "not": {
+        "required": [
+          "emit_blocked"
+        ]
+      }
+    },
+    {
+      "$comment": "horizon_ric.shield.invariants.FALLBACK_KEY — Shield OUTPUT sentinel.",
+      "not": {
+        "required": [
+          "shield_fallback_to"
+        ]
+      }
+    },
+    {
+      "$comment": "A truthy 'ntn' selects the NTN PFD ceiling, which needs a real slant range. PfdCeilingInvariant.compute_pfd otherwise defaults to ~550 km, fabricating a regulatory margin the planner never measured.",
+      "if": {
+        "required": [
+          "ntn"
+        ],
+        "properties": {
+          "ntn": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "slant_range_m"
+        ]
+      }
+    }
+  ],
+  "properties": {
+    "block": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identity of the AI-PHY / RIC block that produced this action. Recorded on the certificate as 'block' and used to dispatch the AI-PHY invariants: a value starting with 'neural_rx' arms NeuralRxEnvelopeInvariant, and a value containing 'learned_constellation' arms ConstellationLegalityInvariant. The Shield writes a 'classical*' value here when it falls back."
+    },
+    "frequency_hz": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Carrier centre frequency in Hz. Must be finite and > 0 (NumericSanityInvariant). SpectralMaskInvariant checks the occupied band [f - bw/2, f + bw/2] against the licensed channel and will clip this value."
+    },
+    "bandwidth_hz": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Occupied/emission bandwidth in Hz. Must be finite and > 0. A carrier wider than the usable channel cannot be placed at all and the emit is blocked."
+    },
+    "tx_power_dBm": {
+      "type": "number",
+      "description": "Conducted transmit power in dBm. Must be finite; deliberately unbounded here because the ceiling is regulatory, not schematic — MaxEirpInvariant (and PfdCeilingInvariant for NTN) reduces it by exactly the overage."
+    },
+    "antenna_gain_dBi": {
+      "type": "number",
+      "description": "Terrestrial Tx antenna gain in dBi. EIRP_dBm = tx_power_dBm + antenna_gain_dBi. Absent is read as 0.0 by MaxEirpInvariant."
+    },
+    "sat_antenna_gain_dBi": {
+      "type": "number",
+      "description": "Satellite Tx antenna gain in dBi, used by PfdCeilingInvariant for the NTN downlink PFD. Absent is read as 0.0."
+    },
+    "predicted_tbler": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "The neural receiver's SELF-REPORTED transport-block error rate. Recorded for audit and NOT trusted for the safety decision: NeuralRxEnvelopeInvariant grades against context['measured_tbler'] (independent CRC/HARQ telemetry the model cannot forge) precisely because this field is the one a poisoned model controls."
+    },
+    "baseline_tbler": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Transport-block error rate of the certified classical LMMSE baseline, i.e. the reference the neural receiver must not regress far past."
+    },
+    "demap_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Secondary soft confidence signal from the neural demapper. Read only when an independent measurement is present; it can never on its own admit a model the measurement says is bad."
+    },
+    "papr_dB": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Peak-to-average power ratio of the (possibly learned) constellation, in dB. Must be finite and >= 0. Clipped to the ceiling via a classical-QAM fallback when it exceeds ConstellationLegalityInvariant.max_papr_dB."
+    },
+    "constellation_order": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "description": "M-QAM order. Must be a positive integer. Presence of this key alone arms ConstellationLegalityInvariant, which snaps an illegal order down to the nearest legal one and falls back to classical QAM."
+    },
+    "ntn": {
+      "type": "boolean",
+      "description": "True for a non-terrestrial (LEO satellite) downlink decision. Arms PfdCeilingInvariant and makes slant_range_m mandatory (see the conditional above)."
+    },
+    "slant_range_m": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Satellite-to-ground slant range in metres. Required, finite and > 0 whenever ntn is true."
+    },
+    "prb_allocation": {
+      "type": "object",
+      "description": "Mapping of slice id -> fraction of the cell's PRBs. ProtectedSliceFloorInvariant restores the safety-critical slice's floor and reclaims the deficit pro rata, keeping the allocation a valid simplex. Absent means the slice floor is vacuously satisfied. NOTE: ProtectedSliceFloorInvariant is not exported from horizon_ric.shield.__init__ and is not in either default chain — import it from horizon_ric.shield.invariants and add it explicitly.",
+      "additionalProperties": {
+        "type": "number"
+      }
+    }
+  }
+}

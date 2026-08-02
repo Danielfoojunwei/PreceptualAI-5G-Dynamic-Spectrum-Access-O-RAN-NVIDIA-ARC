@@ -1,0 +1,124 @@
+{
+  "checks": [
+    {
+      "data": {
+        "bars_as_drawn": [
+          52.0,
+          33.0
+        ],
+        "licence_ceiling_dBm": 33.0,
+        "peak_eirp_dBm": 52.0,
+        "was": "labelled 'peak EIRP' but plotted 46.0, a transmit power \u2014 a 19 dB violation drawn as 13 dB",
+        "y_axis_label": "peak EIRP (dBm)"
+      },
+      "detail": "panel (c) draws bars at [np.float64(52.0), np.float64(33.0)] on an axis labelled 'peak EIRP (dBm)'; the benchmark's own EIRP is ru_max_tx_dBm + antenna_gain_dBi = 52.0 dBm against the 33.0 dBm ceiling",
+      "id": "fig1c_plots_eirp_read_from_the_result_not_a_typed_transmit_power",
+      "passed": true
+    },
+    {
+      "detail": "Fig. 1's caption states the arithmetic, so a reader can check the bar against the benchmark's own definition of EIRP",
+      "id": "the_caption_derives_52_dBm_rather_than_asserting_it",
+      "passed": true
+    },
+    {
+      "data": {
+        "was": "four benchmarks instead reject physically inconsistent input"
+      },
+      "detail": "the proposal says three, matching verify_data_dependence.py's own docstring",
+      "id": "ray_reconstruction_rejecters_stated_as_three",
+      "passed": true
+    },
+    {
+      "data": {
+        "panel_d_title": "(d) worst attack,\n5 attacks\n$\\times$ 3 regimes",
+        "ratios_by_attack": {
+          "bim": 28.599999999999994,
+          "boundary": 84.50000000000001,
+          "fgsm": 28.599999999999994,
+          "mim": 28.599999999999994,
+          "transfer": 28.500000000000004
+        },
+        "was": "White-box adversarial perturbation ... up to 85 times, and a panel titled 'white-box attack' over the black-box boundary result",
+        "white_box_attacks": [
+          "bim",
+          "fgsm",
+          "mim"
+        ],
+        "white_box_max": 28.6
+      },
+      "detail": "84.5x is the 'boundary' attack, which the suite documents as decision-based black-box; the white-box maximum is 28.6x",
+      "id": "the_85x_figure_is_no_longer_attributed_to_a_white_box_attack",
+      "passed": true
+    },
+    {
+      "data": {
+        "anchors": {
+          "46.0": 0.199219,
+          "52.0": 0.26001,
+          "60.0": 0.340088,
+          "78.0": 0.633057
+        },
+        "utility_forgone_at_operational_cap": 0.652588,
+        "was": "Utility is not the price ... enforcement surrenders 0.0 dB"
+      },
+      "detail": "the non-binding case says 'surrenders nothing' and the binding case is priced at 0.199219 against the 46 dBm anchor; utility_forgone_at_operational_cap = 0.6526",
+      "id": "utility_cost_is_stated_conditionally_with_the_binding_case_priced",
+      "passed": true
+    },
+    {
+      "data": {
+        "on_pull_request": [
+          "agentic.yml",
+          "audit.yml",
+          "build.yml",
+          "lint.yml",
+          "nvcf.yml",
+          "ocudu.yml",
+          "osc-a1-integration.yml",
+          "proposal.yml",
+          "realdata.yml",
+          "test.yml",
+          "xapp-e2e.yml"
+        ],
+        "unfiltered": [
+          "build.yml",
+          "lint.yml",
+          "test.yml"
+        ],
+        "was": "Eight verification workflows gate every change \u2014 wrong count, and the wrong predicate: eight of the eleven are path-scoped"
+      },
+      "detail": "11 workflow(s) run on pull_request; only 3 of them are unfiltered and therefore actually gate every change (build.yml, lint.yml, test.yml)",
+      "id": "verification_workflow_count_matches_the_workflows_that_run",
+      "passed": true
+    },
+    {
+      "data": {
+        "carrier_bw_hz": 16000000.0,
+        "was": "six 100 MHz subbands"
+      },
+      "detail": "six subbands across 100 MHz, consistent with the run's declared carrier_bw_hz of 16 MHz",
+      "id": "subbands_stated_as_across_100_mhz",
+      "passed": true
+    },
+    {
+      "data": {
+        "was": "12 of 12 policies ENFORCED ... \u2014 driven by ray-traced propagation for 4096 receivers"
+      },
+      "detail": "the A1/xApp interop run replays authored telemetry; the ray-traced measurements drive the benchmarks, and the summary now says so rather than welding them into one sentence",
+      "id": "the_summary_separates_the_a1_result_from_the_ray_traced_benchmarks",
+      "passed": true
+    },
+    {
+      "data": {
+        "was": "a Shield-corrected over-power proposal refused rather than emitted"
+      },
+      "detail": "over-power is corrected, not refused \u2014 audit/refusal_semantics.py probes 2688 over-power actions and finds zero refusals \u2014 and the refusal that IS proven comes from numeric_domain_sanity",
+      "id": "section_vii_promises_correction_and_refusal_separately",
+      "passed": true
+    }
+  ],
+  "claim": "Nine statements in docs/proposal/content.py and mkfigs.py agree with the result files they cite. Each was wrong before; the wording it replaced is recorded under data.was.",
+  "gate": "proposal-claims",
+  "passed": true,
+  "reading_note": "passed=true means the corrections are in place and the numbers behind them still hold. Restoring an old wording, or moving a constant the corrected sentence quotes, turns this red."
+}
