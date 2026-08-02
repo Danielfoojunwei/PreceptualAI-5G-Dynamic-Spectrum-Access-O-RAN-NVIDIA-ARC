@@ -1,158 +1,66 @@
 {
-  "answer": "No. The DU E2 agent does not attempt a connection at all.",
-  "binary_sha256": {
-    "gnb": "84e838da1c42148d0719dc58b16ac8d8ed5793a9515dc7f60bb1cfe041b0cb49",
-    "nearRT-RIC": "dd9eca06c42a906ba703ebdea74adbf1de7d1628d195b06f2ee5d20f2474a957"
+  "answer": "YES - once the RF driver does not hang DU start. This CORRECTS an earlier committed result that said it never attempts a connection.",
+  "binaries": {
+    "flexric_commit": "ef6d722f22191eea74089966983da1f5ec1fedd4",
+    "gnb_sha256": "4062065b90629803b0937b8de48f95f5bd3c0b4050fbf720522c7ea29f61eab5",
+    "ocudu_commit": "f46f5804e53fede1e5c3353420ce1bcd3f4e57c6"
   },
-  "consequence_for_g4": "G4's delivery half cannot be closed on this stack. Horizon's Style 2 Action 6 control has no registered executor on either association that does join - the CU-CP registers style 3 action 1 only. The readability half IS closed, independently, by ocudu/verify_g4_codec_interop.py.",
-  "established": [
-    "The --enable_du_e2 option EXISTS in the shared 'e2' subcommand (gnb e2 --help lists it, default false).",
-    "The gNB app builds a DU E2 gateway and wires it: gnb.cpp:476 create_e2_gateway_client(...E2_DU_PPID), gnb.cpp:543 odu_dependencies.e2_client_handler = e2_gw_du.get().",
-    "The DU itself comes up: 'Cell pci=1, bw=10 MHz, 1T1R, dl_arfcn=368500 (n3)' and the ZMQ RF front-end binds.",
-    "The CU-CP E2 agent joins, and the CU-UP E2 agent also joins (RAN type ngran_gNB_CUUP).",
-    "No DU E2 logger appears under ANY name, including space-padded forms - ocudulog pads to a fixed width ([GNB     ]) and the probe's regexes were widened to tolerate that before this was concluded.",
-    "Forcing the flag on the command line (gnb -c cfg.yml e2 --enable_du_e2 true) parses without error and changes nothing."
-  ],
-  "flexric_commit": "ef6d722f22191eea74089966983da1f5ec1fedd4",
-  "not_established": "WHERE the DU's enable_unit_e2 is lost between the parsed CLI option and o_du_high_unit_factory.cpp:225. Locating that needs an instrumented build or a debugger. Static reading of this subsystem has produced two wrong answers already, both withdrawn, so no cause is asserted here.",
-  "ocudu_commit": "f46f5804e53fede1e5c3353420ce1bcd3f4e57c6",
+  "consequence_for_g4": "Delivery half is now ATTEMPTABLE and NOT YET DONE. The DU agent is joined and the RIC accepted RAN function 3 (ORAN-E2SM-RC) for it, so Style 2 Action 6 finally has a live association. An xApp issuing the control and the executor accepting it has not been run.",
+  "corrects": "the previous du-e2-probe.json and DU_E2_FINDING.md, which concluded the DU agent never tries and that closing G4 needed an OCUDU change. Both were wrong.",
+  "gnb_witness": {
+    "du_e2setup_response_received": true,
+    "units_reaching_e2_setup": [
+      "E2-CU-CP",
+      "E2-CU-UP",
+      "E2-DU"
+    ]
+  },
+  "known_flakiness": "FlexRIC's nearRT-RIC aborts with 'free(): invalid pointer' if started while a previous instance still holds the UDP port under the shim. When that happens the RIC-side witness is empty even though the join succeeded; the gNB-side E2setupResponse is then the sufficient witness, since it cannot be self-generated. The run recorded here used a single clean RIC and captured BOTH witnesses.",
+  "not_determined": "Why the main pool reports 1 thread despite nproc=4 and an explicit expert_execution.threads.main_pool.nof_threads: 4 (supplied as YAML and on the command line). Whether the ZMQ hang would also occur with a genuinely larger main pool was not tested.",
   "probe": "ocudu_du_e2_agent_join",
-  "question": "Does OCUDU's DU-side E2 agent join the near-RT RIC? G4 needs it: the E2SM-RC Style 2 Action 6 executor Horizon's control message targets is registered ONLY in lib/e2/common/e2_du_factory.cpp.",
-  "runs": {
-    "yaml_only": {
-      "binaries": {
-        "config": "/home/user/PreceptualAI-Horizon-RIC/deploy/e2-companion/ocudu-gnb-e2.yml",
-        "gnb": "/home/user/PreceptualAI-Horizon-RIC/third_party/ocudu/build/apps/gnb/gnb",
-        "gnb_extra_args": [],
-        "ric": "/home/user/PreceptualAI-Horizon-RIC/third_party/flexric/build/examples/ric/nearRT-RIC",
-        "sctp_shim": "/tmp/claude-0/-home-user-PreceptualAI-Horizon-RIC/37442464-036c-5abf-b3e4-bb26fb56ebdf/scratchpad/shim.so"
+  "question": "Does OCUDU's DU-side E2 agent join the near-RT RIC?",
+  "ric_witness": {
+    "e2_setup_requests": 3,
+    "nodes": [
+      {
+        "node_id": "411",
+        "plmn": "1. 1",
+        "ran_type": "ngran_gNB"
       },
-      "du_agent_joined": false,
-      "du_evidence": {
-        "distinct_du_ran_type_at_ric": false,
-        "du_unit_connected_at_gnb": false
+      {
+        "node_id": "411",
+        "plmn": "1. 1",
+        "ran_type": "ngran_gNB_CUUP"
       },
-      "gnb": {
-        "e2_units_that_connected": [
-          "E2-CU-CP"
-        ],
-        "e2_units_that_tried": [
-          "E2-CU-CP",
-          "E2-CU-UP"
-        ],
-        "ran_functions_added": [
-          {
-            "id": "2",
-            "oid": "1.3.6.1.4.1.53148.1.2.2.2",
-            "unit": "E2-CU-CP"
-          },
-          {
-            "id": "3",
-            "oid": "1.3.6.1.4.1.53148.1.1.2.3",
-            "unit": "E2-CU-CP"
-          }
-        ]
-      },
-      "probe": "ocudu_du_e2_agent_join",
-      "ric": {
-        "accepted_ran_functions": [
-          {
-            "def": "ORAN-E2SM-KPM",
-            "id": "2"
-          },
-          {
-            "def": "ORAN-E2SM-RC",
-            "id": "3"
-          },
-          {
-            "def": "ORAN-E2SM-KPM",
-            "id": "2"
-          },
-          {
-            "def": "ORAN-E2SM-RC",
-            "id": "3"
-          }
-        ],
-        "e2_setup_requests": 2,
-        "nodes": [
-          {
-            "node": "411",
-            "plmn": "1. 1",
-            "rantype": "ngran_gNB"
-          },
-          {
-            "node": "411",
-            "plmn": "1. 1",
-            "rantype": "ngran_gNB_CUUP"
-          }
-        ],
-        "ran_types": [
-          "ngran_gNB",
-          "ngran_gNB_CUUP"
-        ]
+      {
+        "node_id": "411",
+        "plmn": "1. 1",
+        "ran_type": "ngran_gNB_DU"
       }
+    ],
+    "ran_types": [
+      "ngran_gNB",
+      "ngran_gNB_CUUP",
+      "ngran_gNB_DU"
+    ]
+  },
+  "root_cause": "o_du_high_impl::start() calls du_hi->start() BEFORE e2agent->start(). With device_driver: zmq and no ZMQ peer on tcp://127.0.0.1:2001, du_hi->start() blocks forever in mac_cell_processor::start() (gdb: main thread in futex_util::wait under du_manager_controller_impl::start(); sole main_pool#0 worker blocked in a sync_task_executor; phy_worker idle). The DU E2 agent is CONSTRUCTED and its Style 2 Action 6 executor IS registered - it is simply never started.",
+  "single_variable_experiment": {
+    "only_difference": "device_driver: zmq -> realtime_loopback (+ empty device_args)",
+    "rtloop_arm": {
+      "du_bringup_lines": 1816,
+      "units_reaching_e2_setup": [
+        "E2-CU-CP",
+        "E2-CU-UP",
+        "E2-DU"
+      ]
     },
-    "yaml_plus_cli_override": {
-      "binaries": {
-        "config": "/home/user/PreceptualAI-Horizon-RIC/deploy/e2-companion/ocudu-gnb-e2.yml",
-        "gnb": "/home/user/PreceptualAI-Horizon-RIC/third_party/ocudu/build/apps/gnb/gnb",
-        "gnb_extra_args": [
-          "e2",
-          "--enable_du_e2",
-          "true"
-        ],
-        "ric": "/home/user/PreceptualAI-Horizon-RIC/third_party/flexric/build/examples/ric/nearRT-RIC",
-        "sctp_shim": "/tmp/claude-0/-home-user-PreceptualAI-Horizon-RIC/37442464-036c-5abf-b3e4-bb26fb56ebdf/scratchpad/shim.so"
-      },
-      "du_agent_joined": false,
-      "du_evidence": {
-        "distinct_du_ran_type_at_ric": false,
-        "du_unit_connected_at_gnb": false
-      },
-      "gnb": {
-        "e2_units_that_connected": [
-          "E2-CU-CP"
-        ],
-        "e2_units_that_tried": [
-          "E2-CU-CP"
-        ],
-        "ran_functions_added": [
-          {
-            "id": "2",
-            "oid": "1.3.6.1.4.1.53148.1.2.2.2",
-            "unit": "E2-CU-CP"
-          },
-          {
-            "id": "3",
-            "oid": "1.3.6.1.4.1.53148.1.1.2.3",
-            "unit": "E2-CU-CP"
-          }
-        ]
-      },
-      "probe": "ocudu_du_e2_agent_join",
-      "ric": {
-        "accepted_ran_functions": [
-          {
-            "def": "ORAN-E2SM-KPM",
-            "id": "2"
-          },
-          {
-            "def": "ORAN-E2SM-RC",
-            "id": "3"
-          }
-        ],
-        "e2_setup_requests": 1,
-        "nodes": [
-          {
-            "node": "411",
-            "plmn": "1. 1",
-            "rantype": "ngran_gNB"
-          }
-        ],
-        "ran_types": [
-          "ngran_gNB"
-        ]
-      }
+    "zmq_arm": {
+      "du_bringup_lines": 0,
+      "units_reaching_e2_setup": [
+        "E2-CU-CP"
+      ]
     }
-  }
+  },
+  "working_config": "ocudu/e2/ocudu-gnb-e2-du-joins.yml"
 }
