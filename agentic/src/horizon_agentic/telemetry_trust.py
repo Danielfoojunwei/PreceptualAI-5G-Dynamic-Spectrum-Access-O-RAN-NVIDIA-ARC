@@ -243,11 +243,32 @@ class TelemetryTrustGate:
     silence another's replay.
     """
 
-    def __init__(self, policy: TrustPolicy, *, clock: Callable[[], float]) -> None:
+    def __init__(
+        self,
+        policy: TrustPolicy,
+        *,
+        clock: Callable[[], float],
+        initial_high_water: Mapping[str, int] | None = None,
+    ) -> None:
         self._policy = policy
         self._clock = clock
-        self._high_water: dict[str, int] = {}
-        self._seen: dict[str, set[str]] = {}
+        # Seeding from a persisted snapshot is what closes the restart window.
+        # Without it, a restart resets every high-water mark to None and the
+        # first record from each source sets the floor with no lower bound —
+        # so everything inside `max_age_s` replays cleanly. Persisting the
+        # marks is cheap (one integer per source) and strictly more useful
+        # than persisting digests, which the sequence rule already subsumes.
+        self._high_water: dict[str, int] = dict(initial_high_water or {})
+
+    def high_water_marks(self) -> Mapping[str, int]:
+        """A snapshot to persist, so replay defence survives a restart.
+
+        Callers should write this after an admitted batch and pass it back as
+        ``initial_high_water`` on the next start. Doing so is the deployment's
+        responsibility: this class is in-memory by design, and pretending to
+        own durability it does not have would be worse than saying so.
+        """
+        return dict(self._high_water)
 
     # ── per-record checks ────────────────────────────────────────────────
     def _authenticate(self, record: TelemetryRecord) -> TrustCheck:
@@ -304,13 +325,12 @@ class TelemetryTrustGate:
         return TrustCheck("freshness", True, f"age {age:.3f}s within limit")
 
     def _replay(self, record: TelemetryRecord) -> TrustCheck:
-        digest = hashlib.sha256(canonical_record_bytes(record)).hexdigest()
-        if digest in self._seen.get(record.source_id, set()):
-            return TrustCheck(
-                "replay",
-                False,
-                f"record from {record.source_id!r} is a byte-identical replay",
-            )
+        # No digest set. An earlier version kept every canonical digest per
+        # source to catch byte-identical replays, which the strictly-increasing
+        # sequence rule already refuses — a replay carries the same sequence.
+        # It was measured at ~155 bytes per entry and never freed: a
+        # memory-exhaustion path reachable by a *legitimate* high-rate source,
+        # for no additional refusal power.
         high = self._high_water.get(record.source_id)
         if high is not None and record.sequence <= high:
             return TrustCheck(
@@ -478,10 +498,8 @@ class TelemetryTrustGate:
         if trusted:
             for record in authentic:
                 self._high_water[record.source_id] = max(
-                    self._high_water.get(record.source_id, record.sequence), record.sequence
-                )
-                self._seen.setdefault(record.source_id, set()).add(
-                    hashlib.sha256(canonical_record_bytes(record)).hexdigest()
+                    self._high_water.get(record.source_id, record.sequence),
+                    record.sequence,
                 )
         # Read-only: a caller mutating admitted state would be editing the
         # world model after the gate certified it.

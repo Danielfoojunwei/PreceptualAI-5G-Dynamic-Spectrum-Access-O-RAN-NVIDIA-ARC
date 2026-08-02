@@ -146,25 +146,37 @@ catalogue proves nothing.
 | Member emitted before its group (breaks `.back()`) | `visit_order_matches_parser_contract` fails |
 | Minimum ratios allowed to exceed the cell | `impossible_quotas_refused` fails |
 
-## A source-level answer to an open item
+## An open item, narrowed — and a wrong answer withdrawn
 
 `OCUDU_E2_JOIN_PROOF.md` records that only the CU-CP E2 agent attached, with
-`enable_du_e2: true` present in the effective configuration and the DU agent
-never starting — listed as unresolved.
+`enable_du_e2: true` in the effective configuration and the DU agent never
+starting.
 
-Reading the source: `configure_cli11_with_e2_config_schema` creates an `e2`
-subcommand on **whatever `CLI::App` it is given**
-(`apps/helpers/e2/e2_cli11_schema.cpp:42`). The CU-CP unit attaches one
-(`o_cu_cp_application_unit_impl.cpp:28`) and the DU-high unit attaches its own
-(`o_du_high_e2_config_cli11_schema.cpp:25`). There are therefore **two distinct
-`e2` sections**, one per unit — not one shared top-level block. Our config put
-`enable_du_e2` in a single top-level `e2:`, which binds to the CU-CP unit,
-where that option is not registered at all.
+**A first pass at this was wrong and is withdrawn.** It claimed the CU-CP and
+DU-high units each create their own `e2:` section, so `enable_du_e2` at top
+level bound to the wrong one. The source refutes that: OCUDU's `add_subcommand`
+helper (`include/ocudu/support/cli11_utils.h:38`) calls
+`get_subcommand_no_throw` and **returns the existing subcommand** when one is
+already registered. Both units therefore populate a single shared top-level
+`e2:` block, and our configuration was correct.
 
-> **This is a hypothesis from reading source, not a verified fix.** There is no
-> OCUDU build tree in this sandbox, so it has not been re-run. It should be
-> tested on a host with the binaries before the open item is closed, and this
-> paragraph should be replaced by a result either way.
+What the source does establish, tracing the whole path:
+
+| step | source | state |
+|---|---|---|
+| `enable_du_e2` reaches the DU-high unit config | `o_du_high_unit_config_cli11_schema.h:20` | wired |
+| the DU E2 agent is constructed when it is set | `o_du_high_unit_factory.cpp:225` | wired |
+| the gNB app supplies the DU an E2 client | `gnb.cpp:543` — `e2_gw_du.get()` | supplied |
+
+So the cause is **not configuration** — which is what the withdrawn answer got
+wrong — and the remaining candidates are runtime. The one to check first is the
+SCTP shim: two E2 agents mean two concurrent SCTP associations, the join proof
+already documents extending the shim to satisfy OCUDU's one-to-one client
+style, and nothing in it suggests a second simultaneous association is handled.
+
+> **That paragraph is a candidate, not a finding.** It says where to look, not
+> what is true. There is no OCUDU build tree in this sandbox, so nothing here
+> has been re-run, and the item stays open.
 
 ## What is deliberately not claimed
 

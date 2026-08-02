@@ -116,6 +116,68 @@ class AgentActionEnvelope:
         """Keys the action carries but does not claim to change."""
         return self.written_keys - self.mutates
 
+    def to_dict(self) -> dict[str, Any]:
+        """The wire form, matching `schemas/agent-action-envelope.schema.json`.
+
+        Sets become sorted lists so two processes serialising the same envelope
+        produce identical JSON — `frozenset` iteration order is not stable, and
+        an unstable serialisation would break the signature that covers it.
+        """
+        return {
+            "agent_id": self.agent_id,
+            "agent_version": self.agent_version,
+            "target_domain": self.target_domain,
+            "granted_scopes": sorted(self.granted_scopes),
+            "delegation_chain": list(self.delegation_chain),
+            "requested_action": dict(self.requested_action),
+            "mutates": sorted(self.mutates),
+            "resource_id": self.resource_id,
+            "nonce": self.nonce,
+            "issued_at": self.issued_at,
+            "signature": self.signature,
+            "signing_key_fingerprint": self.signing_key_fingerprint,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "AgentActionEnvelope":
+        """Parse a wire envelope, refusing anything the schema does not declare.
+
+        Unknown keys are a refusal rather than an ignore. The schema is
+        `additionalProperties: false`, and silently dropping a field a sender
+        believed it had set is how two peers come to disagree about what was
+        requested — with a valid signature over the sender's version.
+        """
+        known = {
+            "agent_id", "agent_version", "target_domain", "granted_scopes",
+            "delegation_chain", "requested_action", "mutates", "resource_id",
+            "nonce", "issued_at", "signature", "signing_key_fingerprint",
+        }
+        unknown = sorted(set(payload) - known)
+        if unknown:
+            raise ValueError(
+                f"envelope carries fields this version does not define: {unknown}"
+            )
+        missing = sorted(
+            {"agent_id", "agent_version", "target_domain", "requested_action"}
+            - set(payload)
+        )
+        if missing:
+            raise ValueError(f"envelope is missing required fields: {missing}")
+        return cls(
+            agent_id=str(payload["agent_id"]),
+            agent_version=str(payload["agent_version"]),
+            target_domain=str(payload["target_domain"]),
+            granted_scopes=frozenset(payload.get("granted_scopes") or ()),
+            delegation_chain=tuple(payload.get("delegation_chain") or ()),
+            requested_action=dict(payload["requested_action"]),
+            mutates=frozenset(payload.get("mutates") or ()),
+            resource_id=str(payload.get("resource_id", "")),
+            nonce=str(payload.get("nonce", "")),
+            issued_at=float(payload.get("issued_at", 0.0)),
+            signature=str(payload.get("signature", "")),
+            signing_key_fingerprint=str(payload.get("signing_key_fingerprint", "")),
+        )
+
 
 @dataclass(frozen=True)
 class AuthorityGrant:

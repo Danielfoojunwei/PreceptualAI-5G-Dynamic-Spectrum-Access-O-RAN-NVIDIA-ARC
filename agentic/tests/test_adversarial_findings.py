@@ -13,6 +13,8 @@ rival. None of that is visible from reading the happy path.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from horizon_agentic.aggregate import AbsoluteSliceCapacityFloor
 from horizon_agentic.bundle import SafetyTransaction, TransactionRefused
@@ -244,3 +246,114 @@ def test_priority_still_decides_between_equally_culpable_members() -> None:
     assert result.committed, result.refusals
     dropped = {d.agent_id for d in result.resolution.dropped}
     assert dropped == {"energy-agent"}
+
+
+# ── items disclosed as open, now closed ──────────────────────────────────
+def test_replay_defence_survives_a_restart() -> None:
+    """The gate's high-water marks were process-local.
+
+    Disclosed as open: a restart reset every mark, so the first record from
+    each source set the floor with no lower bound and everything inside the
+    freshness window replayed cleanly. The marks are now snapshottable and can
+    be seeded back on start.
+    """
+    from horizon_agentic.telemetry_trust import (
+        FieldBound,
+        TelemetryRecord,
+        TelemetryTrustGate,
+        TrustPolicy,
+        sign_record,
+    )
+
+    policy = TrustPolicy(
+        secrets={"s": b"k"}, max_age_s=60.0,
+        bounds={"x": FieldBound(0.0, 10.0, "")},
+    )
+    first = TelemetryTrustGate(policy, clock=lambda: 1000.0)
+    rec = sign_record(TelemetryRecord("s", 1000.0, 7, {"x": 1.0}), b"k")
+    assert first.admit([rec]).trusted
+    snapshot = first.high_water_marks()
+    assert snapshot == {"s": 7}
+
+    # A naive restart would accept the replay.
+    naive = TelemetryTrustGate(policy, clock=lambda: 1000.0)
+    assert naive.admit([rec]).trusted, "precondition: an unseeded gate accepts it"
+
+    # Seeded from the snapshot, it does not.
+    restarted = TelemetryTrustGate(
+        policy, clock=lambda: 1000.0, initial_high_water=snapshot
+    )
+    verdict = restarted.admit([rec])
+    assert not verdict.trusted
+    assert any(c.check_id == "replay" for c in verdict.refusals)
+
+
+def test_the_envelope_has_a_wire_format() -> None:
+    """Disclosed as open: the only way to construct one was importing the class.
+
+    Round-trip must be exact, because the signature covers the serialised form
+    — a field that does not survive the round trip is a field two peers can
+    disagree about while both hold a valid signature.
+    """
+    env = slice_env()
+    restored = AgentActionEnvelope.from_dict(env.to_dict())
+    assert restored == env
+
+
+def test_serialisation_is_order_stable() -> None:
+    """`frozenset` iteration order is not stable across processes."""
+    import json
+
+    a = AgentActionEnvelope(
+        "a", "1", "ran", frozenset({"slice", "spectrum"}), (ROOT, "a"),
+        dict(BASELINE), frozenset({"prb_allocation", "bandwidth_hz"}),
+    )
+    b = AgentActionEnvelope(
+        "a", "1", "ran", frozenset({"spectrum", "slice"}), (ROOT, "a"),
+        dict(BASELINE), frozenset({"bandwidth_hz", "prb_allocation"}),
+    )
+    assert json.dumps(a.to_dict(), sort_keys=True) == json.dumps(
+        b.to_dict(), sort_keys=True
+    )
+
+
+def test_an_unknown_wire_field_is_refused_not_ignored() -> None:
+    """Dropping a field the sender believed it set is how peers diverge —
+    with a valid signature over the sender's version."""
+    payload = {**slice_env().to_dict(), "escalate": True}
+    with pytest.raises(ValueError, match="does not define"):
+        AgentActionEnvelope.from_dict(payload)
+
+
+def test_a_wire_envelope_missing_required_fields_is_refused() -> None:
+    payload = slice_env().to_dict()
+    del payload["requested_action"]
+    with pytest.raises(ValueError, match="missing required fields"):
+        AgentActionEnvelope.from_dict(payload)
+
+
+def test_a_signature_survives_the_round_trip() -> None:
+    """The point of a wire format: an external agent signs, we verify."""
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from horizon_agentic.identity import (
+        AgentRegistry,
+        EnvelopeAuthenticator,
+        sign_envelope,
+    )
+
+    key = Ed25519PrivateKey.generate()
+    signed = sign_envelope(
+        AgentActionEnvelope(
+            "slice-agent", "1.0.0", "ran", frozenset({"slice"}),
+            (ROOT, "slice-agent"), dict(BASELINE), frozenset({"prb_allocation"}),
+            resource_id="cell-1", nonce="n1", issued_at=1000.0,
+        ),
+        key,
+    )
+    wire = json.dumps(signed.to_dict(), sort_keys=True)
+    restored = AgentActionEnvelope.from_dict(json.loads(wire))
+    auth = EnvelopeAuthenticator(
+        AgentRegistry({"slice-agent": key.public_key()}), clock=lambda: 1000.0
+    )
+    verdict = auth.authenticate(restored)
+    assert verdict.authenticated, verdict.problems

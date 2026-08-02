@@ -214,13 +214,19 @@ is now pinned by a test in `test_adversarial_findings.py`.
   *effects*.
 - **No durable evidence store.** The chain is in-memory. `horizon_ric.evidence`
   has a real store; nothing connects them yet.
-- **Replay state does not survive a restart.** The telemetry gate's high-water
-  marks and the authenticator's nonce set are process-local, so a restart
-  reopens a replay window the width of the freshness bound.
-- **No wire format.** The schemas under `schemas/` describe the envelope and
-  the certificate, and a drift test keeps them honest against the dataclasses,
-  but there is no serialiser, no parser, no ingress and no key-distribution
-  story for `AgentRegistry`. An external agent cannot construct an envelope
-  except by importing the Python dataclass in-process.
+- **Replay state is snapshottable but not persisted here.** `TelemetryTrustGate`
+  now accepts `initial_high_water` and exposes `high_water_marks()`, which
+  closes the restart window — an unseeded gate accepts a replay a seeded one
+  refuses, and a test pins both directions. Writing the snapshot somewhere
+  durable is the deployment's job; this package stays in-memory rather than
+  pretending to own durability it does not have. The authenticator's nonce set
+  is bounded by the freshness window and does not need persisting for the same
+  reason its eviction is safe.
+- **No ingress.** `AgentActionEnvelope` now has `to_dict`/`from_dict` matching
+  the published schema — order-stable, unknown fields refused rather than
+  ignored, and a signature survives the round trip — so an external agent can
+  construct one from JSON. What is still absent is anything to *receive* it: no
+  endpoint, no transport, no key-distribution story for `AgentRegistry`, and no
+  rotation runbook for agent keys.
 - **No runnable demonstration**, only a gate and tests.
 - **Not in the proposal.** See the first paragraph.
