@@ -66,6 +66,9 @@ per-action checking means.
 | `bundle.py` | `SafetyTransaction` — trust, identity, authority, per-action projection, aggregates, resolution, then commit-all-or-refuse-all, certified either way. |
 | `conflict.py` | Deterministic resolution: culpability first, then operator-programmed priority. Drops requests; never rewrites values. |
 | `evidence.py` | `TransactionCertificate` for **every** transaction including refusals, signed and hash-chained with tamper localisation. Records the baseline digest and the configured limits *with their thresholds*, so a refusal can be replayed. |
+| `store.py` | Append-only JSONL persistence for the chain, with tamper localisation across a reload and truncation detection against an external anchor. |
+| `keyring.py` | Loads `AgentRegistry` from an operator-controlled key directory, with a bounded rotation overlap and a list of agents still on retired keys. |
+| `ingress.py` | Receives serialised envelopes — size-bounded, oracle-free refusals — plus a stdlib newline-delimited TCP binding. |
 | `cycle.py` | `TransactionCycle` — the serialisation point. Agents submit into an epoch and receive a *receipt*, not a decision; the epoch is decided as a unit, against an operator-supplied baseline. |
 | `emit.py` | `TransactionBinding` — the artefact that lets a receiver check the *transaction*, not just the action. |
 
@@ -99,7 +102,15 @@ what is emitted.
 ```sh
 PYTHONPATH=src:agentic/src python -m pytest agentic/tests -q
 python agentic/verify_g6_multi_agent.py --out agentic/results/g6-multi-agent.json
+python agentic/demo/two_agent_conflict.py --out /tmp/horizon-agentic-demo
 ```
+
+The demo is the fastest way to see what this package does. It shows both agents
+behaving impeccably and the protected slice still ending up at 12.5 MHz against
+a 20 MHz commitment, then the same two agents through a cycle: queued, decided
+together, the culpable request dropped by operator priority, the slice held at
+25 MHz, and the evidence written to disk, reloaded, and shown to detect a
+single altered record.
 
 No new dependencies. `telemetry_trust` uses `hmac`/`hashlib` from the standard
 library, matching the discipline that kept `jsonschema` out of the main package.
@@ -212,8 +223,12 @@ is now pinned by a test in `test_adversarial_findings.py`.
   protocol, no rollback, no idempotency key, no acknowledgement from the
   network. The cycle serialises *decisions*; it does not yet serialise
   *effects*.
-- **No durable evidence store.** The chain is in-memory. `horizon_ric.evidence`
-  has a real store; nothing connects them yet.
+- **Truncation of the evidence log needs an external anchor.** `store.py`
+  detects alteration and localises it, and detects truncation *given*
+  `expected_head`. Without an anchor kept where an attacker cannot reach it,
+  deleting the tail of an append-only log is undetectable from the inside — the
+  hash link points backwards, so removing the tail removes the only thing that
+  referred to it. A test pins both halves of this.
 - **Replay state is snapshottable but not persisted here.** `TelemetryTrustGate`
   now accepts `initial_high_water` and exposes `high_water_marks()`, which
   closes the restart window — an unseeded gate accepts a replay a seeded one
@@ -222,11 +237,14 @@ is now pinned by a test in `test_adversarial_findings.py`.
   pretending to own durability it does not have. The authenticator's nonce set
   is bounded by the freshness window and does not need persisting for the same
   reason its eviction is safe.
-- **No ingress.** `AgentActionEnvelope` now has `to_dict`/`from_dict` matching
-  the published schema — order-stable, unknown fields refused rather than
-  ignored, and a signature survives the round trip — so an external agent can
-  construct one from JSON. What is still absent is anything to *receive* it: no
-  endpoint, no transport, no key-distribution story for `AgentRegistry`, and no
-  rotation runbook for agent keys.
-- **No runnable demonstration**, only a gate and tests.
+- **No TLS and no peer authentication on the reference transport.**
+  `ingress.serve_line_delimited` is newline-delimited JSON over plain TCP,
+  stdlib only. The *envelope's* signature authenticates the request, which is
+  the property that matters, but a deployment on an untrusted network wants a
+  transport that authenticates the connection too. Said in the module rather
+  than implied.
+- **The demonstration is offline.** `demo/two_agent_conflict.py` runs the whole
+  composition end to end — real keys, a real socket, the unmodified Shield, an
+  evidence chain written and reloaded — and exits non-zero if any stage does
+  not behave as narrated. What it does not do is talk to a network.
 - **Not in the proposal.** See the first paragraph.

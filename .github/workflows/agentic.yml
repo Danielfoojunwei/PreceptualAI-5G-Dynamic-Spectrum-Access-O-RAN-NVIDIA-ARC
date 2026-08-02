@@ -55,6 +55,15 @@ jobs:
           PYTHONPATH: src:agentic/src
         run: python -m pytest agentic/tests -q
 
+      - name: Demonstration — end to end, exits non-zero if it misbehaves
+        # Runs the whole composition together: real keys, a real socket, the
+        # unmodified Shield, an evidence chain written and reloaded. The unit
+        # tests cover each part; this is the only thing that covers them
+        # composed.
+        env:
+          PYTHONPATH: src:agentic/src
+        run: python agentic/demo/two_agent_conflict.py --out "$RUNNER_TEMP/demo"
+
       - name: Gate G6 — multi-agent enforcement
         run: |
           python agentic/verify_g6_multi_agent.py \
