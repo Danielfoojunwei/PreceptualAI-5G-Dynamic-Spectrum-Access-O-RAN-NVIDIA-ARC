@@ -118,10 +118,14 @@ number is what caught it.
 
 ## Known open items
 
-- **Page limit.** This builds to five pages, matching the structure the review
-  recommended. Some readings of the call text suggest a shorter limit; if a hard
-  1–2 page limit applies, the condensation to write is the executive summary
-  plus Table II plus Fig. 2, and the rest becomes an appendix.
-- **Authorship sign-off.** The document names Bowen Shen and Dr Feng Li as work
-  package owners. Their written approval of the byline,
-  affiliation and role must precede any submission.
+- ~~**Page limit.**~~ **Resolved.** The document is two pages of body with the
+  references on page 3, and `validate_docx.py` now asserts both. Getting there
+  cost roughly two thirds of the prose: the architecture and work-package
+  figures are gone, the body ran 5134 words and now runs 1703, and the type
+  scale dropped from 8.7 pt to 7.2 pt. Two layout defects surfaced doing it and
+  are fixed rather than worked around — a `break-inside: avoid` on the tables
+  threw a whole table onto its own page when it did not fit, and the wide
+  figure sitting between two body sections stranded 18% of page one, so it now
+  sits in the masthead band.
+- ~~**Authorship sign-off.**~~ **Resolved.** Bowen Shen and Dr Feng Li have
+  approved the byline, affiliation and work-package roles as they appear here.

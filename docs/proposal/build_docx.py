@@ -44,7 +44,7 @@ SERIF = "Times New Roman"
 BODY_PT = C.BODY_PT
 PARA_AFTER = C.PARA_AFTER_PT
 TEXT_WIDTH_IN = 7.0
-WIDE_FIG_IN = 6.1
+WIDE_FIG_IN = 5.2
 COL_WIDTH_IN = (TEXT_WIDTH_IN - 0.25) / 2  # 3.375in
 
 # Elements that must follow <w:cols> inside <w:sectPr>, per CT_SectPr's sequence.
@@ -159,6 +159,22 @@ def heading(doc, text):
     return p
 
 
+def page_break(doc):
+    """A hard page break, as its own paragraph.
+
+    In a two-column section a `w:br type="page"` breaks the page, not the
+    column — which is what the references need: they start at the top of a
+    fresh page rather than in the right-hand column of the last body page.
+    """
+    p = doc.add_paragraph()
+    p.paragraph_format.space_after = Pt(0)
+    r = p.add_run()
+    br = OxmlElement("w:br")
+    br.set(qn("w:type"), "page")
+    r._r.append(br)
+    return p
+
+
 def rule(doc):
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(4)
@@ -227,7 +243,7 @@ def asks_table(doc):
         r.bold = True
         r = p.add_run(gives)
         r.font.name = SERIF
-        r.font.size = Pt(7.0)
+        r.font.size = Pt(6.6)
     return no_split(t)
 
 
@@ -277,7 +293,7 @@ def criteria_table(doc):
         r.bold = True
         r = p.add_run(where)
         r.font.name = SERIF
-        r.font.size = Pt(7.0)
+        r.font.size = Pt(6.6)
     return no_split(t)
 
 
@@ -296,14 +312,13 @@ def emit_sections(doc, groups) -> None:
 
         # "V." does not match "VI."/"VII."/"VIII." — the char after the
         # numeral differs — so these prefixes select exactly one section each.
-        if head.startswith("V."):
-            figure(doc, HERE / "fig-plan.png", COL_WIDTH_IN - 0.02,
-                   C.FIG3_CAPTION, caption_pt=7.2)
+        # The work-package schedule is stated in V's own text at this length;
+        # at two pages a plan figure costs more space than it earns.
         if head.startswith("VI."):
             caption_only(doc, "Table I.  What we ask for — funding against "
                               "named work, and the access funding cannot buy "
-                              "— with what goes back in return. Amounts are "
-                              "in the costed breakdown, not here.",
+                              "— with what goes back in return. No amount is "
+                              "named: see §VI.",
                          keep_with_next=True)
             asks_table(doc)
         if head.startswith("VIII."):
@@ -360,24 +375,28 @@ def build() -> Path:
     rule(doc)
 
     pad = (TEXT_WIDTH_IN - WIDE_FIG_IN) / 2
-    figure(doc, HERE / "fig-arch.png", WIDE_FIG_IN, C.FIG1_CAPTION,
+
+    # The results figure sits in the masthead band rather than mid-document.
+    # A full-width band cannot split across a column break, so placing it
+    # between two body sections stranded the tail of whatever page it did not
+    # fit on — measured at 18% of page one. At the top it costs nothing.
+    # At two pages the architecture diagram is the figure that goes: §II
+    # describes the topology in prose, and the results figure is the one a
+    # reviewer cannot reconstruct from the text.
+    figure(doc, HERE / "fig-enforcement.png", WIDE_FIG_IN, C.FIG1_CAPTION,
            caption_indent=pad)
 
-    # ---- continuous break: two columns resume on the same page ----------
+    # ---- continuous break: two columns for the whole body ---------------
     doc.add_section(WD_SECTION.CONTINUOUS)
-    # The wide results figure follows the evidence section it belongs to,
-    # so the band splits the flow after III rather than at a fixed page.
-    emit_sections(doc, C.SECTIONS[:3])
+    emit_sections(doc, C.SECTIONS)
 
-    # ---- continuous break: full-width band for the wide results figure --
-    doc.add_section(WD_SECTION.CONTINUOUS)
-    figure(doc, HERE / "fig-enforcement.png", WIDE_FIG_IN, C.FIG2_CAPTION,
-           caption_indent=pad)
-
-    # ---- continuous break: back to two columns --------------------------
-    doc.add_section(WD_SECTION.CONTINUOUS)
-    emit_sections(doc, C.SECTIONS[3:])
-
+    # References start on their own page. The layout contract is two pages of
+    # body plus references on page 3, and a hard break is what makes the
+    # second half of that true regardless of how the body happens to fall.
+    # validate_docx.py asserts both the total page count and that the
+    # references begin on page 3, so body growth fails the build rather than
+    # quietly producing a four-page document.
+    page_break(doc)
     heading(doc, "References")
     for i, ref in enumerate(C.REFERENCES, start=1):
         p = doc.add_paragraph()
@@ -393,7 +412,7 @@ def build() -> Path:
     # ---------------- section geometry, set once at the end ---------------
     # sections[0..2] are paragraph-level and terminate their own section, so
     # they carry the break type; sections[3] is the body sentinel.
-    cols_per_section = (1, 2, 1, 2)
+    cols_per_section = (1, 2)
     secs = doc.sections
     if len(secs) != len(cols_per_section):
         raise AssertionError("expected %d sections, built %d"

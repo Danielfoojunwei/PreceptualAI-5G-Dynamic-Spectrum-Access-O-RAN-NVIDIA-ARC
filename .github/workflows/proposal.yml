@@ -1,0 +1,115 @@
+name: Horizon-Proposal
+
+# The proposal has never been gated. `validate_docx.py` existed and was run by
+# hand; nothing re-ran it on a change, and nothing checked the page count at
+# all — which is how the document reached five pages while the layout contract
+# said otherwise.
+#
+# This job rebuilds every artefact from content.py on a clean runner and then
+# requires the rebuild to match what is committed, so an edit to the prose that
+# is not accompanied by a rebuild fails here rather than shipping a .docx that
+# disagrees with its own source.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "docs/proposal/**"
+      - ".github/workflows/proposal.yml"
+      # mkfigs.py reads these, so a regenerated benchmark can legitimately
+      # change the figure and must re-run the build.
+      - "benchmarks/results/poisoning_shield.json"
+      - "benchmarks/results/evasion_suite.json"
+  push:
+    branches: [main]
+    paths:
+      - "docs/proposal/**"
+      - ".github/workflows/proposal.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  proposal:
+    name: Build, validate and diff the proposal
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: System libraries WeasyPrint needs
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libffi-dev
+
+      - name: Install the build's own dependencies
+        # Deliberately not the Horizon package: the proposal build reads
+        # committed result JSON and must not depend on importing horizon_ric.
+        run: python -m pip install python-docx matplotlib weasyprint pypdfium2
+
+      - name: Rebuild figures, .docx and preview from content.py
+        run: |
+          python docs/proposal/mkfigs.py
+          python docs/proposal/build_docx.py
+          python docs/proposal/preview.py
+
+      - name: Validate — layout contract, content, and the page limit
+        # 83 checks. The last four are the page limit, which is the constraint
+        # every other check can hold while the document silently grows.
+        run: python docs/proposal/validate_docx.py
+
+      - name: The committed artefacts must match the rebuild
+        # A .docx that disagrees with its own content.py is worse than no
+        # .docx, because it is the file that gets submitted. Zip timestamps
+        # differ on every build, so the comparison is part-by-part.
+        run: |
+          python - <<'PY'
+          import pathlib, subprocess, sys, zipfile
+          problems = []
+          here = pathlib.Path("docs/proposal")
+
+          # Figures: byte-identical or the plot changed without the JSON.
+          out = subprocess.run(
+              ["git", "status", "--porcelain", "--", "docs/proposal"],
+              capture_output=True, text=True).stdout.strip()
+          dirty = [ln for ln in out.splitlines()
+                   if ln.split()[-1].endswith((".png", ".svg"))]
+          if dirty:
+              problems.append("figures differ from the committed copies:\n  "
+                              + "\n  ".join(dirty))
+
+          # .docx: compare part-for-part, ignoring zip timestamps.
+          docx = here / "Horizon-RIC_AI-RAN_Call-for-Innovation_Proposal.docx"
+          head = subprocess.run(
+              ["git", "show", f"HEAD:{docx.as_posix()}"],
+              capture_output=True).stdout
+          tmp = pathlib.Path("/tmp/committed.docx")
+          tmp.write_bytes(head)
+          with zipfile.ZipFile(docx) as fresh, zipfile.ZipFile(tmp) as old:
+              fn, on = set(fresh.namelist()), set(old.namelist())
+              if fn != on:
+                  problems.append(f"part names differ: {fn ^ on}")
+              for name in sorted(fn & on):
+                  if fresh.read(name) != old.read(name):
+                      problems.append(f"part differs: {name}")
+
+          if problems:
+              print("\n".join(problems), file=sys.stderr)
+              print("\nRun mkfigs.py, build_docx.py and preview.py and commit "
+                    "the result.", file=sys.stderr)
+              sys.exit(1)
+          print("committed artefacts reproduce from content.py")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: proposal
+          path: |
+            docs/proposal/Horizon-RIC_AI-RAN_Call-for-Innovation_Proposal.docx
+            docs/proposal/Horizon-RIC_Proposal_PREVIEW.pdf

@@ -14,7 +14,7 @@ yang-strict) · benchmark + threat model committed · Apache-2.0.
 > being renamed to **horizon-ric**.
 
 This README is also the AI-RAN Alliance *Call for Innovation* proposal
-(deadline 31 July 2026; no membership required). See the companion documents:
+(no membership required). See the companion documents:
 - [`docs/EVALUATION_CRITERIA.md`](docs/EVALUATION_CRITERIA.md) — our anticipated,
   weighted evaluation rubric with honest self-scores.
 - [`docs/RESEARCH_ALIGNMENT.md`](docs/RESEARCH_ALIGNMENT.md) — the NTU / SCRIPTS /

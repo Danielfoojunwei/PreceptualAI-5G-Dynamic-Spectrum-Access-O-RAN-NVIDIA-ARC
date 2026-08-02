@@ -25,6 +25,7 @@ sys.path.insert(0, str(HERE))
 import content as C  # noqa: E402
 
 DOCX = HERE / "Horizon-RIC_AI-RAN_Call-for-Innovation_Proposal.docx"
+PREVIEW = HERE / "Horizon-RIC_Proposal_PREVIEW.pdf"
 
 # CT_PPr's element sequence. A child appearing out of this order makes Word
 # refuse the file.
@@ -81,7 +82,11 @@ def check_package():
               ",".join(missing[:4]))
 
         media = sorted(n for n in names if n.startswith("word/media/"))
-        check(len(media) == 3, "exactly three embedded images",
+        # One figure. The two-page limit paid for the architecture and
+        # work-package diagrams; §II carries the topology in prose and §V the
+        # schedule, and the results figure is the one a reviewer cannot
+        # reconstruct from the text.
+        check(len(media) == 1, "exactly one embedded image",
               "%d: %s" % (len(media), ", ".join(p.split("/")[-1] for p in media)))
         return names
 
@@ -110,13 +115,15 @@ def check_schema_order():
 
 
 def check_layout(doc):
-    # Single-column masthead band, two-column body, a full-width figure band,
-    # then two columns again — the IEEE wide-figure idiom. The first three
-    # sections must be continuous breaks or each band starts a fresh page.
-    WANT_COLS = ("1", "2", "1", "2")
+    # Single-column masthead band carrying the title block and the results
+    # figure, then a two-column body. The mid-document figure band is gone: a
+    # full-width band cannot split, so between two body sections it stranded
+    # the tail of whichever page it did not fit on — measured at 18% of page
+    # one. The band must be a continuous break or the body starts a new page.
+    WANT_COLS = ("1", "2")
     secs = doc.sections
     check(len(secs) == len(WANT_COLS),
-          "four sections: band, two columns, wide-figure band, two columns",
+          "two sections: masthead band with the figure, then two columns",
           "found %d" % len(secs))
     for i, s in enumerate(secs):
         tag = "section %d" % (i + 1)
@@ -147,10 +154,9 @@ def check_layout(doc):
     for want in ("IEEETitle", "IEEEAuthors", "AbstractHeading"):
         check(want in have, "style %s defined" % want)
 
-    check(len(doc.inline_shapes) == 3, "three inline figures placed",
+    check(len(doc.inline_shapes) == 1, "one inline figure placed",
           "found %d" % len(doc.inline_shapes))
-    for sh, name in zip(doc.inline_shapes,
-                        ("fig-arch", "fig-enforcement", "fig-plan")):
+    for sh, name in zip(doc.inline_shapes, ("fig-enforcement",)):
         w_in = sh.width.inches
         h_in = sh.height.inches
         ok = 3.0 <= w_in <= 6.5 and 1.0 <= h_in <= 3.0
@@ -289,6 +295,54 @@ def check_content(doc):
     return stats
 
 
+def check_pagination():
+    """Two pages of body, references on page 3 — the whole layout contract.
+
+    The .docx cannot answer this: it carries no pagination at all (zero
+    explicit page breaks reach the OOXML as page counts, and docProps/app.xml
+    is stock template junk that says Pages=1). The preview PDF is the only
+    instrument in the repository that renders the same geometry and type scale
+    from the same content.py, so that is what is measured.
+
+    This check exists because the page limit was the one open decision the
+    validator did not guard. Everything else here can hold while the document
+    silently grows to four pages, which is exactly what happened before the
+    condensation.
+    """
+    if not PREVIEW.exists():
+        check(False, "preview PDF present to measure pagination against",
+              "missing %s — run preview.py" % PREVIEW.name)
+        return
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:
+        check(False, "pypdfium2 available to count pages",
+              "install pypdfium2; the page limit is the document's defining "
+              "constraint and cannot be checked without rendering")
+        return
+    doc = pdfium.PdfDocument(str(PREVIEW))
+    n = len(doc)
+    check(n == 3, "three pages: two of body, references on the third",
+          "found %d" % n)
+    ref_page = None
+    for i, page in enumerate(doc, start=1):
+        if page.get_textpage().get_text_range().lstrip().startswith("References"):
+            ref_page = i
+            break
+    check(ref_page == 3, "references start on page 3",
+          "found on page %s" % ref_page)
+    if n >= 2:
+        # A body page that stops early means the limit was met by a layout
+        # accident rather than by fitting — worth seeing in the notes.
+        for i in (0, 1):
+            page = doc[i]
+            tp = page.get_textpage()
+            ys = [tp.get_charbox(c)[1] for c in range(tp.count_chars())]
+            if ys:
+                notes.append("  page %d fills to %.1f%% of page height"
+                             % (i + 1, 100 * (1 - min(ys) / page.get_height())))
+
+
 def main() -> int:
     if not DOCX.exists():
         print("missing", DOCX)
@@ -297,6 +351,7 @@ def main() -> int:
     doc = check_schema_order()
     check_layout(doc)
     stats = check_content(doc)
+    check_pagination()
 
     print("\n".join(notes))
     if problems:

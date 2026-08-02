@@ -97,6 +97,19 @@ def enforcement_figure(ps, ev):
     harmful = int(_dig(ps, "in_spec_but_harmful_unguarded") or 461)
     harmful_after = int(_dig(ps, "in_spec_but_harmful_after_shield") or 0)
 
+    # Panel (c). Read from the result, and read the RIGHT quantity. An earlier
+    # version hard-coded 46.0 and 33.0 as literals and labelled the axis "peak
+    # EIRP". 46.0 is `ru_max_tx_dBm` — a TRANSMIT POWER. The benchmark defines
+    # EIRP as tx_power_dBm + antenna_gain_dBi (poisoning_shield_benchmark.py),
+    # so with the run's declared 6.0 dBi gain the peak requested EIRP is 52.0
+    # dBm. The old panel put a transmit power and an EIRP ceiling on one axis
+    # and drew a 19 dB violation as 13 dB, understating its own result by
+    # exactly the antenna gain.
+    ceiling_dbm = float(_dig(ps, "max_eirp_dBm"))
+    tx_max_dbm = float(_dig(ps, "ru_max_tx_dBm"))
+    ant_gain_dbi = float(_dig(ps, "antenna_gain_dBi"))
+    peak_eirp_dbm = tx_max_dbm + ant_gain_dbi
+
     # Worst-case adversarial penalty relative to the classical baseline, in dB,
     # over every attack x every propagation regime.
     worst_unguarded_x, worst_shield_db = 1.0, 0.0
@@ -159,20 +172,24 @@ def enforcement_figure(ps, ev):
     # ---- (c) peak EIRP against the licence -------------------------------
     ax = axes[2]
     _spines(ax)
-    ax.bar([0], [46.0], width=0.56, color=BAD, edgecolor=INK, lw=0.5, zorder=3)
-    ax.bar([1], [33.0], width=0.56, color=GOOD, edgecolor=INK, lw=0.5, zorder=3)
-    ax.axhline(33.0, color=LIMIT, lw=0.9, ls="--", zorder=4)
+    ax.bar([0], [peak_eirp_dbm], width=0.56, color=BAD, edgecolor=INK, lw=0.5,
+           zorder=3)
+    ax.bar([1], [ceiling_dbm], width=0.56, color=GOOD, edgecolor=INK, lw=0.5,
+           zorder=3)
+    ax.axhline(ceiling_dbm, color=LIMIT, lw=0.9, ls="--", zorder=4)
     ax.text(0.985, 0.985, "– –  licensed\n       ceiling", ha="right", va="top",
             fontsize=5.2, color=LIMIT, transform=ax.transAxes, zorder=6,
             linespacing=1.1)
     ax.set_xticks([0, 1])
     ax.set_xticklabels(["planner\ndirect", "through\nthe Shield"])
-    ax.set_ylim(0, 56)
+    ax.set_ylim(0, max(peak_eirp_dbm, ceiling_dbm) * 1.22)
     ax.set_ylabel("peak EIRP (dBm)")
     ax.set_title("(c) worst emission\nover the same run", pad=3)
-    ax.annotate("46.0", (0, 46.0), textcoords="offset points", xytext=(0, 3),
+    ax.annotate(f"{peak_eirp_dbm:.1f}", (0, peak_eirp_dbm),
+                textcoords="offset points", xytext=(0, 3),
                 ha="center", fontsize=7.2, fontweight="bold")
-    ax.annotate("33.0", (1, 33.0), textcoords="offset points", xytext=(0, 3),
+    ax.annotate(f"{ceiling_dbm:.1f}", (1, ceiling_dbm),
+                textcoords="offset points", xytext=(0, 3),
                 ha="center", fontsize=7.2, fontweight="bold", color=GOOD)
 
     # ---- (d) adversarial PHY penalty, in dB vs classical -------------------

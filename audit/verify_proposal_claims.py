@@ -1,44 +1,38 @@
 #!/usr/bin/env python3
 """Gate — proposal sentences against the result files they cite.
 
-``docs/proposal/validate_docx.py`` checks 89 things about the document and not
-one of them is whether a sentence agrees with the JSON behind it. Every finding
-below sits in that blind spot, and every one was found by reading a result file
-the proposal itself points at.
+``docs/proposal/validate_docx.py`` checks the document; it has never checked
+whether a sentence agrees with the JSON behind it. Seven did not. All seven
+have now been corrected at source, and this gate holds the corrections in
+place: each check passes on the corrected wording and fails if the old one
+comes back or the underlying number moves.
 
-Six disagreements, each of them arithmetic rather than judgement:
+The seven, and what each was:
 
-* **Fig. 2(c)** is labelled "peak EIRP (dBm)" and plots 46.0 — but 46.0 is
-  ``ru_max_tx_dBm``, a transmit power. The benchmark defines EIRP as
-  ``tx_power_dBm + antenna_gain_dBi`` (poisoning_shield_benchmark.py:191), and
-  the run's declared gain is 6.0 dBi, so the peak requested EIRP is **52.0 dBm**.
-  The figure understates the violation by exactly the antenna gain and puts a
-  transmit power and an EIRP ceiling on the same axis.
-* **"four benchmarks instead reject physically inconsistent input"** — three do.
-  ``scripts/verify_data_dependence.py``'s own docstring says "Three of these
-  benchmarks".
-* **"up to 85 times the classical baseline"**, attributed to white-box
-  perturbation — 84.5x is the ``boundary`` attack, which the evasion suite
-  documents as decision-based black-box. The white-box maximum is **28.6x**.
+* **Fig. 1(c)** was labelled "peak EIRP (dBm)" and plotted 46.0 — but 46.0 is
+  ``ru_max_tx_dBm``, a transmit power. ``poisoning_shield_benchmark.py``
+  defines EIRP as ``tx_power_dBm + antenna_gain_dBi``, and the declared gain is
+  6.0 dBi, so the peak requested EIRP is **52.0 dBm**. The figure drew a 19 dB
+  violation as 13 dB, understating its own result by exactly the antenna gain.
+  Both bar heights are now read from the result rather than typed in.
+* **"four benchmarks instead reject physically inconsistent input"** — three
+  do, as ``scripts/verify_data_dependence.py``'s own docstring says.
+* **"White-box adversarial perturbation ... up to 85 times"** — 84.5x is the
+  ``boundary`` attack, which the evasion suite documents as decision-based
+  black-box. The white-box maximum is 28.6x.
 * **"enforcement surrenders 0.0 dB"** — true only where the licence does not
   bind. ``safety_utility_frontier.json`` carries
-  ``utility_forgone_at_operational_cap = 0.6526`` and a scope note whose
-  purpose is to say the claim is not that the cost is zero.
-* **"Eight verification workflows gate every change"** — ten run on
-  ``pull_request`` today; twelve files exist.
-* **"six 100 MHz subbands"** — six subbands *across* 100 MHz.
+  ``utility_forgone_at_operational_cap = 0.6526`` and a scope note whose stated
+  purpose is that the claim is not that the cost is zero.
+* **"Eight verification workflows"** — eleven run on ``pull_request``.
+* **"six 100 MHz subbands"** — six subbands *across* 100 MHz;
   ``carrier_bw_hz`` is 16 MHz.
+* **The executive summary** welded "driven by ray-traced propagation for 4096
+  receivers" onto the 12/12 ENFORCED result. Those are disjoint evidence
+  bases: the A1/xApp run replays authored telemetry.
 
-Why this gate goes green on known-wrong prose
----------------------------------------------
-The proposal is not this branch's to edit. So each check passes when the
-disagreement is **exactly** as recorded and fails when either side moves —
-including when the author fixes the sentence, which is the intended way for
-this gate to die. Read ``checks[].data.proposed`` for the wording each one
-suggests.
-
-A green run means "the prose and the data disagree in precisely the six ways
-we measured", not "the proposal is correct".
+Falsified rather than asserted: restoring any of the original wordings, or
+returning panel (c) to a literal, turns the corresponding check red.
 
 Additive: reads the proposal and the committed results, writes nothing to
 either.
@@ -47,6 +41,7 @@ either.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 from dataclasses import dataclass, field
@@ -80,15 +75,25 @@ class Check:
 
 
 def proposal_prose() -> str:
-    """Every string literal in content.py, concatenated and whitespace-flat.
+    """Every string constant in content.py, concatenated and whitespace-flat.
 
-    The sentences under gate are split across source lines by the formatter, so
-    a naive grep of the file misses them. Rendering the module would be the
-    other option, but that imports it; this stays inert.
+    Parsed from the AST rather than matched with a quote regex. The first
+    version of this function used ``re.findall(r'"..."')`` and was blind to
+    every single-quoted literal in the file — which is most of them, because
+    ``repr`` only reaches for double quotes when the string contains an
+    apostrophe. That made the negative checks below (``not says(...)``) pass
+    without seeing the text they were meant to search, which is the exact
+    failure mode this gate exists to catch elsewhere.
+
+    ``ast.parse`` does not execute the module, so this stays inert.
     """
-    src = CONTENT.read_text(encoding="utf-8")
-    blob = " ".join(re.findall(r'"((?:[^"\\]|\\.)*)"', src))
-    return re.sub(r"\s+", " ", blob)
+    tree = ast.parse(CONTENT.read_text(encoding="utf-8"))
+    parts = [
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+    ]
+    return re.sub(r"\s+", " ", " ".join(parts))
 
 
 def _load(name: str) -> dict[str, Any]:
@@ -102,10 +107,10 @@ def run_checks() -> list[Check]:
     prose = proposal_prose()
     checks: list[Check] = []
 
-    def claims(text: str) -> bool:
+    def says(text: str) -> bool:
         return text in prose
 
-    # ── 1. Fig 2(c): a transmit power under an EIRP label ────────────────
+    # ── 1. Fig 1(c): the EIRP is the sum, and the figure now plots it ────
     poison = _load("poisoning_shield.json")
     consts = poison["data_provenance"]["declared_constants"]
     tx_max = float(consts["ru_max_tx_dBm"])
@@ -113,13 +118,6 @@ def run_checks() -> list[Check]:
     ceiling = float(consts["max_eirp_dBm"])
     peak_eirp = tx_max + gain
 
-    figsrc = MKFIGS.read_text(encoding="utf-8")
-    # The panel-(c) block, from its section comment to the next one.
-    m = re.search(r"# ---- \(c\).*?(?=# ---- \(d\))", figsrc, re.S)
-    panel_c = m.group(0) if m else ""
-    plots_tx = f"[{tx_max}]" in panel_c
-    labelled_eirp = "peak EIRP (dBm)" in panel_c
-    # The benchmark's own definition, read back rather than assumed.
     bench = POISON_BENCH.read_text(encoding="utf-8")
     eirp_is_sum = bool(
         re.search(
@@ -129,70 +127,56 @@ def run_checks() -> list[Check]:
             re.S,
         )
     )
+    figsrc = MKFIGS.read_text(encoding="utf-8")
+    m = re.search(r"# ---- \(c\).*?(?=# ---- \(d\))", figsrc, re.S)
+    panel_c = m.group(0) if m else ""
+    literals = re.findall(r"ax\.bar\(\[\d\], \[([\d.]+)\]", panel_c)
+    reads_result = ("peak_eirp_dbm" in panel_c and "ceiling_dbm" in panel_c
+                    and not literals)
     checks.append(
         Check(
-            "fig2c_plots_a_transmit_power_under_an_eirp_label",
-            plots_tx and labelled_eirp and eirp_is_sum and gain > 0,
-            f"panel (c) plots {tx_max} dBm on an axis labelled 'peak EIRP "
-            f"(dBm)', but the benchmark defines EIRP as tx_power + "
-            f"antenna_gain, and the declared gain is {gain} dBi — the peak "
-            f"requested EIRP is {peak_eirp} dBm, {peak_eirp - ceiling:g} dB "
-            f"over the {ceiling} dBm ceiling, not {tx_max - ceiling:g} dB",
+            "fig1c_plots_eirp_read_from_the_result_not_a_typed_transmit_power",
+            eirp_is_sum and reads_result and gain > 0,
+            f"panel (c) plots ru_max_tx_dBm + antenna_gain_dBi = {peak_eirp} "
+            f"dBm against the {ceiling} dBm ceiling, both read from "
+            f"poisoning_shield.json; {len(literals)} literal bar height(s) "
+            f"remain",
             {
-                "plotted_dBm": tx_max,
-                "declared_antenna_gain_dBi": gain,
-                "actual_peak_eirp_dBm": peak_eirp,
+                "peak_eirp_dBm": peak_eirp,
                 "licence_ceiling_dBm": ceiling,
-                "understated_by_dB": gain,
-                "proposed": (
-                    "plot the unguarded bar at 52.0 dBm EIRP, or relabel the "
-                    "axis 'peak transmit power' and add the gain separately"
-                ),
+                "literal_bar_heights": literals,
+                "was": "labelled 'peak EIRP' but plotted 46.0, a transmit "
+                       "power — a 19 dB violation drawn as 13 dB",
             },
         )
     )
 
-    # ── 2. Fig 2(c) is hardcoded, contradicting the build README ─────────
-    hardcoded = re.findall(r"ax\.bar\(\[\d\], \[([\d.]+)\]", panel_c)
+    # ── 2. the caption says where 52.0 comes from ────────────────────────
     checks.append(
         Check(
-            "fig2c_numbers_are_typed_in_not_read_from_the_result",
-            sorted(hardcoded) == sorted([str(tx_max), str(ceiling)]),
-            f"panel (c) bar heights {hardcoded} are literals in mkfigs.py; "
-            f"both happen to equal declared constants today, so the figure is "
-            f"not wrong on that count — but it will not follow the JSON if "
-            f"either constant changes",
-            {
-                "literals": hardcoded,
-                "proposed": (
-                    "read ru_max_tx_dBm and max_eirp_dBm from "
-                    "poisoning_shield.json, or drop the docstring and README "
-                    "claim that no number in this figure is typed in"
-                ),
-            },
+            "the_caption_derives_52_dBm_rather_than_asserting_it",
+            says("52.0 dBm is the 46.0 dBm transmit-power request plus the "
+                 "declared 6.0 dBi antenna gain"),
+            "Fig. 1's caption states the arithmetic, so a reader can check the "
+            "bar against the benchmark's own definition of EIRP",
         )
     )
 
     # ── 3. three rejecters, not four ─────────────────────────────────────
     dd = DATA_DEP.read_text(encoding="utf-8")
-    says_three = "Three of these benchmarks reconstruct" in dd
     checks.append(
         Check(
-            "ray_reconstruction_rejecters_is_three_not_four",
-            claims("four benchmarks instead reject physically inconsistent")
-            and says_three,
-            "the proposal says four benchmarks reject physically inconsistent "
-            "input; verify_data_dependence.py's own docstring says three",
-            {
-                "proposed": (
-                    "three benchmarks instead reject physically inconsistent "
-                    "input"
-                )
-            },
+            "ray_reconstruction_rejecters_stated_as_three",
+            says("three instead reject physically inconsistent input outright")
+            and "Three of these benchmarks reconstruct" in dd
+            and not says("four benchmarks instead reject"),
+            "the proposal says three, matching verify_data_dependence.py's "
+            "own docstring",
+            {"was": "four benchmarks instead reject physically inconsistent input"},
         )
     )
 
-    # ── 4. 85x is black-box, not white-box ───────────────────────────────
+    # ── 4. 85x attributed to the black-box attack ────────────────────────
     ev = _load("evasion_suite.json")
     attacks = ev["awgn"]["attacks"]
     ratios = {
@@ -200,33 +184,26 @@ def run_checks() -> list[Check]:
         for k, v in attacks.items()
         if isinstance(v, dict) and "neural_over_classical_x" in v
     }
-    headline = max(ratios.values())
     headline_attack = max(ratios, key=lambda k: ratios[k])
-    white_box = {k: v for k, v in ratios.items() if k != headline_attack}
+    white_box_max = max(v for k, v in ratios.items() if k != headline_attack)
     checks.append(
         Check(
-            "the_85x_figure_is_the_black_box_boundary_attack",
-            claims("85 times the classical baseline")
-            and claims("White-box adversarial")
+            "the_85x_figure_is_no_longer_attributed_to_a_white_box_attack",
+            not says("White-box adversarial perturbation")
             and headline_attack == "boundary"
-            and round(headline, 1) == 84.5,
-            f"the proposal attributes {headline:.1f}x to white-box "
-            f"perturbation; it is the {headline_attack!r} attack, which the "
-            f"suite documents as decision-based black-box. The white-box "
-            f"maximum is {max(white_box.values()):.1f}x",
+            and round(ratios[headline_attack], 1) == 84.5,
+            f"{ratios[headline_attack]:.1f}x is the {headline_attack!r} attack, "
+            f"which the suite documents as decision-based black-box; the "
+            f"white-box maximum is {white_box_max:.1f}x",
             {
                 "ratios_by_attack": ratios,
-                "white_box_max": round(max(white_box.values()), 1),
-                "proposed": (
-                    "Adversarial perturbation drives the neural receiver's "
-                    "symbol error up to 85 times the classical baseline (29 "
-                    "times for the strongest white-box attack)"
-                ),
+                "white_box_max": round(white_box_max, 1),
+                "was": "White-box adversarial perturbation ... up to 85 times",
             },
         )
     )
 
-    # ── 5. "surrenders 0.0 dB" is the non-binding case only ──────────────
+    # ── 5. zero utility cost stated conditionally ────────────────────────
     suf = _load("safety_utility_frontier.json")
     forgone = float(suf["utility_forgone_at_operational_cap"])
     anchors = {
@@ -235,29 +212,25 @@ def run_checks() -> list[Check]:
     }
     checks.append(
         Check(
-            "zero_utility_cost_holds_only_where_the_licence_does_not_bind",
-            claims("surrenders 0.0 dB") and forgone > 0.0,
-            f"utility_forgone_at_operational_cap = {forgone:.4f}, and the "
-            f"result's own scope note exists to say the claim is not that the "
-            f"cost is zero; against deployable anchors the cost is "
-            f"{anchors.get(46.0)} (46 dBm) and {anchors.get(52.0)} (52 dBm)",
+            "utility_cost_is_stated_conditionally_with_the_binding_case_priced",
+            not says("surrenders 0.0 dB")
+            and says("Where the licence does not bind, enforcement surrenders "
+                     "nothing")
+            and says("0.20 of served fraction against a 40 W small-cell anchor")
+            and forgone > 0.0,
+            f"the non-binding case says 'surrenders nothing' and the binding "
+            f"case is priced at {anchors.get(46.0)} against the 46 dBm anchor; "
+            f"utility_forgone_at_operational_cap = {forgone:.4f}",
             {
                 "utility_forgone_at_operational_cap": forgone,
                 "anchors": anchors,
-                "scope_note": suf.get("scope_note", "")[:400],
-                "proposed": (
-                    "Where the licence does not bind, enforcement surrenders "
-                    "nothing; where it does bind, the cost is explicit and "
-                    "measured — 0.20 of served fraction against a 40 W "
-                    "small-cell anchor"
-                ),
+                "was": "Utility is not the price ... enforcement surrenders 0.0 dB",
             },
         )
     )
 
     # ── 6. workflow count ────────────────────────────────────────────────
     wf_dir = REPO / ".github" / "workflows"
-    files = sorted(p.name for p in wf_dir.glob("*.yml"))
     on_pr = sorted(
         p.name
         for p in wf_dir.glob("*.yml")
@@ -265,15 +238,12 @@ def run_checks() -> list[Check]:
     )
     checks.append(
         Check(
-            "verification_workflow_count_has_grown_past_eight",
-            claims("Eight verification workflows") and len(on_pr) != 8,
-            f"the proposal says eight; {len(on_pr)} workflow(s) run on "
-            f"pull_request and {len(files)} files exist",
-            {
-                "on_pull_request": on_pr,
-                "all_files": files,
-                "proposed": f"{len(on_pr)} verification workflows gate every change",
-            },
+            "verification_workflow_count_matches_the_workflows_that_run",
+            says("Eleven verification workflows gate every change")
+            and len(on_pr) == 11,
+            f"the proposal says eleven; {len(on_pr)} workflow(s) run on "
+            f"pull_request",
+            {"on_pull_request": on_pr, "was": "Eight verification workflows"},
         )
     )
 
@@ -281,14 +251,43 @@ def run_checks() -> list[Check]:
     carrier_bw = float(consts["carrier_bw_hz"])
     checks.append(
         Check(
-            "subbands_are_across_100_mhz_not_100_mhz_each",
-            claims("six 100 MHz subbands") and carrier_bw < 100e6,
-            f"the proposal reads as six subbands of 100 MHz each; the run's "
-            f"declared carrier_bw_hz is {carrier_bw / 1e6:g} MHz",
-            {
-                "carrier_bw_hz": carrier_bw,
-                "proposed": "six subbands across 100 MHz",
-            },
+            "subbands_stated_as_across_100_mhz",
+            says("six subbands across 100 MHz")
+            and not says("six 100 MHz subbands")
+            and carrier_bw < 100e6,
+            f"six subbands across 100 MHz, consistent with the run's declared "
+            f"carrier_bw_hz of {carrier_bw / 1e6:g} MHz",
+            {"carrier_bw_hz": carrier_bw, "was": "six 100 MHz subbands"},
+        )
+    )
+
+    # ── 8. the executive summary keeps the two evidence bases apart ──────
+    checks.append(
+        Check(
+            "the_summary_separates_the_a1_result_from_the_ray_traced_benchmarks",
+            says("Two independent results")
+            and not says("ENFORCED by the production ric-plt/a1 mediator — "
+                         "driven by ray-traced propagation"),
+            "the A1/xApp interop run replays authored telemetry; the "
+            "ray-traced measurements drive the benchmarks, and the summary now "
+            "says so rather than welding them into one sentence",
+            {"was": "12 of 12 policies ENFORCED ... — driven by ray-traced "
+                    "propagation for 4096 receivers"},
+        )
+    )
+
+    # ── 9. §VII's refusal promise matches what the Shield does ───────────
+    checks.append(
+        Check(
+            "section_vii_promises_correction_and_refusal_separately",
+            says("an over-power proposal corrected to the EIRP ceiling before "
+                 "emission and a non-physical proposal refused outright")
+            and not says("over-power proposal refused rather than emitted"),
+            "over-power is corrected, not refused — audit/refusal_semantics.py "
+            "probes 2688 over-power actions and finds zero refusals — and the "
+            "refusal that IS proven comes from numeric_domain_sanity",
+            {"was": "a Shield-corrected over-power proposal refused rather "
+                    "than emitted"},
         )
     )
 
@@ -309,14 +308,14 @@ def main(argv: list[str] | None = None) -> int:
     result = {
         "gate": "proposal-claims",
         "claim": (
-            "Six sentences in docs/proposal/content.py disagree with the "
-            "result files they cite, in exactly the ways recorded here."
+            "Nine statements in docs/proposal/content.py and mkfigs.py agree "
+            "with the result files they cite. Each was wrong before; the "
+            "wording it replaced is recorded under data.was."
         ),
         "reading_note": (
-            "passed=true means the disagreements are unchanged, NOT that the "
-            "proposal is correct. Each check carries the wording it suggests "
-            "under data.proposed. Fixing a sentence turns this gate red, "
-            "which is how it is meant to end."
+            "passed=true means the corrections are in place and the numbers "
+            "behind them still hold. Restoring an old wording, or moving a "
+            "constant the corrected sentence quotes, turns this red."
         ),
         "checks": [c.to_dict() for c in checks],
         "passed": passed,
@@ -327,7 +326,7 @@ def main(argv: list[str] | None = None) -> int:
         Path(args.out).write_text(text + "\n", encoding="utf-8")
     for c in checks:
         print(f"  [{'PASS' if c.passed else 'FAIL'}] {c.id}: {c.detail}")
-    print(f"proposal-claims: {sum(c.passed for c in checks)}/{len(checks)} recorded")
+    print(f"proposal-claims: {sum(c.passed for c in checks)}/{len(checks)} passed")
     return 0 if passed else 1
 
 
